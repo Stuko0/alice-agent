@@ -14,7 +14,7 @@
  *     python._pth              (modified to include site-packages)
  *     site-packages/           (lydia + all deps via uv pip install --target)
  *     scripts/
- *       lydia-serve.py         (bundled entry point)
+ *       alice-serve.py         (bundled entry point)
  *
  * Runs as part of `npm run build` on Windows (or as a pre-step before
  * electron-builder on CI). Idempotent — always re-stages deps to pick
@@ -385,25 +385,25 @@ function cleanPycFiles(dir) {
 // Write the entry point script
 // ---------------------------------------------------------------------------
 function writeEntryPoint() {
-  const entryFile = path.join(SCRIPTS_DIR, 'lydia-serve.py')
+  const entryFile = path.join(SCRIPTS_DIR, 'alice-serve.py')
   ensureDir(SCRIPTS_DIR)
 
   // The entry point sets up sys.path for the bundled site-packages,
-  // then runs `lydia serve` with the provided argv.
-  const entryContent = `\"\"\"Bundled Lydia backend entry point for Windows standalone.
+  // then runs `alice serve` with the provided argv.
+  const entryContent = `\"\"\"Bundled Alice backend entry point for Windows standalone.
 
 This script is bundled inside the Electron app at
-  resources/python/scripts/lydia-serve.py
+  resources/python/scripts/alice-serve.py
 
 It sets up sys.path to find the bundled site-packages/ and then
-delegates to lydia_cli.main with \"serve\" arguments.  The Electron
+delegates to alice_cli.main with \"serve\" arguments.  The Electron
 main process (main.cjs) spawns this as:
 
-  python.exe scripts/lydia-serve.py [--profile NAME]
+  python.exe scripts/alice-serve.py [--profile NAME]
 
-instead of the usual \"python -m lydia_cli.main serve ...\".
+instead of the usual \"python -m alice_cli.main serve ...\".
 
-When called with --probe, it just imports lydia_cli.config and exits 0.
+When called with --probe, it just imports alice_cli.config and exits 0.
 This is used by the Electron backend resolver to verify the bundle
 works before committing to it.
 \"\"\"
@@ -413,7 +413,7 @@ import sys
 
 def _setup_paths():
     \"\"\"Add the bundled site-packages to sys.path.\"\"\"
-    # This script lives at resources/python/scripts/lydia-serve.py
+    # This script lives at resources/python/scripts/alice-serve.py
     # site-packages is at resources/python/site-packages/
     script_dir = os.path.dirname(os.path.abspath(__file__))
     bundle_dir = os.path.dirname(script_dir)  # python/
@@ -430,15 +430,15 @@ def _setup_paths():
 
 def main():
     _setup_paths()
-    # --probe mode: verify the bundle can import lydia_cli without
+    # --probe mode: verify the bundle can import alice_cli without
     # actually starting the server.
     if \"--probe\" in sys.argv:
         import yaml  # noqa: F401 — verify yaml (a core dep) is loadable
-        import lydia_cli.config  # noqa: F401 — verify CLI is importable
+        import alice_cli.config  # noqa: F401 — verify CLI is importable
         sys.exit(0)
 
-    from lydia_cli.main import main as lydia_main
-    sys.exit(lydia_main())
+    from alice_cli.main import main as alice_main
+    sys.exit(alice_main())
 
 
 if __name__ == \"__main__\":
@@ -461,12 +461,12 @@ function verifyBundle() {
     { name: 'python.exe', path: path.join(STAGE_ROOT, 'python.exe') },
     { name: 'python311.dll', path: path.join(STAGE_ROOT, 'python311.dll') },
     { name: 'site-packages', path: SITE_PACKAGES, isDir: true },
-    { name: 'lydia-serve.py', path: path.join(SCRIPTS_DIR, 'lydia-serve.py') },
+    { name: 'alice-serve.py', path: path.join(SCRIPTS_DIR, 'alice-serve.py') },
   ]
 
-  // Verify lydia_cli is installed
-  const lydiaCliDir = path.join(SITE_PACKAGES, 'lydia_cli')
-  checks.push({ name: 'lydia_cli package', path: lydiaCliDir, isDir: true })
+  // Verify alice_cli is installed
+  const aliceCliDir = path.join(SITE_PACKAGES, 'alice_cli')
+  checks.push({ name: 'alice_cli package', path: aliceCliDir, isDir: true })
 
   const failures = []
   for (const check of checks) {

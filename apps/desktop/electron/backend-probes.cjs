@@ -4,12 +4,12 @@
  * Cheap "does this candidate backend actually work" checks used by
  * resolveLydiaBackend (main.cjs). The resolver walks a ladder of
  * candidates -- bootstrap marker, `lydia` on PATH, system Python with
- * lydia_cli installed -- and historically returned the first candidate
+ * alice_cli installed -- and historically returned the first candidate
  * whose binary existed on disk. That assumption breaks when a user has
  * a pre-installed Python 3.11-3.13 (so findSystemPython() returns a
- * path) but no lydia_cli in its site-packages: the resolver hands back
+ * path) but no alice_cli in its site-packages: the resolver hands back
  * a backend the spawn step can't actually run, and the user gets a
- * dead-on-arrival "ModuleNotFoundError: No module named 'lydia_cli'"
+ * dead-on-arrival "ModuleNotFoundError: No module named 'alice_cli'"
  * instead of the first-launch installer.
  *
  * These probes give the resolver a way to verify a candidate before
@@ -44,24 +44,24 @@ const PROBE_TIMEOUT_MS = 5000
  * @returns {string}
  */
 function lydiaRuntimeImportProbe() {
-  return 'import yaml; import lydia_cli.config'
+  return 'import yaml; import alice_cli.config'
 }
 
 /**
  * Return true iff the Lydia runtime import probe exits 0.
  *
- * Used to gate the "fallback to system Python with lydia_cli installed"
+ * Used to gate the "fallback to system Python with alice_cli installed"
  * rung of resolveLydiaBackend, and the "bundled Python" rung (when a
  * `script` path is provided — the probe passes the script itself with
  * `--probe`, trusting the entry point to set up sys.path for the bundled
  * site-packages).
  *
  * Without this, a system Python 3.11-3.13 registered in PEP 514 makes
- * findSystemPython() succeed regardless of whether lydia_cli has actually
+ * findSystemPython() succeed regardless of whether alice_cli has actually
  * been pip-installed into its site-packages -- and the resolver returns a
  * backend that immediately dies on spawn.
  *
- * The probe intentionally imports lydia_cli.config, not just the top-level
+ * The probe intentionally imports alice_cli.config, not just the top-level
  * package: a broken/empty Windows launcher venv can still see the source tree
  * through PYTHONPATH but lack PyYAML, then die on the first real CLI import.
  *
@@ -69,7 +69,7 @@ function lydiaRuntimeImportProbe() {
  * @param {object} [opts]
  * @param {object} [opts.env] - Additional environment for the probe.
  * @param {string} [opts.script] - Optional path to an entry point script
- *   (e.g. the bundled lydia-serve.py). When set, runs `${script} --probe`
+ *   (e.g. the bundled alice-serve.py). When set, runs `${script} --probe`
  *   instead of `-c "import ..."` so the entry point can set up sys.path
  *   for a bundled site-packages directory.
  * @returns {boolean}
@@ -103,7 +103,7 @@ function canImportLydiaCli(pythonPath, opts = {}) {
  *
  * We intentionally avoid invoking the command with the dashboard args
  * here -- `--version` is the cheapest "is this binary alive" smoke
- * test that every lydia_cli entry-point has supported since 0.1.
+ * test that every alice_cli entry-point has supported since 0.1.
  *
  * @param {string} lydiaCommand - Resolved absolute path to a lydia
  *   executable (or an interpreter+script wrapper).

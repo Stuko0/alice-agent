@@ -52,7 +52,7 @@ export type ProviderView = (typeof PROVIDER_VIEWS)[number]
 //
 // Grouping key precedence:
 //   1. Backend `provider_label` / `provider` (from the unified provider catalog
-//      in lydia_cli/provider_catalog.py) — the SAME provider identity
+//      in alice_cli/provider_catalog.py) — the SAME provider identity
 //      `alice model` uses. This is authoritative: a provider tagged by the
 //      backend always renders a card, even with no PROVIDER_GROUPS row.
 //   2. Desktop prefix match (`providerGroup`) — legacy fallback for provider

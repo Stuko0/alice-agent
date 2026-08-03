@@ -36,12 +36,12 @@ test('desktop background child processes opt into hidden Windows consoles', () =
   requireHiddenChildOptions(source, "spawn('curl'")
   requireHiddenChildOptions(source, /spawn\(\s*backend\.command,\s*backend\.args/)
   requireHiddenChildOptions(source, /lydiaProcess = spawn\(\s*backend\.command,\s*backend\.args/)
-  requireHiddenChildOptions(source, /spawn\(\s*py,\s*\['-m', 'lydia_cli\.main', 'uninstall', '--gui-summary'\]/)
+  requireHiddenChildOptions(source, /spawn\(\s*py,\s*\['-m', 'alice_cli\.main', 'uninstall', '--gui-summary'\]/)
 
   assert.match(source, /function unwrapWindowsVenvLydiaCommand\(command, backendArgs\)/)
   assert.match(source, /function getVenvSitePackagesEntries\(venvRoot\)/)
   assert.match(source, /path\.join\(venvRoot, 'Lib', 'site-packages'\)/)
-  assert.match(source, /args: \['-m', 'lydia_cli\.main', \.\.\.backendArgs\]/)
+  assert.match(source, /args: \['-m', 'alice_cli\.main', \.\.\.backendArgs\]/)
 })
 
 test('desktop backend launches console python so child consoles are inherited, not pythonw', () => {

@@ -117,7 +117,7 @@ export function isRemoteGateway(): boolean {
 // Fetch a gateway-local image as a data URL via the authenticated REST bridge.
 // Used in remote mode where readFileDataUrl (which reads THIS machine's disk)
 // can't see files the agent wrote on the gateway. Requires the gateway to
-// expose GET /api/media (lydia_cli/web_server.py).
+// expose GET /api/media (alice_cli/web_server.py).
 export async function gatewayMediaDataUrl(path: string): Promise<string> {
   const file = filePathFromMediaPath(path)
 

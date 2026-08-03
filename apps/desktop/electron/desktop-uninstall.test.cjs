@@ -26,9 +26,9 @@ const {
 // --- uninstallArgsForMode ---
 
 test('uninstallArgsForMode maps each mode to the module-runner argv', () => {
-  assert.deepEqual(uninstallArgsForMode('gui'), ['-m', 'lydia_cli.uninstall', '--mode', 'gui'])
-  assert.deepEqual(uninstallArgsForMode('lite'), ['-m', 'lydia_cli.uninstall', '--mode', 'lite'])
-  assert.deepEqual(uninstallArgsForMode('full'), ['-m', 'lydia_cli.uninstall', '--mode', 'full'])
+  assert.deepEqual(uninstallArgsForMode('gui'), ['-m', 'alice_cli.uninstall', '--mode', 'gui'])
+  assert.deepEqual(uninstallArgsForMode('lite'), ['-m', 'alice_cli.uninstall', '--mode', 'lite'])
+  assert.deepEqual(uninstallArgsForMode('full'), ['-m', 'alice_cli.uninstall', '--mode', 'full'])
 })
 
 test('uninstallArgsForMode throws on an unknown mode (no silent full wipe)', () => {
@@ -128,7 +128,7 @@ test('buildPosixCleanupScript waits for the PID, runs the uninstall module, remo
     pythonExe: '/home/x/.lydia/lydia-agent/venv/bin/python',
     pythonPath: null,
     agentRoot: '/home/x/.lydia/lydia-agent',
-    uninstallArgs: ['-m', 'lydia_cli.uninstall', '--mode', 'gui'],
+    uninstallArgs: ['-m', 'alice_cli.uninstall', '--mode', 'gui'],
     appPath: '/opt/lydia/linux-unpacked',
     lydiaHome: '/home/x/.lydia'
   })
@@ -137,7 +137,7 @@ test('buildPosixCleanupScript waits for the PID, runs the uninstall module, remo
   assert.match(script, /kill -0 "\$pid"/)
   // bounded wait (~30s), not unbounded
   assert.match(script, /seq 1 60/)
-  assert.match(script, /'-m' 'lydia_cli\.uninstall' '--mode' 'gui'/)
+  assert.match(script, /'-m' 'alice_cli\.uninstall' '--mode' 'gui'/)
   assert.match(script, /rm -rf '\/opt\/lydia\/linux-unpacked'/)
   assert.match(script, /export LYDIA_HOME='\/home\/x\/\.lydia'/)
 })
@@ -148,14 +148,14 @@ test('buildPosixCleanupScript exports PYTHONPATH when pythonPath is set (lite/fu
     pythonExe: '/usr/bin/python3',
     pythonPath: '/home/x/.lydia/lydia-agent',
     agentRoot: '/home/x/.lydia/lydia-agent',
-    uninstallArgs: ['-m', 'lydia_cli.uninstall', '--mode', 'full'],
+    uninstallArgs: ['-m', 'alice_cli.uninstall', '--mode', 'full'],
     appPath: null,
     lydiaHome: '/home/x/.lydia'
   })
-  // System python + source on PYTHONPATH so import lydia_cli works while the
+  // System python + source on PYTHONPATH so import alice_cli works while the
   // venv is torn down.
   assert.match(script, /export PYTHONPATH='\/home\/x\/\.lydia\/lydia-agent'/)
-  assert.match(script, /'\/usr\/bin\/python3' '-m' 'lydia_cli\.uninstall' '--mode' 'full'/)
+  assert.match(script, /'\/usr\/bin\/python3' '-m' 'alice_cli\.uninstall' '--mode' 'full'/)
 })
 
 test('buildPosixCleanupScript omits PYTHONPATH when pythonPath is null (gui)', () => {
@@ -164,7 +164,7 @@ test('buildPosixCleanupScript omits PYTHONPATH when pythonPath is null (gui)', (
     pythonExe: '/p/python',
     pythonPath: null,
     agentRoot: '/a',
-    uninstallArgs: ['-m', 'lydia_cli.uninstall', '--mode', 'gui'],
+    uninstallArgs: ['-m', 'alice_cli.uninstall', '--mode', 'gui'],
     appPath: null,
     lydiaHome: '/h'
   })
@@ -177,13 +177,13 @@ test('buildPosixCleanupScript omits the bundle rm when appPath is null', () => {
     pythonExe: '/p/python',
     pythonPath: null,
     agentRoot: '/a',
-    uninstallArgs: ['-m', 'lydia_cli.uninstall', '--mode', 'lite'],
+    uninstallArgs: ['-m', 'alice_cli.uninstall', '--mode', 'lite'],
     appPath: null,
     lydiaHome: '/h'
   })
   assert.doesNotMatch(script, /rm -rf '\//)
   // Still runs the uninstall.
-  assert.match(script, /'-m' 'lydia_cli\.uninstall' '--mode' 'lite'/)
+  assert.match(script, /'-m' 'alice_cli\.uninstall' '--mode' 'lite'/)
 })
 
 test('buildPosixCleanupScript single-quote-escapes paths with apostrophes', () => {
@@ -192,7 +192,7 @@ test('buildPosixCleanupScript single-quote-escapes paths with apostrophes', () =
     pythonExe: "/home/o'brien/python",
     pythonPath: null,
     agentRoot: '/a',
-    uninstallArgs: ['-m', 'lydia_cli.uninstall', '--mode', 'gui'],
+    uninstallArgs: ['-m', 'alice_cli.uninstall', '--mode', 'gui'],
     appPath: null,
     lydiaHome: '/h'
   })
@@ -208,15 +208,15 @@ test('buildWindowsCleanupScript waits (bounded) for PID, runs uninstall, rmdir b
     pythonExe: 'C:\\Python313\\python.exe',
     pythonPath: 'C:\\lydia',
     agentRoot: 'C:\\lydia',
-    uninstallArgs: ['-m', 'lydia_cli.uninstall', '--mode', 'full'],
+    uninstallArgs: ['-m', 'alice_cli.uninstall', '--mode', 'full'],
     appPath: 'C:\\Users\\x\\AppData\\Local\\Programs\\Lydia',
     lydiaHome: 'C:\\Users\\x\\AppData\\Local\\lydia'
   })
   assert.match(script, /@echo off/)
   assert.match(script, /set "PID=9988"/)
-  // PYTHONPATH set so a system python can import lydia_cli from source.
+  // PYTHONPATH set so a system python can import alice_cli from source.
   assert.match(script, /set "PYTHONPATH=C:\\lydia;%PYTHONPATH%"/)
-  assert.match(script, /"C:\\Python313\\python.exe" "-m" "lydia_cli\.uninstall" "--mode" "full"/)
+  assert.match(script, /"C:\\Python313\\python.exe" "-m" "alice_cli\.uninstall" "--mode" "full"/)
   // Bounded wait-loop (no infinite loop), whole-token PID match (no substring).
   assert.match(script, /if %waited% geq 60 goto waited_done/)
   assert.match(script, /findstr \/r \/c:" %PID% "/)
@@ -234,7 +234,7 @@ test('buildWindowsCleanupScript omits PYTHONPATH + rmdir when not needed (gui, n
     pythonExe: 'C:\\h\\venv\\Scripts\\python.exe',
     pythonPath: null,
     agentRoot: 'C:\\h',
-    uninstallArgs: ['-m', 'lydia_cli.uninstall', '--mode', 'gui'],
+    uninstallArgs: ['-m', 'alice_cli.uninstall', '--mode', 'gui'],
     appPath: null,
     lydiaHome: 'C:\\h'
   })

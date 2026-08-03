@@ -15,7 +15,7 @@ const { canImportLydiaCli, lydiaRuntimeImportProbe, verifyLydiaCli } = require('
 
 // Resolve the host's own Node binary -- guaranteed to be on disk and
 // runnable. We use it as both a stand-in for "a python that doesn't
-// have lydia_cli" (since `node -c "import lydia_cli"` will exit
+// have alice_cli" (since `node -c "import alice_cli"` will exit
 // non-zero) and as a way to script verifyLydiaCli's success path
 // (a tiny script we write to disk that exits 0 on --version).
 const NODE_BIN = process.execPath
@@ -27,7 +27,7 @@ test('canImportLydiaCli returns false when path is falsy', () => {
 })
 
 test('canImportLydiaCli returns false when interpreter cannot run -c', () => {
-  // node IS an interpreter, but `node -c "import lydia_cli"` is a
+  // node IS an interpreter, but `node -c "import alice_cli"` is a
   // SyntaxError -- different exit reason from a real Python's
   // ModuleNotFoundError, but the predicate is "exit 0 or not" and
   // both land on "not", which is exactly what we want for the
@@ -43,7 +43,7 @@ test('canImportLydiaCli returns false when binary does not exist', () => {
 test('lydia runtime import probe checks config dependencies', () => {
   const probe = lydiaRuntimeImportProbe()
   assert.match(probe, /\bimport yaml\b/)
-  assert.match(probe, /\bimport lydia_cli\.config\b/)
+  assert.match(probe, /\bimport alice_cli\.config\b/)
 })
 
 test('verifyLydiaCli returns false when command is falsy', () => {

@@ -235,7 +235,7 @@ export const ENUM_OPTIONS: Record<string, string[]> = {
   'stt.elevenlabs.model_id': ['scribe_v2', 'scribe_v1'],
   'stt.local.model': ['tiny', 'base', 'small', 'medium', 'large-v3'],
   // Speech-to-text backends — kept in sync with the stt block in
-  // lydia_cli/config.py (local/groq/openai/mistral/elevenlabs).
+  // alice_cli/config.py (local/groq/openai/mistral/elevenlabs).
   'stt.provider': ['local', 'groq', 'openai', 'mistral', 'xai', 'elevenlabs'],
   'tts.openai.voice': ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'],
   // Text-to-speech backends — kept in sync with the built-in source of truth

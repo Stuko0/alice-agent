@@ -21,7 +21,7 @@
 // Bare + prefixed variants of the session cookies the gateway may set,
 // depending on its deploy shape (HTTPS direct → __Host-, behind a path prefix
 // → __Secure-, loopback HTTP → bare). Mirrors
-// lydia_cli/dashboard_auth/cookies.py.
+// alice_cli/dashboard_auth/cookies.py.
 //
 // Two cookies are in play (see that module):
 //   - lydia_session_at: the OAuth access token. Short-lived (~15 min); its

@@ -42,16 +42,20 @@ jobs:
 
       - name: Install project + build deps
         run: |
-          uv pip install --system pyinstaller==6.11.1
-          uv pip install --system -e .
+          uv venv /tmp/alice-build --python 3.11
+          source /tmp/alice-build/bin/activate
+          uv pip install pyinstaller==6.11.1
+          uv pip install -e .
 
       - name: Smoke test before bundle
         run: |
+          source /tmp/alice-build/bin/activate
           alice --version
           alice --help | head -5
 
       - name: Build standalone CLI (PyInstaller)
         run: |
+          source /tmp/alice-build/bin/activate
           pyinstaller \
             --name alice \
             --onefile \

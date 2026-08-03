@@ -25,7 +25,7 @@ function serveBackendArgs(profile) {
 /**
  * Rewrite a resolved backend argv from `serve` to the legacy
  * `dashboard --no-open` form, preserving every other argument (incl. a leading
- * `-m lydia_cli.main` and any `--profile <name>`). Returns a copy; if there is
+ * `-m alice_cli.main` and any `--profile <name>`). Returns a copy; if there is
  * no `serve` token the argv is returned unchanged.
  */
 function dashboardFallbackArgs(args) {
@@ -35,7 +35,7 @@ function dashboardFallbackArgs(args) {
 }
 
 /**
- * True when a runtime's `lydia_cli/subcommands/dashboard.py` source registers
+ * True when a runtime's `alice_cli/subcommands/dashboard.py` source registers
  * the `serve` subcommand. Matches `add_parser("serve"` / `add_parser('serve'`
  * specifically so the substring "server" (e.g. "start_server", "web server")
  * never produces a false positive.

@@ -377,11 +377,11 @@ const DESKTOP_WINDOW_STATE_PATH = path.join(app.getPath('userData'), 'window-sta
 // active-profile.json records which Lydia profile the desktop launches its
 // local backend as. When set, startLydia() passes `lydia --profile <name>
 // dashboard …`, which deterministically pins LYDIA_HOME (see
-// _apply_profile_override in lydia_cli/main.py) and bypasses the sticky
+// _apply_profile_override in alice_cli/main.py) and bypasses the sticky
 // ~/.lydia/active_profile file. Unset (null) preserves the legacy behavior:
 // no --profile flag, so the backend honors active_profile / default.
 const DESKTOP_PROFILE_CONFIG_PATH = path.join(app.getPath('userData'), 'active-profile.json')
-// Mirrors lydia_cli.profiles._PROFILE_ID_RE so we never hand the backend a
+// Mirrors alice_cli.profiles._PROFILE_ID_RE so we never hand the backend a
 // value its profile resolver would reject and exit on.
 const PROFILE_NAME_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/
 // Branch we track for self-update. The GUI work has merged to main, so this
@@ -1344,7 +1344,7 @@ function unwrapWindowsVenvLydiaCommand(command, backendArgs) {
   return {
     label: `existing Lydia Python at ${python}`,
     command: python,
-    args: ['-m', 'lydia_cli.main', ...backendArgs],
+    args: ['-m', 'alice_cli.main', ...backendArgs],
     bootstrap: false,
     env: buildDesktopBackendEnv({
       lydiaHome: LYDIA_HOME,
@@ -1379,7 +1379,7 @@ function backendSupportsServe(backend) {
   if (backend.root) {
     try {
       const src = fs.readFileSync(
-        path.join(backend.root, 'lydia_cli', 'subcommands', 'dashboard.py'),
+        path.join(backend.root, 'alice_cli', 'subcommands', 'dashboard.py'),
         'utf8'
       )
       supported = sourceDeclaresServe(src)
@@ -1454,7 +1454,7 @@ function looksLikeDesktopAppBinary(commandPath) {
 }
 
 function isLydiaSourceRoot(root) {
-  return directoryExists(root) && fileExists(path.join(root, 'lydia_cli', 'main.py'))
+  return directoryExists(root) && fileExists(path.join(root, 'alice_cli', 'main.py'))
 }
 
 function findPythonForRoot(root) {
@@ -2885,7 +2885,7 @@ function createPythonBackend(root, label, backendArgs, options = {}) {
     kind: 'python',
     label,
     command,
-    args: ['-m', 'lydia_cli.main', ...backendArgs],
+    args: ['-m', 'alice_cli.main', ...backendArgs],
     env: buildDesktopBackendEnv({
       lydiaHome: LYDIA_HOME,
       pythonPathEntries: [root, ...getVenvSitePackagesEntries(venvRoot)],
@@ -2909,7 +2909,7 @@ function createActiveBackend(backendArgs) {
     kind: 'python',
     label: `Lydia at ${ACTIVE_LYDIA_ROOT}`,
     command,
-    args: ['-m', 'lydia_cli.main', ...backendArgs],
+    args: ['-m', 'alice_cli.main', ...backendArgs],
     env: buildDesktopBackendEnv({
       lydiaHome: LYDIA_HOME,
       pythonPathEntries: [ACTIVE_LYDIA_ROOT, ...getVenvSitePackagesEntries(VENV_ROOT)],
@@ -2932,12 +2932,12 @@ function resolveLydiaBackend(backendArgs) {
   //    existing install.ps1 / PATH / system-Python ladder still works.
   if (IS_PACKAGED && process.platform === 'win32') {
     const bundledPython = path.join(process.resourcesPath, 'python', 'python.exe')
-    const bundledScript = path.join(process.resourcesPath, 'python', 'scripts', 'lydia-serve.py')
+    const bundledScript = path.join(process.resourcesPath, 'python', 'scripts', 'alice-serve.py')
 
     if (fileExists(bundledPython) && fileExists(bundledScript)) {
       rememberLog(`[backend] found bundled Python at ${bundledPython}`)
       // Probe with the entry script's --probe mode, which sets up sys.path
-      // for the bundled site-packages before importing lydia_cli.
+      // for the bundled site-packages before importing alice_cli.
       if (canImportLydiaCli(bundledPython, { script: bundledScript })) {
         rememberLog('[backend] bundled Python probe passed — using bundled backend')
         return {
@@ -3043,14 +3043,14 @@ function resolveLydiaBackend(backendArgs) {
     }
   }
 
-  // 5. Last-ditch: pip-installed lydia_cli module via system Python.
+  // 5. Last-ditch: pip-installed alice_cli module via system Python.
   //    Same rationale as #4 -- the user installed this; we use it but don't
   //    take ownership.
   const python = findSystemPython()
   if (python) {
     // Same smoke-test rationale as step 4: a system Python in the
     // SUPPORTED_VERSIONS range can be registered (PEP 514) without
-    // having lydia_cli installed -- common on dev boxes that have
+    // having alice_cli installed -- common on dev boxes that have
     // a python.org install from prior unrelated work. Returning that
     // backend hands the spawn step a guaranteed ModuleNotFoundError.
     // Verify the import works before trusting the candidate; on
@@ -3059,15 +3059,15 @@ function resolveLydiaBackend(backendArgs) {
     if (canImportLydiaCli(python)) {
       return {
         kind: 'python',
-        label: `installed lydia_cli module via ${python}`,
+        label: `installed alice_cli module via ${python}`,
         command: python,
-        args: ['-m', 'lydia_cli.main', ...backendArgs],
+        args: ['-m', 'alice_cli.main', ...backendArgs],
         bootstrap: false,
         env: {},
         shell: false
       }
     }
-    rememberLog(`Ignoring system Python ${python}: lydia_cli is not importable; falling through to bootstrap.`)
+    rememberLog(`Ignoring system Python ${python}: alice_cli is not importable; falling through to bootstrap.`)
   }
 
   // 6. Nothing usable yet -- signal the bootstrap runner that we need to
@@ -5326,7 +5326,7 @@ async function spawnPoolBackend(profile, entry) {
 
   const token = crypto.randomBytes(32).toString('base64url')
   // --profile wins over the inherited LYDIA_HOME env (see _apply_profile_override
-  // step 3 in lydia_cli/main.py), so the child re-homes to this profile.
+  // step 3 in alice_cli/main.py), so the child re-homes to this profile.
   // --port 0: the OS assigns an ephemeral port; the child announces it on stdout.
   const backendArgs = ['--profile', profile, 'serve', '--host', '127.0.0.1', '--port', '0']
   const backend = await ensureRuntime(resolveLydiaBackend(backendArgs))
@@ -7221,14 +7221,14 @@ ipcMain.handle('lydia:updates:branch:set', async (_event, name) => {
 })
 
 // Resolve the canonical Lydia version (the one `release.py` bumps in
-// lydia_cli/__init__.py + pyproject.toml) so the desktop About panel shows the
+// alice_cli/__init__.py + pyproject.toml) so the desktop About panel shows the
 // real Lydia version instead of the Electron app's own package.json version,
 // which historically drifted (stuck at 0.0.2). Falls back to app.getVersion()
 // when the source tree can't be read (e.g. a packaged build without the repo).
 function resolveLydiaVersion() {
   try {
     const root = resolveUpdateRoot()
-    const initPath = path.join(root, 'lydia_cli', '__init__.py')
+    const initPath = path.join(root, 'alice_cli', '__init__.py')
     if (fileExists(initPath)) {
       const raw = fs.readFileSync(initPath, 'utf8')
       const match = raw.match(/__version__\s*=\s*["']([^"']+)["']/)
@@ -7271,7 +7271,7 @@ ipcMain.handle('lydia:version', async () => ({
 // CLI exactly: GUI only, Lite (keep user data), Full. We ask the agent to do
 // the actual removal via `lydia uninstall …` so the cross-platform PATH /
 // registry / service / node-symlink cleanup all lives in one place
-// (lydia_cli/uninstall.py + lydia_cli/gui_uninstall.py).
+// (alice_cli/uninstall.py + alice_cli/gui_uninstall.py).
 //
 // getUninstallSummary() shells out to `--gui-summary` (a fast, no-side-effect
 // JSON probe) so the UI can gate options on what's actually installed — and
@@ -7314,7 +7314,7 @@ async function getUninstallSummary() {
     try {
       const child = spawn(
         py,
-        ['-m', 'lydia_cli.main', 'uninstall', '--gui-summary'],
+        ['-m', 'alice_cli.main', 'uninstall', '--gui-summary'],
         hiddenWindowsChildOptions({
           cwd: agentRoot,
           env: { ...process.env, LYDIA_HOME, NO_COLOR: '1' },
@@ -7366,7 +7366,7 @@ async function runDesktopUninstall(mode) {
   // Interpreter choice (Finding 3): lite/full rmtree the venv that holds the
   // running python.exe. On Windows a running .exe is mandatory-locked, so the
   // rmtree must NOT be driven by the venv's own interpreter — use a system
-  // Python with PYTHONPATH=<agentRoot> so `import lydia_cli` resolves from
+  // Python with PYTHONPATH=<agentRoot> so `import alice_cli` resolves from
   // source while the venv is torn down. gui-only doesn't touch the venv, so the
   // venv python is fine there. If no system Python exists (the Windows edge
   // case), fall back to the venv python — gui-only is unaffected; lite/full may
