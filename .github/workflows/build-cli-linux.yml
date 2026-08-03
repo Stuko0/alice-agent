@@ -1,0 +1,120 @@
+# build-cli-linux.yml
+#
+# Builds the standalone Alice CLI binary for Linux (x86_64) using PyInstaller.
+# Produces alice-linux-x86_64.tar.gz uploaded to a GitHub Release.
+# Runs on tag pushes (v*) or manual dispatch.
+
+name: Build Linux CLI
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-cli-linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Alice CLI (Linux x86_64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@6b9c6063abd6010835644d4c2e1bef4cf5cd0fca # v6.0.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Install project + build deps
+        run: |
+          uv pip install --system pyinstaller==6.11.1
+          uv pip install --system -e .
+
+      - name: Smoke test before bundle
+        run: |
+          alice --version
+          alice --help | head -5
+
+      - name: Build standalone CLI (PyInstaller)
+        run: |
+          pyinstaller \
+            --name alice \
+            --onefile \
+            --console \
+            --clean \
+            --noconfirm \
+            --distpath dist-cli \
+            --workpath build-cli \
+            --specpath build-cli \
+            --collect-all alice_cli \
+            --collect-all run_agent \
+            --collect-all model_tools \
+            --collect-all tools \
+            --collect-all agent \
+            --collect-all gateway \
+            --collect-all plugins \
+            --collect-all alice_constants \
+            --collect-all alice_logging \
+            --collect-all alice_state \
+            --collect-all alice_time \
+            --collect-all alice_bootstrap \
+            --hidden-import prompt_toolkit \
+            --hidden-import rich \
+            alice_cli/main.py
+
+      - name: Verify binary
+        run: |
+          chmod +x dist-cli/alice
+          dist-cli/alice --version
+          ls -lh dist-cli/alice
+
+      - name: Package tarball
+        run: |
+          mkdir -p release-out
+          cp dist-cli/alice release-out/alice
+          cat > release-out/README.txt <<'EOF'
+          Alice CLI — standalone Linux x86_64 binary
+          ===========================================
+
+          Run:
+            ./alice --help
+            ./alice chat
+
+          First run creates ~/.alice/ (config, sessions, memory, skills).
+
+          More docs: https://github.com/Stuko0/alice-agent
+          EOF
+          cd release-out && tar -czf ../alice-linux-x86_64.tar.gz alice README.txt && cd ..
+          ls -lh alice-linux-x86_64.tar.gz
+
+      - name: Upload CLI artifacts
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: alice-cli-linux-${{ github.ref_name }}
+          path: alice-linux-x86_64.tar.gz
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload to release (on tag push only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: alice-linux-x86_64.tar.gz
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

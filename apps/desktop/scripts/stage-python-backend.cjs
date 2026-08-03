@@ -24,7 +24,7 @@
  * Re-extract and re-install deps on every run (fast with local cache).
  *
  * Environment variables:
- *   LYDIA_SKIP_PYTHON_BUNDLE=1  — skip this script entirely (dev builds)
+ *   ALICE_SKIP_PYTHON_BUNDLE=1  — skip this script entirely (dev builds)
  *   PYTHON_EMBED_VERSION        — override Python version (default 3.11.11)
  */
 
@@ -524,14 +524,14 @@ function dirSize(dir) {
 // ---------------------------------------------------------------------------
 async function main() {
   // Skip if env var is set
-  if (process.env.LYDIA_SKIP_PYTHON_BUNDLE) {
-    console.log('[stage-python-backend] skipped (LYDIA_SKIP_PYTHON_BUNDLE=1)')
+  if (process.env.ALICE_SKIP_PYTHON_BUNDLE) {
+    console.log('[stage-python-backend] skipped (ALICE_SKIP_PYTHON_BUNDLE=1)')
     return
   }
 
   // Only run on Windows or when explicitly targeting Windows
-  if (process.platform !== 'win32' && !process.env.LYDIA_FORCE_PYTHON_BUNDLE) {
-    console.log('[stage-python-backend] skipped (not Windows; set LYDIA_FORCE_PYTHON_BUNDLE=1 to force)')
+  if (process.platform !== 'win32' && !process.env.ALICE_FORCE_PYTHON_BUNDLE) {
+    console.log('[stage-python-backend] skipped (not Windows; set ALICE_FORCE_PYTHON_BUNDLE=1 to force)')
     return
   }
 

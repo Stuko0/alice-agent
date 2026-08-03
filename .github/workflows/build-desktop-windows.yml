@@ -81,7 +81,7 @@ jobs:
           node scripts/stage-python-backend.cjs
         shell: pwsh
         env:
-          LYDIA_FORCE_PYTHON_BUNDLE: '1'
+          ALICE_FORCE_PYTHON_BUNDLE: '1'
 
       - name: Build desktop + installer
         # npm run build → vite + stage-native-deps + stage-python-backend
