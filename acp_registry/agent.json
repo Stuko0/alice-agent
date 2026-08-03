@@ -1,0 +1,16 @@
+{
+  "id": "alice-agent",
+  "name": "Alice Agent",
+  "version": "0.17.0",
+  "description": "Self-improving open-source AI agent by Stuko with ACP editor integration, persistent memory, skills, and rich tool support.",
+  "repository": "https://github.com/Stuko/alice-agent",
+  "website": "https://alice-agent.stuko.dev/docs/user-guide/features/acp",
+  "authors": ["Stuko"],
+  "license": "MIT",
+  "distribution": {
+    "uvx": {
+      "package": "alice-agent[acp]==0.17.0",
+      "args": ["alice-acp"]
+    }
+  }
+}

@@ -1,0 +1,4 @@
+[console_scripts]
+alice = alice_cli.main:main
+alice-acp = acp_adapter.entry:main
+alice-agent = run_agent:main

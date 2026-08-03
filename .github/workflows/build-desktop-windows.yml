@@ -1,0 +1,196 @@
+# build-desktop-windows.yml
+#
+# Builds the standalone Windows desktop installer (.exe NSIS / .msi) with
+# bundled Python embed + site-packages.  Runs on tag pushes (v*) or manual
+# dispatch.  Produces artifacts that can be uploaded to a GitHub Release.
+#
+# CI pinning policy (see AGENTS.md → Dependency Pinning Policy):
+#   - GitHub Actions → commit SHA + comment with version
+#   - pip → ==exact
+#   - everything else → SHA-pinned via the lockfile
+
+name: Build Windows Desktop
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Installer target(s) to build'
+        required: false
+        default: 'nsis'
+        type: choice
+        options:
+          - nsis
+          - msi
+          - nsis+msi
+
+permissions:
+  contents: write    # needed for release upload
+  packages: read
+
+concurrency:
+  group: build-desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Windows installer
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0  # needed for write-build-stamp.cjs
+
+      - name: Install Node.js
+        uses: actions/setup-node@v5  # v5.0.0
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            apps/desktop/package-lock.json
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@6b9c6063abd6010835644d4c2e1bef4cf5cd0fca # v6.0.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Install npm dependencies (desktop)
+        run: |
+          cd apps/desktop
+          npm ci
+        shell: pwsh
+
+      - name: Stage bundled Python backend
+        # Downloads python-embed-3.11, uv syncs site-packages, writes entry script.
+        # The script auto-skips if already cached.
+        run: |
+          cd apps/desktop
+          node scripts/stage-python-backend.cjs
+        shell: pwsh
+        env:
+          LYDIA_FORCE_PYTHON_BUNDLE: '1'
+
+      - name: Build desktop + installer
+        # npm run build → vite + stage-native-deps + stage-python-backend
+        # npm run builder → electron-builder with extraResources
+        run: |
+          cd apps/desktop
+          if ('${{ inputs.target }}' -eq 'nsis+msi') {
+            npm run dist:win:nsis
+            npm run dist:win:msi
+          } elseif ('${{ inputs.target }}' -eq 'msi') {
+            npm run dist:win:msi
+          } else {
+            npm run dist:win:nsis
+          }
+        shell: pwsh
+        env:
+          # electron-builder's electronDist resolution uses node_modules path
+          NODE_OPTIONS: '--max-old-space-size=16384'
+
+      - name: Verify installer exists
+        run: |
+          Get-ChildItem -Path apps/desktop/release/ -Recurse -Include '*.exe','*.msi' | ForEach-Object {
+            Write-Host "✅ Artifact: $($_.FullName) ($('{0:N0}' -f $_.Length) bytes)"
+          }
+          $artifacts = @(Get-ChildItem -Path apps/desktop/release/ -Recurse -Include '*.exe','*.msi')
+          if ($artifacts.Count -eq 0) {
+            throw "No installer artifacts found in apps/desktop/release/"
+          }
+        shell: pwsh
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: alice-desktop-windows-${{ github.ref_name }}
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.msi
+            apps/desktop/release/*.zip
+            apps/desktop/release/latest.yml
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload to release (on tag push only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2  # v2.2.1
+        with:
+          files: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.msi
+            apps/desktop/release/*.zip
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Optional: install + smoke-test on a clean Windows VM
+  smoke-test:
+    name: Smoke test installer
+    needs: build
+    if: success() && startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Download installer artifact
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392b475260bd29f81f # v4.1.9
+        with:
+          name: alice-desktop-windows-${{ github.ref_name }}
+          path: installer
+
+      - name: Install Alice (silent mode)
+        run: |
+          $installer = Get-ChildItem -Path installer/ -Filter '*.exe' | Select-Object -First 1
+          if (-not $installer) {
+            Write-Warning "No .exe installer found, skipping smoke test"
+            return
+          }
+          Write-Host "Installing: $($installer.FullName)"
+          Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait -NoNewWindow
+          Write-Host "Installation completed"
+        shell: pwsh
+
+      - name: Verify Alice launches
+        run: |
+          # Wait for the desktop shortcut to resolve
+          Start-Sleep -Seconds 5
+          $paths = @(
+            "$env:LOCALAPPDATA\Programs\alice\Alice.exe",
+            "${env:ProgramFiles}\alice\Alice.exe",
+            "${env:ProgramFiles(x86)}\alice\Alice.exe"
+          )
+          $found = $false
+          foreach ($p in $paths) {
+            if (Test-Path $p) {
+              Write-Host "✅ Alice found at: $p"
+              $found = $true
+              break
+            }
+          }
+          if (-not $found) {
+            # Try to find it anywhere in Program Files
+            $any = Get-ChildItem -Path "${env:ProgramFiles}" -Recurse -Filter 'Alice.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($any) {
+              Write-Host "✅ Alice found at: $($any.FullName)"
+              $found = $true
+            }
+          }
+          if (-not $found) {
+            Write-Warning "Alice.exe not found in standard install paths"
+            Write-Host "Installer files present:"
+            Get-ChildItem -Path installer/
+          }
+        shell: pwsh

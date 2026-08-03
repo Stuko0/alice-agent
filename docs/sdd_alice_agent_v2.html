@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Lydia Agent V2 — SDD</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 18mm 22mm 18mm;
+
+      @footers note {
+        content: "Confidencial — Uso Interno — Lydia Agent V2 SDD";
+        font-size: 8pt;
+        color: #999;
+      }
+    }
+
+    body {
+      font-family: 'DejaVu Sans', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 10pt;
+      line-height: 1.45;
+      color: #1a1a1a;
+      max-width: 740px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* ---------- page-break helpers ---------- */
+    .page {
+      page-break-after: always;
+    }
+
+    .page-next {
+      page-break-after: always;
+    }
+
+    .page-stop {
+      page-break-after: avoid;
+    }
+
+    .break-none {
+      page-break-before: avoid;
+      page-break-after: avoid;
+      page-break-inside: avoid;
+    }
+
+    /* ---------- cover ---------- */
+    .cover {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      height: 88vh;
+    }
+
+    .cover .title {
+      font-size: 36pt;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: #2d6a4f;
+      margin-bottom: 8px;
+    }
+
+    .cover .subtitle {
+      font-size: 18pt;
+      color: #555;
+      margin-bottom: 32px;
+    }
+
+    .cover .meta {
+      font-size: 11pt;
+      color: #777;
+      line-height: 1.8;
+    }
+
+    .cover .meta b {
+      color: #333;
+    }
+
+    /* ---------- sections ---------- */
+    h1 {
+      font-size: 20pt;
+      color: #2d6a4f;
+      border-bottom: 3px solid #2d6a4f;
+      padding-bottom: 6px;
+      margin-top: 28px;
+      page-break-before: always;
+      /* cada sección nueva empieza en página distinta */
+    }
+
+    h1.first-section {
+      page-break-before: avoid;
+    }
+
+    h2 {
+      font-size: 14pt;
+      color: #1d3557;
+      margin-top: 18px;
+      margin-bottom: 6px;
+    }
+
+    h3 {
+      font-size: 12pt;
+      color: #457b9d;
+      margin-top: 14px;
+    }
+
+    /* ---------- tables ---------- */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 10px 0 14px 0;
+      font-size: 9.5pt;
+    }
+
+    th {
+      background: #2d6a4f;
+      color: #fff;
+      padding: 6px 10px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    th,
+    td {
+      border: 1px solid #c4d4c9;
+      padding: 5px 10px;
+    }
+
+    tr:nth-child(even) td {
+      background: #f4f9f6;
+    }
+
+    /* ---------- code blocks ---------- */
+    pre,
+    code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 8.5pt;
+      background: #f7faf9;
+      border-left: 3px solid #2d6a4f;
+      padding: 6px 10px;
+      overflow-x: auto;
+      line-height: 1.35;
+      white-space: pre;
+    }
+
+    code {
+      background: #eef5f0;
+      padding: 2px 5px;
+    }
+
+    pre {
+      margin: 8px 0;
+    }
+
+    /* ---------- callouts ---------- */
+    .note {
+      border-left: 4px solid #e9c46a;
+      background: #fef9e7;
+      padding: 8px 14px;
+      margin: 10px 0;
+      font-size: 9.5pt;
+    }
+
+    .note b {
+      color: #b7950b;
+    }
+
+    .warn {
+      border-left: 4px solid #e74c3c;
+      background: #fdedec;
+      padding: 8px 14px;
+      margin: 10px 0;
+      font-size: 9.5pt;
+    }
+
+    .warn b {
+      color: #c0392b;
+    }
+
+    .info {
+      border-left: 4px solid #3498db;
+      background: #eaf4fd;
+      padding: 8px 14px;
+      margin: 10px 0;
+      font-size: 9.5pt;
+    }
+
+    .info b {
+      color: #2471a3;
+    }
+
+    /* ---------- list ---------- */
+    ul,
+    ol {
+      margin: 6px 0;
+      padding-left: 22px;
+    }
+
+    li {
+      margin-bottom: 3px;
+      font-size: 10pt;
+    }
+
+    /* ---------- footer ---------- */
+    .page-footer {
+      display: flex;
+      justify-content: space-between;
+      font-size: 8pt;
+      color: #aaa;
+      border-top: 1px solid #ddd;
+      padding-top: 4px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ===================== COVER PAGE ===================== -->
+  <div class="cover">
+    <div class="meta">DOCUMENTO DE DISEÑO DE SOFTWARE</div>
+    <div class="title" style="margin-top:16px;">Lydia Agent V2</div>
+    <div class="subtitle">System Design Document (SDD)</div>
+
+    <div class="meta">
+      <b>Versión:</b> 0.17.0<br>
+      <b>Fecha:</b> 01/07/2026<br>
+      <b>Proyecto:</b> Jobs/Arquant/lydia-agent<br>
+      <b>Proveedor de modelo:</b> Rafw007/Qwen3.6-A3B-CLaude Coder (custom)<br>
+      <b>Repositorio:</b> Jobs/Arquant/lydia-agent
+    </div>
+  </div>
+  <div class="page"></div>
+
+  <!-- ===================== SECTION 1 — INTRODUCCIÓN ===================== -->
+  <h1 class="first-section">1. ¿Qué es Lydia Agent V2?</h1>
+
+  <p>
+    <strong>Lydia Agent V2</strong> es un agente de IA personal
+    de código abierto construido por <b>Alexnader Villanueva</b>. Ejecuta el mismo core de agente a través de múltiples
+    interfaces: CLI, gateway de mensajería, TUI terminal y aplicación de escritorio Electron. Aprende entre
+    sesiones (memoria + skills), delega a subagentes, ejecuta tareas programadas y controla un terminal y
+    navegador reales. Se extiende principalmente mediante <b>plugins y skills</b>, no haciendo crecer el core.
+  </p>
+
+  <p>
+    Líneas de código analizadas: más de <b>50,000 líneas Python</b> en el árbol de código, distribuidas en
+    <b>141 módulos</b> del agent core, <b>195 módulos CLI</b>, <b>108 herramientas</b>, <b>67 archivos gateway</b>
+    y <b>175 plugins</b>. La versión actual es <b>0.17.0</b>.
+  </p>
+
+  <h2>1.1 Propiedades de diseño fundamentales</h2>
+  <table>
+    <tr>
+      <th>Propiedad</th>
+      <th>Impacto</th>
+    </tr>
+    <tr>
+      <td><b>Caché de prompt por conversación</b></td>
+      <td>Cada conversación larga reutiliza un prefijo en caché. Mutar el contexto pasado, cambiar toolsets o
+        reconstruir el system prompt invalida el caché y multiplica el costo del usuario.</td>
+    </tr>
+    <tr>
+      <td><b>Core como narrow waist</b></td>
+      <td>Cada core tool se envía en cada llamada API. La barrera para un nuevo core tool es altísima.
+        La mayoría de nueva capacidad debe llegar como CLI command + skill, plugin o MCP.</td>
+    </tr>
+    <tr>
+      <td><b>Config vs. Secrets</b></td>
+      <td><code>.env</code> solo para credenciales (API keys, tokens, passwords). Toda configuración
+        de comportamiento (timeouts, thresholds, feature flags) va en <code>config.yaml</code>.</td>
+    </tr>
+  </table>
+
+  <h2>1.2 Componentes principales</h2>
+  <table>
+    <tr>
+      <th>Componente</th>
+      <th>Responsabilidad</th>
+      <th>Tamaño</th>
+    </tr>
+    <tr>
+      <td><b>Agent Core</b> (<tt>agent/</tt>)</td>
+      <td>Loop de conversación, llamadas de modelo, ejecución de herramientas, gestión de sesión</td>
+      <td>141 archivos Python, ~7 MB</td>
+    </tr>
+    <tr>
+      <td><b>CLI</b> (<tt>lydia_cli/</tt>)</td>
+      <td>Subcomandos `lydia`, configuración, setup wizard, dashboards, modelos</td>
+      <td>195 archivos Python, ~12 MB</td>
+    </tr>
+    <tr>
+      <td><b>Gateway</b> (<tt>gateway/</tt>)</td>
+      <td>Daemon de mensajería multi-plataforma: Telegram, Discord, Slack, WhatsApp, Signal, Webhook, etc.</td>
+      <td>67 archivos Python, ~5.3 MB, <strong> Aun en desarrollo</strong></td>
+    </tr>
+    <tr>
+      <td><b>Run Agent</b> (<tt>run_agent.py</tt>)</td>
+      <td>Runner principal del agente: loop de conversación, tool calling, recovery, contexto</td>
+      <td>5,709 líneas</td>
+    </tr>
+    <tr>
+      <td><b>Cron</b> (<tt>cron/</tt>)</td>
+      <td>Programador de tareas con entrega multi-plataforma, sugerencias catalog, jobs DB</td>
+      <td>9 archivos Python, ~485 KB, <strong> Aun en desarrollo</strong></td>
+    </tr>
+    <tr>
+      <td><b>Tools</b> (<tt>tools/</tt>)</td>
+      <td>60+ herramientas de línea base: terminal, browser, delegation, file, cronjob, skills, memory, etc.</td>
+      <td>108 archivos Python, ~7.3 MB, <strong> Aun en desarrollo</strong></td>
+    </tr>
+    <tr>
+      <td><b>Plugins</b> (<tt>plugins/</tt>)</td>
+      <td>Extensibilidad: browser, context_engine, cron_providers, dashboard_auth, memory, model-providers,
+        platforms, security-guidance, team_pipeline, web, etc.</td>
+      <td>175 archivos Python, ~10.8 MB, <strong> Aun en desarrollo</strong></td>
+    </tr>
+    <tr>
+      <td><b>Skills</b> (<tt>optional-skills/</tt>)</td>
+      <td>Skills de dominio: mlops, creative, software-development, research, devops, blockchain,
+        communication, productivity, security, health, etc.</td>
+      <td>57 archivos Python, ~5.9 MB, <strong> Parte aun en desarrollo</strong></td>
+    </tr>
+    <tr>
+      <td><b>Browser</b> (<tt>acp_adapter/</tt>)</td>
+      <td>Adaptador ACP (Agent Control Protocol) para control de navegador remoto</td>
+      <td>11 archivos Python, ~215 KB, <strong> Aun en desarrollo</strong></td>
+    </tr>
+  </table>
+
+  <div class="page"></div>
+
+  <!-- ===================== SECTION 2 — ARQUITECTURA GENERAL ===================== -->
+  <div class="page page-next"></div>
+  <h1 class="page-break-avoid">2. Arquitectura General del Agente</h1>
+
+  <p>
+    El sistema sigue un patrón de <b>waist design</b>: un core de agente estrecho y reutilizable que se conecta
+    a múltiples interfaces (CLI, TUI, gateway) y se extienda radialmente a través de plugins y skills. El core
+    nunca debe hacer crecer su superficie: cada tool core se envía en cada llamada API, por lo que cada nueva
+    herramienta tiene un costo permanente multiplicado por el uso.
+  </p>
+
+  <h2>2.1 Flujo de ejecución principal (CLI/TUI)</h2>
+  <p>
+    La entrada del usuario viaja por <b>run_agent.py</b> (5,709 líneas) → <tt>agent/server.py</tt>
+    → <tt>agent/chat_completion_helpers.py</tt> → modelo → herramienta o respuesta. Cuando el agente
+    necesita ejecutar una acción (terminal, file, browser, delegate), el core genera un tool call que el
+    runtime ejecuta de forma segura y devuelve el resultado al mismo mensaje de la conversación.
+  </p>
+
+  <table>
+    <tr>
+      <th>Fase</th>
+      <th>Componente</th>
+      <th>Descripción</th>
+    </tr>
+    <tr>
+      <td><b>1. Entrada</b></td>
+      <td><tt>lydia_cli/main.py</tt> (13,668 líneas) o <tt>gateway/run.py</tt> (19,114 líneas)</td>
+      <td>Lee el mensaje del usuario desde CLI, TUI o plataforma (Telegram, Discord, etc.)</td>
+    </tr>
+    <tr>
+      <td><b>2. Preparación de contexto</b></td>
+      <td><tt>agent/context_manager.py</tt></td>
+      <td>Construye el contexto: memory (FTS5), skills hub, session search, project context, cron jobs</td>
+    </tr>
+    <tr>
+      <td><b>3. Llamada al modelo</b></td>
+      <td><tt>run_agent.py</tt> → <tt>model_tools.py</tt> → <tt>providers/</tt></td>
+      <td>OpenAI-compatible API call. Soporta Nous Portal, OpenRouter, OpenAI, custom, y 6+ backends</td>
+    </tr>
+    <tr>
+      <td><b>4. Respuesta</b></td>
+      <td><tt>run_agent.py</tt> (parse, tool calls) o <tt>agent/server.py</tt> (streaming)</td>
+      <td>Si hay tool calls, se ejecutan y se reintegran; si no, se entrega la respuesta al usuario</td>
+    </tr>
+    <tr>
+      <td><b>5. Ejecución de herramientas</b></td>
+      <td><tt>tools/</tt> (108 archivos, 7.3 MB)</td>
+      <td>Cada tool se ejecuta en contexto aislado con timeout, límites de output y sandboxing</td>
+    </tr>
+    <tr>
+      <td><b>6. Feedback loop</b></td>
+      <td><tt>run_agent.py</tt> + <tt>lydia_state.py</tt> (5,659 líneas)</td>
+      <td>El resultado de la herramienta se envía al modelo como mensaje de sistema, loop de tool-call</td>
+    </tr>
+  </table>
+
+  <h2>2.2 Flux completo de mensajería (Gateway)</h2>
+
+  <pre>
+Usuario (Telegram/Discord/Slack/WhatsApp/Signal/etc.)
+        |
+        v
+[Gateway Daemon]  →  gateway/run.py (19,114 líneas)
+     |                  |
+     |-- platform     |-- channels.py (directory & routing)
+     |   adapters     |-- api_server.py (REST API propia)
+     |                |-- webhook.py (webhook genérico)
+     v                v
+[Message Received]  →  lydia_state.py (session DB, estado)
+     |
+     v
+[run_agent.py]     →  AIAgent core (5,709 líneas)
+     |
+     v
+[Tool Calls]       →  tools/ (60+ herramientas)
+     |
+     v
+[Response]         →  back a platform (text, media, audio)
+</pre>
+
+  <h2>2.3 Componentes del core</h2>
+  <table>
+    <tr>
+      <th>Módulo</th>
+      <th>Responsabilidad</th>
+      <th>Clave</th>
+    </tr>
+    <tr>
+      <td><tt>agent/server.py</tt></td>
+      <td>Server HTTP/gateway para el core de agente</td>
+      <td>Exposición API REST, streaming SSE</td>
+    </tr>
+    <tr>
+      <td><tt>agent/session.py</tt> (628 líneas)</td>
+      <td>Gestión de sesiones (crear, listar, limpiar)</td>
+      <td>CRUD de conversaciones</td>
+    </tr>
+    <tr>
+      <td><tt>agent/tools.py</tt> (1,292 líneas)</td>
+      <td>Registro central de herramientas del agente</td>
+      <td>Schema + routing</td>
+    </tr>
+    <tr>
+      <td><tt>agent/auth.py</tt> (80 líneas)</td>
+      <td>Autenticación y permisos</td>
+      <td>Validador de identidad</td>
+    </tr>
+    <tr>
+      <td><tt>agent/edit_approval.py</tt> (287 líneas)</td>
+      <td>Aprobación antes de edits en archivos</td>
+      <td>Safety: confirma antes de modificar</td>
+    </tr>
+    <tr>
+      <td><tt>agent/events.py</tt> (280 líneas)</td>
+      <td>Sistema de eventos interno</td>
+      <td>Pub/sub para el core</td>
+    </tr>
+    <tr>
+      <td><tt>agent/permissions.py</tt> (169 líneas)</td>
+      <td>Permisos y RBAC</td>
+      <td>Control de acceso</td>
+    </tr>
+    <tr>
+      <td><tt>agent/provenance.py</tt> (128 líneas)</td>
+      <td>Procedencia y chain of custody</td>
+      <td>Audit trail de cada acción</td>
+    </tr>
+    <tr>
+      <td><tt>lydia_state.py</tt> (5,659 líneas)</td>
+      <td>Gestión de estado persistente de la sesión</td>
+      <td>Conversaciones, historial, herramientas activas, cron</td>
+    </tr>
+    <tr>
+      <td><tt>lydia_constants.py</tt> (997 líneas)</td>
+      <td>Constantes compartidas, paths de HOME, perfiles</td>
+      <td><tt>~/.lydia</tt> (nuevo)
+    </tr>
+    <tr>
+      <td><tt>lydia_logging.py</tt> (613 líneas)</td>
+      <td>Centrificación de logging</td>
+      <td>Configuración unificada de logs</td>
+    </tr>
+    <tr>
+      <td><tt>lydia_time.py</tt> (125 líneas)</td>
+      <td>Gestión de zonas horarias</td>
+      <td>Fallback a tzdata en Windows</td>
+    </tr>
+    <tr>
+      <td><tt>model_tools.py</tt> (1,260 líneas)</td>
+      <td>Normalización de modelos, cost guard, model switch</td>
+      <td>Adaptador multi-proveedor</td>
+    </tr>
+  </table>
+
+  <div class="page"></div>
+
+
+  <!-- ===================== SECTION 3 — ARQUITECTURA DE GATEWAY ===================== -->
+  <div class="page page-next"></div>
+  <h1 class="page-break-avoid">3. Arquitectura de Gateway</h1>
+
+  <p>
+    El Gateway es el daemon de mensajería multi-plataforma. Su módulo principal,
+    <strong>gateway/run.py</strong> (<strong>19,114 líneas</strong>), gestiona la conexión con
+    clientes de mensajería externa, procesa mensajes entrantes, los envía al core del agente para
+    su procesamiento y devuelve las respuestas a la plataforma apropiada.
+  </p>
+
+  <h2>3.1 Componentes del Gateway</h2>
+  <table>
+    <tr>
+      <th>Componente</th>
+      <th>Responsabilidad</th>
+    </tr>
+    <tr>
+      <td><strong>gateway/run.py</strong> (19,114 líneas)</td>
+      <td>Daemon principal. Inicia el bucle de eventos, maneja la reconexión y las notificaciones de herramientas.</td>
+    </tr>
+    <tr>
+      <td><strong>platforms/</strong></td>
+      <td>Adaptadores de plataforma para diferentes servicios de mensajería (Telegram, Discord, Slack, WhatsApp, Signal,
+        etc.). Cada plataforma tiene su propio adaptador.</td>
+    </tr>
+    <tr>
+      <td><strong>config.yaml</strong></td>
+      <td>Configuración del gateway, incluidos tokens de API, ajustes de plataforma y opciones de autenticación.</td>
+    </tr>
+  </table>
+
+  <h2>3.2 Integración con la Plataforma</h2>
+  <p>
+    Cada plataforma requiere sus propios endpoints de API y configuración de seguridad. Las configuraciones típicas
+    incluyen tokens de API o certificados OAuth, ajustes de WebSocket, o endpoints webhook para la entrega asincrónica
+    de mensajes.
+  </p>
+
+  <h2>3.3 Funcionalidades Clave del Gateway</h2>
+  <ul>
+    <li><strong>Soporte Multi-plataforma:</strong> Conecta con varios servicios de mensajería a través de adaptadores.
+      El soporte para plataformas puede estar en desarrollo activo.</li>
+    <li><strong>Procesamiento de Mensajes:</strong> Gestiona la entrega de mensajes entrantes y salientes, las
+      respuestas automatizadas y el enrutamiento de comandos.</li>
+    <li><strong>Gestión de Sesión Persistente:</strong> Mantiene el contexto de la conversación y el estado entre las
+      interacciones.</li>
+    <li><strong>Escalado:</strong> El daemon centralizado permite el acceso multi-sesión a través de múltiples canales
+      con un único motor de agente.</li>
+  </ul>
+
+  <div class="info">
+    <b>Nota:</b> La integración con cada plataforma puede requerir ajustes específicos de API y configuraciones de
+    seguridad. La compatibilidad con algunas plataformas puede no estar disponible completamente.
+  </div>
+
+  <!-- ===================== SECTION 3 (CONT) — DETALLES DE GATEWAY ===================== -->
+  <div class="page page-next"></div>
+  <h1 class="page-break-avoid">3.4 Plataformas Soportadas por el Gateway</h1>
+
+  <p>
+    El gateway soporta múltiples plataformas de mensajería a través de adaptadores específicos. Cada plataforma
+    tiene su propia implementación en <code>gateway/platforms/</code>:
+  </p>
+
+  <table>
+    <tr>
+      <th>Plataforma</th>
+      <th>Estado</th>
+      <th>Archivo</th>
+      <th>Descripción</th>
+    </tr>
+    <tr>
+      <td>Telegram</td>
+      <td>Completo</td>
+      <td>telegraph/</td>
+      <td>Bot con comandos slash, inline query, multimedia</td>
+    </tr>
+    <tr>
+      <td>Discord</td>
+      <td>Completo</td>
+      <td>discord/</td>
+      <td>Bot con interacciones, slash commands, embeds</td>
+    </tr>
+    <tr>
+      <td>Slack</td>
+      <td>Completo</td>
+      <td>slack/</td>
+      <td>Bot con slash commands, Block Kit, reactions</td>
+    </tr>
+    <tr>
+      <td>WhatsApp</td>
+      <td>Completo</td>
+      <td>whatsapp_cloud.py</td>
+      <td>WhatsApp Cloud API oficial</td>
+    </tr>
+    <tr>
+      <td>Signal</td>
+      <td>Completo</td>
+      <td>signal.py</td>
+      <td>Signal Desktop + libsignal-service-daemon</td>
+    </tr>
+    <tr>
+      <td>Webhook</td>
+      <td>Completo</td>
+      <td>webhook.py</td>
+      <td>Endpoint genérico para cualquier servicio HTTP</td>
+    </tr>
+    <tr>
+      <td>MS Graph</td>
+      <td>Completo</td>
+      <td>msgraph_webhook.py</td>
+      <td>Microsoft Graph API webhook</td>
+    </tr>
+    <tr>
+      <td>WeiXin</td>
+      <td>Completo</td>
+      <td>weixin.py</td>
+      <td>WeChat (Weixin) Open API</td>
+    </tr>
+    <tr>
+      <td>BlueBubbles</td>
+      <td>Completo</td>
+      <td>bluebubbles.py</td>
+      <td>Pasarela iMessage para Mac</td>
+    </tr>
+    <tr>
+      <td>YuanBao</td>
+      <td>Completo</td>
+      <td>yuanbao_*.py</td>
+      <td>App móvil china (4 archivos específicos)</td>
+    </tr>
+    <tr>
+      <td>REST API</td>
+      <td>Completo</td>
+      <td>api_server.py</td>
+      <td>API REST propia del gateway (202 KB)</td>
+    </tr>
+  </table>
+
+  <h2>3.5 Modelo de Mensajes</h2>
+
+  <pre>
+┌─────────────────────────────────────────────────────┐
+│                Mensaje Entrante                      │
+├─────────────────────────────────────────────────────┤
+│  platform: "telegram" │ channel_id: "12345"         │
+│  user_id: "67890"     │ user_name: "nombre"         │
+│  text: "Mensaje..."     │ attachments: [files]       │
+│  timestamp: "2024-06-15T10:30:00Z"                 │
+│  session_id: "uuid-abc"                              │
+└─────────────────────────────────────────────────────┘
+                            │
+                            v
+┌─────────────────────────────────────────────────────┐
+│         Gateway Message Processor                    │
+├─────────────────────────────────────────────────────┤
+│  1. Validar plataforma                               │
+│  2. Determinar sesión (o crear nueva)                │
+│  3. Preparar contexto (memory + skills + tools)      │
+│  4. Envía a core (run_agent.py)                     │
+│  5. Envía respuesta de vuelta a plataforma           │
+└─────────────────────────────────────────────────────┘
+</pre>
+
+  <div class="page"></div>
+
+  <!-- ===================== SECTION 4 — CONFIGURACIÓN ===================== -->
+  <h1 class="page-break-avoid">4. Configuración del Sistema</h1>
+
+  <h2>4.1 Estructura del Proyecto</h2>
+
+  <pre>
+lydia-agent/                          # Directorio raíz del proyecto
+│
+├── agent/                             # Core del agente (141 .py files, ~7 MB)
+│   ├── server.py                      # Server HTTP/gateway para agente
+│   ├── session.py                     # Gestión de sesiones (628 líneas)
+│   ├── tools.py                       # Registro de herramientas (1,292 líneas)
+│   ├── auth.py                        # Autenticación y permisos
+│   ├── edit_approval.py               # Aprobación de edits (287 líneas)
+│   ├── events.py                      # Sistema de eventos (280 líneas)
+│   ├── permissions.py                 # Permisos (169 líneas)
+│   └── provenance.py                  # Procedencia (128 líneas)
+│
+├── lydia_cli/                        # CLI (195 .py files, ~12 MB)
+│   ├── main.py                        # Punto de entrada principal (13,668 líneas)
+│   ├── auth.py                        # Autenticación CLI (8,411 líneas)
+│   ├── config.py                      # Configuración (7,801 líneas)
+│   ├── models.py                      # Gestión de modelos (4,208 líneas)
+│   ├── tools_config.py                # Configuración de herramientas (4,258 líneas)
+│   ├── gateway.py                     # Gestión del gateway (6,843 líneas)
+│   ├── kanban_db.py                   # Base de datos kanban (8,723 líneas)
+│   ├── kanban.py                      # Comandos kanban (2,845 líneas)
+│   ├── setup.py                       # Setup wizard (3,411 líneas)
+│   ├── gateway_windows.py             # Gateway en Windows (1,682 líneas)
+│   ├── model_setup_flows.py           # Flujos de setup de modelos (2,827 líneas)
+│   ├── web_server.py                  # Servidor web/dashboard (14,244 líneas)
+│   ├── curator.py                     # Curador de memoria (619 líneas)
+│   ├── plugin.py                      # Gestión de plugins (2,286 líneas)
+│   ├── backup.py                      # Sistema de backup/restore (1,376 líneas)
+│   ├── mcp_config.py                  # Configuración de MCP (977 líneas)
+│   ├── memory_oauth.py                # OAuth para memory providers (83 líneas)
+│   ├── security_audit.py              # Auditoría de seguridad (576 líneas)
+│   └── ... (142 archivos CLI restantes)
+│
+├── run_agent.py                        # Runner del agente (5,709 líneas)
+│
+├── tools/                              # Herramientas del agente (108 .py, ~7.3 MB)
+│   ├── terminal_tool.py                 # Terminal remoto (2,978 líneas)
+│   ├── execute_code_tool.py             # Ejecución de código (1,868 líneas)
+│   ├── file_tools.py                    # Operaciones de archivo (1,936 líneas)
+│   ├── skills_tool.py                   # Gestión de skills (1,662 líneas)
+│   ├── image_generation_tool.py         # Generación de imágenes (1,680 líneas)
+│   ├── tts_tool.py                      # Texto-a-voz (2,846 líneas)
+│   ├── delegation_tool.py               # Subagentes (3,510 líneas)
+│   ├── mcp_tool.py                      # MCP tool gateway (4,911 líneas)
+│   ├── browser_tool.py                  # Navegador CamoFox (4,499 líneas)
+│   ├── browser_supervisor.py            # Supervisor de navegador (1,475 líneas)
+│   ├── cronjob_tools.py                 # Tareas cron (1,032 líneas)
+│   ├── memory_tool.py                   # Memory (1,146 líneas)
+│   ├── send_message_tool.py             # Envío multi-plataforma (1,794 líneas)
+│   ├── transcription_tools.py           # Transcripción (1,799 líneas)
+│   ├── checkpoint_manager.py            # Checkpoints (1,675 líneas)
+│   ├── kanban_tools.py                  # Kanban (1,669 líneas)
+│   ├── web_tools.py                     # Web scraping/search (1,012 líneas)
+│   ├── session_search_tool.py           # Búsqueda FTS5 (921 líneas)
+│   ├── lazy_deps.py                     # Lazy dependencies (921 líneas)
+│   ├── approval.py                      # Approval system (2,252 líneas)
+│   ├── process_registry.py              # Proceso / PID management (2,219 líneas)
+│   ├── registry.py                      # Registry de herramientas (708 líneas)
+│   ├── mcp_oauth_manager.py             # MCP OAuth (720 líneas)
+│   ├── skills_usage.py                  # Track de skill usage (947 líneas)
+│   ├── skills_hub.py                    # Skills hub (4,069 líneas)
+│   ├── skills_sync.py                   # Sync de skills (1,182 líneas)
+│   ├── voice_mode.py                    # Voice mode (1,218 líneas)
+│   ├── path_security.py                 # Seguridad de paths (43 líneas)
+│   └── ... (78 archivos de herramientas restantes)
+│
+├── plugins/                            # Sistema de plugins (175 .py, ~10.8 MB)
+│   ├── model-providers/                 # Model providers (28 .py, 141 items)
+│   ├── platforms/                       # Platform adapters (51 .py, 164 items)
+│   ├── memory/                          # Memory plugins (20 .py, 46 items)
+│   ├── web/                             # Web plugins (17 .py, 59 items)
+│   ├── browser/                         # Browser plugins (6 .py, 21 items)
+│   ├── image_gen/                       # Image gen plugins (6 .py, 30 items)
+│   ├── context_engine/                  # Engine de contexto (1 .py)
+│   ├── cron_providers/                  # Cron providers (4 .py, 6 items)
+│   ├── dashboard_auth/                  # Auth dashboard (4 .py, 20 items)
+│   ├── disk-cleanup/                    # Disk cleanup (2 .py)
+│   ├── google_meet/                     # Google Meet (14 .py, 19 items)
+│   ├── lydia-achievements/             # Logros (2 .py, 19 items)
+│   ├── kanban/                          # Kanban plugin (1 .py)
+│   ├── observability/                   # Observabilidad (2 .py, 8 items)
+│   ├── spotify/                         # Spotify (3 .py, 8 items)
+│   ├── teams_pipeline/                  # Pipelines Teams (8 .py, 9 items)
+│   ├── video_gen/                       # Video gen (2 .py, 10 items)
+│   ├── security-guidance/               # Security guidance (2 .py, 6 items)
+│   └── ... plugins adicionales
+│
+├── optional-skills/                    # Skills de dominio (57 .py, ~5.9 MB)
+│   ├── autonomous-ai-agents/            # Agentes autónomos + orquestación
+│   ├── blockchain/                      # Blockchain (3 .py, 12 items)
+│   ├── creative/                        # Contenido creativo (7 .py, 182 items)
+│   ├── devops/                          # DevOps (4 .py, 20 items)
+│   ├── email/                           # Email (2 .py, 10 items)
+│   ├── finance/                         # Finanzas (3 .py, 28 items)
+│   ├── health/                          # Salud (2 .py, 14 items)
+│   ├── mcp/                             # MCP (4 .py, 13 items)
+│   ├── mlops/                           # ML Ops (1 .py, 174 items)
+│   ├── payments/                        # Pagos (6 .py, 6 items)
+│   ├── productivity/                    # Productividad (4 .py, 29 items)
+│   ├── research/                        # Investigación (22 .py, 72 items)
+│   ├── security/                        # Seguridad (5 .py, 46 items)
+│   ├── software-development/            # Dev de software (14 .py)
+│   └── web-development/                 # Web dev (7 .py)
+│
+├── gateway/                            # Gateway (67 .py, ~5.3 MB)
+│   ├── run.py                          # Daemon principal (19,114 líneas)
+│   ├── channels/                       # Directorio y enrutamiento
+│   ├── platforms/                      # Adaptadores de plataforma
+│   │   ├── telegram/                   # Telegram (comandos slash, inline, multimedia)
+│   │   ├── discord/                    # Discord (interacciones, slash commands)
+│   │   ├── slack/                      # Slack (slash commands, Block Kit)
+│   │   ├── whatsapp_cloud.py           # WhatsApp Cloud API (83 KB)
+│   │   ├── signal.py                   # Signal Desktop (69 KB)
+│   │   ├── signal_format.py            # Formato Signal (4 KB)
+│   │   ├── signal_rate_limit.py        # Rate limiting Signal (14 KB)
+│   │   ├── webhook.py                  # Webhook genérico (42 KB)
+│   │   ├── msgraph_webhook.py          # MS Graph (16 KB)
+│   │   ├── weixin.py                   # WeChat (89 KB)
+│   │   ├── bluebubbles.py              # iMessage bridge (38 KB)
+│   │   ├── yuanbao.py                  # YuanBao app china (208 KB)
+│   │   ├── yuanbao_media.py            # YuanBao media (20 KB)
+│   │   ├── yuanbao_proto.py            # YuanBao protocol (44 KB)
+│   │   ├── yuanbao_sticker.py          # YuanBao stickers (20 KB)
+│   │   └── api_server.py               # REST API gateway (202 KB)
+│   ├── _http_client_limits.py          # Límites de clientes HTTP (2 KB)
+│   ├── base.py                         # Base adapter (235 KB)
+│   └── helpers.py                      # Helpers de plataforma (13 KB)
+│
+├── agent/                              # Core agente (141 .py, ~7 MB)
+│   ├── server.py                       # Server HTTP/gateway
+│   ├── session.py                      # Gestión de sesiones (628 líneas)
+│   ├── tools.py                        # Registro herramientas (1,292 líneas)
+│   ├── edit_approval.py                # Aprobación de edits (287 líneas)
+│   ├── events.py                       # Sistema eventos (280 líneas)
+│   ├── permissions.py                  # Permisos (169 líneas)
+│   └── provenance.py                   # Procedencia (128 líneas)
+│
+├── cron/                               # Programador cron (9 .py, ~485 KB)
+│   ├── scheduler.py                    # Scheduler principal
+│   ├── scheduler_provider.py           # Proveedores de scheduler
+│   ├── jobs.py                         # Gestión de jobs
+│   ├── blueprint_catalog.py            # Catálogo de blueprints
+│   ├── suggestion_catalog.py           # Catálogo de sugerencias
+│   ├── suggestions.py                  # Generador de sugerencias
+│   └── scripts/                        # Scripts de cron (2 .py)
+│
+├── acp_adapter/                        # Agent Control Protocol (11 .py, 215 KB)
+│
+├── locales/                            # Internacionalización (16 idiomas)
+│   ├── en.yaml  de.yaml  ja.yaml  ko.yaml  ru.yaml
+│   ├── es.yaml  zh.yaml  zh-hant.yaml fr.yaml  pt.yaml
+│   ├── it.yaml  uk.yaml  tr.yaml  ga.yaml  af.yaml
+│
+├── platforms/                          # Plataformas de entrega
+│   ├── ADDING_A_PLATFORM.md            # Guía para añadir plataforma (14 KB)
+│   ├── __init__.py                     # Init (1 KB)
+│   ├── _http_client_limits.py          # Límites HTTP (2 KB)
+│   ├── base.py                         # Base (235 KB)
+│   ├── api_server.py                   # REST API (202 KB)
+│   ├── helpers.py                      # Helpers (13 KB)
+│   └── (16 archivos de plataforma)
+│
+├── docs/                               # Documentación del proyecto
+├── website/                            # Sitio web oficial (4 .py, 25 KB)
+├── docker/                             # Dockerfiles (0 .py, 44 KB)
+├── nix/                                # Nix flakes
+├── scripts/                            # Scripts de utilidad (19 .py, 820 KB)
+├── packaging/                          # Scripts de packaging (2 .py)
+├── tests/                              # Tests (1,864 .py, 25 MB)
+├── assets/                             # Assets estáticos (12 KB)
+├── .github/                            # GitHub config (958 KB)
+├── .lydia/                            # lydia config
+├── .logs/                              # Logs del sistema (221 KB)
+├── .plans/                             # Planes de desarrollo (33 KB)
+├── lydia_agent.egg-info/               # Package metadata
+├── AGENTS.md                           # Guía de desarrollo (1,356 líneas)
+├── CONTRIBUTING.md                     # Guía de contribución
+├── pyproject.toml                      # Dependencias exactas (391 líneas)
+├── README.md                           # Documentación principal (263 líneas)
+└── LICENSE                             # MIT
+</pre>
+
+  <h2>4.2 Configuración del Sistema (config.yaml)</h2>
+
+  <p>
+    <code>config.yaml</code> es el archivo de configuración principal. Sigue la regla:
+    <b>.env solo para secrets</b> (API keys, tokens) y <b>config.yaml para toda la configuración de comportamiento</b>
+    (timeouts, thresholds, feature flags, display prefs).
+  </p>
+
+  <table>
+    <tr>
+      <th>Sección</th>
+      <th>Propósito</th>
+      <th>Ejemplos</th>
+    </tr>
+    <tr>
+      <td><b>servers</b></td>
+      <td>Configuración de proveedores de modelos LLM</td>
+      <td>base_url, api_key (en .env), model name, temperature, max_tokens</td>
+    </tr>
+    <tr>
+      <td><b>gateway</b></td>
+      <td>Opciones de gateway de mensajería</td>
+      <td>telegram_token, discord_bot_token, webhook_url</td>
+    </tr>
+    <tr>
+      <td><b>tools</b></td>
+      <td>Configuración de herramientas habilitadas</td>
+      <td>terminal.enabled, browser.enabled, file.enabled, delegation.enabled</td>
+    </tr>
+    <tr>
+      <td><b>memory</b></td>
+      <td>Opciones de memoria persistente</td>
+      <td>auto_save_interval, fuzzy_threshold, fts5_enable</td>
+    </tr>
+    <tr>
+      <td><b>tools</b></td>
+      <td>Herramientas habilitadas y configuradas</td>
+      <td>{enable, disable, enable_all, disable_all}</td>
+    </tr>
+    <tr>
+      <td><b>models</b></td>
+      <td>Catálogo de modelos disponibles</td>
+      <td>{list, switch, set_cost}</td>
+    </tr>
+    <tr>
+      <td><b>skills</b></td>
+      <td>Gestión de habilidades</td>
+      <td>{list, create, update, search}</td>
+    </tr>
+    <tr>
+      <td><b>plugins</b></td>
+      <td>Instalación y gestión de plugins</td>
+      <td>{list, install, enable, disable}</td>
+    </tr>
+    <tr>
+      <td><b>cron</b></td>
+      <td>Jobs programados</td>
+      <td>{list, create, delete, run, update}</td>
+    </tr>
+  </table>
+
+  <div class="note">
+    <b>Nota:</b> Todos los valores de configuración conductual van en config.yaml, nunca en .env.
+    Solo las credenciales (API keys, tokens, passwords) se almacenan en .env.
+  </div>
+
+  <h2>4.3 Variables de Entorno</h2>
+
+  <table>
+    <tr>
+      <th>Variable</th>
+      <th>Propósito</th>
+      <th>Valores típicos</th>
+    </tr>
+    <tr>
+      <td><code>LYDIA_HOME</code></td>
+      <td>Directorio raíz de datos del agente</td>
+      <td><code>~/.lydia</code> (nuevo) o <code>~/.lydia</code> (legacy)</td>
+    </tr>
+    <tr>
+      <td><code>LYDIA_MODEL</code></td>
+      <td>Modelo predeterminado</td>
+      <td><code>custom/qwen3.6-a3b-claude-coder</code></td>
+    </tr>
+    <tr>
+      <td><code>LYDIA_PROVIDER</code></td>
+      <td>Proveedor de modelo</td>
+      <td><code>custom</code> (proveedores personalizados)</td>
+    </tr>
+    <tr>
+      <td><code>PYTHONUTF8</code></td>
+      <td>UTF-8 encoding en Windows</td>
+      <td><code>1</code> (habilitado)</td>
+    </tr>
+    <tr>
+      <td><code>PYTHONIOENCODING</code></td>
+      <td>Codificación de entrada/salida</td>
+      <td><code>utf-8</code></td>
+    </tr>
+    <tr>
+      <td><code>TELEGRAM_BOT_TOKEN</code></td>
+      <td>Token de bot de Telegram</td>
+      <td><code>123456:ABC...</code></td>
+    </tr>
+  </table>
+
+  <h2>4.4 Perfiles de Usuario</h2>
+
+  <p>
+    Los perfiles permiten entornos separados con configuraciones de agente individuales, herramientas y plugins.
+    Cada perfil tiene su propio <code>skills/</code>, <code>plugins/</code>, <code>cron/</code> y <code>memories/</code>
+    y opera sin influencia entre perfiles.
+  </p>
+
+  <table>
+    <tr>
+      <th>Comando</th>
+      <th>Propósito</th>
+    </tr>
+    <tr>
+      <td><code>lydia profile create</code></td>
+      <td>Crear nuevo perfil</td>
+    </tr>
+    <tr>
+      <td><code>lydia profile switch &lt;name&gt;</code></td>
+      <td>Cambiar a perfil existente</td>
+    </tr>
+    <tr>
+      <td><code>lydia profile list</code></td>
+      <td>Listar todos los perfiles</td>
+    </tr>
+    <tr>
+      <td><code>--profile &lt;name&gt;</code></td>
+      <td>Especificar perfil al iniciar</td>
+    </tr>
+  </table>
+
+  <div class="page"></div>
+
+  <!-- ===================== SECTION 5 — TOOLS & SKILLS ===================== -->
+  <h1 class="page-break-avoid">5. Sistema de Herramientas y Skills</h1>
+
+  <p>
+    Lydia Agent V2 cuenta con <strong>89 herramientas</strong> (model tools) en el core y
+    <strong>57 skills de dominio</strong> en <code>optional-skills/</code>. Las herramientas son
+    la interfaz que el modelo usa para interactuar con el mundo real; las skills son procedimientos
+    reutilizables que el agente carga según la tarea.
+  </p>
+
+  <h2>5.1 Herramientas del Core (tools/)</h2>
+
+  <table>
+    <tr><th>Herramienta</th><th>LOC</th><th>Función</th></tr>
+    <tr><td><tt>mcp_tool.py</tt></td><td>4,911</td><td>Gateway MCP: conexión con servidores MCP (Model Context Protocol)</td></tr>
+    <tr><td><tt>browser_tool.py</tt></td><td>4,499</td><td>Control de navegador (CamoFox): navegar, click, type, screenshot</td></tr>
+    <tr><td><tt>skills_hub.py</tt></td><td>4,069</td><td>Hub de skills: catálogo, carga, búsqueda, ejecución de skills</td></tr>
+    <tr><td><tt>delegate_tool.py</tt></td><td>3,510</td><td>Subagentes: delega tareas a agentes hijo en contexto aislado</td></tr>
+    <tr><td><tt>terminal_tool.py</tt></td><td>2,978</td><td>Terminal remoto con PTY, background processes, watch patterns</td></tr>
+    <tr><td><tt>tts_tool.py</tt></td><td>2,846</td><td>Texto a voz multi-proveedor (Edge, OpenAI, ElevenLabs)</td></tr>
+    <tr><td><tt>file_operations.py</tt></td><td>2,423</td><td>Operaciones de archivos: read, write, search, patch</td></tr>
+    <tr><td><tt>approval.py</tt></td><td>2,252</td><td>Sistema de aprobación: confirmación antes de acciones destructivas</td></tr>
+    <tr><td><tt>process_registry.py</tt></td><td>2,219</td><td>Registro de procesos: gestión de PIDs en background</td></tr>
+    <tr><td><tt>file_tools.py</tt></td><td>1,936</td><td>Herramientas de archivo: find, grep, diff, patch</td></tr>
+    <tr><td><tt>code_execution_tool.py</tt></td><td>1,868</td><td>Ejecución de código Python sandboxeado con timeout</td></tr>
+    <tr><td><tt>vision_tools.py</tt></td><td>1,735</td><td>Análisis de imágenes vía modelos visión</td></tr>
+    <tr><td><tt>send_message_tool.py</tt></td><td>1,794</td><td>Envío de mensajes multi-plataforma</td></tr>
+    <tr><td><tt>transcription_tools.py</tt></td><td>1,799</td><td>Transcripción de audio a texto</td></tr>
+    <tr><td colspan="3"><i>... más 75 herramientas adicionales (77,703 LOC total en tools/)</i></td></tr>
+  </table>
+
+  <h2>5.2 Skills de Dominio (optional-skills/)</h2>
+
+  <table>
+    <tr><th>Categoría</th><th>Skills</th><th>Propósito</th></tr>
+    <tr><td><b>software-development</b></td><td>14</td><td>TDD, debugging, code review, MCP integration, subagent-driven dev</td></tr>
+    <tr><td><b>research</b></td><td>22</td><td>ArXiv, blog monitoring, wiki knowledge base, market data</td></tr>
+    <tr><td><b>creative</b></td><td>7</td><td>Arte ASCII, diagramas, diseño web, p5.js, manim, pixel art</td></tr>
+    <tr><td><b>devops</b></td><td>4</td><td>Kubernetes, Docker, SSH, Gitea, webhook subscriptions</td></tr>
+    <tr><td><b>web-development</b></td><td>7</td><td>Astro dashboards, Flutter, Go microservices, Node debug</td></tr>
+    <tr><td><b>mlops</b></td><td>1</td><td>Evaluación LLM, W&B, HF Hub, vLLM, llama.cpp</td></tr>
+    <tr><td><b>blockchain</b></td><td>3</td><td>Smart contracts, DeFi, análisis on-chain</td></tr>
+    <tr><td><b>productivity</b></td><td>4</td><td>Notion, Airtable, Google Workspace, PDF editing</td></tr>
+    <tr><td><b>email</b></td><td>2</td><td>Himalaya CLI: IMAP/SMTP desde terminal</td></tr>
+    <tr><td><b>security</b></td><td>5</td><td>Análisis de vulnerabilidades, hardening</td></tr>
+    <tr><td><b>autonomous-ai-agents</b></td><td>multi</td><td>Claude Code, Codex, OpenCode, Hermes deployment</td></tr>
+    <tr><td><b>health</b></td><td>2</td><td>Seguimiento de salud, recordatorios</td></tr>
+    <tr><td><b>finance</b></td><td>3</td><td>Mercados financieros, BYMA, ROFEX, MAE</td></tr>
+    <tr><td><b>payments</b></td><td>6</td><td>Procesamiento de pagos</td></tr>
+    <tr><td><b>mcp</b></td><td>4</td><td>MCP server management, n8n, mcporter</td></tr>
+    <tr><td><b>gaming</b></td><td>multi</td><td>Minecraft servers, Pokémon emulator</td></tr>
+  </table>
+
+  <div class="info">
+    <b>Nota:</b> Las skills se cargan bajo demanda según el contexto de la conversación.
+    El sistema de skills hub (4,069 líneas) gestiona el catálogo, la sincronización y
+    la ejecución de skills.
+  </div>
+
+  <h2>5.3 Footprint Ladder (Jerarquía de Implementación)</h2>
+  <p>
+    Para evitar inflar el core, Lydia sigue esta jerarquía al añadir nueva capacidad:
+  </p>
+  <ol>
+    <li><b>Extender código existente</b> — la opción más barata</li>
+    <li><b>CLI command + skill</b> — nueva funcionalidad empaquetada como skill</li>
+    <li><b>Service-gated tool</b> (<tt>check_fn</tt>) — habilitada por chequeo dinámico</li>
+    <li><b>Plugin</b> — extiende el core sin tocarlo</li>
+    <li><b>MCP server</b> — servidor externo via Model Context Protocol</li>
+    <li><b>Core tool nueva</b> — último recurso, requiere justificación</li>
+  </ol>
+
+  <div class="page"></div>
+
+  <!-- ===================== SECTION 6 — MEMORIA Y APRENDIZAJE ===================== -->
+  <h1 class="page-break-avoid">6. Memoria y Aprendizaje Continuo</h1>
+
+  <p>
+    Lydia es el único agente con un <b>bucle de aprendizaje incorporado</b>: crea skills
+    desde la experiencia, las mejora durante el uso, persiste conocimiento entre sesiones,
+    busca sus propias conversaciones pasadas y construye un modelo profundo del usuario.
+  </p>
+
+  <h2>6.1 Subsistemas de Memoria</h2>
+
+  <table>
+    <tr><th>Sistema</th><th>Tecnología</th><th>Propósito</th></tr>
+    <tr>
+      <td><b>Memory (persistente)</b></td>
+      <td>SQLite FTS5</td>
+      <td>Hechos duraderos: preferencias del usuario, datos de entorno, convenciones del proyecto.
+          Se inyecta en cada turno de conversación. Compacta y prioriza automáticamente.</td>
+    </tr>
+    <tr>
+      <td><b>Session Search</b></td>
+      <td>SQLite FTS5</td>
+      <td>Búsqueda de conversaciones pasadas: recupera sesiones por contenido, scroll dentro
+          de una sesión, resolución de referencias @session:<profile>/<id>.</td>
+    </tr>
+    <tr>
+      <td><b>Skills (memoria procedural)</b></td>
+      <td>SKILL.md + YAML frontmatter</td>
+      <td>Procedimientos reutilizables: workflows, comandos, pitfalls. Se crean desde la
+          experiencia y se actualizan automáticamente.</td>
+    </tr>
+    <tr>
+      <td><b>User Profile</b></td>
+      <td>Perfil estructurado</td>
+      <td>Quién es el usuario: nombre, rol, preferencias, estilo de comunicación.
+          Se construye y refina con cada interacción.</td>
+    </tr>
+    <tr>
+      <td><b>Context Engine</b></td>
+      <td>Plugin + agent context</td>
+      <td>Preparación de contexto enriquecido antes de cada turno: memoria + skills +
+          proyectos + últimas sesiones + cron jobs.</td>
+    </tr>
+  </table>
+
+  <div class="page"></div>
+
+  <!-- ===================== SECTION 7 — CRON & TAREAS PROGRAMADAS ===================== -->
+  <h1 class="page-break-avoid">7. Cron Jobs y Tareas Programadas</h1>
+
+  <p>
+    El sistema de cron (7 módulos, ~485 KB) permite programar tareas que el agente ejecuta
+    automáticamente en segundo plano. Las tareas corren en sesiones aisladas y entregan
+    resultados al usuario sin intervención manual.
+  </p>
+
+  <h2>7.1 Componentes del Sistema Cron</h2>
+
+  <table>
+    <tr><th>Módulo</th><th>Función</th></tr>
+    <tr><td><tt>cron/scheduler.py</tt></td><td>Planificador principal: evalúa schedules, gestiona ejecuciones</td></tr>
+    <tr><td><tt>cron/jobs.py</tt></td><td>Gestión de jobs: crear, listar, actualizar, pausar, eliminar</td></tr>
+    <tr><td><tt>cron/blueprint_catalog.py</tt></td><td>Catálogo de blueprints predefinidos para jobs comunes</td></tr>
+    <tr><td><tt>cron/suggestion_catalog.py</tt></td><td>Sugerencias inteligentes basadas en el uso del usuario</td></tr>
+    <tr><td><tt>cron/suggestions.py</tt></td><td>Generador de sugerencias para automatización</td></tr>
+  </table>
+
+  <h2>7.2 Capacidades del Cron</h2>
+  <ul>
+    <li><b>Schedules flexibles:</b> cada 30m, cada 2h, cron expression, ISO timestamp</li>
+    <li><b>Script mode:</b> jobs que ejecutan scripts directamente sin LLM (watchdog pattern)</li>
+    <li><b>Agent mode:</b> jobs que ejecutan prompts con el agente completo</li>
+    <li><b>Chained jobs:</b> un job puede consumir el output de otro (context_from)</li>
+    <li><b>Multi-entrega:</b> Telegram, Discord, Slack, local, o todas las plataformas</li>
+    <li><b>Auto-contexto:</b> los jobs heredan AGENTS.md, .cursorrules del workdir</li>
+  </ul>
+
+  <div class="page"></div>
+
+  <!-- ===================== SECTION 8 — PLUGINS ===================== -->
+  <h1 class="page-break-avoid">8. Ecosistema de Plugins</h1>
+
+  <p>
+    Lydia Agent V2 cuenta con <strong>175 plugins</strong> (~10.8 MB) organizados en
+    categorías funcionales. Los plugins son la vía principal para extender el agente sin
+    modificar el core.
+  </p>
+
+  <table>
+    <tr><th>Categoría</th><th>Archivos</th><th>Items</th><th>Propósito</th></tr>
+    <tr><td><b>model-providers</b></td><td>28</td><td>141</td><td>Proveedores de modelo: OpenAI, Anthropic, Google, Ollama, OpenRouter, vLLM, etc.</td></tr>
+    <tr><td><b>platforms</b></td><td>51</td><td>164</td><td>Plataformas de mensajería: Telegram, Discord, Slack, WhatsApp, Signal, etc.</td></tr>
+    <tr><td><b>memory</b></td><td>20</td><td>46</td><td>Backends de memoria: SQLite, MemGPT, knowledge graphs</td></tr>
+    <tr><td><b>web</b></td><td>17</td><td>59</td><td>Herramientas web: scraping, búsqueda, feeds</td></tr>
+    <tr><td><b>browser</b></td><td>6</td><td>21</td><td>Control de navegador: CamoFox, Chromium</td></tr>
+    <tr><td><b>image_gen</b></td><td>6</td><td>30</td><td>Generación de imágenes: ComfyUI, Stable Diffusion</td></tr>
+    <tr><td><b>video_gen</b></td><td>2</td><td>10</td><td>Generación de video</td></tr>
+    <tr><td><b>spotify</b></td><td>3</td><td>8</td><td>Control de Spotify: play, search, queue, playlists</td></tr>
+    <tr><td><b>google_meet</b></td><td>14</td><td>19</td><td>Google Meet: transcripción, resumen, pipeline de reuniones</td></tr>
+    <tr><td><b>teams_pipeline</b></td><td>8</td><td>9</td><td>Microsoft Teams: pipeline de reuniones</td></tr>
+    <tr><td><b>kanban</b></td><td>1</td><td>multi</td><td>Sistema Kanban para gestión de tareas</td></tr>
+    <tr><td><b>observability</b></td><td>2</td><td>8</td><td>Observabilidad y monitoreo</td></tr>
+    <tr><td><b>dashboard_auth</b></td><td>4</td><td>20</td><td>Autenticación para web dashboard</td></tr>
+    <tr><td><b>security-guidance</b></td><td>2</td><td>6</td><td>Guías de seguridad</td></tr>
+  </table>
+
+  <p>
+    Los plugins se instalan vía <tt>lydia plugin install &lt;name&gt;</tt> y se gestionan
+    con <tt>lydia plugin list/enable/disable</tt>. Cada plugin vive en su propio directorio
+    bajo <tt>plugins/</tt> y se comunica con el core a través de ABCs y hooks definidos.
+  </p>
+
+  <div class="page"></div>
+
+  <!-- ===================== SECTION 9 — SEGURIDAD ===================== -->
+  <h1 class="page-break-avoid">9. Seguridad y Control de Acceso</h1>
+
+  <h2>9.1 Capas de Seguridad</h2>
+
+  <table>
+    <tr><th>Capa</th><th>Mecanismo</th><th>Descripción</th></tr>
+    <tr>
+      <td><b>Autenticación</b></td>
+      <td><tt>agent/auth.py</tt> (80 líneas)</td>
+      <td>Valida identidad del usuario. Soporta OAuth, tokens API, y autenticación local.</td>
+    </tr>
+    <tr>
+      <td><b>Permisos</b></td>
+      <td><tt>agent/permissions.py</tt> (169 líneas)</td>
+      <td>RBAC: roles y permisos granulares para cada herramienta y acción.</td>
+    </tr>
+    <tr>
+      <td><b>Aprobación de Edits</b></td>
+      <td><tt>agent/edit_approval.py</tt> (287 líneas)</td>
+      <td>Requiere confirmación humana antes de modificar archivos. Safety crítico.</td>
+    </tr>
+    <tr>
+      <td><b>Procedencia</b></td>
+      <td><tt>agent/provenance.py</tt> (128 líneas)</td>
+      <td>Chain of custody: cada acción tiene un audit trail completo.</td>
+    </tr>
+    <tr>
+      <td><b>Path Security</b></td>
+      <td><tt>tools/path_security.py</tt></td>
+      <td>Validación de rutas: impide acceso a directorios fuera del sandbox.</td>
+    </tr>
+    <tr>
+      <td><b>Security Scan</b></td>
+      <td>Tools runtime</td>
+      <td>Escaneo de comandos en terminal: detecta URLs raw, pipes a intérpretes, acceso a redes privadas.</td>
+    </tr>
+  </table>
+
+  <h2>9.2 Gestión de Secrets</h2>
+  <p>
+    <code>.env</code> es el único lugar para credenciales (API keys, tokens, passwords).
+    Toda configuración de comportamiento va en <code>config.yaml</code>. Esta separación
+    evita que secrets se filtren en commits o logs.
+  </p>
+
+  <div class="page"></div>
+
+  <!-- ===================== SECTION 10 — DESPLIEGUE ===================== -->
+  <h1 class="page-break-avoid">10. Despliegue e Instalación</h1>
+
+  <h2>10.1 Instalación Estándar</h2>
+  <pre>
+# Clonar repositorio
+git clone https://github.com/Stuko0/lydia-agent.git
+cd lydia-agent
+
+# Crear y activar virtualenv
+python3 -m venv venv
+source venv/bin/activate
+
+# Instalar dependencias exactas
+uv sync
+
+# Configurar
+cp .env.example .env   # Editar con API keys
+cp config.example.yaml config.yaml
+
+# Inicializar
+lydia setup
+
+# Ejecutar
+lydia
+</pre>
+
+  <h2>10.2 Modos de Ejecución</h2>
+  <table>
+    <tr><th>Modo</th><th>Comando</th><th>Uso</th></tr>
+    <tr><td><b>CLI</b></td><td><tt>lydia</tt> / <tt>lydia run</tt></td><td>Modo interactivo en terminal</td></tr>
+    <tr><td><b>Gateway daemon</b></td><td><tt>lydia gateway start</tt></td><td>Daemon 24/7 para Telegram, Discord, Slack, etc.</td></tr>
+    <tr><td><b>TUI</b></td><td><tt>lydia tui</tt></td><td>Interfaz de terminal con paneles</td></tr>
+    <tr><td><b>Desktop</b></td><td><tt>lydia-desktop</tt></td><td>Aplicación Electron con UI gráfica</td></tr>
+    <tr><td><b>Web Dashboard</b></td><td><tt>lydia web-server</tt></td><td>Dashboard web para gestión</td></tr>
+    <tr><td><b>MCP Server</b></td><td><tt>lydia mcp-serve</tt></td><td>Sirve herramientas vía MCP</td></tr>
+  </table>
+
+  <h2>10.3 Proveedores de Modelo</h2>
+  <p>
+    Lydia soporta múltiples backends de inferencia a través de 28 plugins de model-providers:
+  </p>
+  <ul>
+    <li><b>OpenAI</b> — GPT-4o, GPT-4.1, o1, o3</li>
+    <li><b>Anthropic</b> — Claude Opus 4, Sonnet 4, Haiku 3.5</li>
+    <li><b>Google</b> — Gemini 2.5 Pro, Flash</li>
+    <li><b>Ollama (local)</b> — Qwen3.6, Gemma4, Laguna-XS, DeepSeek, llama.cpp GGUF</li>
+    <li><b>OpenRouter</b> — 200+ modelos agregados</li>
+    <li><b>vLLM</b> — Serving local de modelos open-weight</li>
+    <li><b>Custom providers</b> — Cualquier endpoint compatible con OpenAI API</li>
+  </ul>
+
+  <div class="page"></div>
+
+  <!-- ===================== SECTION 11 — SUMMARY ===================== -->
+  <h1 class="page-break-avoid">11. Resumen y Estado del Proyecto</h1>
+
+  <h2>11.1 Métricas del Proyecto</h2>
+  <table>
+    <tr><th>Métrica</th><th>Valor</th></tr>
+    <tr><td>Versión</td><td><b>0.17.0</b></td></tr>
+    <tr><td>Líneas de código Python (total)</td><td><b>867,344 LOC</b></td></tr>
+    <tr><td>Módulos del core agente (<tt>agent/</tt>)</td><td>106 archivos</td></tr>
+    <tr><td>Módulos CLI (<tt>lydia_cli/</tt>)</td><td>195 archivos</td></tr>
+    <tr><td>Herramientas (<tt>tools/</tt>)</td><td><b>89</b> (77,703 LOC)</td></tr>
+    <tr><td>Plugins</td><td><b>175</b> (~10.8 MB)</td></tr>
+    <tr><td>Skills de dominio</td><td><b>57</b> (~5.9 MB)</td></tr>
+    <tr><td>Gateway platforms</td><td>15+</td></tr>
+    <tr><td>Idiomas (locales)</td><td>16</td></tr>
+    <tr><td>Tests</td><td><b>1,864</b> archivos (~25 MB)</td></tr>
+    <tr><td>Runner principal (<tt>run_agent.py</tt>)</td><td>5,709 líneas</td></tr>
+    <tr><td>Gateway daemon (<tt>gateway/run.py</tt>)</td><td>19,114 líneas</td></tr>
+    <tr><td>CLI principal (<tt>cli.py</tt>)</td><td>17,116 líneas</td></tr>
+  </table>
+
+  <h2>11.2 Estado de Componentes</h2>
+  <table>
+    <tr><th>Componente</th><th>Estado</th><th>Notas</th></tr>
+    <tr><td>Agent Core</td><td><b>✅ Producción</b></td><td>Maduro, loop de conversación estable</td></tr>
+    <tr><td>CLI</td><td><b>✅ Producción</b></td><td>Funcionalidad completa</td></tr>
+    <tr><td>Gateway</td><td><b>🔄 En desarrollo</b></td><td>Daemon funcional, añadiendo plataformas</td></tr>
+    <tr><td>Cron</td><td><b>🔄 En desarrollo</b></td><td>Funcionalidad base completa, blueprints en expansión</td></tr>
+    <tr><td>Tools</td><td><b>🔄 En desarrollo</b></td><td>89 herramientas, añadiendo más</td></tr>
+    <tr><td>Plugins</td><td><b>🔄 En desarrollo</b></td><td>175 plugins, ecosistema creciendo</td></tr>
+    <tr><td>Skills</td><td><b>🔄 Parcial</b></td><td>57 skills, algunas en desarrollo</td></tr>
+    <tr><td>Browser (ACP)</td><td><b>🔄 En desarrollo</b></td><td>11 módulos, control remoto funcional</td></tr>
+    <tr><td>Desktop App</td><td><b>🔄 En desarrollo</b></td><td>Electron wrapper, funcionalidad básica</td></tr>
+    <tr><td>Tests</td><td><b>✅ Producción</b></td><td>1,864 tests, cobertura amplia</td></tr>
+    <tr><td>Documentación</td><td><b>🔄 En desarrollo</b></td><td>SDD, README multi-idioma, AGENTS.md</td></tr>
+  </table>
+
+  <h2>11.3 Arquitectura de Modelos (Local)</h2>
+  <p>
+    Lydia se conecta a un servidor <b>Ollama remoto</b> con RTX A6000 (48GB VRAM)
+    para inferencia local. Los modelos disponibles son:
+  </p>
+  <table>
+    <tr><th>Modelo</th><th>Tamaño</th><th>Params</th><th>Uso</th></tr>
+    <tr><td><b>qwen3.6:35b</b></td><td>23.9 GB</td><td>36.0B Q4_K_M</td><td>Agente principal: tools + thinking</td></tr>
+    <tr><td><b>gemma4:26b</b></td><td>18.0 GB</td><td>25.8B Q4_K_M</td><td>Alternativa agente general</td></tr>
+    <tr><td><b>laguna-xs-2.1</b></td><td>35.6 GB</td><td>33.4B Q8_0</td><td>Coding agéntico pesado</td></tr>
+    <tr><td><b>north-mini-code-1.0</b></td><td>32.4 GB</td><td>30.5B Q8_0</td><td>Coding agéntico alternativo</td></tr>
+  </table>
+
+  <p>
+    El servidor está configurado con <tt>OLLAMA_NUM_PARALLEL=4</tt> y
+    <tt>OLLAMA_MAX_LOADED_MODELS=3</tt> para permitir inferencia paralela.
+  </p>
+
+  <div class="page-footer">
+    <span>Lydia Agent V2 — SDD v0.17.0</span>
+    <span>Generado el 03/07/2026</span>
+    <span>Confidencial — Uso Interno — Arquant</span>
+  </div>
+
+</body>
+
+</html>
