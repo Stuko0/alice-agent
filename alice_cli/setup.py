@@ -1171,6 +1171,8 @@ def setup_terminal_backend(config: dict):
     current_backend = cfg_get(config, "terminal", "backend", default="local")
     is_linux = _platform.system() == "Linux"
 
+    from alice_cli.windows_terminal import IS_WINDOWS, detect_wsl
+
     # Build backend choices with descriptions
     terminal_choices = [
         "Local - run directly on this machine (default)",
@@ -1187,6 +1189,17 @@ def setup_terminal_backend(config: dict):
         terminal_choices.append("Singularity/Apptainer - HPC-friendly container")
         idx_to_backend[next_idx] = "singularity"
         backend_to_idx["singularity"] = next_idx
+        next_idx += 1
+
+    # Windows: surface WSL2 as the recommended POSIX-capable path when present.
+    # Terminals spawned under the raw Windows local backend are the biggest
+    # source of PTY/agent-tool quirks; WSL2 fixes that without Docker Desktop.
+    wsl_available = IS_WINDOWS and detect_wsl()
+    if wsl_available:
+        terminal_choices.insert(1, "WSL2 - POSIX shell inside Windows (recommended)")
+        idx_to_backend = {i + 1 if i >= 1 else i: b for i, b in idx_to_backend.items()}
+        idx_to_backend[1] = "wsl"
+        backend_to_idx = {b: i for i, b in idx_to_backend.items()}
         next_idx += 1
 
     # Add keep current option
@@ -1211,6 +1224,12 @@ def setup_terminal_backend(config: dict):
         print_info("Commands run directly on this machine.")
         # Gateway working directory defaults to home; sudo stays off. Both are
         # configurable later via `alice setup terminal` / config.yaml.
+        config["terminal"].setdefault("cwd", str(Path.home()))
+
+    elif selected_backend == "wsl":
+        print_success("Terminal backend: WSL2")
+        print_info("Commands run inside the default WSL distribution.")
+        # WSL needs no image/pull — the distro is already installed.
         config["terminal"].setdefault("cwd", str(Path.home()))
 
     elif selected_backend == "docker":
