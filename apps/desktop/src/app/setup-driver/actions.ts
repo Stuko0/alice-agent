@@ -40,8 +40,13 @@ export async function submitProvider(providerId: string): Promise<void> {
   setSetupError(null)
   try {
     if (providerId === 'omniroute') {
-      // OmniRoute doesn't need a backend round-trip here — the CLI wizard
-      // or the model picker spawns/configures it lazily on first use.
+      // Bring the gateway up; backend auto-provisions a bundled Node+OmniRoute
+      // into ~/.alice/omniroute/ when no system runtime exists.
+      const r = await _post<{ base_url: string; configured: boolean }>('/api/setup/omniroute/start', {})
+      if (r === null || !r.configured) {
+        setSetupError('OmniRoute failed to start — check ~/.alice/logs/agent.log')
+        return
+      }
       chooseProvider(providerId)
       return
     }

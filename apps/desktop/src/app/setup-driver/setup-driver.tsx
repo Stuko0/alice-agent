@@ -57,6 +57,11 @@ export function SetupDriver() {
                   >
                     <div className="font-medium">{p.label}{i === 0 && <span className="ml-2 text-xs text-primary">Recommended</span>}</div>
                     <div className="text-xs text-muted-foreground">{p.desc}</div>
+                    {p.id === 'omniroute' && s.busy && (
+                      <div className="mt-1 text-xs text-primary animate-pulse">
+                        Downloading Node + OmniRoute on first run…
+                      </div>
+                    )}
                   </button>
                 </li>
               ))}

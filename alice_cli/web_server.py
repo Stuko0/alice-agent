@@ -3101,6 +3101,35 @@ async def api_setup_terminal_backend(request: Request):
     return {"terminal": term}
 
 
+@app.post("/api/setup/omniroute/start")
+async def setup_omniroute_start() -> dict:
+    """Bring OmniRoute up; provision Node + the gateway when nothing else can.
+
+    Synchronous under the hood (HTTP download + npm install); FastAPI runs
+    us in a threadpool. Progress is not streamed (that's a separate WS /
+    long-poll channel); caller just sees a long 200 on success, 500 on error.
+    """
+    from alice_cli import omniroute
+
+    base_url = omniroute.base_url_for()
+    try:
+        omniroute.ensure_running(allow_provision=True)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    cfg = load_config()
+    model = cfg.setdefault("model", {})
+    if not isinstance(model, dict):
+        model = cfg["model"] = {"default": model} if model else {}
+    model["provider"] = "custom"
+    model["base_url"] = base_url
+    model["api_key"] = omniroute.mint_local_token()
+    model.setdefault("default", "google/gemini-3-flash-preview")
+    save_config(cfg)
+
+    return {"base_url": base_url, "configured": True}
+
+
 @app.post("/api/alice/update")
 async def update_lydia():
     """Kick off ``alice update`` in the background."""
