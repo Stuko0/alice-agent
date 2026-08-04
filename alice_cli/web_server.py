@@ -3050,6 +3050,57 @@ async def gateway_drain(request: Request):
     }
 
 
+_SETUP_BACKENDS = frozenset({"local", "docker", "modal", "ssh", "daytona", "singularity", "wsl"})
+
+
+@app.get("/api/setup/status")
+async def api_setup_status(request: Request):
+    """Readiness probe the desktop Setup Driver polls before/after the wizard.
+
+    Returns the minimal tuple the renderer needs to decide whether to mount
+    the first-run overlay: whether a usable provider+model pair exists and
+    which terminal backend is configured.
+    """
+    cfg = load_config()
+    model_cfg = cfg.get("model", {}) if isinstance(cfg.get("model"), dict) else {}
+    return {
+        "configured": bool(model_cfg.get("provider") and model_cfg.get("model")),
+        "provider": model_cfg.get("provider"),
+        "model": model_cfg.get("model"),
+        "terminal_backend": cfg_get(cfg, "terminal", "backend", default="local"),
+    }
+
+
+@app.post("/api/setup/terminal-backend")
+async def api_setup_terminal_backend(request: Request):
+    """Set the terminal execution backend (local/docker/.../wsl).
+
+    Thin wrapper over the same ``terminal.backend`` config write
+    ``alice setup terminal`` performs; per-backend defaults (docker_image,
+    cwd) mirror ``alice_cli.setup.setup_terminal_backend``.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    backend = str((body or {}).get("backend", "")).strip().lower()
+    if backend not in _SETUP_BACKENDS:
+        raise HTTPException(status_code=400, detail=f"unknown backend {backend!r}")
+
+    cfg = load_config()
+    term = cfg.setdefault("terminal", {})
+    term["backend"] = backend
+    if backend == "local":
+        from pathlib import Path as _P
+        term.setdefault("cwd", str(_P.home()))
+    elif backend == "docker":
+        term.setdefault("docker_image", "nikolaik/python-nodejs:python3.11-nodejs20")
+    elif backend == "singularity":
+        term.setdefault("singularity_image", "docker://nikolaik/python-nodejs:python3.11-nodejs20")
+    save_config(cfg)
+    return {"terminal": term}
+
+
 @app.post("/api/alice/update")
 async def update_lydia():
     """Kick off ``alice update`` in the background."""
