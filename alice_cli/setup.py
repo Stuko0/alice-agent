@@ -3039,11 +3039,13 @@ def _run_first_time_quick_setup(config: dict, lydia_home, is_existing: bool):
     """
     from alice_cli.config import load_config
 
-    # Step 1: Provider selection — GitHub Copilot is the default/recommended.
-    # Other OAuth and API-key providers are available as alternatives.
+    # Step 1: Provider selection — OmniRoute is the default/recommended because it
+    # needs no paid account and no pre-installed CLI (spawns via npx or Docker).
+    # Copilot remains available but requires the Copilot CLI on the box.
     print()
     providers = [
-        ("copilot-acp", "GitHub Copilot — free with GitHub account (recommended)"),
+        ("omniroute", "OmniRoute — free, no account or CLI required (recommended)"),
+        ("copilot-acp", "GitHub Copilot — free with GitHub account (requires Copilot CLI)"),
         ("xai-oauth", "xAI Grok — OAuth login (SuperGrok / Premium+)"),
         ("openai-codex", "OpenAI OAuth (ChatGPT)"),
         ("nous", "Nous Portal"),
@@ -3055,7 +3057,7 @@ def _run_first_time_quick_setup(config: dict, lydia_home, is_existing: bool):
     choice = prompt_choice(
         "Choose your provider",
         provider_labels,
-        0,  # default: GitHub Copilot
+        0,  # default: OmniRoute
     )
 
     selected_id = provider_ids[choice]
@@ -3065,6 +3067,8 @@ def _run_first_time_quick_setup(config: dict, lydia_home, is_existing: bool):
         # Full setup for API-key providers
         from alice_cli.main import _model_flow
         _model_flow(config, run_picker=True)
+    elif selected_id == "omniroute":
+        _model_flow_omniroute(config)
     elif selected_id == "nous":
         try:
             from alice_cli.main import _model_flow_nous
@@ -3139,6 +3143,40 @@ def _run_first_time_quick_setup(config: dict, lydia_home, is_existing: bool):
     print()
 
     _print_setup_summary(config, lydia_home)
+
+
+def _model_flow_omniroute(config: dict):
+    """Bring up OmniRoute (free AI gateway) and point the model at it.
+
+    OmniRoute is NOT vendored (AGENTS.md: third-party products stay outside
+    the core tree). We treat it as a managed local service spawned on demand:
+    npx if Node 22+ exists, Docker otherwise. The provider it lands on is the
+    stock ``custom`` provider — no new catalog surface, no plugin in-tree.
+    """
+    from alice_cli import omniroute
+    from alice_cli.auth import deactivate_provider
+    from alice_cli.config import load_config, save_config
+
+    print_info("Starting OmniRoute (free AI gateway — 90+ free providers)...")
+    try:
+        omniroute.ensure_running()
+    except RuntimeError as exc:
+        print_warning(f"OmniRoute unavailable: {exc}")
+        print_info("Install Node 22+ or Docker and pick OmniRoute again, or choose a different provider.")
+        return
+
+    cfg = load_config()
+    model = cfg.setdefault("model", {})
+    if not isinstance(model, dict):
+        model = cfg["model"] = {"default": model} if model else {}
+    model["provider"] = "custom"
+    model["base_url"] = omniroute.base_url_for()
+    model["api_key"] = omniroute.mint_local_token()
+    model.setdefault("default", "google/gemini-3-flash-preview")
+    save_config(cfg)
+    deactivate_provider()
+    config["model"] = dict(model)  # keep the wizard's in-memory dict in sync (#4172)
+    print_success(f"OmniRoute ready at {model['base_url']}")
 
 
 def _blank_slate_minimal_toolsets(config: dict):
