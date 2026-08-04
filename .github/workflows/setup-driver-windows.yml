@@ -1,0 +1,62 @@
+# setup-driver-windows.yml
+#
+# Smoke test for the desktop Setup Driver wizard on Windows. Spawns the
+# renderer under electron via a stubbed FastAPI backend and asserts the
+# OmniRoute path never reaches for the Copilot CLI.
+#
+# Runs PR-conditional: only when alice_cli/setup.py, alice_cli/omniroute.py,
+# alice_cli/windows_terminal.py, alice_cli/web_server.py, or
+# apps/desktop/src/app/setup-driver/** change.
+
+name: Setup Driver Windows smoke
+
+on:
+  pull_request:
+    paths:
+      - 'alice_cli/setup.py'
+      - 'alice_cli/omniroute.py'
+      - 'alice_cli/windows_terminal.py'
+      - 'alice_cli/web_server.py'
+      - 'apps/desktop/src/app/setup-driver/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: setup-driver-win-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup-driver-smoke:
+    name: Setup driver smoke (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: 'apps/desktop/package-lock.json'
+
+      - name: Install desktop deps
+        working-directory: apps/desktop
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Playwright
+        working-directory: apps/desktop
+        run: |
+          npm install --no-save --no-audit --no-fund @playwright/test@1.49.1
+          npx playwright@1.49.1 install chromium --with-deps
+
+      - name: Run setup-driver spec (XVFB)
+        working-directory: apps/desktop
+        # On Windows, Playwright runs headless natively; no xvfb needed.
+        run: npx playwright test e2e/setup-driver.windows.spec.ts --reporter=line
+        env:
+          CI: 'true'
