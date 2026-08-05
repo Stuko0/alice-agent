@@ -681,7 +681,10 @@ export const en: Translations = {
       customProbeFail: error => `Connection failed: ${error}`,
       customAdded: name => `Custom provider "${name}" added.`,
       customRemoved: name => `Custom provider "${name}" removed.`,
-      customEmpty: 'No custom providers yet. Add one with the button above.'
+      customEmpty: 'No custom providers yet. Add one with the button above.',
+      helpTitle: 'Help',
+      helpIntro: 'How do I…? Pick a topic.',
+      helpOpen: 'Help'
     },
     sessions: {
       loading: 'Loading archived sessions…',

@@ -1,9 +1,11 @@
 import { useStore } from '@nanostores/react'
 import { useQueryClient } from '@tanstack/react-query'
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { BootFailureOverlay } from '@/components/boot-failure-overlay'
+
+import { HelpFab, HelpOverlay } from '@/components/help-overlay'
 
 import { SetupDriver } from '@/app/setup-driver/setup-driver'
 import { DesktopInstallOverlay } from '@/components/desktop-install-overlay'
@@ -154,6 +156,9 @@ export function DesktopController() {
   const queryClient = useQueryClient()
   const location = useLocation()
   const navigate = useNavigate()
+
+  // Task-scoped Help overlay (FAB bottom-right).
+  const [helpOpen, setHelpOpen] = useState(false)
 
   const busyRef = useRef(false)
   const creatingSessionRef = useRef(false)
@@ -942,6 +947,8 @@ export function DesktopController() {
       <GatewayConnectingOverlay />
       <BootFailureOverlay />
       <SetupDriver />
+      <HelpFab onClick={() => setHelpOpen(true)} />
+      <HelpOverlay onClose={() => setHelpOpen(false)} open={helpOpen} />
       <CommandPalette />
       <PetGenerateOverlay />
       <SessionSwitcher />

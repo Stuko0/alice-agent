@@ -500,6 +500,33 @@ export function testCustomProvider(providerId: string): Promise<CustomProviderPr
   })
 }
 
+// ── Task-scoped help ──────────────────────────────────────────────────────────
+
+export interface HelpTopic {
+  id: string
+  title: string
+  description: string
+}
+
+export interface HelpTaskContent extends HelpTopic {
+  markdown: string
+  doc_available: boolean
+}
+
+export function listHelpTopics(): Promise<HelpTopic[]> {
+  return window.lydiaDesktop.api<HelpTopic[]>({
+    ...profileScoped(),
+    path: '/api/help/topics'
+  })
+}
+
+export function getHelpTask(taskId: string): Promise<HelpTaskContent> {
+  return window.lydiaDesktop.api<HelpTaskContent>({
+    ...profileScoped(),
+    path: `/api/help/task/${encodeURIComponent(taskId)}`
+  })
+}
+
 export function submitOAuthCode(providerId: string, sessionId: string, code: string): Promise<OAuthSubmitResponse> {
   return window.lydiaDesktop.api<OAuthSubmitResponse>({
     ...profileScoped(),

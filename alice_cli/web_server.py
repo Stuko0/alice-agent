@@ -3130,6 +3130,28 @@ async def setup_omniroute_start() -> dict:
     return {"base_url": base_url, "configured": True}
 
 
+@app.get("/api/help/topics")
+async def api_help_topics(request: Request) -> list[dict]:
+    """Task-scoped help: all indexed tasks for the desktop Help panel."""
+    _require_token(request)
+    from alice_cli.help_tasks import list_tasks
+
+    return [{"id": t.id, "title": t.title, "description": t.description} for t in list_tasks()]
+
+
+@app.get("/api/help/task/{task_id}")
+async def api_help_task(task_id: str, request: Request) -> dict:
+    """Task-scoped help: markdown content for one task."""
+    _require_token(request)
+    from alice_cli.help_tasks import get_task, task_markdown
+
+    task = get_task(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail=f"help task '{task_id}' not found")
+    md = task_markdown(task)
+    return {"id": task.id, "title": task.title, "markdown": md or "", "doc_available": md is not None}
+
+
 @app.get("/api/providers/custom")
 async def api_providers_custom_list(request: Request) -> list[dict]:
     """DPR: all registered custom providers (config.providers + legacy list)."""

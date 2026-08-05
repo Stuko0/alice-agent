@@ -304,6 +304,7 @@ from alice_cli.subcommands.plugins import build_plugins_parser
 from alice_cli.subcommands.mcp import build_mcp_parser
 from alice_cli.subcommands.claw import build_claw_parser
 from alice_cli.subcommands.providers import build_providers_parser
+from alice_cli.subcommands.helpcmd import build_help_parser
 
 def _require_tty(command_name: str) -> None:
     """Exit with a clear error if stdin is not a terminal.
@@ -12419,6 +12420,12 @@ def cmd_providers(args):
     raise SystemExit(providers_command(args))
 
 
+def cmd_help(args):
+    from alice_cli.help_command import help_command
+
+    raise SystemExit(help_command(args))
+
+
 def main():
     """Main entry point for alice CLI."""
     # Cosmetic: make the process show up as 'alice' instead of 'python3.11'
@@ -13467,6 +13474,7 @@ def main():
     # =========================================================================
     build_claw_parser(subparsers, cmd_claw=cmd_claw)
     build_providers_parser(subparsers, cmd_providers=cmd_providers)
+    build_help_parser(subparsers, cmd_help=cmd_help)
 
     # =========================================================================
     # version command  (parser built in alice_cli/subcommands/version.py)

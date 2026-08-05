@@ -582,6 +582,9 @@ export interface Translations {
       customAdded: (name: string) => string
       customRemoved: (name: string) => string
       customEmpty: string
+      helpTitle: string
+      helpIntro: string
+      helpOpen: string
     }
     sessions: {
       loading: string
