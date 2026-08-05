@@ -443,6 +443,63 @@ export function startOAuthLogin(providerId: string): Promise<OAuthStartResponse>
   })
 }
 
+// ── Dynamic Provider Registry (DPR) ──────────────────────────────────────────
+// Custom providers live as declarative specs in ~/.alice/providers.d/ and
+// appear everywhere built-ins do. These four calls drive the Settings →
+// Providers "Custom" section.
+
+export interface CustomProviderSpec {
+  name: string
+  base_url?: string
+  api?: string
+  url?: string
+  api_key_env?: string
+  key_env?: string
+  api_mode?: 'openai' | 'anthropic'
+  models?: string[]
+  provider_key?: string
+}
+
+export interface CustomProviderProbe {
+  ok: boolean
+  latency_ms: number
+  models?: string[]
+  error?: string
+}
+
+export function listCustomProviders(): Promise<CustomProviderSpec[]> {
+  return window.lydiaDesktop.api<CustomProviderSpec[]>({
+    ...profileScoped(),
+    path: '/api/providers/custom'
+  })
+}
+
+export function addCustomProvider(spec: CustomProviderSpec): Promise<CustomProviderSpec & { id: string }> {
+  return window.lydiaDesktop.api<CustomProviderSpec & { id: string }>({
+    ...profileScoped(),
+    path: '/api/providers/custom',
+    method: 'POST',
+    body: spec
+  })
+}
+
+export function deleteCustomProvider(providerId: string): Promise<{ removed: boolean; id: string }> {
+  return window.lydiaDesktop.api<{ removed: boolean; id: string }>({
+    ...profileScoped(),
+    path: `/api/providers/custom/${encodeURIComponent(providerId)}`,
+    method: 'DELETE'
+  })
+}
+
+export function testCustomProvider(providerId: string): Promise<CustomProviderProbe> {
+  return window.lydiaDesktop.api<CustomProviderProbe>({
+    ...profileScoped(),
+    path: `/api/providers/custom/${encodeURIComponent(providerId)}/test`,
+    method: 'POST',
+    body: {}
+  })
+}
+
 export function submitOAuthCode(providerId: string, sessionId: string, code: string): Promise<OAuthSubmitResponse> {
   return window.lydiaDesktop.api<OAuthSubmitResponse>({
     ...profileScoped(),

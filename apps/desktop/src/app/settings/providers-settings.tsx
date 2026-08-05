@@ -23,6 +23,7 @@ import { $desktopOnboarding, startManualProviderOAuth } from '@/store/onboarding
 import type { EnvVarInfo, OAuthProvider } from '@/types/alice'
 
 import { isKeyVar, ProviderKeyRows } from './credential-key-ui'
+import { CustomProvidersSection } from './custom-providers-section'
 import { SettingsCategoryHeading, useEnvCredentials } from './env-credentials'
 import { providerGroup, providerMeta, providerPriority } from './helpers'
 import { LoadingState, SettingsContent } from './primitives'
@@ -443,6 +444,9 @@ export function ProvidersSettings({ onClose, onViewChange, view }: ProvidersSett
         ) : (
           <NoProviderKeys />
         )}
+        {/* DPR: user-defined endpoints always render, independent of the
+            built-in env-var catalog. */}
+        <CustomProvidersSection />
       </SettingsContent>
     )
   }

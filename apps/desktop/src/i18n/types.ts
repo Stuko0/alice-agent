@@ -562,6 +562,26 @@ export interface Translations {
       searchKeys: string
       noKeysMatch: string
       loading: string
+      customTitle: string
+      customIntro: string
+      customAdd: string
+      customName: string
+      customNamePlaceholder: string
+      customBaseUrl: string
+      customBaseUrlPlaceholder: string
+      customKeyEnv: string
+      customKeyEnvPlaceholder: string
+      customApiMode: string
+      customTest: string
+      customSave: string
+      customCancel: string
+      customDelete: string
+      customDeleteConfirm: (provider: string) => string
+      customProbeOk: (ms: number, count: number) => string
+      customProbeFail: (error: string) => string
+      customAdded: (name: string) => string
+      customRemoved: (name: string) => string
+      customEmpty: string
     }
     sessions: {
       loading: string
