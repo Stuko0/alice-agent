@@ -173,6 +173,41 @@ def provider_catalog() -> list[ProviderDescriptor]:
                 order=order,
             )
         )
+
+    # Dynamic Provider Registry: every registered custom provider
+    # (``config.providers`` / ``providers.d/*.yaml``) becomes a catalog entry
+    # with slug ``custom:<id>`` so it renders everywhere the builtins do —
+    # `alice model`, `/api/env` metadata, the desktop Settings → Providers
+    # tabs — without touching the core registry.
+    try:
+        from alice_cli.provider_registry import list_custom_providers, normalize_id
+
+        for n, custom in enumerate(list_custom_providers(), start=len(out)):
+            name = str(custom.get("name", "") or "").strip()
+            if not name:
+                continue
+            cid = normalize_id(name)
+            base_url = str(custom.get("base_url", "") or "")
+            key_env = str(custom.get("key_env", "") or "") or str(custom.get("api_key", "") or "")
+            out.append(
+                ProviderDescriptor(
+                    slug=f"custom:{cid}",
+                    label=f"{name} (custom)",
+                    description=f"Custom endpoint {base_url}",
+                    auth_type="api_key" if key_env else "custom",
+                    tab="keys",
+                    api_key_env_vars=(key_env,) if key_env else (),
+                    base_url_env_var="",
+                    signup_url="",
+                    order=10_000 + n,
+                )
+            )
+    except Exception:
+        # DPR must never break the catalog — a broken providers.d/ entry
+        # degrades to "not listed" here and is surfaced by `alice providers`.
+        import logging
+
+        logging.getLogger(__name__).exception("provider_registry: catalog merge failed")
     return out
 
 
