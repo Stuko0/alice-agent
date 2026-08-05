@@ -3152,6 +3152,64 @@ async def api_help_task(task_id: str, request: Request) -> dict:
     return {"id": task.id, "title": task.title, "markdown": md or "", "doc_available": md is not None}
 
 
+async def _migration_body(request: Request) -> dict:
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    return body if isinstance(body, dict) else {}
+
+
+@app.get("/api/migration/scan")
+async def api_migration_scan(request: Request) -> dict:
+    """Detect an OpenClaw installation to migrate from."""
+    _require_token(request)
+    from alice_cli.claw import _resolve_source_dir
+
+    source = _resolve_source_dir(None)
+    if source is None:
+        return {"found": False, "source_dir": None}
+    return {"found": True, "source_dir": str(source.resolve())}
+
+
+@app.post("/api/migration/preview")
+async def api_migration_preview(request: Request) -> dict:
+    """Dry-run preview of an OpenClaw → Alice migration."""
+    _require_token(request)
+    from alice_cli.claw import migration_plan
+
+    body = await _migration_body(request)
+    result = migration_plan(
+        source=body.get("source"),
+        preset=body.get("preset", "full"),
+        overwrite=bool(body.get("overwrite")),
+        migrate_secrets=bool(body.get("migrate_secrets")),
+        skill_conflict=body.get("skill_conflict", "skip"),
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("error", "migration preview failed"))
+    return result
+
+
+@app.post("/api/migration/apply")
+async def api_migration_apply(request: Request) -> dict:
+    """Execute the OpenClaw → Alice migration."""
+    _require_token(request)
+    from alice_cli.claw import migration_apply
+
+    body = await _migration_body(request)
+    result = migration_apply(
+        source=body.get("source"),
+        preset=body.get("preset", "full"),
+        overwrite=bool(body.get("overwrite")),
+        migrate_secrets=bool(body.get("migrate_secrets")),
+        skill_conflict=body.get("skill_conflict", "skip"),
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("error", "migration failed"))
+    return result
+
+
 @app.get("/api/providers/custom")
 async def api_providers_custom_list(request: Request) -> list[dict]:
     """DPR: all registered custom providers (config.providers + legacy list)."""

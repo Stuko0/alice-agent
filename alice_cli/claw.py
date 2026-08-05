@@ -807,3 +807,131 @@ def _print_migration_report(report: dict, dry_run: bool):
             print()
             print_info("Or add your key manually:")
             print_info("  alice config set OPENROUTER_API_KEY sk-or-v1-...")
+
+
+# ── Programmatic API (desktop Migration wizard) ───────────────────────────────
+# The GUI drives `alice claw migrate` without a terminal: scan → preview →
+# apply. These wrappers reuse the same detection/script-loading/Migrator
+# machinery as `_cmd_migrate` but return JSON-safe dicts instead of printing.
+
+
+def _resolve_source_dir(explicit: Optional[str]) -> Optional[Path]:
+    """Find the OpenClaw source dir; explicit path wins, else ~/.openclaw
+    (with legacy name fallbacks). None when nothing exists."""
+    if explicit:
+        p = Path(explicit).expanduser()
+        return p if p.is_dir() else None
+    for name in _OPENCLAW_DIR_NAMES:
+        candidate = Path.home() / name
+        if candidate.is_dir():
+            return candidate
+    return None
+
+
+def _migration_run(
+    source: Optional[str] = None,
+    *,
+    execute: bool,
+    preset: str = "full",
+    overwrite: bool = False,
+    migrate_secrets: bool = False,
+    workspace_target: Optional[str] = None,
+    skill_conflict: str = "skip",
+) -> dict:
+    """Shared plan/apply path. Returns a JSON-safe result dict:
+    ``{ok, source_dir, error?, summary?, report?}``."""
+    source_dir = _resolve_source_dir(source)
+    if source_dir is None:
+        return {"ok": False, "error": "OpenClaw directory not found. Put your data in ~/.openclaw or pass --source."}
+
+    script_path = _find_migration_script()
+    if script_path is None:
+        return {
+            "ok": False,
+            "error": "Migration script not found. Install the 'openclaw-migration' skill (alice skills install openclaw-migration).",
+        }
+
+    try:
+        mod = _load_migration_module(script_path)
+        if mod is None:
+            return {"ok": False, "error": "Could not load the migration script."}
+    except Exception as exc:  # pragma: no cover - defensive
+        return {"ok": False, "error": f"Could not load the migration script: {exc}"}
+
+    lydia_home = get_alice_home()
+    try:
+        config_path = get_config_path()
+        if not config_path.exists():
+            save_config(load_config())
+    except Exception:
+        pass
+
+    try:
+        selected = mod.resolve_selected_options(None, None, preset=preset)
+        ws_target = Path(workspace_target).resolve() if workspace_target else None
+        migrator = mod.Migrator(
+            source_root=source_dir.resolve(),
+            target_root=lydia_home.resolve(),
+            execute=execute,
+            workspace_target=ws_target,
+            overwrite=overwrite,
+            migrate_secrets=migrate_secrets,
+            output_dir=None,
+            selected_options=selected,
+            preset_name=preset,
+            skill_conflict_mode=skill_conflict,
+        )
+        report = migrator.migrate()
+    except Exception as exc:
+        return {"ok": False, "error": f"Migration {'apply' if execute else 'preview'} failed: {exc}"}
+
+    summary = report.get("summary", {}) if isinstance(report, dict) else {}
+    return {
+        "ok": True,
+        "source_dir": str(source_dir.resolve()),
+        "execute": execute,
+        "summary": summary,
+        "report": report if isinstance(report, dict) else {"summary": summary},
+    }
+
+
+def migration_plan(
+    source: Optional[str] = None,
+    *,
+    preset: str = "full",
+    overwrite: bool = False,
+    migrate_secrets: bool = False,
+    workspace_target: Optional[str] = None,
+    skill_conflict: str = "skip",
+) -> dict:
+    """Dry-run preview: what WOULD be imported, nothing touched."""
+    return _migration_run(
+        source,
+        execute=False,
+        preset=preset,
+        overwrite=overwrite,
+        migrate_secrets=migrate_secrets,
+        workspace_target=workspace_target,
+        skill_conflict=skill_conflict,
+    )
+
+
+def migration_apply(
+    source: Optional[str] = None,
+    *,
+    preset: str = "full",
+    overwrite: bool = False,
+    migrate_secrets: bool = False,
+    workspace_target: Optional[str] = None,
+    skill_conflict: str = "skip",
+) -> dict:
+    """Execute the migration (same options as the CLI)."""
+    return _migration_run(
+        source,
+        execute=True,
+        preset=preset,
+        overwrite=overwrite,
+        migrate_secrets=migrate_secrets,
+        workspace_target=workspace_target,
+        skill_conflict=skill_conflict,
+    )
