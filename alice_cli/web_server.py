@@ -3130,6 +3130,57 @@ async def setup_omniroute_start() -> dict:
     return {"base_url": base_url, "configured": True}
 
 
+@app.get("/api/providers/custom")
+async def api_providers_custom_list(request: Request) -> list[dict]:
+    """DPR: all registered custom providers (config.providers + legacy list)."""
+    _require_token(request)
+    from alice_cli.provider_registry import list_custom_providers
+
+    return list_custom_providers()
+
+
+@app.post("/api/providers/custom")
+async def api_providers_custom_add(request: Request) -> dict:
+    """DPR: register a custom provider from a JSON spec (see providers.d docs)."""
+    _require_token(request)
+    from alice_cli.provider_registry import add_custom_provider, normalize_id
+
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="body must be JSON")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="body must be a JSON object")
+    try:
+        entry = add_custom_provider(body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {**entry, "id": normalize_id(str(entry["name"]))}
+
+
+@app.delete("/api/providers/custom/{provider_id}")
+async def api_providers_custom_delete(provider_id: str, request: Request) -> dict:
+    """DPR: remove a custom provider (config + providers.d yaml)."""
+    _require_token(request)
+    from alice_cli.provider_registry import remove_custom_provider
+
+    if not remove_custom_provider(provider_id):
+        raise HTTPException(status_code=404, detail=f"custom provider '{provider_id}' not found")
+    return {"removed": True, "id": provider_id}
+
+
+@app.post("/api/providers/custom/{provider_id}/test")
+async def api_providers_custom_test(provider_id: str, request: Request) -> dict:
+    """DPR: probe a custom provider endpoint (GET /models)."""
+    _require_token(request)
+    from alice_cli.provider_registry import test_provider
+
+    try:
+        return test_provider(provider_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @app.post("/api/alice/update")
 async def update_lydia():
     """Kick off ``alice update`` in the background."""
