@@ -11,7 +11,15 @@ import { cn } from '@/lib/utils'
  * Telegram?" → the exact doc page, rendered in-app. Mirrors the same index
  * the CLI exposes via `alice help <topic>`.
  */
-export function HelpOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function HelpOverlay({
+  open,
+  onClose,
+  onOpenMigration
+}: {
+  open: boolean
+  onClose: () => void
+  onOpenMigration?: () => void
+}) {
   const { t } = useI18n()
   const copy = t.settings.providers
 
@@ -74,6 +82,15 @@ export function HelpOverlay({ open, onClose }: { open: boolean; onClose: () => v
                   <span className="mt-0.5 block leading-4 text-muted-foreground">{topic.description}</span>
                 </button>
               ))}
+              {onOpenMigration && (
+                <button
+                  className="mt-2 block w-full rounded-[6px] border border-dashed border-(--ui-border) px-2.5 py-2 text-left text-xs font-semibold text-primary transition-colors hover:bg-(--ui-control-hover-background)"
+                  onClick={onOpenMigration}
+                  type="button"
+                >
+                  ⇪ {t.settings.providers.migrationTitle}
+                </button>
+              )}
             </nav>
             <div className="min-h-0 overflow-y-auto p-4">
               {loading && (

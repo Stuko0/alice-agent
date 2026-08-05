@@ -527,6 +527,63 @@ export function getHelpTask(taskId: string): Promise<HelpTaskContent> {
   })
 }
 
+// ── OpenClaw migration wizard ─────────────────────────────────────────────────
+
+export interface MigrationScanResult {
+  found: boolean
+  source_dir: string | null
+}
+
+export interface MigrationResult {
+  ok: boolean
+  source_dir?: string
+  execute?: boolean
+  error?: string
+  summary?: {
+    migrated?: number
+    conflict?: number
+    skipped?: number
+    error?: number
+    applied?: boolean
+  }
+  report?: {
+    items?: Array<Record<string, unknown>>
+  }
+}
+
+export interface MigrationOptions {
+  source?: string
+  preset?: 'full' | 'user-data'
+  overwrite?: boolean
+  migrate_secrets?: boolean
+  skill_conflict?: 'skip' | 'overwrite' | 'rename'
+}
+
+export function scanMigration(): Promise<MigrationScanResult> {
+  return window.lydiaDesktop.api<MigrationScanResult>({
+    ...profileScoped(),
+    path: '/api/migration/scan'
+  })
+}
+
+export function previewMigration(options: MigrationOptions): Promise<MigrationResult> {
+  return window.lydiaDesktop.api<MigrationResult>({
+    ...profileScoped(),
+    path: '/api/migration/preview',
+    method: 'POST',
+    body: options
+  })
+}
+
+export function applyMigration(options: MigrationOptions): Promise<MigrationResult> {
+  return window.lydiaDesktop.api<MigrationResult>({
+    ...profileScoped(),
+    path: '/api/migration/apply',
+    method: 'POST',
+    body: options
+  })
+}
+
 export function submitOAuthCode(providerId: string, sessionId: string, code: string): Promise<OAuthSubmitResponse> {
   return window.lydiaDesktop.api<OAuthSubmitResponse>({
     ...profileScoped(),

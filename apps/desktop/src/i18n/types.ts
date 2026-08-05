@@ -585,6 +585,24 @@ export interface Translations {
       helpTitle: string
       helpIntro: string
       helpOpen: string
+      migrationTitle: string
+      migrationIntro: string
+      migrationScan: string
+      migrationScanning: string
+      migrationFound: (source: string) => string
+      migrationNotFound: string
+      migrationPreview: string
+      migrationPreviewing: string
+      migrationPreviewEmpty: string
+      migrationWillImport: (count: number) => string
+      migrationConflicts: (count: number) => string
+      migrationOverwrite: string
+      migrationSecrets: string
+      migrationApply: string
+      migrationApplying: string
+      migrationDone: string
+      migrationError: string
+      migrationBack: string
     }
     sessions: {
       loading: string

@@ -7,6 +7,8 @@ import { BootFailureOverlay } from '@/components/boot-failure-overlay'
 
 import { HelpFab, HelpOverlay } from '@/components/help-overlay'
 
+import { MigrationWizard } from '@/components/migration-wizard'
+
 import { SetupDriver } from '@/app/setup-driver/setup-driver'
 import { DesktopInstallOverlay } from '@/components/desktop-install-overlay'
 import { GatewayConnectingOverlay } from '@/components/gateway-connecting-overlay'
@@ -159,6 +161,8 @@ export function DesktopController() {
 
   // Task-scoped Help overlay (FAB bottom-right).
   const [helpOpen, setHelpOpen] = useState(false)
+  // OpenClaw → Alice migration wizard (launched from the Help panel).
+  const [migrationOpen, setMigrationOpen] = useState(false)
 
   const busyRef = useRef(false)
   const creatingSessionRef = useRef(false)
@@ -948,7 +952,15 @@ export function DesktopController() {
       <BootFailureOverlay />
       <SetupDriver />
       <HelpFab onClick={() => setHelpOpen(true)} />
-      <HelpOverlay onClose={() => setHelpOpen(false)} open={helpOpen} />
+      <HelpOverlay
+        onClose={() => setHelpOpen(false)}
+        onOpenMigration={() => {
+          setHelpOpen(false)
+          setMigrationOpen(true)
+        }}
+        open={helpOpen}
+      />
+      <MigrationWizard onClose={() => setMigrationOpen(false)} open={migrationOpen} />
       <CommandPalette />
       <PetGenerateOverlay />
       <SessionSwitcher />
