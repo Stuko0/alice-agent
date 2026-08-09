@@ -23,8 +23,8 @@ param(
     # exact ref.  Precedence: Commit > Tag > Branch.
     [string]$Commit = "",
     [string]$Tag = "",
-    [string]$LydiaHome = $(if ($env:LYDIA_HOME) { $env:LYDIA_HOME } else { "$env:LOCALAPPDATA\lydia" }),
-    [string]$InstallDir = $(if ($env:LYDIA_HOME) { "$env:LYDIA_HOME\lydia-agent" } else { "$env:LOCALAPPDATA\lydia\lydia-agent" }),
+    [string]$LydiaHome = $(if ($env:LYDIA_HOME) { $env:LYDIA_HOME } else { "$env:LOCALAPPDATA\alice" }),
+    [string]$InstallDir = $(if ($env:LYDIA_HOME) { "$env:LYDIA_HOME\lydia-agent" } else { "$env:LOCALAPPDATA\alice\lydia-agent" }),
 
     # --- Stage protocol (additive; default invocation behaves as before) ----
     # See the "Stage protocol" section near the bottom of the file for the
@@ -696,7 +696,7 @@ function Install-Git {
       1. Existing ``git`` on PATH -- use it as-is (the common fast path).
       2. Download **PortableGit** from the official git-for-windows GitHub
          release (self-extracting 7z.exe) and unpack it to
-         ``%LOCALAPPDATA%\lydia\git`` -- never touches system Git, never
+         ``%LOCALAPPDATA%\alice\git`` -- never touches system Git, never
          requires admin, works even on locked-down machines and machines
          with a broken system Git install.
 
@@ -710,7 +710,7 @@ function Install-Git {
     We deliberately skip winget because it fails badly when the system Git
     install is in a half-installed state (partially registered, or uninstall-
     blocked).  Owning the Lydia copy of Git ourselves is predictable and
-    recoverable: if it ever breaks, ``Remove-Item %LOCALAPPDATA%\lydia\git``
+    recoverable: if it ever breaks, ``Remove-Item %LOCALAPPDATA%\alice\git``
     and re-running this installer fully recovers.
 
     After install we locate ``bash.exe`` and persist the path in
@@ -1965,8 +1965,8 @@ function Set-PathVariable {
     }
     
     # Set LYDIA_HOME so the Python code finds config/data in the right place.
-    # Only needed on Windows where we install to %LOCALAPPDATA%\lydia instead
-    # of the Unix default ~/.lydia
+    # Only needed on Windows where we install to %LOCALAPPDATA%\alice instead
+    # of the Unix default ~/.alice
     $currentLydiaHome = [Environment]::GetEnvironmentVariable("LYDIA_HOME", "User")
     if (-not $currentLydiaHome -or $currentLydiaHome -ne $LydiaHome) {
         [Environment]::SetEnvironmentVariable("LYDIA_HOME", $LydiaHome, "User")
@@ -2060,7 +2060,7 @@ function Write-BootstrapMarker {
 function Copy-ConfigTemplates {
     Write-Info "Setting up configuration files..."
     
-    # Create the LYDIA_HOME directory structure ($LydiaHome, default %LOCALAPPDATA%\lydia)
+    # Create the LYDIA_HOME directory structure ($LydiaHome, default %LOCALAPPDATA%\alice)
     New-Item -ItemType Directory -Force -Path "$LydiaHome\cron" | Out-Null
     New-Item -ItemType Directory -Force -Path "$LydiaHome\sessions" | Out-Null
     New-Item -ItemType Directory -Force -Path "$LydiaHome\logs" | Out-Null
@@ -2789,7 +2789,7 @@ function New-DesktopShortcuts {
 
 function Install-PlatformSdks {
     # Ensure messaging-platform SDKs matching tokens the user added to
-    # ~/.lydia/.env are importable.  Two problems this solves:
+    # ~/.alice/.env are importable.  Two problems this solves:
     #
     # 1. The tiered `uv pip install` cascade above can fall through to a
     #    lower tier when the first fails (common when RL git deps choke),
