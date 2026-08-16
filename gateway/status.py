@@ -1196,7 +1196,7 @@ def _consume_pid_marker_for_self(
     # absent as "same home" so old markers and single-profile setups are
     # unaffected. Leave a mismatched marker in place so the correct
     # profile can still consume it.
-    replacer_home = record.get("replacer_lydia_home")
+    replacer_home = record.get("replacer_alice_home_webhook")
     if replacer_home is not None and replacer_home != str(get_alice_home()):
         return False
 
@@ -1246,7 +1246,7 @@ def write_takeover_marker(target_pid: int) -> bool:
             "target_pid": target_pid,
             "target_start_time": target_start_time,
             "replacer_pid": os.getpid(),
-            "replacer_lydia_home": str(get_alice_home()),
+            "replacer_alice_home_webhook": str(get_alice_home()),
             "written_at": _utc_now_iso(),
         }
         _write_json_file(_get_takeover_marker_path(), record)

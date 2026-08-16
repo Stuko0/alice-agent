@@ -76,7 +76,7 @@ from tools.tool_backend_helpers import (
     prefers_gateway,
     resolve_openai_audio_api_key,
 )
-from tools.xai_http import lydia_xai_user_agent
+from tools.xai_http import alice_xai_user_agent
 
 # ---------------------------------------------------------------------------
 # Lazy imports -- providers are imported only when actually used to avoid
@@ -1264,7 +1264,7 @@ def _generate_xai_tts(text: str, output_path: str, tts_config: Dict[str, Any]) -
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
-            "User-Agent": lydia_xai_user_agent(),
+            "User-Agent": alice_xai_user_agent(),
         },
         json=payload,
         timeout=60,

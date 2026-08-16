@@ -371,7 +371,7 @@ def remove_path_from_windows_registry(lydia_home: Path) -> list[str]:
     return removed
 
 
-def remove_lydia_env_vars_windows() -> list[str]:
+def remove_alice_env_vars_windows() -> list[str]:
     """Delete ALICE_HOME and ALICE_GIT_BASH_PATH from User-scope env vars."""
     try:
         import winreg
@@ -418,7 +418,7 @@ def _is_windows() -> bool:
     return sys.platform == "win32"
 
 
-def _is_default_lydia_home(lydia_home: Path) -> bool:
+def _is_default_alice_home(lydia_home: Path) -> bool:
     """Return True when ``lydia_home`` points at the default (non-profile) root."""
     try:
         from alice_constants import get_default_alice_root
@@ -578,7 +578,7 @@ def run_uninstall(args):
     # Detect named profiles when uninstalling from the default root —
     # offer to clean them up too instead of leaving zombie LYDIA_HOMEs
     # and systemd units behind.
-    is_default_profile = _is_default_lydia_home(lydia_home)
+    is_default_profile = _is_default_alice_home(lydia_home)
     named_profiles = _discover_named_profiles() if is_default_profile else []
 
     # Non-interactive fast path (``--yes``): no prompts. ``--full`` selects a
@@ -753,7 +753,7 @@ def _perform_uninstall(
             log_info("No Alice-owned PATH entries in User environment")
 
         log_info("Removing ALICE_HOME / ALICE_GIT_BASH_PATH User env vars...")
-        removed_env = remove_lydia_env_vars_windows()
+        removed_env = remove_alice_env_vars_windows()
         if removed_env:
             for name in removed_env:
                 log_success(f"Removed User env var: {name}")

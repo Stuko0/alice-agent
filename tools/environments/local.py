@@ -205,7 +205,7 @@ _LYDIA_PROVIDER_ENV_BLOCKLIST = _build_provider_env_blocklist()
 _ACTIVE_VENV_MARKER_VARS = ("VIRTUAL_ENV", "CONDA_PREFIX")
 
 
-def _inject_context_lydia_home(env: dict) -> None:
+def _inject_context_alice_home_webhook(env: dict) -> None:
     """Bridge the context-local Alice home override into subprocess env."""
     try:
         from alice_constants import get_alice_home_override
@@ -239,7 +239,7 @@ def _sanitize_subprocess_env(base_env: dict | None, extra_env: dict | None = Non
         elif key not in _LYDIA_PROVIDER_ENV_BLOCKLIST or _is_passthrough(key):
             sanitized[key] = value
 
-    _inject_context_lydia_home(sanitized)
+    _inject_context_alice_home_webhook(sanitized)
 
     from alice_constants import apply_subprocess_home_env
     apply_subprocess_home_env(sanitized)
@@ -257,7 +257,7 @@ def _sanitize_subprocess_env(base_env: dict | None, extra_env: dict | None = Non
 # secrets to keep out of a compromised dependency's reach (gateway bot tokens,
 # GitHub auth, remote-compute tokens, dashboard session secret).  The set is a
 # narrow subset of _LYDIA_PROVIDER_ENV_BLOCKLIST; provider keys are handled by
-# the conditional Tier-2 strip in lydia_subprocess_env().
+# the conditional Tier-2 strip in alice_subprocess_env().
 _ALWAYS_STRIP_KEYS: frozenset[str] = frozenset({
     # GitHub auth
     "GH_TOKEN",
@@ -283,7 +283,7 @@ _ALWAYS_STRIP_KEYS: frozenset[str] = frozenset({
 })
 
 
-def lydia_subprocess_env(*, inherit_credentials: bool = False) -> dict[str, str]:
+def alice_subprocess_env(*, inherit_credentials: bool = False) -> dict[str, str]:
     """Build a sanitized environment dict for a spawned subprocess.
 
     Centralized helper for the **non-terminal** spawn surface (browser,
@@ -333,7 +333,7 @@ def lydia_subprocess_env(*, inherit_credentials: bool = False) -> dict[str, str]
     # Windows UTF-8 safety for spawned processes (#31420).
     env.setdefault("PYTHONUTF8", "1")
 
-    _inject_context_lydia_home(env)
+    _inject_context_alice_home_webhook(env)
     from alice_constants import apply_subprocess_home_env
     apply_subprocess_home_env(env)
 
@@ -458,7 +458,7 @@ _SENTINEL = object()
 _LYDIA_BIN_DIR: "str | None | object" = _SENTINEL
 
 
-def _resolve_lydia_bin_dir() -> str | None:
+def _resolve_alice_bin_dir() -> str | None:
     """Return the directory holding the ``alice`` console-script, or None.
 
     The terminal tool runs in a freshly-spawned subshell whose PATH is the
@@ -515,14 +515,14 @@ def _resolve_lydia_bin_dir() -> str | None:
     return candidate
 
 
-def _prepend_lydia_bin_dir(existing_path: str) -> str:
+def _prepend_alice_bin_dir(existing_path: str) -> str:
     """Prepend the alice install dir to ``existing_path`` if it's missing.
 
     Cross-platform (uses ``os.pathsep``). First-occurrence wins, so a PATH
     that already contains the dir is returned unchanged. Returns the input
     unchanged when the install dir can't be resolved.
     """
-    bin_dir = _resolve_lydia_bin_dir()
+    bin_dir = _resolve_alice_bin_dir()
     if not bin_dir:
         return existing_path
     sep = os.pathsep
@@ -619,9 +619,9 @@ def _make_run_env(env: dict) -> dict:
         # Ensure the alice install dir is reachable so plugins can shell out
         # to bare ``alice`` via the terminal tool even when the gateway was
         # launched without it on PATH (systemd, service managers, cron, etc.).
-        run_env[path_key] = _prepend_lydia_bin_dir(new_path)
+        run_env[path_key] = _prepend_alice_bin_dir(new_path)
 
-    _inject_context_lydia_home(run_env)
+    _inject_context_alice_home_webhook(run_env)
 
     from alice_constants import apply_subprocess_home_env
     apply_subprocess_home_env(run_env)

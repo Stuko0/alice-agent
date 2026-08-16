@@ -162,14 +162,14 @@ def _reset_spawn_warning_state() -> None:
 _MARKER_TTL = 86400  # 24 hours
 
 
-def _get_lydia_home() -> str:
+def _get_alice_home_webhook() -> str:
     """Return the Alice home directory, respecting ALICE_HOME env var."""
     return str(get_alice_home())
 
 
 def _failure_marker_path() -> str:
     """Return the path to the install-failure marker file."""
-    return os.path.join(_get_lydia_home(), ".tirith-install-failed")
+    return os.path.join(_get_alice_home_webhook(), ".tirith-install-failed")
 
 
 def _read_failure_reason() -> str | None:
@@ -235,9 +235,9 @@ def _clear_install_failed():
         pass
 
 
-def _lydia_bin_dir() -> str:
+def _alice_bin_dir() -> str:
     """Return $ALICE_HOME/bin, creating it if needed."""
-    d = os.path.join(_get_lydia_home(), "bin")
+    d = os.path.join(_get_alice_home_webhook(), "bin")
     os.makedirs(d, exist_ok=True)
     return d
 
@@ -458,7 +458,7 @@ def _install_tirith(*, log_failures: bool = True) -> tuple[str | None, str]:
             if src is None:
                 return None, reason
 
-        dest = os.path.join(_lydia_bin_dir(), "tirith")
+        dest = os.path.join(_alice_bin_dir(), "tirith")
         try:
             shutil.move(src, dest)
         except OSError:
@@ -548,7 +548,7 @@ def _resolve_tirith_path(configured_path: str) -> str:
         _clear_install_failed()
         return found
 
-    lydia_bin = os.path.join(_lydia_bin_dir(), "tirith")
+    lydia_bin = os.path.join(_alice_bin_dir(), "tirith")
     if os.path.isfile(lydia_bin) and os.access(lydia_bin, os.X_OK):
         _resolved_path = lydia_bin
         _install_failure_reason = ""
@@ -612,7 +612,7 @@ def _background_install(*, log_failures: bool = True):
             _install_failure_reason = ""
             return
 
-        lydia_bin = os.path.join(_lydia_bin_dir(), "tirith")
+        lydia_bin = os.path.join(_alice_bin_dir(), "tirith")
         if os.path.isfile(lydia_bin) and os.access(lydia_bin, os.X_OK):
             _resolved_path = lydia_bin
             _install_failure_reason = ""
@@ -682,7 +682,7 @@ def ensure_installed(*, log_failures: bool = True):
         _clear_install_failed()
         return found
 
-    lydia_bin = os.path.join(_lydia_bin_dir(), "tirith")
+    lydia_bin = os.path.join(_alice_bin_dir(), "tirith")
     if os.path.isfile(lydia_bin) and os.access(lydia_bin, os.X_OK):
         _resolved_path = lydia_bin
         _install_failure_reason = ""

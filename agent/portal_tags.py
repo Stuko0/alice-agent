@@ -34,7 +34,7 @@ from __future__ import annotations
 from typing import List
 
 
-def _lydia_version() -> str:
+def _alice_version() -> str:
     """Return the current Alice release version, e.g. ``"0.13.0"``.
 
     Falls back to ``"unknown"`` if ``alice_cli`` cannot be imported (should
@@ -52,7 +52,7 @@ def alice_client_tag() -> str:
 
     Format: ``client=alice-client-v<MAJOR>.<MINOR>.<PATCH>``.
     """
-    return f"client=alice-client-v{_lydia_version()}"
+    return f"client=alice-client-v{_alice_version()}"
 
 
 def nous_portal_tags() -> List[str]:

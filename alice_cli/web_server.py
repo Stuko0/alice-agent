@@ -1390,7 +1390,7 @@ def _local_dashboard_request(request: Request) -> bool:
     return host in local_hosts or client_host in local_hosts
 
 
-def _default_lydia_root_is_opt_data() -> bool:
+def _default_alice_root_is_opt_data() -> bool:
     raw = os.environ.get("ALICE_HOME", "").strip()
     if not raw:
         return False
@@ -1418,7 +1418,7 @@ def _dashboard_local_update_managed_externally() -> bool:
     externally managed unless their apply path is proven safe inside the
     running container filesystem.
     """
-    if _default_lydia_root_is_opt_data():
+    if _default_alice_root_is_opt_data():
         return True
     try:
         from alice_constants import is_container
@@ -1452,7 +1452,7 @@ def _managed_files_policy(request: Request, *, create_root: bool = True) -> Mana
     # and still expect the Files page to browse their local home directory. Lock
     # to /opt/data only when the installation's Alice root is actually /opt/data
     # (the container/hosted layout) or when LYDIA_DASHBOARD_FILES_ROOT is set.
-    if _default_lydia_root_is_opt_data():
+    if _default_alice_root_is_opt_data():
         root = _ensure_managed_root(_HOSTED_MANAGED_FILES_ROOT) if create_root else _HOSTED_MANAGED_FILES_ROOT
         return ManagedFilesPolicy(default_path=root, locked_root=root, can_change_path=False)
 
@@ -2334,7 +2334,7 @@ async def get_status(profile: Optional[str] = None):
             "release_date": __release_date__,
             "config_version": current_ver,
             "latest_config_version": latest_ver,
-            "can_update_lydia": not _dashboard_local_update_managed_externally(),
+            "can_update_alice": not _dashboard_local_update_managed_externally(),
             "gateway_running": gateway_running,
             "gateway_state": gateway_state,
             "gateway_platforms": gateway_platforms,
@@ -2544,7 +2544,7 @@ async def set_curator_paused(body: CuratorPause):
 async def run_curator():
     """Trigger a curator review now (backgrounded; tail via action status)."""
     try:
-        proc = _spawn_lydia_action(["curator", "run"], "curator-run")
+        proc = _spawn_alice_action(["curator", "run"], "curator-run")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to run curator: {exc}")
     return {"ok": True, "pid": proc.pid, "name": "curator-run"}
@@ -2678,7 +2678,7 @@ async def get_portal_status():
 @app.post("/api/ops/prompt-size")
 async def run_prompt_size():
     try:
-        proc = _spawn_lydia_action(["prompt-size"], "prompt-size")
+        proc = _spawn_alice_action(["prompt-size"], "prompt-size")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed: {exc}")
     return {"ok": True, "pid": proc.pid, "name": "prompt-size"}
@@ -2687,7 +2687,7 @@ async def run_prompt_size():
 @app.post("/api/ops/dump")
 async def run_dump():
     try:
-        proc = _spawn_lydia_action(["dump"], "dump")
+        proc = _spawn_alice_action(["dump"], "dump")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed: {exc}")
     return {"ok": True, "pid": proc.pid, "name": "dump"}
@@ -2696,7 +2696,7 @@ async def run_dump():
 @app.post("/api/ops/config-migrate")
 async def run_config_migrate():
     try:
-        proc = _spawn_lydia_action(["config", "migrate"], "config-migrate")
+        proc = _spawn_alice_action(["config", "migrate"], "config-migrate")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed: {exc}")
     return {"ok": True, "pid": proc.pid, "name": "config-migrate"}
@@ -2819,7 +2819,7 @@ def _dashboard_spawn_executable() -> str:
     return exe
 
 
-def _spawn_lydia_action(subcommand: List[str], name: str) -> subprocess.Popen:
+def _spawn_alice_action(subcommand: List[str], name: str) -> subprocess.Popen:
     """Spawn ``alice <subcommand>`` detached and record the Popen handle.
 
     Uses the running interpreter's ``alice_cli.main`` module so the action
@@ -2935,7 +2935,7 @@ def _spawn_gateway_restart(profile: Optional[str] = None) -> Tuple[subprocess.Po
         if existing_command is None or existing_command == tuple(subcommand):
             return existing, True
         raise RuntimeError("gateway restart already in progress for another profile")
-    return _spawn_lydia_action(subcommand, "gateway-restart"), False
+    return _spawn_alice_action(subcommand, "gateway-restart"), False
 
 
 def _restart_gateway_after_webhook_enable(profile: Optional[str] = None) -> dict[str, Any]:
@@ -3262,7 +3262,7 @@ async def api_providers_custom_test(provider_id: str, request: Request) -> dict:
 
 
 @app.post("/api/alice/update")
-async def update_lydia():
+async def update_alice():
     """Kick off ``alice update`` in the background."""
     if _dashboard_local_update_managed_externally():
         message = (
@@ -3294,7 +3294,7 @@ async def update_lydia():
         }
 
     try:
-        proc = _spawn_lydia_action(["update"], "alice-update")
+        proc = _spawn_alice_action(["update"], "alice-update")
     except Exception as exc:
         _log.exception("Failed to spawn alice update")
         raise HTTPException(status_code=500, detail=f"Failed to start update: {exc}")
@@ -3354,7 +3354,7 @@ def _recent_upstream_commits(n: int = 20) -> List[Dict[str, Any]]:
 
 
 @app.get("/api/alice/update/check")
-async def check_lydia_update(force: bool = False):
+async def check_alice_update(force: bool = False):
     """Report whether a Alice update is available, without applying it.
 
     Powers the dashboard's "check before you update" flow: the System page
@@ -6541,17 +6541,17 @@ def _anthropic_oauth_status() -> Dict[str, Any]:
     """
     try:
         from agent.anthropic_adapter import (
-            read_lydia_oauth_credentials,
+            read_alice_oauth_credentials,
             _LYDIA_OAUTH_FILE,
         )
     except ImportError:
-        read_lydia_oauth_credentials = None  # type: ignore
+        read_alice_oauth_credentials = None  # type: ignore
         _LYDIA_OAUTH_FILE = None  # type: ignore
 
     lydia_creds = None
-    if read_lydia_oauth_credentials:
+    if read_alice_oauth_credentials:
         try:
-            lydia_creds = read_lydia_oauth_credentials()
+            lydia_creds = read_alice_oauth_credentials()
         except Exception:
             lydia_creds = None
     if lydia_creds and lydia_creds.get("accessToken"):
@@ -9469,7 +9469,7 @@ async def install_mcp_catalog_entry(body: MCPCatalogInstall, profile: Optional[s
     # The -p subprocess rebinds ALICE_HOME-derived paths in the child.
     if entry.install is not None:
         try:
-            proc = _spawn_lydia_action(
+            proc = _spawn_alice_action(
                 _profile_cli_args(effective_profile) + ["mcp", "install", name],
                 "mcp-install",
             )
@@ -9759,7 +9759,7 @@ async def set_webhook_enabled(name: str, body: WebhookEnabledToggle):
 @app.post("/api/gateway/start")
 async def start_gateway(profile: Optional[str] = None):
     try:
-        proc = _spawn_lydia_action(_gateway_subcommand(profile, "start"), "gateway-start")
+        proc = _spawn_alice_action(_gateway_subcommand(profile, "start"), "gateway-start")
     except HTTPException:
         raise
     except Exception as exc:
@@ -9771,7 +9771,7 @@ async def start_gateway(profile: Optional[str] = None):
 @app.post("/api/gateway/stop")
 async def stop_gateway(profile: Optional[str] = None):
     try:
-        proc = _spawn_lydia_action(_gateway_subcommand(profile, "stop"), "gateway-stop")
+        proc = _spawn_alice_action(_gateway_subcommand(profile, "stop"), "gateway-stop")
     except HTTPException:
         raise
     except Exception as exc:
@@ -10015,7 +10015,7 @@ async def reset_memory(body: MemoryReset):
 @app.post("/api/ops/doctor")
 async def run_doctor():
     try:
-        proc = _spawn_lydia_action(["doctor"], "doctor")
+        proc = _spawn_alice_action(["doctor"], "doctor")
     except Exception as exc:
         _log.exception("Failed to spawn doctor")
         raise HTTPException(status_code=500, detail=f"Failed to run doctor: {exc}")
@@ -10025,7 +10025,7 @@ async def run_doctor():
 @app.post("/api/ops/security-audit")
 async def run_security_audit():
     try:
-        proc = _spawn_lydia_action(["security", "audit"], "security-audit")
+        proc = _spawn_alice_action(["security", "audit"], "security-audit")
     except Exception as exc:
         _log.exception("Failed to spawn security audit")
         raise HTTPException(status_code=500, detail=f"Failed to run security audit: {exc}")
@@ -10063,7 +10063,7 @@ async def run_backup(body: BackupRequest):
             )
         args.append(str(archive))
     try:
-        proc = _spawn_lydia_action(args, "backup")
+        proc = _spawn_alice_action(args, "backup")
     except Exception as exc:
         _log.exception("Failed to spawn backup")
         raise HTTPException(status_code=500, detail=f"Failed to run backup: {exc}")
@@ -10119,7 +10119,7 @@ async def run_import(body: ImportRequest):
     if body.force:
         args.append("--force")
     try:
-        proc = _spawn_lydia_action(args, "import")
+        proc = _spawn_alice_action(args, "import")
     except Exception as exc:
         _log.exception("Failed to spawn import")
         raise HTTPException(status_code=500, detail=f"Failed to run import: {exc}")
@@ -10201,7 +10201,7 @@ async def run_import_upload(
     if force:
         args.append("--force")
     try:
-        proc = _spawn_lydia_action(args, "import")
+        proc = _spawn_alice_action(args, "import")
     except Exception as exc:
         _log.exception("Failed to spawn import")
         raise HTTPException(status_code=500, detail=f"Failed to run import: {exc}")
@@ -10407,7 +10407,7 @@ async def list_checkpoints():
 @app.post("/api/ops/checkpoints/prune")
 async def prune_checkpoints():
     try:
-        proc = _spawn_lydia_action(["checkpoints", "prune"], "checkpoints-prune")
+        proc = _spawn_alice_action(["checkpoints", "prune"], "checkpoints-prune")
     except Exception as exc:
         _log.exception("Failed to spawn checkpoints prune")
         raise HTTPException(status_code=500, detail=f"Failed to prune checkpoints: {exc}")
@@ -10452,7 +10452,7 @@ async def install_skill_hub(body: SkillInstallRequest, profile: Optional[str] = 
     if not identifier:
         raise HTTPException(status_code=400, detail="identifier is required")
     try:
-        proc = _spawn_lydia_action(
+        proc = _spawn_alice_action(
             _profile_cli_args(body.profile or profile)
             + ["skills", "install", identifier, "--yes"],
             "skills-install",
@@ -10476,7 +10476,7 @@ async def uninstall_skill_hub(body: SkillUninstallRequest, profile: Optional[str
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
     try:
-        proc = _spawn_lydia_action(
+        proc = _spawn_alice_action(
             _profile_cli_args(body.profile or profile) + ["skills", "uninstall", name, "--yes"],
             "skills-uninstall",
         )
@@ -10498,7 +10498,7 @@ async def update_skills_hub(
 ):
     try:
         effective = (body.profile if body else None) or profile
-        proc = _spawn_lydia_action(
+        proc = _spawn_alice_action(
             _profile_cli_args(effective) + ["skills", "update"], "skills-update"
         )
     except HTTPException:
@@ -10923,7 +10923,7 @@ def _fallback_profile_dicts(profiles_mod) -> List[Dict[str, Any]]:
             return default
 
     profiles: List[Dict[str, Any]] = []
-    default_home = profiles_mod._get_default_lydia_home()
+    default_home = profiles_mod._get_default_alice_home()
     if default_home.is_dir():
         model, provider = _safe(lambda: profiles_mod._read_config_model(default_home), (None, None))
         profiles.append({
@@ -11202,7 +11202,7 @@ async def create_profile_endpoint(body: ProfileCreate):
         if not ident:
             continue
         try:
-            proc = _spawn_lydia_action(
+            proc = _spawn_alice_action(
                 ["-p", body.name, "skills", "install", ident, "--yes"],
                 "skills-install",
             )
@@ -11945,7 +11945,7 @@ async def run_toolset_post_setup(
         )
 
     try:
-        proc = _spawn_lydia_action(
+        proc = _spawn_alice_action(
             _profile_cli_args(body.profile or profile)
             + ["tools", "post-setup", body.key],
             "tools-post-setup",
@@ -12002,7 +12002,7 @@ async def grant_computer_use_permissions(profile: Optional[str] = None):
             detail="Computer Use permission grants are a macOS concept.",
         )
     try:
-        proc = _spawn_lydia_action(
+        proc = _spawn_alice_action(
             _profile_cli_args(profile)
             + ["computer-use", "permissions", "grant"],
             "computer-use-grant",

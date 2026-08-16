@@ -77,7 +77,7 @@ def _extract_inherited_flags(argv: Sequence[str]) -> list[str]:
     return flags
 
 
-def resolve_lydia_bin() -> Optional[str]:
+def resolve_alice_bin() -> Optional[str]:
     """Find the alice entry point.
 
     Priority:
@@ -136,7 +136,7 @@ def build_relaunch_argv(
         original_argv: The original argv to scan for flags (defaults to
             ``sys.argv[1:]``).
     """
-    bin_path = resolve_lydia_bin()
+    bin_path = resolve_alice_bin()
 
     if bin_path:
         argv = [bin_path]

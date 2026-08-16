@@ -69,7 +69,7 @@ def get_env_value(name: str, default=None):
     return os.environ.get(name, default)
 
 
-def lydia_xai_user_agent() -> str:
+def alice_xai_user_agent() -> str:
     """Return a stable Alice-specific User-Agent for xAI HTTP calls."""
     try:
         from alice_cli import __version__

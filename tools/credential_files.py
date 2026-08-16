@@ -49,7 +49,7 @@ def _get_registered() -> Dict[str, str]:
 _config_files: List[Dict[str, str]] | None = None
 
 
-def _resolve_lydia_home() -> Path:
+def _resolve_alice_home_webhook() -> Path:
     from alice_constants import get_alice_home
     return get_alice_home()
 
@@ -68,7 +68,7 @@ def register_credential_file(
     skill cannot declare ``required_credential_files: ['../../.ssh/id_rsa']``
     and exfiltrate sensitive host files into a container sandbox.
     """
-    lydia_home = _resolve_lydia_home()
+    lydia_home = _resolve_alice_home_webhook()
 
     # Reject absolute paths — they bypass the ALICE_HOME sandbox entirely.
     if os.path.isabs(relative_path):
@@ -138,7 +138,7 @@ def _load_config_files() -> List[Dict[str, str]]:
     result: List[Dict[str, str]] = []
     try:
         from alice_cli.config import read_raw_config
-        lydia_home = _resolve_lydia_home()
+        lydia_home = _resolve_alice_home_webhook()
         cfg = read_raw_config()
         cred_files = cfg_get(cfg, "terminal", "credential_files")
         if isinstance(cred_files, list):
@@ -220,7 +220,7 @@ def get_skills_directory_mount(
     at ``<container_base>/external_skills/<index>``.
     """
     mounts = []
-    lydia_home = _resolve_lydia_home()
+    lydia_home = _resolve_alice_home_webhook()
     skills_dir = lydia_home / "skills"
     if skills_dir.is_dir():
         host_path = _safe_skills_path(skills_dir)
@@ -303,7 +303,7 @@ def iter_skills_files(
     """
     result: List[Dict[str, str]] = []
 
-    lydia_home = _resolve_lydia_home()
+    lydia_home = _resolve_alice_home_webhook()
     skills_dir = lydia_home / "skills"
     if skills_dir.is_dir():
         container_root = f"{container_base.rstrip('/')}/skills"

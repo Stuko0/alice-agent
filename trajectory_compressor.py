@@ -51,9 +51,9 @@ from agent.retry_utils import jittered_backoff
 # Load .env from ALICE_HOME first, then project root as a dev fallback.
 from alice_cli.env_loader import load_alice_dotenv
 
-_lydia_home = get_alice_home()
+_alice_home_webhook = get_alice_home()
 _project_env = Path(__file__).parent / ".env"
-load_alice_dotenv(lydia_home=_lydia_home, project_env=_project_env)
+load_alice_dotenv(lydia_home=_alice_home_webhook, project_env=_project_env)
 
 
 def _effective_temperature_for_model(

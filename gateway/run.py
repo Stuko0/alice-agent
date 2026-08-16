@@ -1234,11 +1234,11 @@ def _home_thread_env_var(platform_name: str) -> str:
 
 def _restart_notification_pending() -> bool:
     """Return True when a /restart completion marker is waiting to be delivered."""
-    return (_lydia_home / ".restart_notify.json").exists()
+    return (_alice_home_webhook / ".restart_notify.json").exists()
 
 
 def _planned_restart_notification_path() -> Path:
-    return _lydia_home / ".restart_pending.json"
+    return _alice_home_webhook / ".restart_pending.json"
 
 
 def _planned_restart_notification_pending() -> bool:
@@ -1262,14 +1262,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Resolve Alice home directory (respects ALICE_HOME override)
 from alice_constants import get_alice_home
 from utils import atomic_json_write, atomic_yaml_write, base_url_host_matches, is_truthy_value
-_lydia_home = get_alice_home()
+_alice_home_webhook = get_alice_home()
 
 # Load environment variables from ~/.alice/.env first.
 # User-managed env files should override stale shell exports on restart.
 from dotenv import load_dotenv  # noqa: F401  # backward-compat for tests that monkeypatch this symbol
 from alice_cli.env_loader import load_alice_dotenv
-_env_path = _lydia_home / '.env'
-load_alice_dotenv(lydia_home=_lydia_home, project_env=Path(__file__).resolve().parents[1] / '.env')
+_env_path = _alice_home_webhook / '.env'
+load_alice_dotenv(lydia_home=_alice_home_webhook, project_env=Path(__file__).resolve().parents[1] / '.env')
 
 
 def _reload_runtime_env_preserving_config_authority() -> None:
@@ -1291,14 +1291,14 @@ def _reload_runtime_env_preserving_config_authority() -> None:
         # Credentials are resolved from the active profile's secret scope, not
         # os.environ. Still honor config.yaml's agent.max_turns bridge below
         # using the scoped home, but never reload .env into global env.
-        _bridge_max_turns_from_config(_lydia_home)
+        _bridge_max_turns_from_config(_alice_home_webhook)
         return
 
     load_alice_dotenv(
-        lydia_home=_lydia_home,
+        lydia_home=_alice_home_webhook,
         project_env=Path(__file__).resolve().parents[1] / '.env',
     )
-    _bridge_max_turns_from_config(_lydia_home)
+    _bridge_max_turns_from_config(_alice_home_webhook)
 
 
 def _bridge_max_turns_from_config(home: "Path") -> None:
@@ -1408,7 +1408,7 @@ _DOCKER_MEDIA_OUTPUT_CONTAINER_PATHS = {"/output", "/outputs"}
 
 # Bridge config.yaml values into the environment so os.getenv() picks them up.
 # config.yaml is authoritative for terminal settings — overrides .env.
-_config_path = _lydia_home / 'config.yaml'
+_config_path = _alice_home_webhook / 'config.yaml'
 if _config_path.exists():
     try:
         import yaml as _yaml
@@ -1788,7 +1788,7 @@ def _try_resolve_fallback_provider() -> dict | None:
     from alice_cli.runtime_provider import resolve_runtime_provider
     try:
         import yaml as _y
-        cfg_path = _lydia_home / "config.yaml"
+        cfg_path = _alice_home_webhook / "config.yaml"
         if not cfg_path.exists():
             return None
         with open(cfg_path, encoding="utf-8") as _f:
@@ -2148,7 +2148,7 @@ def _teams_pipeline_plugin_enabled() -> bool:
 def _load_gateway_config() -> dict:
     """Load and parse ~/.alice/config.yaml, returning {} on any error.
 
-    Uses the module-level ``_lydia_home`` (so tests that monkeypatch it
+    Uses the module-level ``_alice_home_webhook`` (so tests that monkeypatch it
     still see their fixture) and shares the mtime-keyed raw-yaml cache
     from ``alice_cli.config.read_raw_config`` when the paths match.
 
@@ -2156,15 +2156,15 @@ def _load_gateway_config() -> dict:
     gateway honors administrator-pinned values — neither read_raw_config nor a
     direct yaml.safe_load carries the managed merge on its own. Fail-open.
     """
-    config_path = _lydia_home / 'config.yaml'
+    config_path = _alice_home_webhook / 'config.yaml'
     raw: dict = {}
     used_canonical = False
     try:
         from alice_cli.config import get_config_path, read_raw_config
-        # Fast path: if _lydia_home agrees with the canonical config
+        # Fast path: if _alice_home_webhook agrees with the canonical config
         # location, reuse the shared cache. Otherwise fall through to a
         # direct read (keeps test fixtures with a monkeypatched
-        # _lydia_home working).
+        # _alice_home_webhook working).
         if config_path == get_config_path():
             raw = read_raw_config()
             used_canonical = True
@@ -2211,7 +2211,7 @@ def _load_gateway_runtime_config() -> dict:
 
     Runtime helpers should honor the same env-template expansion documented for
     ``config.yaml`` while still respecting tests that monkeypatch
-    ``gateway.run._lydia_home``. Build on ``_load_gateway_config()`` rather
+    ``gateway.run._alice_home_webhook``. Build on ``_load_gateway_config()`` rather
     than calling the canonical loader directly so both behaviors stay aligned.
 
     Expansion failures are intentionally NOT swallowed — silently returning
@@ -2242,7 +2242,7 @@ def _resolve_gateway_model(config: dict | None = None) -> str:
     return ""
 
 
-def _resolve_lydia_bin() -> Optional[list[str]]:
+def _resolve_alice_bin() -> Optional[list[str]]:
     """Resolve the Alice update command as argv parts.
 
     Tries in order:
@@ -2960,7 +2960,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
 
     # -- Voice mode persistence ------------------------------------------
 
-    _VOICE_MODE_PATH = _lydia_home / "gateway_voice_mode.json"
+    _VOICE_MODE_PATH = _alice_home_webhook / "gateway_voice_mode.json"
 
     def _voice_key(self, platform: Platform, chat_id: str) -> str:
         """Return a platform-namespaced key for voice mode state."""
@@ -4303,7 +4303,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             return []
         path = Path(file_path).expanduser()
         if not path.is_absolute():
-            path = _lydia_home / path
+            path = _alice_home_webhook / path
         if not path.exists():
             logger.warning("Prefill messages file not found: %s", path)
             return []
@@ -4524,7 +4524,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         """Load OpenRouter provider routing preferences from config.yaml."""
         try:
             import yaml as _y
-            cfg_path = _lydia_home / "config.yaml"
+            cfg_path = _alice_home_webhook / "config.yaml"
             if cfg_path.exists():
                 with open(cfg_path, encoding="utf-8") as _f:
                     cfg = _y.safe_load(_f) or {}
@@ -4543,7 +4543,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         """
         try:
             import yaml as _y
-            cfg_path = _lydia_home / "config.yaml"
+            cfg_path = _alice_home_webhook / "config.yaml"
             if cfg_path.exists():
                 with open(cfg_path, encoding="utf-8") as _f:
                     cfg = _y.safe_load(_f) or {}
@@ -5019,7 +5019,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                     f"{message}\n\n"
                     f"{busy_input_hint_gateway(_hint_mode)}"
                 )
-                mark_seen(_lydia_home / "config.yaml", BUSY_INPUT_FLAG)
+                mark_seen(_alice_home_webhook / "config.yaml", BUSY_INPUT_FLAG)
         except Exception as _onb_err:
             logger.debug("Failed to apply busy-input onboarding hint: %s", _onb_err)
 
@@ -5459,7 +5459,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         """
         import json
 
-        path = _lydia_home / self._STUCK_LOOP_FILE
+        path = _alice_home_webhook / self._STUCK_LOOP_FILE
         try:
             counts = json.loads(path.read_text()) if path.exists() else {}
         except Exception:
@@ -5486,7 +5486,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         """
         import json
 
-        path = _lydia_home / self._STUCK_LOOP_FILE
+        path = _alice_home_webhook / self._STUCK_LOOP_FILE
         if not path.exists():
             return 0
 
@@ -5533,7 +5533,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         """
         import json
 
-        path = _lydia_home / self._STUCK_LOOP_FILE
+        path = _alice_home_webhook / self._STUCK_LOOP_FILE
         if not path.exists():
             return
         try:
@@ -5551,7 +5551,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         import shutil
         import subprocess
 
-        lydia_cmd = _resolve_lydia_bin()
+        lydia_cmd = _resolve_alice_bin()
         if not lydia_cmd:
             logger.error("Could not locate alice binary for detached /restart")
             return
@@ -6285,7 +6285,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         # process already drained active agents, so sessions aren't stuck.
         # This prevents unwanted auto-resets after `alice update`,
         # `alice gateway restart`, or `/restart`.
-        _clean_marker = _lydia_home / ".clean_shutdown"
+        _clean_marker = _alice_home_webhook / ".clean_shutdown"
         if _clean_marker.exists():
             logger.info("Previous gateway exited cleanly — skipping session suspension")
             try:
@@ -6565,8 +6565,8 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         if not notified and any(
             path.exists()
             for path in (
-                _lydia_home / ".update_pending.json",
-                _lydia_home / ".update_pending.claimed.json",
+                _alice_home_webhook / ".update_pending.json",
+                _alice_home_webhook / ".update_pending.claimed.json",
             )
         ):
             self._schedule_update_notification_watch()
@@ -7612,7 +7612,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             # of resuming a half-finished tool loop.
             if not timed_out:
                 try:
-                    (_lydia_home / ".clean_shutdown").touch()
+                    (_alice_home_webhook / ".clean_shutdown").touch()
                 except Exception:
                     pass
             else:
@@ -8216,8 +8216,8 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                 else:
                     response_text = raw
             if response_text:
-                response_path = _lydia_home / ".update_response"
-                prompt_path = _lydia_home / ".update_prompt.json"
+                response_path = _alice_home_webhook / ".update_response"
+                prompt_path = _alice_home_webhook / ".update_prompt.json"
                 try:
                     tmp = response_path.with_suffix(".tmp")
                     tmp.write_text(response_text)
@@ -8236,8 +8236,8 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             # blocking on stdin until the 30-minute watcher timeout.
             # The slash command then falls through to normal dispatch.
             if _recognized_cmd:
-                response_path = _lydia_home / ".update_response"
-                prompt_path = _lydia_home / ".update_prompt.json"
+                response_path = _alice_home_webhook / ".update_response"
+                prompt_path = _alice_home_webhook / ".update_prompt.json"
                 try:
                     tmp = response_path.with_suffix(".tmp")
                     tmp.write_text("")
@@ -10438,7 +10438,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                     and not is_seen(_onb_cfg, PROFILE_BUILD_FLAG)
                 ):
                     context_prompt += profile_build_directive()
-                    mark_seen(_lydia_home / "config.yaml", PROFILE_BUILD_FLAG)
+                    mark_seen(_alice_home_webhook / "config.yaml", PROFILE_BUILD_FLAG)
                 else:
                     context_prompt += _intro_note
             except Exception as _pb_err:
@@ -11429,7 +11429,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             return False
 
         try:
-            marker_path = _lydia_home / ".restart_last_processed.json"
+            marker_path = _alice_home_webhook / ".restart_last_processed.json"
             if not marker_path.exists():
                 return False
             data = json.loads(marker_path.read_text())
@@ -13246,11 +13246,11 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         the messenger.  The user's next message is intercepted by
         ``_handle_message`` and written to ``.update_response``.
         """
-        pending_path = _lydia_home / ".update_pending.json"
-        claimed_path = _lydia_home / ".update_pending.claimed.json"
-        output_path = _lydia_home / ".update_output.txt"
-        exit_code_path = _lydia_home / ".update_exit_code"
-        prompt_path = _lydia_home / ".update_prompt.json"
+        pending_path = _alice_home_webhook / ".update_pending.json"
+        claimed_path = _alice_home_webhook / ".update_pending.claimed.json"
+        output_path = _alice_home_webhook / ".update_output.txt"
+        exit_code_path = _alice_home_webhook / ".update_exit_code"
+        prompt_path = _alice_home_webhook / ".update_prompt.json"
 
         loop = asyncio.get_running_loop()
         deadline = loop.time() + timeout
@@ -13376,7 +13376,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                 for p in (pending_path, claimed_path, output_path,
                           exit_code_path, prompt_path):
                     p.unlink(missing_ok=True)
-                (_lydia_home / ".update_response").unlink(missing_ok=True)
+                (_alice_home_webhook / ".update_response").unlink(missing_ok=True)
                 self._update_prompt_pending.pop(session_key, None)
                 return
 
@@ -13462,7 +13462,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             for p in (pending_path, claimed_path, output_path,
                       exit_code_path, prompt_path):
                 p.unlink(missing_ok=True)
-            (_lydia_home / ".update_response").unlink(missing_ok=True)
+            (_alice_home_webhook / ".update_response").unlink(missing_ok=True)
             self._update_prompt_pending.pop(session_key, None)
 
     async def _send_update_notification(self) -> bool:
@@ -13475,10 +13475,10 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         cannot resolve the adapter (e.g. after a gateway restart where the
         platform hasn't reconnected yet).
         """
-        pending_path = _lydia_home / ".update_pending.json"
-        claimed_path = _lydia_home / ".update_pending.claimed.json"
-        output_path = _lydia_home / ".update_output.txt"
-        exit_code_path = _lydia_home / ".update_exit_code"
+        pending_path = _alice_home_webhook / ".update_pending.json"
+        claimed_path = _alice_home_webhook / ".update_pending.claimed.json"
+        output_path = _alice_home_webhook / ".update_output.txt"
+        exit_code_path = _alice_home_webhook / ".update_exit_code"
 
         if not pending_path.exists() and not claimed_path.exists():
             return False
@@ -13585,7 +13585,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
 
     async def _send_restart_notification(self) -> Optional[tuple[str, str, Optional[str]]]:
         """Notify the chat that initiated /restart that the gateway is back."""
-        notify_path = _lydia_home / ".restart_notify.json"
+        notify_path = _alice_home_webhook / ".restart_notify.json"
         if not notify_path.exists():
             return None
 
@@ -15721,7 +15721,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                         if gate_on and not is_seen(_cfg, TOOL_PROGRESS_FLAG):
                             long_tool_hint_fired[0] = True
                             progress_queue.put(tool_progress_hint_gateway())
-                            mark_seen(_lydia_home / "config.yaml", TOOL_PROGRESS_FLAG)
+                            mark_seen(_alice_home_webhook / "config.yaml", TOOL_PROGRESS_FLAG)
                 except Exception as _hint_err:
                     logger.debug("tool-progress onboarding hint failed: %s", _hint_err)
                 return
@@ -18692,7 +18692,7 @@ async def start_gateway(config: Optional[GatewayConfig] = None, replace: bool = 
     # and gateway.log (INFO+, gateway-component records only).
     # Idempotent, so repeated calls from AIAgent.__init__ won't duplicate.
     from alice_logging import setup_logging, _safe_stderr
-    setup_logging(lydia_home=_lydia_home, mode="gateway")
+    setup_logging(lydia_home=_alice_home_webhook, mode="gateway")
 
     # Startup security posture audit — warn-on-load, never blocks. Surfaces
     # root / weak-SSH / ephemeral-container / unauthenticated-listener posture
@@ -18708,7 +18708,7 @@ async def start_gateway(config: Optional[GatewayConfig] = None, replace: bool = 
             _audit_cfg = read_raw_config()
         except Exception:
             _audit_cfg = None
-        log_startup_security_warnings(lydia_home=_lydia_home, config=_audit_cfg)
+        log_startup_security_warnings(lydia_home=_alice_home_webhook, config=_audit_cfg)
     except Exception as _audit_exc:
         logger.debug("Startup security audit failed (non-fatal): %s", _audit_exc)
 
@@ -18825,7 +18825,7 @@ async def start_gateway(config: Optional[GatewayConfig] = None, replace: bool = 
             # if our cgroup is being torn down.  Bounded by an internal
             # timeout; never blocks the event loop here.
             try:
-                _diag_log = _lydia_home / "logs" / "gateway-shutdown-diag.log"
+                _diag_log = _alice_home_webhook / "logs" / "gateway-shutdown-diag.log"
                 spawn_async_diagnostic(
                     _diag_log, _shutdown_ctx["signal"], timeout_seconds=5.0
                 )

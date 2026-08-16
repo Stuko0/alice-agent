@@ -78,7 +78,7 @@ def _find_git_root(start: Path) -> Optional[Path]:
 _LYDIA_MD_NAMES = (".alice.md", "ALICE.md")
 
 
-def _find_lydia_md(cwd: Path) -> Optional[Path]:
+def _find_alice_md(cwd: Path) -> Optional[Path]:
     """Discover the nearest ``.alice.md`` or ``ALICE.md``.
 
     Search order: *cwd* first, then each parent directory up to (and
@@ -1824,9 +1824,9 @@ def load_soul_md(context_length: Optional[int] = None) -> Optional[str]:
         return None
 
 
-def _load_lydia_md(cwd_path: Path, context_length: Optional[int] = None) -> str:
+def _load_alice_md(cwd_path: Path, context_length: Optional[int] = None) -> str:
     """.alice.md / ALICE.md — walk to git root."""
-    lydia_md_path = _find_lydia_md(cwd_path)
+    lydia_md_path = _find_alice_md(cwd_path)
     if not lydia_md_path:
         return ""
     try:
@@ -1952,7 +1952,7 @@ def build_context_files_prompt(
 
     # Priority-based project context: first match wins
     project_context = (
-        _load_lydia_md(cwd_path, context_length)
+        _load_alice_md(cwd_path, context_length)
         or _load_agents_md(cwd_path, context_length)
         or _load_claude_md(cwd_path, context_length)
         or _load_cursorrules(cwd_path, context_length)

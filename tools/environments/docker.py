@@ -90,7 +90,7 @@ def _normalize_env_dict(env: dict | None) -> dict[str, str]:
     return normalized
 
 
-def _load_lydia_env_vars() -> dict[str, str]:
+def _load_alice_env_vars() -> dict[str, str]:
     """Load ~/.alice/.env values without failing Docker command execution."""
     try:
         from alice_cli.config import load_env
@@ -994,7 +994,7 @@ class DockerEnvironment(BaseEnvironment):
         # win over the generic Alice secret blocklist. Only implicit passthrough
         # keys are filtered.
         forward_keys = explicit_forward_keys | (passthrough_keys - _LYDIA_PROVIDER_ENV_BLOCKLIST)
-        lydia_env = _load_lydia_env_vars() if forward_keys else {}
+        lydia_env = _load_alice_env_vars() if forward_keys else {}
         for key in sorted(forward_keys):
             value = os.getenv(key)
             if not value:

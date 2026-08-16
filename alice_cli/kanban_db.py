@@ -7479,7 +7479,7 @@ def _rotate_worker_log(
         pass
 
 
-def _module_lydia_argv() -> list[str]:
+def _module_alice_argv() -> list[str]:
     """Return the interpreter-bound Alice CLI invocation."""
     # ``alice_cli.main`` is the console-script target declared in
     # pyproject.toml, NOT a top-level ``alice`` package — there is no
@@ -7487,7 +7487,7 @@ def _module_lydia_argv() -> list[str]:
     return [sys.executable, "-m", "alice_cli.main"]
 
 
-def _absolute_lydia_path(path: str) -> str:
+def _absolute_alice_path(path: str) -> str:
     """Return an absolute filesystem path for a resolved Alice shim."""
     expanded = os.path.expanduser(path)
     return expanded if os.path.isabs(expanded) else os.path.abspath(expanded)
@@ -7541,7 +7541,7 @@ def _safe_which_no_cwd(command: str) -> Optional[str]:
     return None
 
 
-def _lydia_path_argv(path: str) -> list[str]:
+def _alice_path_argv(path: str) -> list[str]:
     """Return argv for a resolved Alice executable path.
 
     Windows batch shims (`.cmd` / `.bat`) are not safe as argv[0] for
@@ -7550,11 +7550,11 @@ def _lydia_path_argv(path: str) -> list[str]:
     executable is only a shell shim.
     """
     if _IS_WINDOWS and _is_windows_batch_shim(path):
-        return _module_lydia_argv()
-    return [_absolute_lydia_path(path)]
+        return _module_alice_argv()
+    return [_absolute_alice_path(path)]
 
 
-def _resolve_lydia_argv() -> list[str]:
+def _resolve_alice_argv() -> list[str]:
     """Resolve the ``alice`` invocation as argv parts for ``Popen``.
 
     Tries in order:
@@ -7574,7 +7574,7 @@ def _resolve_lydia_argv() -> list[str]:
        launchd jobs, detached processes, etc.). Goes through the running
        interpreter so the result is independent of ``$PATH``.
 
-    Mirrors ``gateway.run._resolve_lydia_bin`` for the same reason. Kept
+    Mirrors ``gateway.run._resolve_alice_bin`` for the same reason. Kept
     local (not imported from gateway) because ``alice_cli`` sits below
     ``gateway`` in the dependency order.
     """
@@ -7583,16 +7583,16 @@ def _resolve_lydia_argv() -> list[str]:
     env_bin = os.environ.get("LYDIA_BIN", "").strip()
     if env_bin:
         if _looks_like_path(env_bin):
-            return _lydia_path_argv(env_bin)
+            return _alice_path_argv(env_bin)
         resolved_env_bin = _safe_which_no_cwd(env_bin)
         if resolved_env_bin:
-            return _lydia_path_argv(resolved_env_bin)
-        return _module_lydia_argv()
+            return _alice_path_argv(resolved_env_bin)
+        return _module_alice_argv()
 
     lydia_bin = _safe_which_no_cwd("alice") if _IS_WINDOWS else shutil.which("alice")
     if lydia_bin:
-        return _lydia_path_argv(lydia_bin)
-    return _module_lydia_argv()
+        return _alice_path_argv(lydia_bin)
+    return _module_alice_argv()
 
 
 def _worker_terminal_timeout_env(
@@ -7769,7 +7769,7 @@ def _default_spawn(
     env["LYDIA_PROFILE"] = profile_arg
 
     cmd = [
-        *_resolve_lydia_argv(),
+        *_resolve_alice_argv(),
         "-p", profile_arg,
         # Worker subprocesses switch to a profile-scoped ALICE_HOME above,
         # so they see that profile's shell-hook allowlist instead of the

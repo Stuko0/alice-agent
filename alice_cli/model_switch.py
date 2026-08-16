@@ -107,7 +107,7 @@ def is___PROT_NOUS_LYDIA___non_agentic(model_name: str) -> bool:
     return bool(___PROT_NOUS_LYDIA___NON_AGENTIC_RE.search(model_name))
 
 
-def _check_lydia_model_warning(model_name: str) -> str:
+def _check_alice_model_warning(model_name: str) -> str:
     """Return a warning string if *model_name* is a Alice 3/4 chat model."""
     if is___PROT_NOUS_LYDIA___non_agentic(model_name):
         return _LYDIA_MODEL_WARNING
@@ -1339,7 +1339,7 @@ def switch_model(
     warnings: list[str] = []
     if validation.get("message"):
         warnings.append(validation["message"])
-    lydia_warn = _check_lydia_model_warning(new_model)
+    lydia_warn = _check_alice_model_warning(new_model)
     if lydia_warn:
         warnings.append(lydia_warn)
 
@@ -1756,9 +1756,9 @@ def list_authenticated_providers(
             try:
                 from agent.anthropic_adapter import (
                     read_claude_code_credentials,
-                    read_lydia_oauth_credentials,
+                    read_alice_oauth_credentials,
                 )
-                lydia_creds = read_lydia_oauth_credentials()
+                lydia_creds = read_alice_oauth_credentials()
                 cc_creds = read_claude_code_credentials()
                 if (lydia_creds and lydia_creds.get("accessToken")) or \
                    (cc_creds and cc_creds.get("accessToken")):

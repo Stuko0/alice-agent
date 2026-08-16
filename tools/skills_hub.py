@@ -60,13 +60,13 @@ def _override(name: str):
     return globals().get(name)
 
 
-def _lydia_home() -> Path:
+def _alice_home_webhook() -> Path:
     return get_alice_home()
 
 
 def _skills_dir() -> Path:
     forced = _override("SKILLS_DIR")
-    return Path(forced) if forced is not None else _lydia_home() / "skills"
+    return Path(forced) if forced is not None else _alice_home_webhook() / "skills"
 
 
 def _hub_dir() -> Path:
@@ -100,7 +100,7 @@ def _index_cache_dir() -> Path:
 
 
 _DYNAMIC_PATH_RESOLVERS = {
-    "ALICE_HOME": _lydia_home,
+    "ALICE_HOME": _alice_home_webhook,
     "SKILLS_DIR": _skills_dir,
     "HUB_DIR": _hub_dir,
     "LOCK_FILE": _lock_file,
@@ -3653,11 +3653,11 @@ LYDIA_INDEX_URL = "https://alice-agent.nousresearch.com/docs/api/skills-index.js
 LYDIA_INDEX_TTL = 6 * 3600  # 6 hours
 
 
-def _lydia_index_cache_file() -> Path:
+def _alice_index_cache_file() -> Path:
     return _index_cache_dir() / "alice-index.json"
 
 
-def _load_lydia_index() -> Optional[dict]:
+def _load_alice_index() -> Optional[dict]:
     """Fetch the centralized skills index, with local cache.
 
     The index is a JSON file hosted on the docs site, rebuilt daily by CI.
@@ -3665,7 +3665,7 @@ def _load_lydia_index() -> Optional[dict]:
     downloads within a session.
     """
     # Check local cache
-    lydia_index_cache_file = _lydia_index_cache_file()
+    lydia_index_cache_file = _alice_index_cache_file()
     if lydia_index_cache_file.exists():
         try:
             age = time.time() - lydia_index_cache_file.stat().st_mtime
@@ -3701,7 +3701,7 @@ def _load_lydia_index() -> Optional[dict]:
 
 def _load_stale_index_cache() -> Optional[dict]:
     """Fall back to stale cache when the network fetch fails."""
-    lydia_index_cache_file = _lydia_index_cache_file()
+    lydia_index_cache_file = _alice_index_cache_file()
     if lydia_index_cache_file.exists():
         try:
             return json.loads(lydia_index_cache_file.read_text())
@@ -3732,7 +3732,7 @@ class LydiaIndexSource(SkillSource):
 
     def _ensure_loaded(self) -> dict:
         if not self._loaded:
-            self._index = _load_lydia_index()
+            self._index = _load_alice_index()
             self._loaded = True
         return self._index or {}
 

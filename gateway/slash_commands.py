@@ -7,7 +7,7 @@ lifting them into a mixin that ``GatewayRunner`` inherits keeps every
 ``self._handle_*_command`` dispatch + test reference working via the MRO, while
 removing the bulk from run.py.
 
-Module-level run.py helpers a handler needs (``_lydia_home``,
+Module-level run.py helpers a handler needs (``_alice_home_webhook``,
 ``_load_gateway_config``, ``_resolve_gateway_model``, etc.) are imported lazily
 inside the handler body — a deferred ``from gateway.run import ...`` resolves at
 call time (run.py fully loaded by then), avoiding an import cycle.
@@ -913,7 +913,7 @@ class GatewaySlashCommandsMixin:
 
     async def _handle_restart_command(self, event: MessageEvent) -> Union[str, EphemeralReply]:
         """Handle /restart command - drain active work, then restart the gateway."""
-        from gateway.run import _lydia_home
+        from gateway.run import _alice_home_webhook
         # Defensive idempotency check: if the previous gateway process
         # recorded this same /restart (same platform + update_id) and the new
         # process is seeing it *again*, this is a re-delivery caused by PTB's
@@ -963,7 +963,7 @@ class GatewaySlashCommandsMixin:
                 except Exception:
                     self._restart_command_source = event.source
             atomic_json_write(
-                _lydia_home / ".restart_notify.json",
+                _alice_home_webhook / ".restart_notify.json",
                 notify_data,
                 indent=None,
             )
@@ -983,7 +983,7 @@ class GatewaySlashCommandsMixin:
             if event.platform_update_id is not None:
                 dedup_data["update_id"] = event.platform_update_id
             atomic_json_write(
-                _lydia_home / ".restart_last_processed.json",
+                _alice_home_webhook / ".restart_last_processed.json",
                 dedup_data,
                 indent=None,
             )
@@ -1114,7 +1114,7 @@ class GatewaySlashCommandsMixin:
           /model <name> --provider <provider> — switch provider + model
           /model --provider <provider>        — switch to provider, auto-detect model
         """
-        from gateway.run import _lydia_home, _load_gateway_config
+        from gateway.run import _alice_home_webhook, _load_gateway_config
         import yaml
         from alice_cli.model_switch import (
             switch_model as _switch_model, parse_model_flags,
@@ -1151,7 +1151,7 @@ class GatewaySlashCommandsMixin:
         current_api_key = ""
         user_provs = None
         custom_provs = None
-        config_path = _lydia_home / "config.yaml"
+        config_path = _alice_home_webhook / "config.yaml"
         try:
             cfg = _load_gateway_config()
             if cfg:
@@ -1751,11 +1751,11 @@ class GatewaySlashCommandsMixin:
 
     async def _handle_personality_command(self, event: MessageEvent) -> str:
         """Handle /personality command - list or set a personality."""
-        from gateway.run import _lydia_home, _load_gateway_config
+        from gateway.run import _alice_home_webhook, _load_gateway_config
         from alice_constants import display_alice_home
 
         args = event.get_command_args().strip().lower()
-        config_path = _lydia_home / 'config.yaml'
+        config_path = _alice_home_webhook / 'config.yaml'
 
         try:
             config = _load_gateway_config()
@@ -2216,14 +2216,14 @@ class GatewaySlashCommandsMixin:
 
     async def _handle_rollback_command(self, event: MessageEvent) -> str:
         """Handle /rollback command — list or restore filesystem checkpoints."""
-        from gateway.run import _lydia_home
+        from gateway.run import _alice_home_webhook
         from tools.checkpoint_manager import CheckpointManager, format_checkpoint_list
 
         # Read checkpoint config from config.yaml
         cp_cfg = {}
         try:
             import yaml as _y
-            _cfg_path = _lydia_home / "config.yaml"
+            _cfg_path = _alice_home_webhook / "config.yaml"
             if _cfg_path.exists():
                 with open(_cfg_path, encoding="utf-8") as _f:
                     _data = _y.safe_load(_f) or {}
@@ -2322,12 +2322,12 @@ class GatewaySlashCommandsMixin:
             /reasoning show|on               Show model reasoning in responses
             /reasoning hide|off              Hide model reasoning from responses
         """
-        from gateway.run import _lydia_home, _platform_config_key
+        from gateway.run import _alice_home_webhook, _platform_config_key
         import yaml
 
         raw_args = event.get_command_args().strip()
         args, persist_global = self._parse_reasoning_command_args(raw_args)
-        config_path = _lydia_home / "config.yaml"
+        config_path = _alice_home_webhook / "config.yaml"
         # Normalize the source (Telegram DM topic recovery) before deriving
         # the override key so storage matches the key the next message turn
         # reads — same fix as /model (#30479).
@@ -2439,7 +2439,7 @@ class GatewaySlashCommandsMixin:
         Gate changes persist to config.yaml and evict the cached agent so the
         new setting takes effect on the next message.
         """
-        from gateway.run import _lydia_home
+        from gateway.run import _alice_home_webhook
         from alice_cli.write_approval_commands import handle_pending_subcommand
         from tools import write_approval as wa
         from tools.memory_tool import load_on_disk_store
@@ -2447,7 +2447,7 @@ class GatewaySlashCommandsMixin:
         raw_args = event.get_command_args().strip()
         args = raw_args.split() if raw_args else []
         session_key = self._session_key_for_source(event.source)
-        config_path = _lydia_home / "config.yaml"
+        config_path = _alice_home_webhook / "config.yaml"
 
         def _set_approval(enabled: bool):
             import yaml
@@ -2489,14 +2489,14 @@ class GatewaySlashCommandsMixin:
         the write-approval ``diff <id>``; the CLI also has an unrelated
         ``alice skills diff <name>`` that diffs a bundled skill vs stock.)
         """
-        from gateway.run import _lydia_home
+        from gateway.run import _alice_home_webhook
         from alice_cli.write_approval_commands import handle_pending_subcommand
         from tools import write_approval as wa
 
         raw_args = event.get_command_args().strip()
         args = raw_args.split() if raw_args else []
         session_key = self._session_key_for_source(event.source)
-        config_path = _lydia_home / "config.yaml"
+        config_path = _alice_home_webhook / "config.yaml"
 
         gate_on = wa.write_approval_enabled(wa.SKILLS)
         wants_toggle = bool(args) and args[0].lower() in {"approval", "mode"}
@@ -2537,12 +2537,12 @@ class GatewaySlashCommandsMixin:
 
     async def _handle_fast_command(self, event: MessageEvent) -> str:
         """Handle /fast — mirror the CLI Priority Processing toggle in gateway chats."""
-        from gateway.run import _lydia_home, _load_gateway_config, _resolve_gateway_model
+        from gateway.run import _alice_home_webhook, _load_gateway_config, _resolve_gateway_model
         import yaml
         from alice_cli.models import model_supports_fast_mode
 
         args = event.get_command_args().strip().lower()
-        config_path = _lydia_home / "config.yaml"
+        config_path = _alice_home_webhook / "config.yaml"
         self._service_tier = self._load_service_tier()
 
         user_config = _load_gateway_config()
@@ -2615,9 +2615,9 @@ class GatewaySlashCommandsMixin:
         ``display.platforms.<platform>.tool_progress`` so each channel can
         have its own verbosity level independently.
         """
-        from gateway.run import _lydia_home, _load_gateway_config, _platform_config_key
+        from gateway.run import _alice_home_webhook, _load_gateway_config, _platform_config_key
 
-        config_path = _lydia_home / "config.yaml"
+        config_path = _alice_home_webhook / "config.yaml"
         platform_key = _platform_config_key(event.source.platform)
 
         # --- check config gate ------------------------------------------------
@@ -2683,10 +2683,10 @@ class GatewaySlashCommandsMixin:
         are respected but not modified here — edit config.yaml directly for
         per-platform control.
         """
-        from gateway.run import _lydia_home, _load_gateway_config, _platform_config_key, _resolve_gateway_model
+        from gateway.run import _alice_home_webhook, _load_gateway_config, _platform_config_key, _resolve_gateway_model
         from gateway.runtime_footer import resolve_footer_config
 
-        config_path = _lydia_home / "config.yaml"
+        config_path = _alice_home_webhook / "config.yaml"
         platform_key = _platform_config_key(event.source.platform)
 
         # --- parse argument -------------------------------------------------
@@ -4038,7 +4038,7 @@ class GatewaySlashCommandsMixin:
         files are written so either the current gateway process or the next one
         can notify the user when the update finishes.
         """
-        from gateway.run import _lydia_home, _resolve_lydia_bin
+        from gateway.run import _alice_home_webhook, _resolve_alice_bin
         import json
         import shutil
         import subprocess
@@ -4067,13 +4067,13 @@ class GatewaySlashCommandsMixin:
         if not git_dir.exists():
             return t("gateway.update.not_git_repo")
 
-        lydia_cmd = _resolve_lydia_bin()
+        lydia_cmd = _resolve_alice_bin()
         if not lydia_cmd:
             return t("gateway.update.lydia_cmd_not_found")
 
-        pending_path = _lydia_home / ".update_pending.json"
-        output_path = _lydia_home / ".update_output.txt"
-        exit_code_path = _lydia_home / ".update_exit_code"
+        pending_path = _alice_home_webhook / ".update_pending.json"
+        output_path = _alice_home_webhook / ".update_output.txt"
+        exit_code_path = _alice_home_webhook / ".update_exit_code"
         session_key = self._session_key_for_source(event.source)
         pending = {
             "platform": event.source.platform.value,

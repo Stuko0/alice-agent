@@ -204,7 +204,7 @@ def _remove_claude_code(provider: str, removed) -> RemovalResult:
     ])
 
 
-def _remove_lydia_pkce(provider: str, removed) -> RemovalResult:
+def _remove_alice_pkce(provider: str, removed) -> RemovalResult:
     """~/.alice/.anthropic_oauth.json is ours — delete it outright."""
     from alice_constants import get_alice_home
 
@@ -408,7 +408,7 @@ def _register_all_sources() -> None:
     ))
     register(RemovalStep(
         provider="anthropic", source_id="lydia_pkce",
-        remove_fn=_remove_lydia_pkce,
+        remove_fn=_remove_alice_pkce,
         description="~/.alice/.anthropic_oauth.json",
     ))
     register(RemovalStep(

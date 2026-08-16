@@ -407,7 +407,7 @@ class SessionManager:
         Note: we resolve ``ALICE_HOME`` dynamically rather than relying on
         the module-level ``DEFAULT_DB_PATH`` constant, because that constant
         is evaluated at import time and won't reflect env-var changes made
-        later (e.g. by the test fixture ``_isolate_lydia_home``).
+        later (e.g. by the test fixture ``_isolate_alice_home_webhook``).
         """
         if self._db_instance is not None:
             return self._db_instance

@@ -23,7 +23,7 @@ import sys
 from pathlib import Path
 
 from alice_constants import agent_browser_runnable
-from tools.environments.local import lydia_subprocess_env
+from tools.environments.local import alice_subprocess_env
 
 _IS_WINDOWS = platform.system() == "Windows"
 
@@ -149,7 +149,7 @@ def ensure_dependency(
     else:
         cmd = ["bash", str(script), "--ensure", dep]
 
-    run_env = lydia_subprocess_env(inherit_credentials=False)
+    run_env = alice_subprocess_env(inherit_credentials=False)
     run_env["IS_INTERACTIVE"] = "false"
     result = subprocess.run(
         cmd,

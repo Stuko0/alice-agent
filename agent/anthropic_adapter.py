@@ -1396,7 +1396,7 @@ def _generate_pkce() -> tuple:
     return verifier, challenge
 
 
-def run_lydia_oauth_login_pure() -> Optional[Dict[str, Any]]:
+def run_alice_oauth_login_pure() -> Optional[Dict[str, Any]]:
     """Run Alice-native OAuth PKCE flow and return credential state."""
     import secrets
     import time
@@ -1523,7 +1523,7 @@ def run_lydia_oauth_login_pure() -> Optional[Dict[str, Any]]:
     }
 
 
-def read_lydia_oauth_credentials() -> Optional[Dict[str, Any]]:
+def read_alice_oauth_credentials() -> Optional[Dict[str, Any]]:
     """Read Alice-managed OAuth credentials from ~/.alice/.anthropic_oauth.json."""
     if _LYDIA_OAUTH_FILE.exists():
         try:

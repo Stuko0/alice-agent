@@ -265,7 +265,7 @@ _TOOL_STUBS = {
 }
 
 
-def generate_lydia_tools_module(enabled_tools: List[str],
+def generate_alice_tools_module(enabled_tools: List[str],
                                  transport: str = "uds") -> str:
     """
     Build the source code for the alice_tools.py stub module.
@@ -943,7 +943,7 @@ def _execute_remote(
         )
 
         # Generate and ship files
-        tools_src = generate_lydia_tools_module(
+        tools_src = generate_alice_tools_module(
             list(sandbox_tools), transport="file",
         )
         _ship_file_to_remote(env, f"{sandbox_dir}/alice_tools.py", tools_src)
@@ -1195,7 +1195,7 @@ def execute_code(
         # Python source files are decoded as UTF-8 by default (PEP 3120).
         # sandbox_tools is already the correct set (intersection with session
         # tools, or SANDBOX_ALLOWED_TOOLS as fallback — see lines above).
-        tools_src = generate_lydia_tools_module(list(sandbox_tools))
+        tools_src = generate_alice_tools_module(list(sandbox_tools))
         with open(os.path.join(tmpdir, "alice_tools.py"), "w", encoding="utf-8") as f:
             f.write(tools_src)
 

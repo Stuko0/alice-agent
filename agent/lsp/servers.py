@@ -760,9 +760,9 @@ def _spawn_powershell_es(root: str, ctx: ServerContext) -> Optional[SpawnSpec]:
     )
     # Session details file: PSES writes connection info here on startup.
     session_path = os.path.join(
-        lydia_lsp_session_dir(), f"pses-session-{os.getpid()}.json"
+        alice_lsp_session_dir(), f"pses-session-{os.getpid()}.json"
     )
-    log_path = os.path.join(lydia_lsp_session_dir(), "pses.log")
+    log_path = os.path.join(alice_lsp_session_dir(), "pses.log")
     inner = (
         f"& '{start_script}' "
         f"-BundledModulesPath '{bundle}' "
@@ -794,7 +794,7 @@ def _spawn_powershell_es(root: str, ctx: ServerContext) -> Optional[SpawnSpec]:
     )
 
 
-def lydia_lsp_session_dir() -> str:
+def alice_lsp_session_dir() -> str:
     """Return (and create) the dir for PSES session/log scratch files."""
     home = os.environ.get("ALICE_HOME") or os.path.join(
         os.path.expanduser("~"), ".alice"

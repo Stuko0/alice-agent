@@ -122,9 +122,9 @@ from alice_cli.timeouts import (
     get_provider_stale_timeout,
 )
 
-_lydia_home = get_alice_home()
+_alice_home_webhook = get_alice_home()
 _project_env = Path(__file__).parent / '.env'
-_loaded_env_paths = load_alice_dotenv(lydia_home=_lydia_home, project_env=_project_env)
+_loaded_env_paths = load_alice_dotenv(lydia_home=_alice_home_webhook, project_env=_project_env)
 if _loaded_env_paths:
     for _env_path in _loaded_env_paths:
         logger.info("Loaded environment variables from %s", _env_path)

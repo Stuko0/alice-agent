@@ -28,13 +28,13 @@ _SUBSCRIPTIONS_FILENAME = "webhook_subscriptions.json"
 _SUBSCRIPTIONS_FILE_MODE = 0o600
 
 
-def _lydia_home() -> Path:
+def _alice_home_webhook() -> Path:
     from alice_constants import get_alice_home
     return get_alice_home()
 
 
 def _subscriptions_path() -> Path:
-    return _lydia_home() / _SUBSCRIPTIONS_FILENAME
+    return _alice_home_webhook() / _SUBSCRIPTIONS_FILENAME
 
 
 def _load_subscriptions() -> Dict[str, dict]:

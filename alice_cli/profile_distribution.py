@@ -296,7 +296,7 @@ def _parse_semver(v: str) -> Tuple[int, int, int]:
         raise DistributionError(f"Unparseable version: {v!r}") from exc
 
 
-def check_lydia_requires(spec: str, current_version: str) -> None:
+def check_alice_requires(spec: str, current_version: str) -> None:
     """Raise DistributionError if ``current_version`` does not satisfy ``spec``.
 
     ``spec`` accepts a single comparator (``>=0.12.0``, ``==0.12.0``, etc.).
@@ -507,7 +507,7 @@ def plan_install(
         )
 
     # Version check up-front so we fail fast
-    check_lydia_requires(manifest.lydia_requires, lydia_version)
+    check_alice_requires(manifest.lydia_requires, lydia_version)
 
     # Resolve target profile name
     target_name = override_name or manifest.name

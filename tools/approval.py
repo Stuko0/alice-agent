@@ -63,7 +63,7 @@ _lydia_interactive_ctx: contextvars.ContextVar[Optional[str]] = contextvars.Cont
 )
 
 
-def set_lydia_interactive_context(interactive: bool) -> contextvars.Token:
+def set_alice_interactive_context(interactive: bool) -> contextvars.Token:
     """Bind interactive mode for the current context (thread or asyncio task).
 
     Use this instead of mutating ``os.environ["LYDIA_INTERACTIVE"]`` from
@@ -73,8 +73,8 @@ def set_lydia_interactive_context(interactive: bool) -> contextvars.Token:
     return _lydia_interactive_ctx.set("1" if interactive else "")
 
 
-def reset_lydia_interactive_context(token: contextvars.Token) -> None:
-    """Restore the prior value from :func:`set_lydia_interactive_context`."""
+def reset_alice_interactive_context(token: contextvars.Token) -> None:
+    """Restore the prior value from :func:`set_alice_interactive_context`."""
     _lydia_interactive_ctx.reset(token)
 
 
@@ -643,7 +643,7 @@ def _normalize_command_for_detection(command: str) -> str:
     # Fold the (more specific) Alice home first: on Windows it nests under the
     # user home (C:\Users\alice\AppData\...\alice), so folding the user home
     # first would eat the prefix the Alice-home fold needs.
-    command = _rewrite_resolved_lydia_home(command)
+    command = _rewrite_resolved_alice_home_webhook(command)
     command = _rewrite_resolved_user_home(command)
     # Strip shell backslash-escapes: r\m → rm. Prevents \-injection bypass.
     command = re.sub(r'\\([^\n])', r'\1', command)
@@ -736,7 +736,7 @@ def _rewrite_resolved_user_home(command: str) -> str:
     return _fold_home_prefixes(command, candidates, "~")
 
 
-def _rewrite_resolved_lydia_home(command: str) -> str:
+def _rewrite_resolved_alice_home_webhook(command: str) -> str:
     """Rewrite the resolved absolute Alice home prefix to ``~/.alice/``.
 
     Resolves the active ``ALICE_HOME`` at call time (and its symlink-resolved

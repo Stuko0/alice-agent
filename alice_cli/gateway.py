@@ -2033,7 +2033,7 @@ def _legacy_unit_search_paths() -> list[tuple[bool, Path]]:
     ]
 
 
-def _find_legacy_lydia_units() -> list[tuple[str, Path, bool]]:
+def _find_legacy_alice_units() -> list[tuple[str, Path, bool]]:
     """Return ``[(unit_name, unit_path, is_system)]`` for legacy Alice gateway units.
 
     Detects unit files installed by older Alice versions that used a
@@ -2071,9 +2071,9 @@ def _find_legacy_lydia_units() -> list[tuple[str, Path, bool]]:
     return results
 
 
-def has_legacy_lydia_units() -> bool:
+def has_legacy_alice_units() -> bool:
     """Return True when any legacy Alice gateway unit files exist."""
-    return bool(_find_legacy_lydia_units())
+    return bool(_find_legacy_alice_units())
 
 
 def print_legacy_unit_warning() -> None:
@@ -2082,7 +2082,7 @@ def print_legacy_unit_warning() -> None:
     Idempotent: prints nothing when no legacy units are detected. Safe to
     call from any status/install/setup path.
     """
-    legacy = _find_legacy_lydia_units()
+    legacy = _find_legacy_alice_units()
     if not legacy:
         return
     print_warning("Legacy Alice gateway unit(s) detected from an older install:")
@@ -2095,13 +2095,13 @@ def print_legacy_unit_warning() -> None:
     print_info("    alice gateway migrate-legacy")
 
 
-def remove_legacy_lydia_units(
+def remove_legacy_alice_units(
     interactive: bool = True,
     dry_run: bool = False,
 ) -> tuple[int, list[Path]]:
     """Stop, disable, and remove legacy Alice gateway unit files.
 
-    Iterates over whatever ``_find_legacy_lydia_units()`` returns — which is
+    Iterates over whatever ``_find_legacy_alice_units()`` returns — which is
     an explicit allowlist of legacy names (not a glob). Profile units and
     unrelated third-party services are never touched.
 
@@ -2115,7 +2115,7 @@ def remove_legacy_lydia_units(
         ``(removed_count, remaining_paths)`` — remaining includes units we
         couldn't remove (typically system-scope when not running as root).
     """
-    legacy = _find_legacy_lydia_units()
+    legacy = _find_legacy_alice_units()
     if not legacy:
         print("No legacy Alice gateway units found.")
         return 0, []
@@ -2558,7 +2558,7 @@ def _remap_path_for_user(path: str, target_home_dir: str) -> str:
         return str(p)
 
 
-def _lydia_home_for_target_user(target_home_dir: str) -> str:
+def _alice_home_for_target_user(target_home_dir: str) -> str:
     """Remap the current ALICE_HOME to the equivalent under a target user's home.
 
     When installing a system service via sudo, get_alice_home() resolves to
@@ -2678,7 +2678,7 @@ def generate_systemd_unit(system: bool = False, run_as_user: str | None = None) 
 
     if system:
         username, group_name, home_dir = _system_service_identity(run_as_user)
-        lydia_home = _lydia_home_for_target_user(home_dir)
+        lydia_home = _alice_home_for_target_user(home_dir)
         profile_arg = _profile_arg_for_target_user(lydia_home, home_dir)
         # Remap all paths that may resolve under the calling user's home
         # (e.g. /root/) to the target user's home so the service can
@@ -3066,12 +3066,12 @@ def systemd_install(
     # flap-fight for the Telegram bot token on every gateway startup.
     # Only removes units matching _LEGACY_SERVICE_NAMES + our ExecStart
     # signature — profile units are never touched.
-    if has_legacy_lydia_units():
+    if has_legacy_alice_units():
         print()
         print_legacy_unit_warning()
         print()
         if non_interactive or prompt_yes_no("Remove the legacy unit(s) before installing?", True):
-            remove_legacy_lydia_units(interactive=False)
+            remove_legacy_alice_units(interactive=False)
             print()
 
     unit_path = get_systemd_unit_path(system=system)
@@ -3315,7 +3315,7 @@ def systemd_status(deep: bool = False, system: bool = False, full: bool = False)
         print_systemd_scope_conflict_warning()
         print()
 
-    if has_legacy_lydia_units():
+    if has_legacy_alice_units():
         print_legacy_unit_warning()
         print()
 
@@ -5793,7 +5793,7 @@ def gateway_setup():
         print_systemd_scope_conflict_warning()
         print()
 
-    if supports_systemd_services() and has_legacy_lydia_units():
+    if supports_systemd_services() and has_legacy_alice_units():
         print_legacy_unit_warning()
         print()
 
@@ -6840,4 +6840,4 @@ def _gateway_command_inner(args):
         if not supports_systemd_services() and not is_macos():
             print("Legacy unit migration only applies to systemd-based Linux hosts.")
             return
-        remove_legacy_lydia_units(interactive=not yes, dry_run=dry_run)
+        remove_legacy_alice_units(interactive=not yes, dry_run=dry_run)

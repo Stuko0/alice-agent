@@ -75,8 +75,8 @@ from acp_adapter.provenance import session_provenance_meta
 from acp_adapter.session import SessionManager, SessionState, _expand_acp_enabled_toolsets
 from acp_adapter.tools import build_tool_complete, build_tool_start
 from tools.approval import (
-    reset_lydia_interactive_context,
-    set_lydia_interactive_context,
+    reset_alice_interactive_context,
+    set_alice_interactive_context,
 )
 
 logger = logging.getLogger(__name__)
@@ -1451,7 +1451,7 @@ class LydiaACPAgent(acp.Agent):
         # Set it INSIDE _run_agent so the TLS write happens in the executor
         # thread — setting it here would write to the event-loop thread's TLS,
         # not the executor's. Interactive routing uses a contextvar in
-        # tools.approval (set_lydia_interactive_context) rather than
+        # tools.approval (set_alice_interactive_context) rather than
         # os.environ["LYDIA_INTERACTIVE"], so concurrent executor workers can't
         # race on a process-global flag — one session's restore can't drop
         # another onto the non-interactive auto-approve path mid-run
@@ -1501,7 +1501,7 @@ class LydiaACPAgent(acp.Agent):
             # and the non-interactive auto-approve path must not fire. Uses a
             # contextvar (not os.environ) so concurrent executor workers don't
             # race on the flag (GHSA-96vc-wcxf-jjff).
-            interactive_token = set_lydia_interactive_context(True)
+            interactive_token = set_alice_interactive_context(True)
             # Propagate the originating ACP session id to tools that want to
             # tag side-effects with it (e.g. ``kanban_create`` stamps it on
             # the new task so clients can render a per-session board). Save
@@ -1523,7 +1523,7 @@ class LydiaACPAgent(acp.Agent):
             finally:
                 # Restore the interactive contextvar for this context.
                 if interactive_token is not None:
-                    reset_lydia_interactive_context(interactive_token)
+                    reset_alice_interactive_context(interactive_token)
                 # Restore LYDIA_SESSION_ID symmetrically.
                 if previous_session_id is None:
                     os.environ.pop("LYDIA_SESSION_ID", None)

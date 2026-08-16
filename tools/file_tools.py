@@ -423,7 +423,7 @@ _lydia_config_resolved: str | None = None
 _lydia_config_resolved_loaded = False
 
 
-def _get_lydia_config_resolved() -> str | None:
+def _get_alice_config_resolved() -> str | None:
     """Return the resolved absolute path of the Alice config file (cached)."""
     global _lydia_config_resolved, _lydia_config_resolved_loaded
     if _lydia_config_resolved_loaded:
@@ -460,7 +460,7 @@ def _check_sensitive_path(filepath: str, task_id: str = "default") -> str | None
     # approvals.mode and other security settings live here; a malicious or
     # prompt-injected agent could silently disable exec approval by writing to
     # this file.
-    lydia_config = _get_lydia_config_resolved()
+    lydia_config = _get_alice_config_resolved()
     if lydia_config and (resolved == lydia_config or normalized == lydia_config):
         return (
             f"Refusing to write to Alice config file: {filepath}\n"

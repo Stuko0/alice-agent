@@ -249,7 +249,7 @@ class CodexAppServerSession:
         self._client.initialize(
             client_name="alice",
             client_title="Alice Agent",
-            client_version=_get_lydia_version(),
+            client_version=_get_alice_version(),
         )
         # Permission selection is intentionally NOT sent on thread/start.
         # Two reasons (live-tested against codex 0.130.0):
@@ -866,7 +866,7 @@ def _has_turn_aborted_marker(text: str) -> bool:
     return False
 
 
-def _get_lydia_version() -> str:
+def _get_alice_version() -> str:
     """Best-effort Alice version string for codex's userAgent line."""
     try:
         from importlib.metadata import version

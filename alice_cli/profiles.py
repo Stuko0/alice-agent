@@ -164,7 +164,7 @@ def _clone_all_copytree_ignore(source_dir: Path):
     clone.
     """
     source_resolved = source_dir.resolve()
-    is_default_source = source_resolved == _get_default_lydia_home().resolve()
+    is_default_source = source_resolved == _get_default_alice_home().resolve()
 
     def _ignore(directory: str, names: List[str]) -> List[str]:
         ignored: list[str] = []
@@ -253,10 +253,10 @@ def _get_profiles_root() -> Path:
     ``~/.alice``, profiles live under ``ALICE_HOME/profiles/`` so
     they persist on the mounted volume.
     """
-    return _get_default_lydia_home() / "profiles"
+    return _get_default_alice_home() / "profiles"
 
 
-def _get_default_lydia_home() -> Path:
+def _get_default_alice_home() -> Path:
     """Return the default (pre-profile) ALICE_HOME path.
 
     In standard deployments this is ``~/.alice``.
@@ -269,7 +269,7 @@ def _get_default_lydia_home() -> Path:
 
 def _get_active_profile_path() -> Path:
     """Return the path to the sticky active_profile file."""
-    return _get_default_lydia_home() / "active_profile"
+    return _get_default_alice_home() / "active_profile"
 
 
 def _get_wrapper_dir() -> Path:
@@ -349,7 +349,7 @@ def get_profile_dir(name: str) -> Path:
     """Resolve a profile name to its ALICE_HOME directory."""
     canon = normalize_profile_name(name)
     if canon == "default":
-        return _get_default_lydia_home()
+        return _get_default_alice_home()
     return _get_profiles_root() / canon
 
 
@@ -861,7 +861,7 @@ def list_profiles() -> List[ProfileInfo]:
     wrapper_dir = _get_wrapper_dir()
 
     # Default profile
-    default_home = _get_default_lydia_home()
+    default_home = _get_default_alice_home()
     if default_home.is_dir():
         model, provider = _read_config_model(default_home)
         dist_name, dist_version, dist_source = _read_distribution_meta(default_home)
@@ -951,7 +951,7 @@ def profiles_to_serve(multiplex: bool) -> List[Tuple[str, Path]]:
     if not multiplex:
         return [(active, get_profile_dir(active))]
 
-    serve: List[Tuple[str, Path]] = [("default", _get_default_lydia_home())]
+    serve: List[Tuple[str, Path]] = [("default", _get_default_alice_home())]
 
     profiles_root = _get_profiles_root()
     if profiles_root.is_dir():
@@ -1228,7 +1228,7 @@ def backfill_profile_envs(quiet: bool = False) -> List[str]:
     if not profiles_root.is_dir():
         return backfilled
 
-    default_env = _get_default_lydia_home() / ".env"
+    default_env = _get_default_alice_home() / ".env"
 
     for entry in sorted(profiles_root.iterdir()):
         if not entry.is_dir() or not _PROFILE_ID_RE.match(entry.name):
@@ -1634,7 +1634,7 @@ def get_active_profile_name() -> str:
     lydia_home = get_alice_home()
     resolved = lydia_home.resolve()
 
-    default_resolved = _get_default_lydia_home().resolve()
+    default_resolved = _get_default_alice_home().resolve()
     if resolved == default_resolved:
         return "default"
 
@@ -1874,7 +1874,7 @@ def _migrate_honcho_profile_host(old_name: str, new_name: str, new_dir: Path) ->
 
     candidates = [
         new_dir / "honcho.json",
-        _get_default_lydia_home() / "honcho.json",
+        _get_default_alice_home() / "honcho.json",
         Path.home() / ".honcho" / "config.json",
     ]
 

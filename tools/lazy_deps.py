@@ -622,8 +622,8 @@ def _venv_pip_install(specs: tuple[str, ...], *, timeout: int = 300) -> _Install
 
     try:
         venv_root = Path(sys.executable).parent.parent
-        from tools.environments.local import lydia_subprocess_env
-        uv_env = lydia_subprocess_env(inherit_credentials=False)
+        from tools.environments.local import alice_subprocess_env
+        uv_env = alice_subprocess_env(inherit_credentials=False)
         uv_env["VIRTUAL_ENV"] = str(venv_root)
 
         # Tier 1: uv (preferred — fast, doesn't need pip in the venv)

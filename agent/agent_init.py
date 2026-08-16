@@ -573,7 +573,7 @@ def init_agent(
     # both live under ~/.alice/logs/.  Idempotent, so gateway mode
     # (which creates a new AIAgent per message) won't duplicate handlers.
     from alice_logging import setup_logging, setup_verbose_logging
-    setup_logging(lydia_home=_ra()._lydia_home)
+    setup_logging(lydia_home=_ra()._alice_home_webhook)
 
     if agent.verbose_logging:
         setup_verbose_logging()

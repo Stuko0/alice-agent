@@ -201,9 +201,9 @@ from alice_cli.env_loader import load_alice_dotenv
 from alice_constants import display_alice_home, get_alice_home
 from utils import base_url_host_matches, fast_safe_load
 
-_lydia_home = get_alice_home()
+_alice_home_webhook = get_alice_home()
 _project_env = Path(__file__).parent / ".env"
-load_alice_dotenv(lydia_home=_lydia_home, project_env=_project_env)
+load_alice_dotenv(lydia_home=_alice_home_webhook, project_env=_project_env)
 
 
 _REASONING_TAGS = (
@@ -329,7 +329,7 @@ def _load_prefill_messages(file_path: str) -> List[Dict[str, Any]]:
         return []
     path = Path(file_path).expanduser()
     if not path.is_absolute():
-        path = _lydia_home / path
+        path = _alice_home_webhook / path
     if not path.exists():
         logger.warning("Prefill messages file not found: %s", path)
         return []
@@ -403,7 +403,7 @@ def load_cli_config() -> Dict[str, Any]:
     behavioral/config settings.
     """
     # Check user config first ({ALICE_HOME}/config.yaml)
-    user_config_path = _lydia_home / "config.yaml"
+    user_config_path = _alice_home_webhook / "config.yaml"
     project_config_path = Path(__file__).parent / "cli-config.yaml"
 
     # --ignore-user-config: force-skip the user config.yaml (still honor project
@@ -1721,15 +1721,15 @@ def _run_state_db_auto_maintenance(session_db) -> None:
         return
     try:
         from alice_cli.config import load_config as _load_full_config
-        from alice_constants import get_alice_home as _get_lydia_home
+        from alice_constants import get_alice_home as _get_alice_home_webhook
 
-        _lydia_home_maint = _get_lydia_home()
+        _alice_home_webhook_maint = _get_alice_home_webhook()
 
         # One-time prune of empty TUI ghost sessions.
         try:
             if not session_db.get_meta("ghost_session_prune_v1"):
                 pruned = session_db.prune_empty_ghost_sessions(
-                    sessions_dir=_lydia_home_maint / "sessions"
+                    sessions_dir=_alice_home_webhook_maint / "sessions"
                 )
                 session_db.set_meta("ghost_session_prune_v1", "1")
                 if pruned:
@@ -1754,7 +1754,7 @@ def _run_state_db_auto_maintenance(session_db) -> None:
             retention_days=int(cfg.get("retention_days", 90)),
             min_interval_hours=int(cfg.get("min_interval_hours", 24)),
             vacuum=bool(cfg.get("vacuum_after_prune", True)),
-            sessions_dir=_lydia_home_maint / "sessions",
+            sessions_dir=_alice_home_webhook_maint / "sessions",
         )
     except Exception as exc:
         logger.debug("state.db auto-maintenance skipped: %s", exc)
@@ -3614,7 +3614,7 @@ def save_config_value(key_path: str, value: any) -> bool:
         True if successful, False otherwise
     """
     # Use the same precedence as load_cli_config: user config first, then project config
-    user_config_path = _lydia_home / "config.yaml"
+    user_config_path = _alice_home_webhook / "config.yaml"
     project_config_path = Path(__file__).parent / "cli-config.yaml"
     config_path = user_config_path if user_config_path.exists() else project_config_path
 
@@ -4038,7 +4038,7 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
             self.session_id = f"{timestamp_str}_{short_uuid}"
 
         # History file for persistent input recall across sessions
-        self._history_file = _lydia_home / ".lydia_history"
+        self._history_file = _alice_home_webhook / ".lydia_history"
         self._last_invalidate: float = 0.0  # throttle UI repaints
         self._app = None
 
@@ -6905,7 +6905,7 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
         terminal_cwd = os.getenv("TERMINAL_CWD", os.getcwd())
         terminal_timeout = os.getenv("TERMINAL_TIMEOUT", "60")
 
-        user_config_path = _lydia_home / "config.yaml"
+        user_config_path = _alice_home_webhook / "config.yaml"
         project_config_path = Path(__file__).parent / "cli-config.yaml"
         if user_config_path.exists():
             config_path = user_config_path
@@ -11362,7 +11362,7 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
                         if not is_seen(CLI_CONFIG, TOOL_PROGRESS_FLAG):
                             self._long_tool_hint_fired = True
                             _cprint(f"  {_DIM}{tool_progress_hint_cli()}{_RST}")
-                            mark_seen(_lydia_home / "config.yaml", TOOL_PROGRESS_FLAG)
+                            mark_seen(_alice_home_webhook / "config.yaml", TOOL_PROGRESS_FLAG)
                             CLI_CONFIG.setdefault("onboarding", {}).setdefault(
                                 "seen", {}
                             )[TOOL_PROGRESS_FLAG] = True
@@ -12906,7 +12906,7 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
                             self._clear_active_overlays_for_interrupt()
                             # Debug: log to file (stdout may be devnull from redirect_stdout)
                             try:
-                                _dbg = _lydia_home / "interrupt_debug.log"
+                                _dbg = _alice_home_webhook / "interrupt_debug.log"
                                 with open(_dbg, "a", encoding="utf-8") as _f:
                                     _f.write(
                                         f"{time.strftime('%H:%M:%S')} interrupt fired: msg={str(interrupt_msg)[:60]!r}, "
@@ -14062,7 +14062,7 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
                         self._interrupt_queue.put(payload)
                         # Debug: log to file when message enters interrupt queue
                         try:
-                            _dbg = _lydia_home / "interrupt_debug.log"
+                            _dbg = _alice_home_webhook / "interrupt_debug.log"
                             with open(_dbg, "a", encoding="utf-8") as _f:
                                 _f.write(
                                     f"{time.strftime('%H:%M:%S')} ENTER: queued interrupt msg={str(payload)[:60]!r}, "
@@ -14087,7 +14087,7 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
                             _cprint(
                                 f"  {_DIM}{busy_input_hint_cli(self.busy_input_mode)}{_RST}"
                             )
-                            mark_seen(_lydia_home / "config.yaml", BUSY_INPUT_FLAG)
+                            mark_seen(_alice_home_webhook / "config.yaml", BUSY_INPUT_FLAG)
                             CLI_CONFIG.setdefault("onboarding", {}).setdefault(
                                 "seen", {}
                             )[BUSY_INPUT_FLAG] = True
@@ -14766,7 +14766,7 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
                 chars_hit = char_threshold > 0 and len(pasted_text) >= char_threshold
                 if (lines_hit or chars_hit) and not buf.text.strip().startswith("/"):
                     _paste_counter[0] += 1
-                    paste_dir = _lydia_home / "pastes"
+                    paste_dir = _alice_home_webhook / "pastes"
                     paste_dir.mkdir(parents=True, exist_ok=True)
                     paste_file = (
                         paste_dir
@@ -14952,7 +14952,7 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
             chars_hit = char_threshold > 0 and len(text) >= char_threshold
             if (lines_hit or chars_hit) and is_paste and not text.startswith("/"):
                 _paste_counter[0] += 1
-                paste_dir = _lydia_home / "pastes"
+                paste_dir = _alice_home_webhook / "pastes"
                 paste_dir.mkdir(parents=True, exist_ok=True)
                 paste_file = (
                     paste_dir

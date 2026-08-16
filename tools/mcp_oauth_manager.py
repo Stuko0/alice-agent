@@ -102,7 +102,7 @@ class _ProviderEntry:
 # ---------------------------------------------------------------------------
 
 
-def _make_lydia_provider_class() -> Optional[type]:
+def _make_alice_provider_class() -> Optional[type]:
     """Lazy-import the SDK base class and return our subclass.
 
     Wrapped in a function so this module imports cleanly even when the
@@ -432,7 +432,7 @@ def _make_lydia_provider_class() -> Optional[type]:
 
 
 # Cached at import time. Tested and used by :class:`MCPOAuthManager`.
-_LYDIA_PROVIDER_CLS: Optional[type] = _make_lydia_provider_class()
+_LYDIA_PROVIDER_CLS: Optional[type] = _make_alice_provider_class()
 
 
 # ---------------------------------------------------------------------------
