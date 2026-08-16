@@ -57,11 +57,11 @@ function buildDesktopBackendPath({
   pathModule = pathModuleForPlatform(platform)
 } = {}) {
   const delimiter = delimiterForPlatform(platform)
-  const lydiaNodeBin = aliceHome ? pathModule.join(aliceHome, 'node', 'bin') : null
+  const aliceNodeBin = aliceHome ? pathModule.join(aliceHome, 'node', 'bin') : null
   const venvBin = venvRoot ? pathModule.join(venvRoot, platform === 'win32' ? 'Scripts' : 'bin') : null
   const saneEntries = platform === 'win32' ? [] : POSIX_SANE_PATH_ENTRIES
 
-  return appendUniquePathEntries([lydiaNodeBin, venvBin, currentPath, saneEntries], { delimiter })
+  return appendUniquePathEntries([aliceNodeBin, venvBin, currentPath, saneEntries], { delimiter })
 }
 
 function normalizeAliceHomeRoot(aliceHome, { pathModule = pathModuleForPlatform(process.platform) } = {}) {

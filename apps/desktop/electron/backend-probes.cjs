@@ -3,7 +3,7 @@
  *
  * Cheap "does this candidate backend actually work" checks used by
  * resolveLydiaBackend (main.cjs). The resolver walks a ladder of
- * candidates -- bootstrap marker, `lydia` on PATH, system Python with
+ * candidates -- bootstrap marker, `alice` on PATH, system Python with
  * alice_cli installed -- and historically returned the first candidate
  * whose binary existed on disk. That assumption breaks when a user has
  * a pre-installed Python 3.11-3.13 (so findSystemPython() returns a
@@ -43,7 +43,7 @@ const PROBE_TIMEOUT_MS = 5000
  *
  * @returns {string}
  */
-function lydiaRuntimeImportProbe() {
+function aliceRuntimeImportProbe() {
   return 'import yaml; import alice_cli.config'
 }
 
@@ -80,7 +80,7 @@ function canImportLydiaCli(pythonPath, opts = {}) {
   try {
     const args = script
       ? [script, '--probe']
-      : ['-c', lydiaRuntimeImportProbe()]
+      : ['-c', aliceRuntimeImportProbe()]
     execFileSync(pythonPath, args, {
       env: { ...process.env, ...(opts.env || {}) },
       stdio: 'ignore',
@@ -96,8 +96,8 @@ function canImportLydiaCli(pythonPath, opts = {}) {
 /**
  * Return true iff `<lydiaCommand> --version` exits 0.
  *
- * Used to gate the "existing `lydia` on PATH" rung. Without this, a
- * stale lydia.cmd shim left behind by an uninstalled pip install (or
+ * Used to gate the "existing `alice` on PATH" rung. Without this, a
+ * stale alice.cmd shim left behind by an uninstalled pip install (or
  * a half-built venv whose `lydia` entry-point points at a deleted
  * Python) survives findOnPath() and gets selected as the backend.
  *
@@ -131,7 +131,7 @@ function verifyLydiaCli(lydiaCommand, opts = {}) {
 
 module.exports = {
   canImportLydiaCli,
-  lydiaRuntimeImportProbe,
+  aliceRuntimeImportProbe,
   verifyLydiaCli,
   PROBE_TIMEOUT_MS
 }

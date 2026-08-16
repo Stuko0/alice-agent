@@ -2,7 +2,7 @@
 
 // Backend subcommand routing for the desktop-managed Lydia process.
 //
-// The desktop app launches its own headless backend via `lydia serve` — it
+// The desktop app launches its own headless backend via `alice serve` — it
 // must NEVER depend on or launch the browser `dashboard`. But `serve` is a
 // newer subcommand: a runtime that predates it (an older managed install the
 // app hasn't updated yet, or an older `lydia` resolved from PATH) only knows
