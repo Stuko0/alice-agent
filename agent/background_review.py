@@ -559,7 +559,7 @@ def build_memory_write_metadata(
         ),
         "session_id": agent.session_id or "",
         "parent_session_id": agent._parent_session_id or "",
-        "platform": agent.platform or os.environ.get("LYDIA_SESSION_SOURCE", "cli"),
+        "platform": agent.platform or os.environ.get("ALICE_SESSION_SOURCE", "cli"),
         "tool_name": "memory",
     }
     if task_id:
@@ -686,7 +686,7 @@ def _run_review_in_thread(
             # the review fork's outbound HTTP request hits the same
             # Anthropic/OpenRouter prefix cache the parent warmed.
             # Without this, the fork rebuilds the system prompt from
-            # scratch (fresh _lydia_now() timestamp, fresh
+            # scratch (fresh _alice_now() timestamp, fresh
             # session_id, narrower toolset → different skills_prompt)
             # and the byte-exact prefix-cache key misses. See
             # issue #25322 and PR #17276 for the full analysis +

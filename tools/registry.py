@@ -332,7 +332,7 @@ class ToolRegistry:
             return mod
         # Also gate plugin modules currently loading but not yet policy-recorded
         # (defensive: a handler defined in the plugin namespace is plugin code).
-        if isinstance(mod, str) and mod.startswith("lydia_plugins."):
+        if isinstance(mod, str) and mod.startswith("alice_plugins."):
             return mod
         return None
 

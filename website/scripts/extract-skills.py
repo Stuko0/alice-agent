@@ -287,9 +287,9 @@ def extract_local_skills():
             tags = []
             metadata = fm.get("metadata")
             if isinstance(metadata, dict):
-                lydia_meta = metadata.get("alice", {})
-                if isinstance(lydia_meta, dict):
-                    tags = lydia_meta.get("tags", [])
+                alice_meta = metadata.get("alice", {})
+                if isinstance(alice_meta, dict):
+                    tags = alice_meta.get("tags", [])
             if not tags:
                 tags = fm.get("tags", [])
             if isinstance(tags, str):

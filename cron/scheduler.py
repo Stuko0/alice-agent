@@ -41,7 +41,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from alice_constants import get_alice_home
 from alice_cli._subprocess_compat import windows_hide_flags
 from alice_cli.config import load_config, _expand_env_vars
-from alice_time import now as _lydia_now
+from alice_time import now as _alice_now
 
 logger = logging.getLogger(__name__)
 
@@ -368,8 +368,8 @@ def _get_alice_home_webhook() -> Path:
 
 def _get_lock_paths() -> tuple[Path, Path]:
     """Resolve cron lock paths at call time so profile/env changes are honored."""
-    lydia_home = _get_alice_home_webhook()
-    lock_dir = lydia_home / "cron"
+    alice_home = _get_alice_home_webhook()
+    lock_dir = alice_home / "cron"
     return lock_dir, lock_dir / ".tick.lock"
 
 
@@ -1522,14 +1522,14 @@ def _get_script_timeout() -> int:
         except Exception:
             logger.warning("Invalid patched _SCRIPT_TIMEOUT=%r; using env/config/default", _SCRIPT_TIMEOUT)
 
-    env_value = os.getenv("LYDIA_CRON_SCRIPT_TIMEOUT", "").strip()
+    env_value = os.getenv("ALICE_CRON_SCRIPT_TIMEOUT", "").strip()
     if env_value:
         try:
             timeout = int(float(env_value))
             if timeout > 0:
                 return timeout
         except Exception:
-            logger.warning("Invalid LYDIA_CRON_SCRIPT_TIMEOUT=%r; using config/default", env_value)
+            logger.warning("Invalid ALICE_CRON_SCRIPT_TIMEOUT=%r; using config/default", env_value)
 
     try:
         cfg = load_config() or {}
@@ -2024,7 +2024,7 @@ def run_job(job: dict) -> tuple[bool, str, str, Optional[str]]:
                 except OSError:
                     pass
 
-        now_iso = _lydia_now().strftime("%Y-%m-%d %H:%M:%S")
+        now_iso = _alice_now().strftime("%Y-%m-%d %H:%M:%S")
 
         if not ok:
             # Script crashed / timed out / exited non-zero.  Deliver the
@@ -2115,7 +2115,7 @@ def run_job(job: dict) -> tuple[bool, str, str, Optional[str]]:
             silent_doc = (
                 f"# Cron Job: {job_name}\n\n"
                 f"**Job ID:** {job_id}\n"
-                f"**Run Time:** {_lydia_now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                f"**Run Time:** {_alice_now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
                 "Script gate returned `wakeAgent=false` — agent skipped.\n"
             )
             return True, silent_doc, SILENT_MARKER, None
@@ -2134,7 +2134,7 @@ def run_job(job: dict) -> tuple[bool, str, str, Optional[str]]:
         blocked_doc = (
             f"# Cron Job: {job_name}\n\n"
             f"**Job ID:** {job_id}\n"
-            f"**Run Time:** {_lydia_now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"**Run Time:** {_alice_now().strftime('%Y-%m-%d %H:%M:%S')}\n"
             f"**Status:** BLOCKED\n\n"
             "The assembled prompt (user prompt + loaded skill content) tripped "
             "the cron injection scanner and the agent was NOT run.\n\n"
@@ -2149,7 +2149,7 @@ def run_job(job: dict) -> tuple[bool, str, str, Optional[str]]:
         logger.info("Job '%s': script produced no output, skipping AI call.", job_name)
         return True, "", SILENT_MARKER, None
     origin = _resolve_origin(job)
-    _cron_session_id = f"cron_{job_id}_{_lydia_now().strftime('%Y%m%d_%H%M%S')}"
+    _cron_session_id = f"cron_{job_id}_{_alice_now().strftime('%Y%m%d_%H%M%S')}"
 
     logger.info("Running job '%s' (ID: %s)", job_name, job_id)
     logger.info("Prompt: %s", prompt[:100])
@@ -2159,42 +2159,42 @@ def run_job(job: dict) -> tuple[bool, str, str, Optional[str]]:
     # Mark this as a cron session so the approval system can apply cron_mode.
     # This env var is process-wide and persists for the lifetime of the
     # scheduler process — every job this process runs is a cron job.
-    os.environ["LYDIA_CRON_SESSION"] = "1"
+    os.environ["ALICE_CRON_SESSION"] = "1"
 
     # Use ContextVars for per-job session/delivery state so parallel jobs
     # don't clobber each other's targets (os.environ is process-global).
     from gateway.session_context import set_session_vars, clear_session_vars, _VAR_MAP
 
     # Cron execution is an internal scheduler context, not a live inbound
-    # gateway message. Do not seed LYDIA_SESSION_* contextvars from the
+    # gateway message. Do not seed ALICE_SESSION_* contextvars from the
     # stored ``origin`` (which is delivery routing metadata, not a sender
     # identity). Several tool consumers branch on these vars during job
     # execution and would otherwise behave as if a real user from the
     # origin chat was driving the agent:
     #   - tools/terminal_tool.py: background-process notification routing
-    #     (notify_on_complete / watch_patterns) reads LYDIA_SESSION_PLATFORM
-    #     and LYDIA_SESSION_CHAT_ID to populate watcher_platform / chat_id,
+    #     (notify_on_complete / watch_patterns) reads ALICE_SESSION_PLATFORM
+    #     and ALICE_SESSION_CHAT_ID to populate watcher_platform / chat_id,
     #     which would route completion notifications to the origin chat
-    #     instead of via LYDIA_CRON_AUTO_DELIVER_* below.
+    #     instead of via ALICE_CRON_AUTO_DELIVER_* below.
     #   - tools/tts_tool.py: picks Opus vs MP3 based on
-    #     LYDIA_SESSION_PLATFORM == "telegram".
+    #     ALICE_SESSION_PLATFORM == "telegram".
     #   - tools/skills_tool.py + agent/prompt_builder.py: per-platform
     #     skill-disable lists and the system-prompt cache key both consume
-    #     LYDIA_SESSION_PLATFORM.
+    #     ALICE_SESSION_PLATFORM.
     #   - tools/send_message_tool.py: mirror source labelling and the
-    #     send_message gate read LYDIA_SESSION_PLATFORM.
+    #     send_message gate read ALICE_SESSION_PLATFORM.
     # Cron output delivery itself reads job["origin"] directly via
-    # _resolve_origin(job) and the LYDIA_CRON_AUTO_DELIVER_* vars set
-    # below, so clearing LYDIA_SESSION_* here does not affect delivery.
+    # _resolve_origin(job) and the ALICE_CRON_AUTO_DELIVER_* vars set
+    # below, so clearing ALICE_SESSION_* here does not affect delivery.
     _ctx_tokens = set_session_vars(
         platform="",
         chat_id="",
         chat_name="",
     )
     _cron_delivery_vars = (
-        "LYDIA_CRON_AUTO_DELIVER_PLATFORM",
-        "LYDIA_CRON_AUTO_DELIVER_CHAT_ID",
-        "LYDIA_CRON_AUTO_DELIVER_THREAD_ID",
+        "ALICE_CRON_AUTO_DELIVER_PLATFORM",
+        "ALICE_CRON_AUTO_DELIVER_CHAT_ID",
+        "ALICE_CRON_AUTO_DELIVER_THREAD_ID",
     )
     for _var_name in _cron_delivery_vars:
         _VAR_MAP[_var_name].set("")
@@ -2234,20 +2234,20 @@ def run_job(job: dict) -> tuple[bool, str, str, Optional[str]]:
 
         delivery_target = _resolve_delivery_target(job)
         if delivery_target:
-            _VAR_MAP["LYDIA_CRON_AUTO_DELIVER_PLATFORM"].set(delivery_target["platform"])
-            _VAR_MAP["LYDIA_CRON_AUTO_DELIVER_CHAT_ID"].set(str(delivery_target["chat_id"]))
-            _VAR_MAP["LYDIA_CRON_AUTO_DELIVER_THREAD_ID"].set(
+            _VAR_MAP["ALICE_CRON_AUTO_DELIVER_PLATFORM"].set(delivery_target["platform"])
+            _VAR_MAP["ALICE_CRON_AUTO_DELIVER_CHAT_ID"].set(str(delivery_target["chat_id"]))
+            _VAR_MAP["ALICE_CRON_AUTO_DELIVER_THREAD_ID"].set(
                 ""
                 if delivery_target.get("thread_id") is None
                 else str(delivery_target["thread_id"])
             )
 
-        # Model resolution precedence: per-job override > LYDIA_MODEL env >
+        # Model resolution precedence: per-job override > ALICE_MODEL env >
         # config.yaml ``model:`` (string or ``{default: ...}``). The per-job
         # value is intentionally re-read from storage every tick so a
         # ``cronjob action=update model=...`` after a failed run takes effect
         # on the next tick — there is no in-memory cache.
-        model = job.get("model") or os.getenv("LYDIA_MODEL") or ""
+        model = job.get("model") or os.getenv("ALICE_MODEL") or ""
 
         # Load config.yaml for model, reasoning, prefill, toolsets, provider routing
         _cfg = {}
@@ -2288,7 +2288,7 @@ def run_job(job: dict) -> tuple[bool, str, str, Optional[str]]:
             raise RuntimeError(
                 f"Cron job '{job_name}' has no model configured "
                 f"(job.model={job.get('model')!r}, "
-                f"LYDIA_MODEL={os.getenv('LYDIA_MODEL', '')!r}, "
+                f"ALICE_MODEL={os.getenv('ALICE_MODEL', '')!r}, "
                 "config.yaml model.default missing or empty). "
                 f"Set a per-job model via "
                 f"`cronjob action=update job_id={job_id} model=<name>` or set a "
@@ -2315,7 +2315,7 @@ def run_job(job: dict) -> tuple[bool, str, str, Optional[str]]:
         prefill_messages = None
         agent_cfg = _cfg.get("agent", {}) if isinstance(_cfg.get("agent", {}), dict) else {}
         prefill_file = (
-            os.getenv("LYDIA_PREFILL_MESSAGES_FILE", "")
+            os.getenv("ALICE_PREFILL_MESSAGES_FILE", "")
             or _cfg.get("prefill_messages_file", "")
             or agent_cfg.get("prefill_messages_file", "")
         )
@@ -2345,7 +2345,7 @@ def run_job(job: dict) -> tuple[bool, str, str, Optional[str]]:
         )
         from alice_cli.auth import AuthError
         try:
-            # Do not inject LYDIA_INFERENCE_PROVIDER here. resolve_runtime_provider()
+            # Do not inject ALICE_INFERENCE_PROVIDER here. resolve_runtime_provider()
             # already prefers persisted config over stale shell/env overrides when
             # no explicit provider is requested. Passing the env var here short-
             # circuits that precedence and can resurrect old providers (for
@@ -2512,17 +2512,17 @@ def run_job(job: dict) -> tuple[bool, str, str, Optional[str]]:
         # for hours if it's actively calling tools / receiving stream tokens,
         # but a hung API call or stuck tool with no activity for the configured
         # duration is caught and killed.  Default 600s (10 min inactivity);
-        # override via LYDIA_CRON_TIMEOUT env var.  0 = unlimited.
+        # override via ALICE_CRON_TIMEOUT env var.  0 = unlimited.
         #
         # Uses the agent's built-in activity tracker (updated by
         # _touch_activity() on every tool call, API call, and stream delta).
-        _raw_cron_timeout = os.getenv("LYDIA_CRON_TIMEOUT", "").strip()
+        _raw_cron_timeout = os.getenv("ALICE_CRON_TIMEOUT", "").strip()
         if _raw_cron_timeout:
             try:
                 _cron_timeout = float(_raw_cron_timeout)
             except (ValueError, TypeError):
                 logger.warning(
-                    "Invalid LYDIA_CRON_TIMEOUT=%r; using default 600s",
+                    "Invalid ALICE_CRON_TIMEOUT=%r; using default 600s",
                     _raw_cron_timeout,
                 )
                 _cron_timeout = 600.0
@@ -2663,7 +2663,7 @@ def run_job(job: dict) -> tuple[bool, str, str, Optional[str]]:
         output = f"""# Cron Job: {job_name}
 
 **Job ID:** {job_id}
-**Run Time:** {_lydia_now().strftime('%Y-%m-%d %H:%M:%S')}
+**Run Time:** {_alice_now().strftime('%Y-%m-%d %H:%M:%S')}
 **Schedule:** {job.get('schedule_display', 'N/A')}
 
 ## Prompt
@@ -2685,7 +2685,7 @@ def run_job(job: dict) -> tuple[bool, str, str, Optional[str]]:
         output = f"""# Cron Job: {job_name} (FAILED)
 
 **Job ID:** {job_id}
-**Run Time:** {_lydia_now().strftime('%Y-%m-%d %H:%M:%S')}
+**Run Time:** {_alice_now().strftime('%Y-%m-%d %H:%M:%S')}
 **Schedule:** {job.get('schedule_display', 'N/A')}
 
 ## Prompt
@@ -2722,7 +2722,7 @@ def run_job(job: dict) -> tuple[bool, str, str, Optional[str]]:
             # suffix keeps it unique against the sessions.title index across runs.
             try:
                 _title_base = " ".join(job_name.split())[:60].strip() or f"cron {job_id}"
-                _cron_title = f"{_title_base} · {_lydia_now().strftime('%b %d %H:%M')}"
+                _cron_title = f"{_title_base} · {_alice_now().strftime('%b %d %H:%M')}"
                 _session_db.set_session_title(_cron_session_id, _cron_title)
             except (Exception, KeyboardInterrupt) as e:
                 logger.debug("Job '%s': failed to set cron session title: %s", job_id, e)
@@ -2872,11 +2872,11 @@ def tick(verbose: bool = True, adapters=None, loop=None, sync: bool = True) -> i
         due_jobs = get_due_jobs()
 
         if verbose and not due_jobs:
-            logger.info("%s - No jobs due", _lydia_now().strftime('%H:%M:%S'))
+            logger.info("%s - No jobs due", _alice_now().strftime('%H:%M:%S'))
             return 0
 
         if verbose:
-            logger.info("%s - %s job(s) due", _lydia_now().strftime('%H:%M:%S'), len(due_jobs))
+            logger.info("%s - %s job(s) due", _alice_now().strftime('%H:%M:%S'), len(due_jobs))
 
         # Advance next_run_at for all recurring jobs FIRST, under the file lock,
         # before any execution begins.  This preserves at-most-once semantics.
@@ -2887,14 +2887,14 @@ def tick(verbose: bool = True, adapters=None, loop=None, sync: bool = True) -> i
             advance_next_run(job["id"])
 
         # Resolve max parallel workers: env var > config.yaml > unbounded.
-        # Set LYDIA_CRON_MAX_PARALLEL=1 to restore old serial behaviour.
+        # Set ALICE_CRON_MAX_PARALLEL=1 to restore old serial behaviour.
         _max_workers: Optional[int] = None
         try:
-            _env_par = os.getenv("LYDIA_CRON_MAX_PARALLEL", "").strip()
+            _env_par = os.getenv("ALICE_CRON_MAX_PARALLEL", "").strip()
             if _env_par:
                 _max_workers = int(_env_par) or None
         except (ValueError, TypeError):
-            logger.warning("Invalid LYDIA_CRON_MAX_PARALLEL value; defaulting to unbounded")
+            logger.warning("Invalid ALICE_CRON_MAX_PARALLEL value; defaulting to unbounded")
         if _max_workers is None:
             try:
                 _ucfg = load_config() or {}

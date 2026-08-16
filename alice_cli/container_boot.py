@@ -87,7 +87,7 @@ class ReconcileAction:
 
 def reconcile_profile_gateways(
     *,
-    lydia_home: Path,
+    alice_home: Path,
     scandir: Path,
     dry_run: bool = False,
     container_argv: Sequence[str] | None = None,
@@ -109,9 +109,9 @@ def reconcile_profile_gateways(
     same way as for named profiles.
 
     Args:
-        lydia_home: The container's ALICE_HOME (typically /opt/data).
-            Profiles live under ``<lydia_home>/profiles/<name>/``;
-            the default profile lives at ``<lydia_home>`` itself.
+        alice_home: The container's ALICE_HOME (typically /opt/data).
+            Profiles live under ``<alice_home>/profiles/<name>/``;
+            the default profile lives at ``<alice_home>`` itself.
         scandir: The s6 dynamic scandir (typically /run/service). Service
             directories are created at ``<scandir>/gateway-<profile>/``.
         dry_run: When True, walk and return the action list without
@@ -133,14 +133,14 @@ def reconcile_profile_gateways(
     # `gateway run` command and no state exists yet, seed that intent
     # as `running` so the s6 reconciler preserves the pre-s6 behavior.
     legacy_default_state = _maybe_migrate_legacy_gateway_run_state(
-        lydia_home,
+        alice_home,
         container_argv=container_argv,
         dry_run=dry_run,
     )
-    default_prior_state = legacy_default_state or _read_desired_state(lydia_home)
+    default_prior_state = legacy_default_state or _read_desired_state(alice_home)
     default_should_start = default_prior_state in _AUTOSTART_STATES
     if not dry_run:
-        _cleanup_stale_runtime_files(lydia_home)
+        _cleanup_stale_runtime_files(alice_home)
         _register_service(scandir, "default", start=default_should_start)
     actions.append(ReconcileAction(
         profile="default",
@@ -148,7 +148,7 @@ def reconcile_profile_gateways(
         action="started" if default_should_start else "registered",
     ))
 
-    profiles_root = lydia_home / "profiles"
+    profiles_root = alice_home / "profiles"
     if profiles_root.is_dir():
         for entry in sorted(profiles_root.iterdir()):
             if not entry.is_dir():
@@ -186,12 +186,12 @@ def reconcile_profile_gateways(
             ))
 
     if not dry_run:
-        _write_reconcile_log(lydia_home, actions)
+        _write_reconcile_log(alice_home, actions)
     return actions
 
 
 def _maybe_migrate_legacy_gateway_run_state(
-    lydia_home: Path,
+    alice_home: Path,
     *,
     container_argv: Sequence[str] | None,
     dry_run: bool,
@@ -206,11 +206,11 @@ def _maybe_migrate_legacy_gateway_run_state(
     root gateway_state.json exists so explicit stopped/failed states keep
     winning across restarts.
     """
-    state_file = lydia_home / "gateway_state.json"
+    state_file = alice_home / "gateway_state.json"
     if state_file.exists():
         return None
 
-    if os.environ.get("LYDIA_GATEWAY_NO_SUPERVISE", "").lower() in ("1", "true", "yes"):
+    if os.environ.get("ALICE_GATEWAY_NO_SUPERVISE", "").lower() in ("1", "true", "yes"):
         return None
 
     argv = tuple(container_argv) if container_argv is not None else _read_container_argv()
@@ -492,7 +492,7 @@ def _register_service(scandir: Path, profile: str, *, start: bool) -> None:
 
 
 def _write_reconcile_log(
-    lydia_home: Path, actions: list[ReconcileAction],
+    alice_home: Path, actions: list[ReconcileAction],
 ) -> None:
     """Append one line per profile to $ALICE_HOME/logs/container-boot.log.
 
@@ -510,7 +510,7 @@ def _write_reconcile_log(
     one append-only file (PR #30136 review item O3).
     """
     import time
-    log_dir = lydia_home / "logs"
+    log_dir = alice_home / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / "container-boot.log"
 
@@ -559,10 +559,10 @@ def main() -> int:
         )
         return 0
 
-    lydia_home = Path(os.environ.get("ALICE_HOME", "/opt/data"))
+    alice_home = Path(os.environ.get("ALICE_HOME", "/opt/data"))
     scandir = Path(os.environ.get("S6_PROFILE_GATEWAY_SCANDIR", "/run/service"))
     actions = reconcile_profile_gateways(
-        lydia_home=lydia_home, scandir=scandir,
+        alice_home=alice_home, scandir=scandir,
     )
     for a in actions:
         print(

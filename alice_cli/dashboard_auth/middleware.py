@@ -295,7 +295,7 @@ async def gated_auth_middleware(
     # cookie is set with ``Max-Age = access_token_expires_in`` (~15 min), so
     # the browser EVICTS it the moment the token lapses, while the
     # refresh-token cookie lives for 30 days. From that point the browser
-    # sends only ``lydia_session_rt``. If we bailed on ``not at`` here we'd
+    # sends only ``alice_session_rt``. If we bailed on ``not at`` here we'd
     # bounce the user to /login on every expiry despite holding a perfectly
     # good refresh token — defeating the whole transparent-refresh feature.
     session = None

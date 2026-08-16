@@ -96,19 +96,19 @@ def current_secret_scope() -> Optional[Mapping[str, str]]:
 # list tight: when in doubt a value is a profile secret, not a global.
 _GLOBAL_ENV_EXACT = frozenset({
     # Alice runtime / deployment
-    "ALICE_HOME", "LYDIA_PROFILE", "LYDIA_GATEWAY_LOCK_DIR",
-    "LYDIA_MAX_ITERATIONS", "LYDIA_MAX_TOKENS", "LYDIA_API_TIMEOUT",
-    "LYDIA_REDACT_SECRETS", "LYDIA_NOUS_TIMEOUT_SECONDS",
-    "_LYDIA_GATEWAY",
+    "ALICE_HOME", "ALICE_PROFILE", "ALICE_GATEWAY_LOCK_DIR",
+    "ALICE_MAX_ITERATIONS", "ALICE_MAX_TOKENS", "ALICE_API_TIMEOUT",
+    "ALICE_REDACT_SECRETS", "ALICE_NOUS_TIMEOUT_SECONDS",
+    "_ALICE_GATEWAY",
     # OS / interpreter
     "PATH", "HOME", "USER", "LANG", "LC_ALL", "TZ", "PWD", "SHELL", "TMPDIR",
     "VIRTUAL_ENV", "PYTHONPATH", "SSL_CERT_FILE",
     # Kanban paths (per-board, not per-profile-secret)
-    "LYDIA_KANBAN_DB", "LYDIA_KANBAN_WORKSPACES_ROOT", "LYDIA_KANBAN_BOARD",
+    "ALICE_KANBAN_DB", "ALICE_KANBAN_WORKSPACES_ROOT", "ALICE_KANBAN_BOARD",
 })
 _GLOBAL_ENV_PREFIXES = (
-    "LYDIA_KANBAN_",
-    "LYDIA_TELEGRAM_",   # tuning knobs (batch delays, fallback toggles) — NOT the token
+    "ALICE_KANBAN_",
+    "ALICE_TELEGRAM_",   # tuning knobs (batch delays, fallback toggles) — NOT the token
     "TERMINAL_",          # terminal/sandbox backend settings
 )
 
@@ -194,12 +194,12 @@ def load_env_file(env_path: Path) -> Dict[str, str]:
     return secrets
 
 
-def build_profile_secret_scope(lydia_home: Path) -> Dict[str, str]:
+def build_profile_secret_scope(alice_home: Path) -> Dict[str, str]:
     """Build a profile's secret mapping from its ``<home>/.env``.
 
     Returns a fresh dict (safe to install via ``set_secret_scope``). Genuinely
     global vars are intentionally NOT copied in — ``get_secret`` reads those
     from ``os.environ`` directly, so the scope holds only profile secrets.
     """
-    return load_env_file(Path(lydia_home) / ".env")
+    return load_env_file(Path(alice_home) / ".env")
 

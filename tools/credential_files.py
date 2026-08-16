@@ -68,7 +68,7 @@ def register_credential_file(
     skill cannot declare ``required_credential_files: ['../../.ssh/id_rsa']``
     and exfiltrate sensitive host files into a container sandbox.
     """
-    lydia_home = _resolve_alice_home_webhook()
+    alice_home = _resolve_alice_home_webhook()
 
     # Reject absolute paths — they bypass the ALICE_HOME sandbox entirely.
     if os.path.isabs(relative_path):
@@ -78,13 +78,13 @@ def register_credential_file(
         )
         return False
 
-    host_path = lydia_home / relative_path
+    host_path = alice_home / relative_path
 
     # Resolve symlinks and normalise ``..`` before the containment check so
     # that traversal like ``../. ssh/id_rsa`` cannot escape ALICE_HOME.
     from tools.path_security import validate_within_dir
 
-    containment_error = validate_within_dir(host_path, lydia_home)
+    containment_error = validate_within_dir(host_path, alice_home)
     if containment_error:
         logger.warning(
             "credential_files: rejected path traversal %r (%s)",
@@ -138,7 +138,7 @@ def _load_config_files() -> List[Dict[str, str]]:
     result: List[Dict[str, str]] = []
     try:
         from alice_cli.config import read_raw_config
-        lydia_home = _resolve_alice_home_webhook()
+        alice_home = _resolve_alice_home_webhook()
         cfg = read_raw_config()
         cred_files = cfg_get(cfg, "terminal", "credential_files")
         if isinstance(cred_files, list):
@@ -152,8 +152,8 @@ def _load_config_files() -> List[Dict[str, str]]:
                             "credential_files: rejected absolute config path %r", rel,
                         )
                         continue
-                    host_path = lydia_home / rel
-                    containment_error = validate_within_dir(host_path, lydia_home)
+                    host_path = alice_home / rel
+                    containment_error = validate_within_dir(host_path, alice_home)
                     if containment_error:
                         logger.warning(
                             "credential_files: rejected config path traversal %r (%s)",
@@ -220,8 +220,8 @@ def get_skills_directory_mount(
     at ``<container_base>/external_skills/<index>``.
     """
     mounts = []
-    lydia_home = _resolve_alice_home_webhook()
-    skills_dir = lydia_home / "skills"
+    alice_home = _resolve_alice_home_webhook()
+    skills_dir = alice_home / "skills"
     if skills_dir.is_dir():
         host_path = _safe_skills_path(skills_dir)
         mounts.append({
@@ -303,8 +303,8 @@ def iter_skills_files(
     """
     result: List[Dict[str, str]] = []
 
-    lydia_home = _resolve_alice_home_webhook()
-    skills_dir = lydia_home / "skills"
+    alice_home = _resolve_alice_home_webhook()
+    skills_dir = alice_home / "skills"
     if skills_dir.is_dir():
         container_root = f"{container_base.rstrip('/')}/skills"
         for item in skills_dir.rglob("*"):

@@ -498,7 +498,7 @@ def _get_session_db() -> Optional[Any]:
 
     SessionDB has no built-in singleton, but opening a new connection per
     /goal call would thrash the file. We cache one instance per
-    ``lydia_home`` path so profile switches still pick up the right DB.
+    ``alice_home`` path so profile switches still pick up the right DB.
     Defensive against import/instantiation failures so tests and
     non-standard launchers can still use the GoalManager.
     """

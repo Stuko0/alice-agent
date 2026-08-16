@@ -463,7 +463,7 @@ def _db_opens_cleanly(db_path: Path) -> Optional[str]:
         # best-effort — if the messages/sessions tables don't exist yet (brand
         # new file mid-init) the OperationalError is treated as "not yet a
         # populated DB", not corruption.
-        probe_session_id = f"_lydia_fts_health_probe_{time.time_ns()}"
+        probe_session_id = f"_alice_fts_health_probe_{time.time_ns()}"
         try:
             conn.execute("BEGIN IMMEDIATE")
             conn.execute(
@@ -956,8 +956,8 @@ class SessionDB:
 
     def _sqlite_supports_fts5(self, cursor: sqlite3.Cursor) -> bool:
         try:
-            cursor.execute("CREATE VIRTUAL TABLE temp._lydia_fts5_probe USING fts5(x)")
-            cursor.execute("DROP TABLE temp._lydia_fts5_probe")
+            cursor.execute("CREATE VIRTUAL TABLE temp._alice_fts5_probe USING fts5(x)")
+            cursor.execute("DROP TABLE temp._alice_fts5_probe")
             return True
         except sqlite3.OperationalError as exc:
             if not self._is_fts5_unavailable_error(exc):
@@ -5406,7 +5406,7 @@ class SessionDB:
         index internally, then VACUUM returns the freed pages to the OS.
 
         Skips any FTS table that does not exist (e.g. the trigram index when
-        disabled via ``LYDIA_DISABLE_FTS_TRIGRAM`` or not yet created), so
+        disabled via ``ALICE_DISABLE_FTS_TRIGRAM`` or not yet created), so
         it is safe to call unconditionally.
 
         Returns the number of FTS indexes that were optimized.

@@ -131,7 +131,7 @@ THREAT_PATTERNS = [
      "docker_dir_access", "high", "exfiltration",
      "references Docker config (may contain registry creds)"),
     (r'\$HOME/\.alice/\.env|\~/\.alice/\.env',
-     "lydia_env_access", "critical", "exfiltration",
+     "alice_env_access", "critical", "exfiltration",
      "directly references Alice secrets file"),
     # Match `cat <secrets-file>` (reading credentials) but NOT `cat > <file>`
     # or `cat >> <file>`, which are output redirections that WRITE a file
@@ -457,7 +457,7 @@ THREAT_PATTERNS = [
      "agent_config_mod", "critical", "persistence",
      "references agent config files (could persist malicious instructions across sessions)"),
     (r'\.alice/config\.yaml|\.alice/SOUL\.md',
-     "lydia_config_mod", "critical", "persistence",
+     "alice_config_mod", "critical", "persistence",
      "references Alice configuration files directly"),
     (r'\.claude/settings|\.codex/config',
      "other_agent_config", "high", "persistence",

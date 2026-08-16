@@ -148,14 +148,14 @@ def _get_backend() -> ComputerUseBackend:
     global _backend
     with _backend_lock:
         if _backend is None:
-            backend_name = os.environ.get("LYDIA_COMPUTER_USE_BACKEND", "cua").lower()
+            backend_name = os.environ.get("ALICE_COMPUTER_USE_BACKEND", "cua").lower()
             if backend_name in {"cua", "cua-driver", ""}:
                 from tools.computer_use.cua_backend import CuaDriverBackend
                 _backend = CuaDriverBackend()
             elif backend_name == "noop":  # pragma: no cover
                 _backend = _NoopBackend()
             else:
-                raise RuntimeError(f"Unknown LYDIA_COMPUTER_USE_BACKEND={backend_name!r}")
+                raise RuntimeError(f"Unknown ALICE_COMPUTER_USE_BACKEND={backend_name!r}")
             try:
                 _backend.start()
             except Exception:

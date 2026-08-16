@@ -66,10 +66,10 @@ _bundles_cache_mtime: Optional[float] = None
 def _bundles_dir() -> Path:
     """Return the canonical bundles directory under ALICE_HOME.
 
-    Honors ``LYDIA_BUNDLES_DIR`` for tests; falls back to
+    Honors ``ALICE_BUNDLES_DIR`` for tests; falls back to
     ``<ALICE_HOME>/skill-bundles``.
     """
-    override = os.environ.get("LYDIA_BUNDLES_DIR")
+    override = os.environ.get("ALICE_BUNDLES_DIR")
     if override:
         return Path(override).expanduser()
     return get_alice_home() / "skill-bundles"

@@ -295,7 +295,7 @@ class MiniSWERunner:
             })
         return json.dumps(formatted_tools, ensure_ascii=False)
     
-    def _convert_to_lydia_format(
+    def _convert_to_alice_format(
         self,
         messages: List[Dict[str, Any]],
         user_query: str,
@@ -557,7 +557,7 @@ Complete the user's task step by step."""
             self._cleanup_env()
         
         # Convert to Alice trajectory format
-        trajectory = self._convert_to_lydia_format(messages, task, completed)
+        trajectory = self._convert_to_alice_format(messages, task, completed)
         
         return {
             "conversations": trajectory,

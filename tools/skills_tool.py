@@ -351,11 +351,11 @@ def _capture_required_environment_variables(
     missing_names = [entry["name"] for entry in missing_entries]
     # Most gateway surfaces (messaging platforms) can't prompt for a secret, so
     # they short-circuit to the "unsupported" hint. Interactive gateway surfaces
-    # — the desktop app / TUI — set LYDIA_INTERACTIVE and register a
+    # — the desktop app / TUI — set ALICE_INTERACTIVE and register a
     # secret-capture callback that routes to a secure secret.request overlay, so
-    # they fall through and actually prompt. (LYDIA_INTERACTIVE is the same flag
+    # they fall through and actually prompt. (ALICE_INTERACTIVE is the same flag
     # tools/approval.py uses to tell an interactive surface from a messaging one.)
-    if _is_gateway_surface() and not env_var_enabled("LYDIA_INTERACTIVE"):
+    if _is_gateway_surface() and not env_var_enabled("ALICE_INTERACTIVE"):
         return {
             "missing_names": missing_names,
             "setup_skipped": False,
@@ -416,10 +416,10 @@ def _capture_required_environment_variables(
 
 
 def _is_gateway_surface() -> bool:
-    if env_var_enabled("LYDIA_GATEWAY_SESSION"):
+    if env_var_enabled("ALICE_GATEWAY_SESSION"):
         return True
     from gateway.session_context import get_session_env
-    return bool(get_session_env("LYDIA_SESSION_PLATFORM"))
+    return bool(get_session_env("ALICE_SESSION_PLATFORM"))
 
 
 def _get_terminal_backend_name() -> str:
@@ -566,11 +566,11 @@ def _get_session_platform() -> str:
 
     Mirrors the platform-resolution logic in
     ``agent.skill_utils.get_disabled_skill_names`` so that
-    ``_is_skill_disabled`` respects ``LYDIA_SESSION_PLATFORM``.
+    ``_is_skill_disabled`` respects ``ALICE_SESSION_PLATFORM``.
     """
     try:
         from gateway.session_context import get_session_env
-        return get_session_env("LYDIA_SESSION_PLATFORM") or ""
+        return get_session_env("ALICE_SESSION_PLATFORM") or ""
     except Exception:
         return ""
 
@@ -580,14 +580,14 @@ def _is_skill_disabled(name: str, platform: str = None) -> bool:
 
     Resolves the active platform from (in order of precedence):
     1. Explicit ``platform`` argument
-    2. ``LYDIA_PLATFORM`` environment variable
-    3. ``LYDIA_SESSION_PLATFORM`` from gateway session context
+    2. ``ALICE_PLATFORM`` environment variable
+    3. ``ALICE_SESSION_PLATFORM`` from gateway session context
     """
     try:
         from alice_cli.config import load_config
         config = load_config()
         skills_cfg = config.get("skills", {})
-        resolved_platform = platform or os.getenv("LYDIA_PLATFORM") or _get_session_platform()
+        resolved_platform = platform or os.getenv("ALICE_PLATFORM") or _get_session_platform()
         global_disabled = skills_cfg.get("disabled", [])
         if resolved_platform:
             platform_disabled = cfg_get(skills_cfg, "platform_disabled", resolved_platform)
@@ -1353,14 +1353,14 @@ def skill_view(
 
         # Read tags/related_skills with backward compat:
         # Check metadata.alice.* first (agentskills.io convention), fall back to top-level
-        lydia_meta = {}
+        alice_meta = {}
         metadata = frontmatter.get("metadata")
         if isinstance(metadata, dict):
-            lydia_meta = metadata.get("alice", {}) or {}
+            alice_meta = metadata.get("alice", {}) or {}
 
-        tags = _parse_tags(lydia_meta.get("tags") or frontmatter.get("tags", ""))
+        tags = _parse_tags(alice_meta.get("tags") or frontmatter.get("tags", ""))
         related_skills = _parse_tags(
-            lydia_meta.get("related_skills") or frontmatter.get("related_skills", "")
+            alice_meta.get("related_skills") or frontmatter.get("related_skills", "")
         )
 
         # Build linked files structure for clear discovery

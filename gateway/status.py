@@ -63,7 +63,7 @@ def _get_runtime_status_path() -> Path:
 
 def _get_lock_dir() -> Path:
     """Return the machine-local directory for token-scoped gateway locks."""
-    override = os.getenv("LYDIA_GATEWAY_LOCK_DIR")
+    override = os.getenv("ALICE_GATEWAY_LOCK_DIR")
     if override:
         return Path(override)
     state_home = Path(os.getenv("XDG_STATE_HOME", Path.home() / ".local" / "state"))
@@ -346,7 +346,7 @@ def _command_line_belongs_to_profile(command: str, profile_home: Path) -> bool:
         return (
             f"--profile {profile_lc}" in command_lc
             or f"-p {profile_lc}" in command_lc
-            or f"lydia_home={home_lc}" in command_lc
+            or f"alice_home={home_lc}" in command_lc
         )
 
     # Default/root profile: the gateway runs with no profile flag. Accept unless
@@ -356,7 +356,7 @@ def _command_line_belongs_to_profile(command: str, profile_home: Path) -> bool:
     # absence is not disqualifying — only a conflicting explicit value is.
     if "--profile " in command_lc or " -p " in command_lc:
         return False
-    if "lydia_home=" in command_lc and f"lydia_home={home_lc}" not in command_lc:
+    if "alice_home=" in command_lc and f"alice_home={home_lc}" not in command_lc:
         return False
     return True
 

@@ -454,10 +454,10 @@ def build_or_headers(or_config: dict | None = None) -> dict:
     Precedence for response cache: env var > config.yaml > default (enabled).
 
     Environment variables:
-        ``LYDIA_OPENROUTER_CACHE`` — truthy (``1``/``true``/``yes``/``on``)
+        ``ALICE_OPENROUTER_CACHE`` — truthy (``1``/``true``/``yes``/``on``)
             enables caching; ``0``/``false``/``no``/``off`` disables.
             Overrides ``openrouter.response_cache`` in config.yaml.
-        ``LYDIA_OPENROUTER_CACHE_TTL`` — integer seconds (1-86400).
+        ``ALICE_OPENROUTER_CACHE_TTL`` — integer seconds (1-86400).
             Overrides ``openrouter.response_cache_ttl`` in config.yaml.
 
     *or_config* is the ``openrouter`` section from config.yaml.  When *None*,
@@ -474,7 +474,7 @@ def build_or_headers(or_config: dict | None = None) -> dict:
             or_config = {}
 
     # Determine cache enabled: env var overrides config.
-    env_cache = os.environ.get("LYDIA_OPENROUTER_CACHE", "").strip().lower()
+    env_cache = os.environ.get("ALICE_OPENROUTER_CACHE", "").strip().lower()
     if env_cache:
         cache_enabled = env_cache in _TRUTHY_ENV_VALUES
     else:
@@ -486,7 +486,7 @@ def build_or_headers(or_config: dict | None = None) -> dict:
     headers["X-OpenRouter-Cache"] = "true"
 
     # Determine TTL: env var overrides config.
-    env_ttl = os.environ.get("LYDIA_OPENROUTER_CACHE_TTL", "").strip()
+    env_ttl = os.environ.get("ALICE_OPENROUTER_CACHE_TTL", "").strip()
     if env_ttl:
         if env_ttl.isdigit():
             ttl = int(env_ttl)
@@ -717,7 +717,7 @@ def _is_anthropic_compatible_host(url: str) -> bool:
 
 def _nous_min_key_ttl_seconds() -> int:
     try:
-        return max(60, int(os.getenv("LYDIA_NOUS_MIN_KEY_TTL_SECONDS", "1800")))
+        return max(60, int(os.getenv("ALICE_NOUS_MIN_KEY_TTL_SECONDS", "1800")))
     except (TypeError, ValueError):
         return 1800
 
@@ -1462,7 +1462,7 @@ def _resolve_nous_runtime_api(*, force_refresh: bool = False) -> Optional[tuple[
         from alice_cli.auth import resolve_nous_runtime_credentials
 
         creds = resolve_nous_runtime_credentials(
-            timeout_seconds=env_float("LYDIA_NOUS_TIMEOUT_SECONDS", 15),
+            timeout_seconds=env_float("ALICE_NOUS_TIMEOUT_SECONDS", 15),
             force_refresh=force_refresh,
         )
     except Exception as exc:
@@ -1505,7 +1505,7 @@ def _resolve_xai_oauth_for_aux() -> Optional[Tuple[str, str]]:
                     or ""
                 ).strip()
                 base_url = _xai_validate_inference_base_url(
-                    os.getenv("LYDIA_XAI_BASE_URL", "").strip().rstrip("/")
+                    os.getenv("ALICE_XAI_BASE_URL", "").strip().rstrip("/")
                     or os.getenv("XAI_BASE_URL", "").strip().rstrip("/")
                     or str(getattr(entry, "runtime_base_url", None) or "").strip().rstrip("/")
                     or str(getattr(entry, "base_url", None) or "").strip().rstrip("/"),
@@ -3159,7 +3159,7 @@ def _refresh_provider_credentials(provider: str) -> bool:
             from alice_cli.auth import resolve_nous_runtime_credentials
 
             creds = resolve_nous_runtime_credentials(
-                timeout_seconds=env_float("LYDIA_NOUS_TIMEOUT_SECONDS", 15),
+                timeout_seconds=env_float("ALICE_NOUS_TIMEOUT_SECONDS", 15),
                 force_refresh=True,
             )
             if not str(creds.get("api_key", "") or "").strip():

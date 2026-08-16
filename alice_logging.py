@@ -190,7 +190,7 @@ def _install_session_record_factory() -> None:
     the module is reloaded.
     """
     current_factory = logging.getLogRecordFactory()
-    if getattr(current_factory, "_lydia_session_injector", False):
+    if getattr(current_factory, "_alice_session_injector", False):
         return  # already installed
 
     def _session_record_factory(*args, **kwargs):
@@ -199,7 +199,7 @@ def _install_session_record_factory() -> None:
         record.session_tag = f" [{sid}]" if sid else ""  # type: ignore[attr-defined]
         return record
 
-    _session_record_factory._lydia_session_injector = True  # type: ignore[attr-defined]
+    _session_record_factory._alice_session_injector = True  # type: ignore[attr-defined]
     logging.setLogRecordFactory(_session_record_factory)
 
 
@@ -234,7 +234,7 @@ COMPONENT_PREFIXES = {
     # out of ``gateway/platforms/`` into bundled plugins (#41112) — they are
     # still gateway components and their logs belong in gateway.log / match
     # ``alice logs --component gateway``.
-    "gateway": ("gateway", "lydia_plugins", "plugins.platforms"),
+    "gateway": ("gateway", "alice_plugins", "plugins.platforms"),
     "agent": ("agent", "run_agent", "model_tools", "batch_runner"),
     "tools": ("tools",),
     "cli": ("alice_cli", "cli"),
@@ -268,7 +268,7 @@ def setup_logging(
 
     Parameters
     ----------
-    lydia_home
+    alice_home
         Override for the Alice home directory.  Falls back to
         ``get_alice_home()`` (profile-aware).
     log_level
@@ -296,7 +296,7 @@ def setup_logging(
         The ``logs/`` directory where files are written.
     """
     global _logging_initialized
-    home = lydia_home or get_alice_home()
+    home = alice_home or get_alice_home()
     log_dir = home / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -384,13 +384,13 @@ def setup_verbose_logging() -> None:
     # Avoid adding duplicate stream handlers.
     for h in root.handlers:
         if isinstance(h, logging.StreamHandler) and not isinstance(h, RotatingFileHandler):
-            if getattr(h, "_lydia_verbose", False):
+            if getattr(h, "_alice_verbose", False):
                 return
 
     handler = logging.StreamHandler(_safe_stderr())
     handler.setLevel(logging.DEBUG)
     handler.setFormatter(RedactingFormatter(_LOG_FORMAT_VERBOSE, datefmt="%H:%M:%S"))
-    handler._lydia_verbose = True  # type: ignore[attr-defined]
+    handler._alice_verbose = True  # type: ignore[attr-defined]
     root.addHandler(handler)
 
     # Lower root logger level so DEBUG records reach all handlers.

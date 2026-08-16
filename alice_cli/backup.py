@@ -291,10 +291,10 @@ def _format_size(nbytes: int) -> str:
 
 def run_backup(args) -> None:
     """Create a zip backup of the Alice home directory."""
-    lydia_root = get_default_alice_root()
+    alice_root = get_default_alice_root()
 
-    if not lydia_root.is_dir():
-        print(f"Error: Alice home directory not found at {lydia_root}")
+    if not alice_root.is_dir():
+        print(f"Error: Alice home directory not found at {alice_root}")
         sys.exit(1)
 
     # Determine output path
@@ -320,9 +320,9 @@ def run_backup(args) -> None:
     files_to_add: list[tuple[Path, Path]] = []  # (absolute, relative)
     skipped_dirs = set()
 
-    for dirpath, dirnames, filenames in os.walk(lydia_root, followlinks=False):
+    for dirpath, dirnames, filenames in os.walk(alice_root, followlinks=False):
         dp = Path(dirpath)
-        rel_dir = dp.relative_to(lydia_root)
+        rel_dir = dp.relative_to(alice_root)
 
         # Prune excluded directories in-place so os.walk doesn't descend
         # ``alice-agent`` is only pruned at the root level; nested dirs
@@ -338,7 +338,7 @@ def run_backup(args) -> None:
 
         for fname in filenames:
             fpath = dp / fname
-            rel = fpath.relative_to(lydia_root)
+            rel = fpath.relative_to(alice_root)
 
             if _should_skip_backup_file(fpath, rel, out_path):
                 continue
@@ -531,7 +531,7 @@ def run_import(args) -> None:
         print(f"Error: Not a valid zip file: {zip_path}")
         sys.exit(1)
 
-    lydia_root = get_default_alice_root()
+    alice_root = get_default_alice_root()
 
     with zipfile.ZipFile(zip_path, "r") as zf:
         # Validate
@@ -551,8 +551,8 @@ def run_import(args) -> None:
             print(f"Detected archive prefix: {prefix!r} (will be stripped)")
 
         # Check for existing installation
-        has_config = (lydia_root / "config.yaml").exists()
-        has_env = (lydia_root / ".env").exists()
+        has_config = (alice_root / "config.yaml").exists()
+        has_env = (alice_root / ".env").exists()
 
         if (has_config or has_env) and not args.force:
             print()
@@ -570,7 +570,7 @@ def run_import(args) -> None:
 
         # Extract
         print(f"\nImporting {file_count} files ...")
-        lydia_root.mkdir(parents=True, exist_ok=True)
+        alice_root.mkdir(parents=True, exist_ok=True)
 
         errors = []
         restored = 0
@@ -631,11 +631,11 @@ def run_import(args) -> None:
                 skipped_runtime.append(rel)
                 continue
 
-            target = lydia_root / rel
+            target = alice_root / rel
 
             # Security: reject absolute paths and traversals
             try:
-                target.resolve().relative_to(lydia_root.resolve())
+                target.resolve().relative_to(alice_root.resolve())
             except ValueError:
                 errors.append(f"  {rel}: path traversal blocked")
                 continue
@@ -684,7 +684,7 @@ def run_import(args) -> None:
                 print(f"    ... and {len(skipped_runtime) - 10} more")
 
         # Post-import: restore profile wrapper scripts
-        profiles_dir = lydia_root / "profiles"
+        profiles_dir = alice_root / "profiles"
         restored_profiles = []
         if profiles_dir.is_dir():
             try:
@@ -726,7 +726,7 @@ def run_import(args) -> None:
 
         # Guidance
         print()
-        if not (lydia_root / "alice-agent").is_dir():
+        if not (alice_root / "alice-agent").is_dir():
             print("Note: The alice-agent codebase was not included in the backup.")
             print("  If this is a fresh install, run: alice update")
 
@@ -786,7 +786,7 @@ _QUICK_DEFAULT_KEEP = 20
 
 
 def _quick_snapshot_root(alice_home: Optional[Path] = None) -> Path:
-    home = lydia_home or get_alice_home()
+    home = alice_home or get_alice_home()
     return home / _QUICK_SNAPSHOTS_DIR
 
 
@@ -803,7 +803,7 @@ def create_quick_snapshot(
     Returns:
         Snapshot ID (timestamp-based), or None if no files found.
     """
-    home = lydia_home or get_alice_home()
+    home = alice_home or get_alice_home()
     root = _quick_snapshot_root(home)
 
     ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
@@ -893,7 +893,7 @@ def list_quick_snapshots(
     alice_home: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
     """List existing quick state snapshots, most recent first."""
-    root = _quick_snapshot_root(lydia_home)
+    root = _quick_snapshot_root(alice_home)
     if not root.exists():
         return []
 
@@ -923,7 +923,7 @@ def restore_quick_snapshot(
     Overwrites current state files with the snapshot's copies.
     Returns True if at least one file was restored.
     """
-    home = lydia_home or get_alice_home()
+    home = alice_home or get_alice_home()
     root = _quick_snapshot_root(home)
 
     # Security: reject snapshot_id values that contain path separators or
@@ -1047,7 +1047,7 @@ def restore_cron_jobs_if_emptied(
     Args:
         snapshot_id: The pre-update quick-snapshot id (from
             :func:`create_quick_snapshot`).
-        lydia_home: Override for the Alice home directory (tests).
+        alice_home: Override for the Alice home directory (tests).
 
     Returns:
         ``None`` when no action was taken (the common, healthy path). On a
@@ -1057,7 +1057,7 @@ def restore_cron_jobs_if_emptied(
     if not snapshot_id:
         return None
 
-    home = lydia_home or get_alice_home()
+    home = alice_home or get_alice_home()
     live_path = home / _CRON_JOBS_REL
 
     live_count = _count_cron_jobs(live_path)
@@ -1125,7 +1125,7 @@ def prune_quick_snapshots(
     alice_home: Optional[Path] = None,
 ) -> int:
     """Manually prune quick snapshots. Returns count deleted."""
-    return _prune_quick_snapshots(_quick_snapshot_root(lydia_home), keep=keep)
+    return _prune_quick_snapshots(_quick_snapshot_root(alice_home), keep=keep)
 
 
 def run_quick_backup(args) -> None:
@@ -1146,7 +1146,7 @@ def run_quick_backup(args) -> None:
 # ---------------------------------------------------------------------------
 
 def _write_full_zip_backup(out_path: Path, alice_root: Path) -> Optional[Path]:
-    """Write a full zip snapshot of ``lydia_root`` to ``out_path``.
+    """Write a full zip snapshot of ``alice_root`` to ``out_path``.
 
     Uses the same exclusion rules and SQLite safe-copy as :func:`run_backup`.
     Returns the output path on success, None on failure (nothing to back up,
@@ -1154,7 +1154,7 @@ def _write_full_zip_backup(out_path: Path, alice_root: Path) -> Optional[Path]:
     """
     files_to_add: list[tuple[Path, Path]] = []
     try:
-        for dirpath, dirnames, filenames in os.walk(lydia_root, followlinks=False):
+        for dirpath, dirnames, filenames in os.walk(alice_root, followlinks=False):
             dp = Path(dirpath)
             # Prune excluded directories in-place so os.walk doesn't descend
             dirnames[:] = [d for d in dirnames if d not in _EXCLUDED_DIRS]
@@ -1162,7 +1162,7 @@ def _write_full_zip_backup(out_path: Path, alice_root: Path) -> Optional[Path]:
             for fname in filenames:
                 fpath = dp / fname
                 try:
-                    rel = fpath.relative_to(lydia_root)
+                    rel = fpath.relative_to(alice_root)
                 except ValueError:
                     continue
 
@@ -1222,7 +1222,7 @@ _PRE_UPDATE_DEFAULT_KEEP = 5
 
 
 def _pre_update_backup_dir(alice_home: Optional[Path] = None) -> Path:
-    home = lydia_home or get_alice_home()
+    home = alice_home or get_alice_home()
     return home / _PRE_UPDATE_BACKUPS_DIR
 
 
@@ -1277,11 +1277,11 @@ def create_pre_update_backup(
     found or the backup could not be created.  Never raises — the caller
     (``alice update``) should continue even if the backup fails.
     """
-    lydia_root = lydia_home or get_default_alice_root()
-    if not lydia_root.is_dir():
+    alice_root = alice_home or get_default_alice_root()
+    if not alice_root.is_dir():
         return None
 
-    backup_dir = _pre_update_backup_dir(lydia_root)
+    backup_dir = _pre_update_backup_dir(alice_root)
     try:
         backup_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
@@ -1291,7 +1291,7 @@ def create_pre_update_backup(
     stamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
     out_path = backup_dir / f"{_PRE_UPDATE_PREFIX}{stamp}.zip"
 
-    result = _write_full_zip_backup(out_path, lydia_root)
+    result = _write_full_zip_backup(out_path, alice_root)
     if result is None:
         return None
 
@@ -1352,13 +1352,13 @@ def create_pre_migration_backup(
     to back up (fresh install) or the write failed.  Never raises — the
     caller decides whether to abort or proceed.
     """
-    lydia_root = lydia_home or get_default_alice_root()
-    if not lydia_root.is_dir():
+    alice_root = alice_home or get_default_alice_root()
+    if not alice_root.is_dir():
         return None
 
     # Reuses the shared backups/ directory so `alice import` and the
     # update-backup listing pick up pre-migration archives too.
-    backup_dir = _pre_update_backup_dir(lydia_root)
+    backup_dir = _pre_update_backup_dir(alice_root)
     try:
         backup_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
@@ -1368,7 +1368,7 @@ def create_pre_migration_backup(
     stamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
     out_path = backup_dir / f"{_PRE_MIGRATION_PREFIX}{stamp}.zip"
 
-    result = _write_full_zip_backup(out_path, lydia_root)
+    result = _write_full_zip_backup(out_path, alice_root)
     if result is None:
         return None
 

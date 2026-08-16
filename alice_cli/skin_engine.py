@@ -146,8 +146,8 @@ class SkinConfig:
     tool_prefix: str = "┊"
     tool_emojis: Dict[str, str] = field(default_factory=dict)  # per-tool emoji overrides
     status_symbols: Dict[str, str] = field(default_factory=dict)  # status symbol overrides
-    banner_logo: str = ""    # Rich-markup ASCII art logo (replaces LYDIA_AGENT_LOGO)
-    banner_hero: str = ""    # Rich-markup hero art (replaces LYDIA_CADUCEUS)
+    banner_logo: str = ""    # Rich-markup ASCII art logo (replaces ALICE_AGENT_LOGO)
+    banner_hero: str = ""    # Rich-markup hero art (replaces ALICE_CADUCEUS)
 
     def get_color(self, key: str, fallback: str = "") -> str:
         """Get a color value with fallback."""

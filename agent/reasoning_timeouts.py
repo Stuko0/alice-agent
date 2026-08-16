@@ -4,9 +4,9 @@ Reasoning models (those that emit extended thinking blocks before their
 first content token) routinely exceed Alice's default chat-model
 stale detectors:
 
-* Stream stale detector:   ``LYDIA_STREAM_STALE_TIMEOUT``     default 180s
+* Stream stale detector:   ``ALICE_STREAM_STALE_TIMEOUT``     default 180s
                            ``agent/chat_completion_helpers.py:2544``
-* Non-stream stale detector: ``LYDIA_API_CALL_STALE_TIMEOUT``  default 90s
+* Non-stream stale detector: ``ALICE_API_CALL_STALE_TIMEOUT``  default 90s
                            ``run_agent.py:1140``
 
 For NVIDIA Nemotron 3 Ultra on the hosted NIM gateway the empirical

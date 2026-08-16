@@ -72,7 +72,7 @@ def generate_bash(parser: argparse.ArgumentParser) -> str:
                 f"                    return\n"
                 f"                    ;;\n"
                 f"                {profile_actions.replace(' ', '|')})\n"
-                f"                    COMPREPLY=($(compgen -W \"$(_lydia_profiles)\" -- \"$cur\"))\n"
+                f"                    COMPREPLY=($(compgen -W \"$(_alice_profiles)\" -- \"$cur\"))\n"
                 f"                    return\n"
                 f"                    ;;\n"
                 f"            esac\n"
@@ -101,7 +101,7 @@ def generate_bash(parser: argparse.ArgumentParser) -> str:
 # Add to ~/.bashrc:
 #   eval "$(alice completion bash)"
 
-_lydia_profiles() {{
+_alice_profiles() {{
     local profiles_dir="$HOME/.alice/profiles"
     local profiles="default"
     if [ -d "$profiles_dir" ]; then
@@ -112,7 +112,7 @@ _lydia_profiles() {{
     echo "$profiles"
 }}
 
-_lydia_completion() {{
+_alice_completion() {{
     local cur prev
     COMPREPLY=()
     cur="${{COMP_WORDS[COMP_CWORD]}}"
@@ -120,7 +120,7 @@ _lydia_completion() {{
 
     # Complete profile names after -p / --profile
     if [[ "$prev" == "-p" || "$prev" == "--profile" ]]; then
-        COMPREPLY=($(compgen -W "$(_lydia_profiles)" -- "$cur"))
+        COMPREPLY=($(compgen -W "$(_alice_profiles)" -- "$cur"))
         return
     fi
 
@@ -135,7 +135,7 @@ _lydia_completion() {{
     fi
 }}
 
-complete -F _lydia_completion alice
+complete -F _alice_completion alice
 """
 
 
@@ -169,7 +169,7 @@ def generate_zsh(parser: argparse.ArgumentParser) -> str:
                 f"                profile)\n"
                 f"                    case ${{line[2]}} in\n"
                 f"                        use|delete|show|alias|rename|export)\n"
-                f"                            _lydia_profiles\n"
+                f"                            _alice_profiles\n"
                 f"                            ;;\n"
                 f"                        *)\n"
                 f"                            local -a profile_cmds\n"
@@ -204,7 +204,7 @@ def generate_zsh(parser: argparse.ArgumentParser) -> str:
 # Add to ~/.zshrc:
 #   eval "$(alice completion zsh)"
 
-_lydia_profiles() {{
+_alice_profiles() {{
     local -a profiles
     profiles=(default)
     if [[ -d "$HOME/.alice/profiles" ]]; then
@@ -213,14 +213,14 @@ _lydia_profiles() {{
     _describe 'profile' profiles
 }}
 
-_lydia() {{
+_alice() {{
     local context state line
     typeset -A opt_args
 
     _arguments -C \\
         '(-)'{{-h,--help}}'[Show help and exit]' \\
         '(-)'{{-V,--version}}'[Show version and exit]' \\
-        '(-)'{{-p,--profile}}'[Profile name]:profile:_lydia_profiles' \\
+        '(-)'{{-p,--profile}}'[Profile name]:profile:_alice_profiles' \\
         '1:command:->commands' \\
         '*::arg:->args'
 
@@ -259,7 +259,7 @@ def generate_fish(parser: argparse.ArgumentParser) -> str:
         "#   alice completion fish | source",
         "",
         "# Helper: list available profiles",
-        "function __lydia_profiles",
+        "function __alice_profiles",
         "    echo default",
         "    if test -d $HOME/.alice/profiles",
         "        for d in $HOME/.alice/profiles/*/",
@@ -273,7 +273,7 @@ def generate_fish(parser: argparse.ArgumentParser) -> str:
         "",
         "# Complete profile names after -p / --profile",
         "complete -c alice -f -s p -l profile"
-        " -d 'Profile name' -xa '(__lydia_profiles)'",
+        " -d 'Profile name' -xa '(__alice_profiles)'",
         "",
         "# Top-level subcommands",
     ]
@@ -312,7 +312,7 @@ def generate_fish(parser: argparse.ArgumentParser) -> str:
                     f"complete -c alice -f "
                     f"-n '__fish_seen_subcommand_from {action}; "
                     f"and __fish_seen_subcommand_from profile' "
-                    f"-a '(__lydia_profiles)' -d 'Profile name'"
+                    f"-a '(__alice_profiles)' -d 'Profile name'"
                 )
 
     lines.append("")

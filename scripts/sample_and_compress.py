@@ -30,8 +30,8 @@ load_dotenv()
 DEFAULT_DATASETS = [
     "NousResearch/swe-terminus-agent-glm-kimi-minimax",
     "arquant-admin/NewLydia-megascience-sft1",
-    "__PROT_NR_LYDIA__-Agent-Thinking-GLM-4.7-SFT2",
-    "__PROT_NR_LYDIA__-Agent-Thinking-GLM-4.7-SFT1",
+    "__PROT_NR_ALICE__-Agent-Thinking-GLM-4.7-SFT2",
+    "__PROT_NR_ALICE__-Agent-Thinking-GLM-4.7-SFT1",
     "NousResearch/terminal-tasks-glm-alice-agent"
 ]
 

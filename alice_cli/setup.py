@@ -276,14 +276,14 @@ def is_noninteractive() -> bool:
     """True when no human is available to answer a prompt.
 
     The dashboard/desktop spawn CLI actions with ``stdin=DEVNULL`` and
-    ``LYDIA_NONINTERACTIVE=1`` (see ``alice_cli/web_server.py``). In that
+    ``ALICE_NONINTERACTIVE=1`` (see ``alice_cli/web_server.py``). In that
     context an ``input()`` raises ``EOFError`` immediately, so a prompt that
     aborts on EOF kills the spawned action — this is what made the desktop
     "restart gateway" fail when the Windows gateway service was not yet
     installed (the start path asks "Install it now?" with no one to answer).
     Honour the explicit env flag here so callers fall back to their default.
     """
-    return os.environ.get("LYDIA_NONINTERACTIVE", "").strip().lower() in {
+    return os.environ.get("ALICE_NONINTERACTIVE", "").strip().lower() in {
         "1",
         "true",
         "yes",
@@ -294,7 +294,7 @@ def is_noninteractive() -> bool:
 def prompt_yes_no(question: str, default: bool = True) -> bool:
     """Prompt for yes/no. Ctrl+C exits, empty input returns default.
 
-    Non-interactive callers (``LYDIA_NONINTERACTIVE=1`` or a closed/redirected
+    Non-interactive callers (``ALICE_NONINTERACTIVE=1`` or a closed/redirected
     stdin) have no one to answer, so fall back to ``default`` instead of
     aborting the whole process.
     """
@@ -386,7 +386,7 @@ def _prompt_api_key(var: dict):
         print_warning("  Skipped (configure later with 'alice setup')")
 
 
-def _print_setup_summary(config: dict, lydia_home):
+def _print_setup_summary(config: dict, alice_home):
     """Print the setup completion summary."""
     # Tool availability summary
     print()
@@ -631,7 +631,7 @@ def _print_setup_summary(config: dict, lydia_home):
     print(f"   {color('Settings:', Colors.YELLOW)}  {get_config_path()}")
     print(f"   {color('API Keys:', Colors.YELLOW)}  {get_env_path()}")
     print(
-        f"   {color('Data:', Colors.YELLOW)}      {lydia_home}/cron/, sessions/, logs/"
+        f"   {color('Data:', Colors.YELLOW)}      {alice_home}/cron/, sessions/, logs/"
     )
     print()
 
@@ -1485,10 +1485,10 @@ def _apply_default_agent_settings(config: dict):
     """Apply recommended defaults for all agent settings without prompting."""
     config.setdefault("agent", {})["max_turns"] = 150
     # config.yaml is the authoritative source for max_turns; the gateway
-    # bridges it into LYDIA_MAX_ITERATIONS at startup. We no longer write
+    # bridges it into ALICE_MAX_ITERATIONS at startup. We no longer write
     # to .env to avoid the dual-source inconsistency that caused the
     # 60-vs-500 bug (stale .env entry silently shadowing config.yaml).
-    remove_env_value("LYDIA_MAX_ITERATIONS")
+    remove_env_value("ALICE_MAX_ITERATIONS")
 
     config.setdefault("display", {})["tool_progress"] = "all"
 
@@ -1534,10 +1534,10 @@ def setup_agent_settings(config: dict):
             # Write to config.yaml (authoritative) only. Also clean up any
             # stale .env entry from earlier setup runs — the gateway's
             # bridge in gateway/run.py now unconditionally derives
-            # LYDIA_MAX_ITERATIONS from agent.max_turns at startup.
+            # ALICE_MAX_ITERATIONS from agent.max_turns at startup.
             config.setdefault("agent", {})["max_turns"] = max_iter
             config.pop("max_turns", None)
-            remove_env_value("LYDIA_MAX_ITERATIONS")
+            remove_env_value("ALICE_MAX_ITERATIONS")
             print_success(f"Max iterations set to {max_iter}")
     except ValueError:
         print_warning("Invalid number, keeping current value")
@@ -1709,10 +1709,10 @@ def _setup_telegram_auto_result():
     return auto_setup_telegram_bot_result(profile_name=profile_name)
 
 
-def _profile_name_from_alice_home(lydia_home) -> str | None:
+def _profile_name_from_alice_home(alice_home) -> str | None:
     """Return the active profile name when ALICE_HOME is a profile dir."""
-    if lydia_home.parent.name == "profiles":
-        return lydia_home.name
+    if alice_home.parent.name == "profiles":
+        return alice_home.name
     return None
 
 
@@ -2558,7 +2558,7 @@ def _print_migration_preview(report: dict):
         print()
 
 
-def _offer_openclaw_migration(lydia_home: Path) -> bool:
+def _offer_openclaw_migration(alice_home: Path) -> bool:
     """Detect ~/.openclaw and offer to migrate during first-time setup.
 
     Runs a dry-run first to show the user exactly what would be imported,
@@ -2606,7 +2606,7 @@ def _offer_openclaw_migration(lydia_home: Path) -> bool:
         selected = mod.resolve_selected_options(None, None, preset="full")
         dry_migrator = mod.Migrator(
             source_root=openclaw_dir.resolve(),
-            target_root=lydia_home.resolve(),
+            target_root=alice_home.resolve(),
             execute=False,  # dry-run — no files modified
             workspace_target=None,
             overwrite=True,  # show everything including conflicts
@@ -2651,7 +2651,7 @@ def _offer_openclaw_migration(lydia_home: Path) -> bool:
     try:
         migrator = mod.Migrator(
             source_root=openclaw_dir.resolve(),
-            target_root=lydia_home.resolve(),
+            target_root=alice_home.resolve(),
             execute=True,
             workspace_target=None,
             overwrite=False,  # preserve existing Alice config
@@ -2816,7 +2816,7 @@ def run_setup_wizard(args):
     quick_requested = bool(getattr(args, "quick", False))
 
     config = load_config()
-    lydia_home = get_alice_home()
+    alice_home = get_alice_home()
 
     # Back up existing config before setup modifies it (#3522)
     config_path = get_config_path()
@@ -2932,7 +2932,7 @@ def run_setup_wizard(args):
         # missing items" flow (useful after a partial OpenClaw migration
         # or when a required API key got cleared).
         if quick_requested:
-            _run_quick_setup(config, lydia_home)
+            _run_quick_setup(config, alice_home)
             return
 
         print()
@@ -2957,7 +2957,7 @@ def run_setup_wizard(args):
             print()
 
         # Offer OpenClaw migration before configuration begins
-        migration_ran = _offer_openclaw_migration(lydia_home)
+        migration_ran = _offer_openclaw_migration(alice_home)
         if migration_ran:
             config = load_config()
 
@@ -2972,17 +2972,17 @@ def run_setup_wizard(args):
         )
 
         if setup_mode == 0:
-            _run_first_time_quick_setup(config, lydia_home, is_existing)
+            _run_first_time_quick_setup(config, alice_home, is_existing)
             return
         if setup_mode == 2:
-            _run_blank_slate_setup(config, lydia_home, is_existing)
+            _run_blank_slate_setup(config, alice_home, is_existing)
             return
 
     # ── Full Setup — run all sections ──
     print_header("Configuration Location")
     print_info(f"Config file:  {get_config_path()}")
     print_info(f"Secrets file: {get_env_path()}")
-    print_info(f"Data folder:  {lydia_home}")
+    print_info(f"Data folder:  {alice_home}")
     print_info(f"Install dir:  {PROJECT_ROOT}")
     print()
     print_info("You can edit these files directly or use 'alice config edit'")
@@ -3025,10 +3025,10 @@ def run_setup_wizard(args):
         print_info(f"Previous config backed up to: {_backup_path}")
         print_info("If setup changed a value you customized, restore it with:")
         print_info(f"  cp {_backup_path} {config_path}")
-    _print_setup_summary(config, lydia_home)
+    _print_setup_summary(config, alice_home)
 
 
-def _run_first_time_quick_setup(config: dict, lydia_home, is_existing: bool):
+def _run_first_time_quick_setup(config: dict, alice_home, is_existing: bool):
     """Streamlined first-time setup with GitHub Copilot as the recommended option.
 
     Shows a provider picker (Copilot first, then xAI, then other OAuth), runs
@@ -3142,7 +3142,7 @@ def _run_first_time_quick_setup(config: dict, lydia_home, is_existing: bool):
         print_info("  Connect Telegram/Discord:  alice setup gateway")
     print()
 
-    _print_setup_summary(config, lydia_home)
+    _print_setup_summary(config, alice_home)
 
 
 def _model_flow_omniroute(config: dict):
@@ -3246,7 +3246,7 @@ def _blank_slate_minimize_config(config: dict):
     config.setdefault("display", {})["tool_progress"] = "all"
 
 
-def _run_blank_slate_setup(config: dict, lydia_home, is_existing: bool):
+def _run_blank_slate_setup(config: dict, alice_home, is_existing: bool):
     """Blank Slate setup — start with everything off except the bare minimum.
 
     Forces only the essentials to run an agent (provider + model, the file and
@@ -3320,14 +3320,14 @@ def _run_blank_slate_setup(config: dict, lydia_home, is_existing: bool):
         print_info("  Enable plugins:      alice plugins")
         print_info("  Tune agent settings: alice setup agent")
         print()
-        _print_setup_summary(config, lydia_home)
+        _print_setup_summary(config, alice_home)
         return
 
     # ── Walkthrough path — opt in to each capability ──
-    _blank_slate_walkthrough(config, lydia_home)
+    _blank_slate_walkthrough(config, alice_home)
 
 
-def _blank_slate_walkthrough(config: dict, lydia_home):
+def _blank_slate_walkthrough(config: dict, alice_home):
     """Opt-in walkthrough for Blank Slate: skills, tools, plugins, MCP, gateway."""
     from alice_cli.config import load_config
 
@@ -3407,10 +3407,10 @@ def _blank_slate_walkthrough(config: dict, lydia_home):
     print_info("  Tune agent settings: alice setup agent")
     print()
 
-    _print_setup_summary(config, lydia_home)
+    _print_setup_summary(config, alice_home)
 
 
-def _run_quick_setup(config: dict, lydia_home):
+def _run_quick_setup(config: dict, alice_home):
     """Quick setup — only configure items that are missing."""
     from alice_cli.config import (
         get_missing_env_vars,
@@ -3573,4 +3573,4 @@ def _run_quick_setup(config: dict, lydia_home):
         save_config(config)
 
     # Jump to summary
-    _print_setup_summary(config, lydia_home)
+    _print_setup_summary(config, alice_home)

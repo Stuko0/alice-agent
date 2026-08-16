@@ -42,7 +42,7 @@ _SKILL_MULTI_HYPHEN = re.compile(r"-{2,}")
 # (``_build_skill_message`` here, ``build_bundle_invocation_message`` in
 # agent/skill_bundles.py). They are co-located with the single-skill builder
 # on purpose, and the bundle markers are asserted against the bundle builder in
-# tests/openviking_plugin/test_openviking.py::test_skill_markers_match_lydia_scaffolding.
+# tests/openviking_plugin/test_openviking.py::test_skill_markers_match_alice_scaffolding.
 # ---------------------------------------------------------------------------
 _SKILL_INVOCATION_PREFIX = "[IMPORTANT: The user has invoked the "
 _SINGLE_SKILL_MARKER = "The full skill content is loaded below.]"
@@ -119,8 +119,8 @@ def _resolve_skill_commands_platform() -> Optional[str]:
     :func:`get_skill_commands` can drop a stale cache that was populated
     for a different platform's ``skills.platform_disabled`` view (#14536).
 
-    Resolves from (in order) ``LYDIA_PLATFORM`` env var and
-    ``LYDIA_SESSION_PLATFORM`` from the gateway session context. Returns
+    Resolves from (in order) ``ALICE_PLATFORM`` env var and
+    ``ALICE_SESSION_PLATFORM`` from the gateway session context. Returns
     ``None`` when no platform scope is active (e.g. classic CLI, RL
     rollouts, standalone scripts).
     """
@@ -128,11 +128,11 @@ def _resolve_skill_commands_platform() -> Optional[str]:
         from gateway.session_context import get_session_env
 
         resolved_platform = (
-            os.getenv("LYDIA_PLATFORM")
-            or get_session_env("LYDIA_SESSION_PLATFORM")
+            os.getenv("ALICE_PLATFORM")
+            or get_session_env("ALICE_SESSION_PLATFORM")
         )
     except Exception:
-        resolved_platform = os.getenv("LYDIA_PLATFORM")
+        resolved_platform = os.getenv("ALICE_PLATFORM")
     return resolved_platform or None
 
 def _load_skill_payload(skill_identifier: str, task_id: str | None = None) -> tuple[dict[str, Any], Path | None, str] | None:

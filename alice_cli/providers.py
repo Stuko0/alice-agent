@@ -43,7 +43,7 @@ class LydiaOverlay:
     base_url_env_var: str = ""            # env var for user-custom base URL
 
 
-LYDIA_OVERLAYS: Dict[str, LydiaOverlay] = {
+ALICE_OVERLAYS: Dict[str, LydiaOverlay] = {
     "moa": LydiaOverlay(
         transport="openai_chat",
         auth_type="virtual",
@@ -79,7 +79,7 @@ LYDIA_OVERLAYS: Dict[str, LydiaOverlay] = {
         transport="openai_chat",
         auth_type="oauth_external",
         base_url_override="https://portal.qwen.ai/v1",
-        base_url_env_var="LYDIA_QWEN_BASE_URL",
+        base_url_env_var="ALICE_QWEN_BASE_URL",
     ),
     "lmstudio": LydiaOverlay(
         transport="openai_chat",
@@ -421,7 +421,7 @@ def get_provider(name: str) -> Optional[ProviderDef]:
     except Exception:
         mdev_info = None
 
-    overlay = LYDIA_OVERLAYS.get(canonical)
+    overlay = ALICE_OVERLAYS.get(canonical)
 
     if mdev_info is not None:
         # Merge models.dev + overlay
@@ -552,7 +552,7 @@ def determine_api_mode(provider: str, base_url: str = "") -> str:
                 return "codex_responses"
         return TRANSPORT_TO_API_MODE.get(pdef.transport, "chat_completions")
 
-    # Direct provider checks for providers not in LYDIA_OVERLAYS
+    # Direct provider checks for providers not in ALICE_OVERLAYS
     if provider == "bedrock":
         return "bedrock_converse"
 

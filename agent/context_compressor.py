@@ -1609,9 +1609,9 @@ Summary generation was unavailable, so this is a best-effort deterministic fallb
         # date here never affects prompt-cache stability. Resolved defensively —
         # a clock failure must never block compaction.
         try:
-            from alice_time import now as _lydia_now
+            from alice_time import now as _alice_now
 
-            _today_str = _lydia_now().strftime("%Y-%m-%d")
+            _today_str = _alice_now().strftime("%Y-%m-%d")
         except Exception:  # pragma: no cover - clock resolution is best-effort
             _today_str = ""
 

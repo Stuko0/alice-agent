@@ -28,7 +28,7 @@ def _resolve_requests_verify() -> bool | str:
     """Resolve SSL verify setting for `requests` calls from env vars.
 
     The `requests` library only honours REQUESTS_CA_BUNDLE / CURL_CA_BUNDLE
-    by default. Alice also honours LYDIA_CA_BUNDLE (its own convention)
+    by default. Alice also honours ALICE_CA_BUNDLE (its own convention)
     and SSL_CERT_FILE (used by the stdlib `ssl` module and by httpx), so
     that a single env var can cover both `requests` and `httpx` callsites
     inside the same process.
@@ -36,7 +36,7 @@ def _resolve_requests_verify() -> bool | str:
     Returns either a filesystem path to a CA bundle, or True to defer to
     the requests default (certifi).
     """
-    for env_var in ("LYDIA_CA_BUNDLE", "REQUESTS_CA_BUNDLE", "SSL_CERT_FILE"):
+    for env_var in ("ALICE_CA_BUNDLE", "REQUESTS_CA_BUNDLE", "SSL_CERT_FILE"):
         val = os.getenv(env_var)
         if val and os.path.isfile(val):
             return val

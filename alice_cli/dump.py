@@ -25,7 +25,7 @@ def _get_git_commit(project_root: Path) -> str:
     Source installs and dev images resolve this live via ``git rev-parse``.
     The published Docker image excludes ``.git`` from the build context, so
     that lookup always fails — we fall back to the baked-in build SHA written
-    to ``<project_root>/.lydia_build_sha`` by the Dockerfile's
+    to ``<project_root>/.alice_build_sha`` by the Dockerfile's
     ``ALICE_GIT_SHA`` build-arg (see ``alice_cli/build_info.py``).
     The output format is identical regardless of source.
     """
@@ -109,9 +109,9 @@ def _gateway_status() -> str:
         return "unknown" if sys.platform.startswith(("linux", "darwin")) else "N/A"
 
 
-def _count_skills(lydia_home: Path) -> int:
+def _count_skills(alice_home: Path) -> int:
     """Count installed skills."""
-    skills_dir = lydia_home / "skills"
+    skills_dir = alice_home / "skills"
     if not skills_dir.is_dir():
         return 0
     count = 0
@@ -129,9 +129,9 @@ def _count_mcp_servers(config: dict) -> int:
     return len(servers)
 
 
-def _cron_summary(lydia_home: Path) -> str:
+def _cron_summary(alice_home: Path) -> str:
     """Return cron jobs summary."""
-    jobs_file = lydia_home / "cron" / "jobs.json"
+    jobs_file = alice_home / "cron" / "jobs.json"
     if not jobs_file.exists():
         return "0"
     try:
@@ -247,12 +247,12 @@ def run_dump(args):
     # Load env from .env file so key checks work
     env_path = get_env_path()
     load_alice_dotenv(
-        lydia_home=env_path.parent,
+        alice_home=env_path.parent,
         project_env=get_project_root() / ".env",
     )
 
     project_root = get_project_root()
-    lydia_home = get_alice_home()
+    alice_home = get_alice_home()
 
     try:
         from alice_cli import __version__
@@ -320,7 +320,7 @@ def run_dump(args):
     lines.append(f"python:           {sys.version.split()[0]}")
     lines.append(f"openai_sdk:       {openai_ver}")
     lines.append(f"profile:          {profile}")
-    lines.append(f"lydia_home:      {display_alice_home()}")
+    lines.append(f"alice_home:      {display_alice_home()}")
     lines.append(f"model:            {model}")
     lines.append(f"provider:         {provider}")
     lines.append(f"terminal:         {backend}")
@@ -386,8 +386,8 @@ def run_dump(args):
 
     platforms = _configured_platforms()
     lines.append(f"  platforms:          {', '.join(platforms) if platforms else 'none'}")
-    lines.append(f"  cron_jobs:          {_cron_summary(lydia_home)}")
-    lines.append(f"  skills:             {_count_skills(lydia_home)}")
+    lines.append(f"  cron_jobs:          {_cron_summary(alice_home)}")
+    lines.append(f"  skills:             {_count_skills(alice_home)}")
 
     # Config overrides (non-default values)
     overrides = _config_overrides(config)

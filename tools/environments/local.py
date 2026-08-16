@@ -74,7 +74,7 @@ def _resolve_safe_cwd(cwd: str) -> str:
 
 
 # Alice-internal env vars that should NOT leak into terminal subprocesses.
-_LYDIA_PROVIDER_ENV_FORCE_PREFIX = "_LYDIA_FORCE_"
+_ALICE_PROVIDER_ENV_FORCE_PREFIX = "_ALICE_FORCE_"
 
 # Alice-managed AWS *inference* credentials for ``auth_type="aws_sdk"``
 # providers (Bedrock).  Scoped DELIBERATELY NARROW: this lists only the
@@ -177,7 +177,7 @@ def _build_provider_env_blocklist() -> frozenset:
         "EMAIL_SMTP_HOST",
         "EMAIL_HOME_ADDRESS",
         "EMAIL_HOME_ADDRESS_NAME",
-        "LYDIA_DASHBOARD_SESSION_TOKEN",
+        "ALICE_DASHBOARD_SESSION_TOKEN",
         "GATEWAY_ALLOWED_USERS",
         "GH_TOKEN",
         "GITHUB_APP_ID",
@@ -190,7 +190,7 @@ def _build_provider_env_blocklist() -> frozenset:
     return frozenset(blocked)
 
 
-_LYDIA_PROVIDER_ENV_BLOCKLIST = _build_provider_env_blocklist()
+_ALICE_PROVIDER_ENV_BLOCKLIST = _build_provider_env_blocklist()
 
 # Active-virtualenv markers that must NOT leak into terminal subprocesses.
 # The gateway runs inside its own venv, so its process environment carries
@@ -227,16 +227,16 @@ def _sanitize_subprocess_env(base_env: dict | None, extra_env: dict | None = Non
     sanitized: dict[str, str] = {}
 
     for key, value in (base_env or {}).items():
-        if key.startswith(_LYDIA_PROVIDER_ENV_FORCE_PREFIX):
+        if key.startswith(_ALICE_PROVIDER_ENV_FORCE_PREFIX):
             continue
-        if key not in _LYDIA_PROVIDER_ENV_BLOCKLIST or _is_passthrough(key):
+        if key not in _ALICE_PROVIDER_ENV_BLOCKLIST or _is_passthrough(key):
             sanitized[key] = value
 
     for key, value in (extra_env or {}).items():
-        if key.startswith(_LYDIA_PROVIDER_ENV_FORCE_PREFIX):
-            real_key = key[len(_LYDIA_PROVIDER_ENV_FORCE_PREFIX):]
+        if key.startswith(_ALICE_PROVIDER_ENV_FORCE_PREFIX):
+            real_key = key[len(_ALICE_PROVIDER_ENV_FORCE_PREFIX):]
             sanitized[real_key] = value
-        elif key not in _LYDIA_PROVIDER_ENV_BLOCKLIST or _is_passthrough(key):
+        elif key not in _ALICE_PROVIDER_ENV_BLOCKLIST or _is_passthrough(key):
             sanitized[key] = value
 
     _inject_context_alice_home_webhook(sanitized)
@@ -256,7 +256,7 @@ def _sanitize_subprocess_env(base_env: dict | None, extra_env: dict | None = Non
 # legitimate child Alice spawns needs them, and they are the highest-value
 # secrets to keep out of a compromised dependency's reach (gateway bot tokens,
 # GitHub auth, remote-compute tokens, dashboard session secret).  The set is a
-# narrow subset of _LYDIA_PROVIDER_ENV_BLOCKLIST; provider keys are handled by
+# narrow subset of _ALICE_PROVIDER_ENV_BLOCKLIST; provider keys are handled by
 # the conditional Tier-2 strip in alice_subprocess_env().
 _ALWAYS_STRIP_KEYS: frozenset[str] = frozenset({
     # GitHub auth
@@ -275,7 +275,7 @@ _ALWAYS_STRIP_KEYS: frozenset[str] = frozenset({
     "GATEWAY_ALLOW_ALL_USERS",
     "HASS_TOKEN",
     "EMAIL_PASSWORD",
-    "LYDIA_DASHBOARD_SESSION_TOKEN",
+    "ALICE_DASHBOARD_SESSION_TOKEN",
     # Remote-compute / infrastructure secrets
     "MODAL_TOKEN_ID",
     "MODAL_TOKEN_SECRET",
@@ -290,7 +290,7 @@ def alice_subprocess_env(*, inherit_credentials: bool = False) -> dict[str, str]
     ACP/CLI executors, computer-use driver, dep-ensure, TUI Node host,
     detached gateway).  Use this instead of copying ``os.environ`` directly
     so strip-by-default is the uniform policy across every spawn site, with a
-    single source of truth (``_LYDIA_PROVIDER_ENV_BLOCKLIST``).  The terminal
+    single source of truth (``_ALICE_PROVIDER_ENV_BLOCKLIST``).  The terminal
     / execute_code path keeps using :func:`_sanitize_subprocess_env`, which is
     skill-aware (``env_passthrough``); this helper is for spawns that have no
     skill-passthrough concept.
@@ -300,7 +300,7 @@ def alice_subprocess_env(*, inherit_credentials: bool = False) -> dict[str, str]
     * **Tier 1 (always):** ``_ALWAYS_STRIP_KEYS`` — gateway bot tokens, GitHub
       auth, and remote-compute secrets are removed regardless of
       ``inherit_credentials``.  No child Alice spawns legitimately needs them.
-    * **Tier 2 (conditional):** the rest of ``_LYDIA_PROVIDER_ENV_BLOCKLIST``
+    * **Tier 2 (conditional):** the rest of ``_ALICE_PROVIDER_ENV_BLOCKLIST``
       (LLM provider API keys, tool secrets) is removed unless the caller passes
       ``inherit_credentials=True``.
 
@@ -322,12 +322,12 @@ def alice_subprocess_env(*, inherit_credentials: bool = False) -> dict[str, str]
         env.pop(key, None)
     # Internal routing hints must never reach a child.
     for key in list(env):
-        if key.startswith(_LYDIA_PROVIDER_ENV_FORCE_PREFIX):
+        if key.startswith(_ALICE_PROVIDER_ENV_FORCE_PREFIX):
             env.pop(key, None)
 
     if not inherit_credentials:
         # Tier 2 — strip provider/tool credentials unless explicitly inherited.
-        for key in _LYDIA_PROVIDER_ENV_BLOCKLIST:
+        for key in _ALICE_PROVIDER_ENV_BLOCKLIST:
             env.pop(key, None)
 
     # Windows UTF-8 safety for spawned processes (#31420).
@@ -369,11 +369,11 @@ def _find_bash() -> str:
     #   PortableGit: %LOCALAPPDATA%\alice\git\bin\bash.exe   (primary)
     #   MinGit:      %LOCALAPPDATA%\alice\git\usr\bin\bash.exe (legacy/32-bit fallback)
     _local_appdata = os.environ.get("LOCALAPPDATA", "")
-    _lydia_portable_git = os.path.join(_local_appdata, "alice", "git") if _local_appdata else ""
-    if _lydia_portable_git:
+    _alice_portable_git = os.path.join(_local_appdata, "alice", "git") if _local_appdata else ""
+    if _alice_portable_git:
         for candidate in (
-            os.path.join(_lydia_portable_git, "bin", "bash.exe"),        # PortableGit (primary)
-            os.path.join(_lydia_portable_git, "usr", "bin", "bash.exe"), # MinGit fallback
+            os.path.join(_alice_portable_git, "bin", "bash.exe"),        # PortableGit (primary)
+            os.path.join(_alice_portable_git, "usr", "bin", "bash.exe"), # MinGit fallback
         ):
             if os.path.isfile(candidate):
                 return candidate
@@ -455,7 +455,7 @@ _SANE_PATH = (
 # Cached directory containing the ``alice`` console-script.
 # ``_SENTINEL`` distinguishes "not resolved yet" from a resolved ``None``.
 _SENTINEL = object()
-_LYDIA_BIN_DIR: "str | None | object" = _SENTINEL
+_ALICE_BIN_DIR: "str | None | object" = _SENTINEL
 
 
 def _resolve_alice_bin_dir() -> str | None:
@@ -481,9 +481,9 @@ def _resolve_alice_bin_dir() -> str | None:
       3. The directory of ``sys.executable`` — the running interpreter's
          venv ``bin``/``Scripts`` is where its console-scripts live.
     """
-    global _LYDIA_BIN_DIR
-    if _LYDIA_BIN_DIR is not _SENTINEL:
-        return _LYDIA_BIN_DIR  # type: ignore[return-value]
+    global _ALICE_BIN_DIR
+    if _ALICE_BIN_DIR is not _SENTINEL:
+        return _ALICE_BIN_DIR  # type: ignore[return-value]
 
     candidate: str | None = None
 
@@ -511,7 +511,7 @@ def _resolve_alice_bin_dir() -> str | None:
     if candidate and not os.path.isdir(candidate):
         candidate = None
 
-    _LYDIA_BIN_DIR = candidate
+    _ALICE_BIN_DIR = candidate
     return candidate
 
 
@@ -608,10 +608,10 @@ def _make_run_env(env: dict) -> dict:
     merged = dict(os.environ | env)
     run_env = {}
     for k, v in merged.items():
-        if k.startswith(_LYDIA_PROVIDER_ENV_FORCE_PREFIX):
-            real_key = k[len(_LYDIA_PROVIDER_ENV_FORCE_PREFIX):]
+        if k.startswith(_ALICE_PROVIDER_ENV_FORCE_PREFIX):
+            real_key = k[len(_ALICE_PROVIDER_ENV_FORCE_PREFIX):]
             run_env[real_key] = v
-        elif k not in _LYDIA_PROVIDER_ENV_BLOCKLIST or _is_passthrough(k):
+        elif k not in _ALICE_PROVIDER_ENV_BLOCKLIST or _is_passthrough(k):
             run_env[k] = v
     path_key = _path_env_key(run_env)
     if path_key is not None:
@@ -769,7 +769,7 @@ class LocalEnvironment(BaseEnvironment):
                 from alice_constants import get_alice_home
                 cache_dir = get_alice_home() / "cache" / "terminal"
             except Exception:
-                cache_dir = Path(tempfile.gettempdir()) / "lydia_terminal"
+                cache_dir = Path(tempfile.gettempdir()) / "alice_terminal"
             cache_dir.mkdir(parents=True, exist_ok=True)
             # Force forward slashes so the same string serves both contexts.
             return str(cache_dir).replace("\\", "/")
@@ -849,7 +849,7 @@ class LocalEnvironment(BaseEnvironment):
         )
         if not _IS_WINDOWS:
             try:
-                proc._lydia_pgid = os.getpgid(proc.pid)
+                proc._alice_pgid = os.getpgid(proc.pid)
             except ProcessLookupError:
                 pass
 
@@ -906,7 +906,7 @@ class LocalEnvironment(BaseEnvironment):
                 try:
                     pgid = os.getpgid(proc.pid)
                 except ProcessLookupError:
-                    pgid = getattr(proc, "_lydia_pgid", None)
+                    pgid = getattr(proc, "_alice_pgid", None)
                     if pgid is None:
                         raise
 

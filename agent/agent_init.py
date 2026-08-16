@@ -559,7 +559,7 @@ def init_agent(
     # Credits tracking (dev-only, L0 usage-aware-credits) — updated from
     # x-nous-credits-* response headers after each API call.  Session-start
     # remaining is latched the first time a header is ever seen so we can
-    # report cumulative micros spent.  Surfaced behind LYDIA_DEV_CREDITS.
+    # report cumulative micros spent.  Surfaced behind ALICE_DEV_CREDITS.
     agent._credits_state = None
     agent._credits_session_start_micros = None
     # Threshold-notice latch (L4): active sticky-notice keys + the warn90 crossing gate.
@@ -573,7 +573,7 @@ def init_agent(
     # both live under ~/.alice/logs/.  Idempotent, so gateway mode
     # (which creates a new AIAgent per message) won't duplicate handlers.
     from alice_logging import setup_logging, setup_verbose_logging
-    setup_logging(lydia_home=_ra()._alice_home_webhook)
+    setup_logging(alice_home=_ra()._alice_home_webhook)
 
     if agent.verbose_logging:
         setup_verbose_logging()
@@ -1057,7 +1057,7 @@ def init_agent(
 
     # Kanban worker/orchestrator lifecycle guidance is session-static:
     # the dispatcher decides at spawn time whether this process is a kanban
-    # worker (kanban_show tool is present iff LYDIA_KANBAN_TASK is set).
+    # worker (kanban_show tool is present iff ALICE_KANBAN_TASK is set).
     # Resolving the ~835-token block once here avoids re-running the
     # membership test + reference on every system-prompt rebuild
     # (init + each context compression).
@@ -1112,11 +1112,11 @@ def init_agent(
 
         set_current_session_id(agent.session_id)
     except Exception:
-        os.environ["LYDIA_SESSION_ID"] = agent.session_id
+        os.environ["ALICE_SESSION_ID"] = agent.session_id
 
     # Session logs go into ~/.alice/sessions/ alongside gateway sessions
-    lydia_home = get_alice_home()
-    agent.logs_dir = lydia_home / "sessions"
+    alice_home = get_alice_home()
+    agent.logs_dir = alice_home / "sessions"
     agent.logs_dir.mkdir(parents=True, exist_ok=True)
     # Per-session JSON snapshot writer (~/.alice/sessions/session_{sid}.json)
     # is opt-in via sessions.write_json_snapshots (default False).  state.db
@@ -1239,7 +1239,7 @@ def init_agent(
                     _init_kwargs = {
                         "session_id": agent.session_id,
                         "platform": platform or "cli",
-                        "lydia_home": str(get_alice_home()),
+                        "alice_home": str(get_alice_home()),
                         "agent_context": "primary",
                     }
                     if _init_kwargs["platform"] == "cli":
@@ -1744,7 +1744,7 @@ def init_agent(
         try:
             agent.context_compressor.on_session_start(
                 agent.session_id,
-                lydia_home=str(get_alice_home()),
+                alice_home=str(get_alice_home()),
                 platform=agent.platform or "cli",
                 model=agent.model,
                 context_length=getattr(agent.context_compressor, "context_length", 0),

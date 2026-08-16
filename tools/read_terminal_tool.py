@@ -49,8 +49,8 @@ def read_terminal_tool(
 
 
 def check_read_terminal_requirements() -> bool:
-    """Desktop GUI only — LYDIA_DESKTOP is set on the gateway the app spawns."""
-    return (os.getenv("LYDIA_DESKTOP") or "").strip().lower() in ("1", "true", "yes")
+    """Desktop GUI only — ALICE_DESKTOP is set on the gateway the app spawns."""
+    return (os.getenv("ALICE_DESKTOP") or "").strip().lower() in ("1", "true", "yes")
 
 
 READ_TERMINAL_SCHEMA = {

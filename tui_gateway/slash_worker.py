@@ -22,7 +22,7 @@ from rich.console import Console
 def _env_float(name: str, default: float) -> float:
     """Parse a float env knob, falling back to ``default`` on absent/malformed
     values. A bare ``float(os.environ.get(...))`` would raise ValueError at
-    import time on a typo (e.g. ``LYDIA_SLASH_WATCHDOG_POLL_S=2s``) and kill
+    import time on a typo (e.g. ``ALICE_SLASH_WATCHDOG_POLL_S=2s``) and kill
     the worker before it can serve a single command."""
     raw = os.environ.get(name)
     if not raw:
@@ -33,8 +33,8 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
-_WATCHDOG_POLL_S = max(0.05, _env_float("LYDIA_SLASH_WATCHDOG_POLL_S", 2.0))
-_ORPHAN_GRACE_S = max(0.0, _env_float("LYDIA_SLASH_WATCHDOG_GRACE_S", 5.0))
+_WATCHDOG_POLL_S = max(0.05, _env_float("ALICE_SLASH_WATCHDOG_POLL_S", 2.0))
+_ORPHAN_GRACE_S = max(0.0, _env_float("ALICE_SLASH_WATCHDOG_GRACE_S", 5.0))
 _in_flight = threading.Event()  # set while a command is executing
 
 
@@ -98,8 +98,8 @@ def main():
     p.add_argument("--model", default="")
     args = p.parse_args()
 
-    os.environ["LYDIA_SESSION_KEY"] = args.session_key
-    os.environ["LYDIA_INTERACTIVE"] = "1"
+    os.environ["ALICE_SESSION_KEY"] = args.session_key
+    os.environ["ALICE_INTERACTIVE"] = "1"
 
     # Start before the (hundreds-of-ms) AliceCLI build — that window is itself
     # an orphan risk if the gateway dies mid-spawn.

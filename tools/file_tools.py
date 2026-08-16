@@ -419,25 +419,25 @@ _SENSITIVE_PATH_PREFIXES = (
 )
 _SENSITIVE_EXACT_PATHS = {"/var/run/docker.sock", "/run/docker.sock"}
 
-_lydia_config_resolved: str | None = None
-_lydia_config_resolved_loaded = False
+_alice_config_resolved: str | None = None
+_alice_config_resolved_loaded = False
 
 
 def _get_alice_config_resolved() -> str | None:
     """Return the resolved absolute path of the Alice config file (cached)."""
-    global _lydia_config_resolved, _lydia_config_resolved_loaded
-    if _lydia_config_resolved_loaded:
-        return _lydia_config_resolved
-    _lydia_config_resolved_loaded = True
+    global _alice_config_resolved, _alice_config_resolved_loaded
+    if _alice_config_resolved_loaded:
+        return _alice_config_resolved
+    _alice_config_resolved_loaded = True
     try:
         from alice_cli.config import get_config_path
-        _lydia_config_resolved = str(get_config_path().resolve())
+        _alice_config_resolved = str(get_config_path().resolve())
     except Exception:
         try:
-            _lydia_config_resolved = str(Path(_expand_tilde("~/.alice/config.yaml")).resolve())
+            _alice_config_resolved = str(Path(_expand_tilde("~/.alice/config.yaml")).resolve())
         except Exception:
-            _lydia_config_resolved = None
-    return _lydia_config_resolved
+            _alice_config_resolved = None
+    return _alice_config_resolved
 
 
 def _check_sensitive_path(filepath: str, task_id: str = "default") -> str | None:
@@ -460,8 +460,8 @@ def _check_sensitive_path(filepath: str, task_id: str = "default") -> str | None
     # approvals.mode and other security settings live here; a malicious or
     # prompt-injected agent could silently disable exec approval by writing to
     # this file.
-    lydia_config = _get_alice_config_resolved()
-    if lydia_config and (resolved == lydia_config or normalized == lydia_config):
+    alice_config = _get_alice_config_resolved()
+    if alice_config and (resolved == alice_config or normalized == alice_config):
         return (
             f"Refusing to write to Alice config file: {filepath}\n"
             "Agent cannot modify security-sensitive configuration. "

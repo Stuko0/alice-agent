@@ -18,7 +18,7 @@ from typing import Any, Dict, Mapping
 # else with a non-empty source is treated as borrowed/reference-only by default
 # so future external secret providers fail closed at the disk boundary.
 _PERSISTABLE_PROVIDER_SOURCES = frozenset({
-    ("anthropic", "lydia_pkce"),
+    ("anthropic", "alice_pkce"),
     ("minimax-oauth", "oauth"),
     ("nous", "device_code"),
     ("openai-codex", "device_code"),

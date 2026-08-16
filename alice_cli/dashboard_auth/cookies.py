@@ -1,9 +1,9 @@
 """Cookie helpers for dashboard auth.
 
 Three cookies in play:
-  - lydia_session_at:   the OAuth access token
+  - alice_session_at:   the OAuth access token
                          (HttpOnly, lifetime = token TTL, ~15 min)
-  - lydia_session_rt:   the OAuth refresh token
+  - alice_session_rt:   the OAuth refresh token
                          (HttpOnly, lifetime = 24h, ROTATING + reuse-detected)
                          Nous Portal issues a rotating refresh token for the
                          dashboard auth-code grant (Portal NAS #293 / alice
@@ -14,7 +14,7 @@ Three cookies in play:
                          provider that omits the refresh token (empty string)
                          degrades gracefully to access-token-only sessions —
                          the RT cookie is simply not written.
-  - lydia_session_pkce: short-lived PKCE state + CSRF nonce + provider
+  - alice_session_pkce: short-lived PKCE state + CSRF nonce + provider
                          hint (HttpOnly, lifetime = 10 minutes)
 
 All three are ``SameSite=Lax`` (browser will send on cross-site GET
@@ -42,7 +42,7 @@ https://datatracker.ietf.org/doc/html/draft-west-cookie-prefixes):
 
 The setters and readers BOTH consult the active prefix because the
 cookie *name* changes — a reader that looked up the bare name when the
-setter wrote ``__Secure-lydia_session_at`` would never find the value.
+setter wrote ``__Secure-alice_session_at`` would never find the value.
 
 Refresh-token handling:
    ``set_session_cookies`` accepts ``refresh_token=""`` (provider omitted
@@ -64,9 +64,9 @@ from fastapi.responses import Response
 # Bare cookie names — the request-scoped ``_resolved_name`` helper
 # decides whether to prepend ``__Host-`` / ``__Secure-`` based on the
 # request's HTTPS + prefix combination.
-SESSION_AT_COOKIE = "lydia_session_at"
-SESSION_RT_COOKIE = "lydia_session_rt"
-PKCE_COOKIE = "lydia_session_pkce"
+SESSION_AT_COOKIE = "alice_session_at"
+SESSION_RT_COOKIE = "alice_session_rt"
+PKCE_COOKIE = "alice_session_pkce"
 # One-shot loop-guard marker for the auto-SSO redirect (Phase 1,
 # cloud-auto-discovery). Set when the gate auto-initiates the portal OAuth
 # redirect on an unauthenticated document load; its mere PRESENCE on the next
@@ -75,7 +75,7 @@ PKCE_COOKIE = "lydia_session_pkce"
 # Carries no secret — it's a boolean breadcrumb — but is set HttpOnly/Lax/Secure
 # like the others for consistency. Short TTL so a user who returns later gets a
 # fresh silent attempt rather than a permanently-disabled one.
-SSO_ATTEMPT_COOKIE = "lydia_sso_attempt"
+SSO_ATTEMPT_COOKIE = "alice_sso_attempt"
 
 # Possible name variants we may have to read back. Sorted so most-strict
 # wins on iteration when both happen to be present (shouldn't happen in

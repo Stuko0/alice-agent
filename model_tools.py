@@ -321,7 +321,7 @@ def get_tool_definitions(
             frozenset(disabled_toolsets) if disabled_toolsets else None,
             registry._generation,
             cfg_fp,
-            bool(os.environ.get("LYDIA_KANBAN_TASK")),
+            bool(os.environ.get("ALICE_KANBAN_TASK")),
             bool(skip_tool_search_assembly),
         )
         cached = _tool_defs_cache.get(cache_key)
@@ -366,8 +366,8 @@ def _compute_tool_definitions(
 
     if enabled_toolsets is not None:
         effective_enabled_toolsets = list(enabled_toolsets)
-        if os.environ.get("LYDIA_KANBAN_TASK") and "kanban" not in effective_enabled_toolsets:
-            # Dispatcher-spawned workers are scoped by LYDIA_KANBAN_TASK and
+        if os.environ.get("ALICE_KANBAN_TASK") and "kanban" not in effective_enabled_toolsets:
+            # Dispatcher-spawned workers are scoped by ALICE_KANBAN_TASK and
             # must always receive the lifecycle handoff tools. Assignee
             # profiles may intentionally restrict their normal chat toolsets
             # (for token/cost reasons), but that should not strip the kanban
@@ -400,7 +400,7 @@ def _compute_tool_definitions(
         for toolset_name in disabled_toolsets:
             if validate_toolset(toolset_name):
                 if toolset_name.startswith("alice-"):
-                    # Platform bundles (alice-*) include _LYDIA_CORE_TOOLS, so
+                    # Platform bundles (alice-*) include _ALICE_CORE_TOOLS, so
                     # subtracting the whole bundle would strip core tools shared
                     # by other enabled toolsets and empty the tool list (#33924).
                     # Subtract only the bundle's non-core delta; keep core.
@@ -535,7 +535,7 @@ def _compute_tool_definitions(
     # Conditionally replace MCP + plugin (non-core) tools with three bridge
     # tools (tool_search / tool_describe / tool_call) when the deferrable
     # surface exceeds the configured threshold (default 10% of context
-    # window). Core Alice native (toolsets._LYDIA_CORE_TOOLS) are NEVER
+    # window). Core Alice native (toolsets._ALICE_CORE_TOOLS) are NEVER
     # deferred. See tools/tool_search.py for full design notes.
     #
     # This is deliberately the last step before returning — sanitization

@@ -8,7 +8,7 @@ The output keeps buffering and the user can reopen the tab from the status stack
 
 It routes through the process registry's ``on_close`` sink, which the desktop
 gateway wires to emit a ``terminal.close`` event the renderer handles. Like
-``read_terminal`` it is gated on ``LYDIA_DESKTOP`` so it never appears outside
+``read_terminal`` it is gated on ``ALICE_DESKTOP`` so it never appears outside
 the GUI.
 """
 
@@ -29,8 +29,8 @@ def close_terminal_tool(process_id: str) -> str:
 
 
 def check_close_terminal_requirements() -> bool:
-    """Desktop GUI only — LYDIA_DESKTOP is set on the gateway the app spawns."""
-    return (os.getenv("LYDIA_DESKTOP") or "").strip().lower() in ("1", "true", "yes")
+    """Desktop GUI only — ALICE_DESKTOP is set on the gateway the app spawns."""
+    return (os.getenv("ALICE_DESKTOP") or "").strip().lower() in ("1", "true", "yes")
 
 
 CLOSE_TERMINAL_SCHEMA = {

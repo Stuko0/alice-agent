@@ -195,11 +195,11 @@ def _discover_homebrew_node_dirs() -> tuple[str, ...]:
 
 def _browser_candidate_path_dirs() -> list[str]:
     """Return ordered browser CLI PATH candidates shared by discovery and execution."""
-    lydia_home = get_alice_home()
-    lydia_node_bin = str(lydia_home / "node" / "bin")
-    lydia_node_root = str(lydia_home / "node")
-    lydia_nm_bin = str(lydia_home / "node_modules" / ".bin")
-    return [lydia_node_bin, lydia_node_root, lydia_nm_bin, *list(_discover_homebrew_node_dirs()), *_SANE_PATH_DIRS]
+    alice_home = get_alice_home()
+    alice_node_bin = str(alice_home / "node" / "bin")
+    alice_node_root = str(alice_home / "node")
+    alice_nm_bin = str(alice_home / "node_modules" / ".bin")
+    return [alice_node_bin, alice_node_root, alice_nm_bin, *list(_discover_homebrew_node_dirs()), *_SANE_PATH_DIRS]
 
 
 def _merge_browser_path(existing_path: str = "") -> str:
@@ -1326,7 +1326,7 @@ def _socket_safe_tmpdir() -> str:
     """Return a short temp directory path suitable for Unix domain sockets.
 
     macOS sets ``TMPDIR`` to ``/var/folders/xx/.../T/`` (~51 chars).  When we
-    append ``agent-browser-lydia_…`` the resulting socket path exceeds the
+    append ``agent-browser-alice_…`` the resulting socket path exceeds the
     104-byte macOS limit for ``AF_UNIX`` addresses, causing agent-browser to
     fail with "Failed to create socket directory" or silent screenshot failures.
 
@@ -1614,7 +1614,7 @@ def _reap_orphaned_browser_sessions():
     # Also pick up CDP sessions
     socket_dirs += glob.glob(os.path.join(tmpdir, "agent-browser-cdp_*"))
     # Also pick up cloud-provider sessions (browser-use/browserbase/firecrawl)
-    socket_dirs += glob.glob(os.path.join(tmpdir, "agent-browser-lydia_*"))
+    socket_dirs += glob.glob(os.path.join(tmpdir, "agent-browser-alice_*"))
 
     if not socket_dirs:
         return
@@ -3470,14 +3470,14 @@ def _maybe_start_recording(task_id: str):
             return
     try:
         from alice_cli.config import read_raw_config
-        lydia_home = get_alice_home()
+        alice_home = get_alice_home()
         cfg = read_raw_config()
         record_enabled = cfg_get(cfg, "browser", "record_sessions", default=False)
 
         if not record_enabled:
             return
 
-        recordings_dir = lydia_home / "browser_recordings"
+        recordings_dir = alice_home / "browser_recordings"
         recordings_dir.mkdir(parents=True, exist_ok=True)
         _cleanup_old_recordings(max_age_hours=72)
 
@@ -3918,8 +3918,8 @@ def _cleanup_old_screenshots(screenshots_dir, max_age_hours=24):
 def _cleanup_old_recordings(max_age_hours=72):
     """Remove browser recordings older than max_age_hours to prevent disk bloat."""
     try:
-        lydia_home = get_alice_home()
-        recordings_dir = lydia_home / "browser_recordings"
+        alice_home = get_alice_home()
+        recordings_dir = alice_home / "browser_recordings"
         if not recordings_dir.exists():
             return
         cutoff = time.time() - (max_age_hours * 3600)

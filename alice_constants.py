@@ -731,7 +731,7 @@ def _iter_real_home_candidates(env: dict[str, str] | None = None) -> list[str]:
     """Return likely OS-user home candidates in trust order."""
     env = env or {}
     candidates: list[str] = []
-    explicit = str(env.get("LYDIA_REAL_HOME") or os.getenv("LYDIA_REAL_HOME", "")).strip()
+    explicit = str(env.get("ALICE_REAL_HOME") or os.getenv("ALICE_REAL_HOME", "")).strip()
     if explicit:
         candidates.append(explicit)
     home = str(env.get("HOME") or os.getenv("HOME", "")).strip()
@@ -818,7 +818,7 @@ def apply_subprocess_home_env(env: dict[str, str]) -> None:
     """Apply Alice' subprocess HOME contract to *env* in-place."""
     real_home = get_real_home(env)
     if real_home:
-        env["LYDIA_REAL_HOME"] = real_home
+        env["ALICE_REAL_HOME"] = real_home
     home = get_subprocess_home(env)
     if home:
         env["HOME"] = home

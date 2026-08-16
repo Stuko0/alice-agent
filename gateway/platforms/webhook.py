@@ -354,8 +354,8 @@ class WebhookAdapter(BasePlatformAdapter):
     def _reload_dynamic_routes(self) -> None:
         """Reload agent-created subscriptions from disk if the file changed."""
         from alice_constants import get_alice_home
-        lydia_home = get_alice_home()
-        subs_path = lydia_home / _DYNAMIC_ROUTES_FILENAME
+        alice_home = get_alice_home()
+        subs_path = alice_home / _DYNAMIC_ROUTES_FILENAME
         if not subs_path.exists():
             if self._dynamic_routes:
                 self._dynamic_routes = {}

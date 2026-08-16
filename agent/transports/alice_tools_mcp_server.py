@@ -37,7 +37,7 @@ What we DO NOT expose:
                                            drive them. See the inline
                                            comment on EXPOSED_TOOLS below.
 
-Run with: python -m agent.transports.lydia_tools_mcp_server
+Run with: python -m agent.transports.alice_tools_mcp_server
 Spawned by: CodexAppServerSession.ensure_started() when the runtime is
             active and config opts in.
 """
@@ -83,7 +83,7 @@ EXPOSED_TOOLS: tuple[str, ...] = (
     "skill_view",
     "skills_list",
     "text_to_speech",
-    # Kanban worker handoff tools — gated on LYDIA_KANBAN_TASK env var
+    # Kanban worker handoff tools — gated on ALICE_KANBAN_TASK env var
     # (set by the kanban dispatcher when spawning a worker). Without these
     # in the callback, a worker spawned with openai_runtime=codex_app_server
     # could do the work but couldn't report completion back to the kernel,
@@ -96,7 +96,7 @@ EXPOSED_TOOLS: tuple[str, ...] = (
     "kanban_show",
     "kanban_list",
     # NOTE: kanban_create / kanban_unblock / kanban_link are orchestrator-
-    # only — the kanban tool gates them on LYDIA_KANBAN_TASK being unset.
+    # only — the kanban tool gates them on ALICE_KANBAN_TASK being unset.
     # They're exposed here for orchestrator agents running on the codex
     # runtime that need to dispatch new tasks.
     "kanban_create",
@@ -195,7 +195,7 @@ def _build_server() -> Any:
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    """Entry point for `python -m agent.transports.lydia_tools_mcp_server`."""
+    """Entry point for `python -m agent.transports.alice_tools_mcp_server`."""
     argv = argv or sys.argv[1:]
     verbose = "--verbose" in argv or "-v" in argv
 
@@ -207,8 +207,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
 
     # Quiet mode: keep Alice' own banners off stdout (which is the MCP wire).
-    os.environ.setdefault("LYDIA_QUIET", "1")
-    os.environ.setdefault("LYDIA_REDACT_SECRETS", "true")
+    os.environ.setdefault("ALICE_QUIET", "1")
+    os.environ.setdefault("ALICE_REDACT_SECRETS", "true")
 
     try:
         server = _build_server()

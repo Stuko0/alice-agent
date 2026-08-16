@@ -1439,8 +1439,8 @@ def _dump_subagent_timeout_diagnostic(
         import sys as _sys
         import traceback as _traceback
 
-        lydia_home = get_alice_home()
-        logs_dir = lydia_home / "logs"
+        alice_home = get_alice_home()
+        logs_dir = alice_home / "logs"
         try:
             logs_dir.mkdir(parents=True, exist_ok=True)
         except Exception:

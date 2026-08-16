@@ -548,12 +548,12 @@ def _resolve_tirith_path(configured_path: str) -> str:
         _clear_install_failed()
         return found
 
-    lydia_bin = os.path.join(_alice_bin_dir(), "tirith")
-    if os.path.isfile(lydia_bin) and os.access(lydia_bin, os.X_OK):
-        _resolved_path = lydia_bin
+    alice_bin = os.path.join(_alice_bin_dir(), "tirith")
+    if os.path.isfile(alice_bin) and os.access(alice_bin, os.X_OK):
+        _resolved_path = alice_bin
         _install_failure_reason = ""
         _clear_install_failed()
-        return lydia_bin
+        return alice_bin
 
     # Local checks failed.  If a previous install attempt already failed,
     # skip the network retry — UNLESS the failure was "cosign_missing" and
@@ -612,9 +612,9 @@ def _background_install(*, log_failures: bool = True):
             _install_failure_reason = ""
             return
 
-        lydia_bin = os.path.join(_alice_bin_dir(), "tirith")
-        if os.path.isfile(lydia_bin) and os.access(lydia_bin, os.X_OK):
-            _resolved_path = lydia_bin
+        alice_bin = os.path.join(_alice_bin_dir(), "tirith")
+        if os.path.isfile(alice_bin) and os.access(alice_bin, os.X_OK):
+            _resolved_path = alice_bin
             _install_failure_reason = ""
             return
 
@@ -682,12 +682,12 @@ def ensure_installed(*, log_failures: bool = True):
         _clear_install_failed()
         return found
 
-    lydia_bin = os.path.join(_alice_bin_dir(), "tirith")
-    if os.path.isfile(lydia_bin) and os.access(lydia_bin, os.X_OK):
-        _resolved_path = lydia_bin
+    alice_bin = os.path.join(_alice_bin_dir(), "tirith")
+    if os.path.isfile(alice_bin) and os.access(alice_bin, os.X_OK):
+        _resolved_path = alice_bin
         _install_failure_reason = ""
         _clear_install_failed()
-        return lydia_bin
+        return alice_bin
 
     # If previously failed in-memory, check if the cause is now resolved
     if _resolved_path is _INSTALL_FAILED:

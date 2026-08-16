@@ -16,7 +16,7 @@ from agent.errors import SSLConfigurationError
 logger = logging.getLogger(__name__)
 
 _CA_BUNDLE_ENV_VARS = (
-    "LYDIA_CA_BUNDLE",
+    "ALICE_CA_BUNDLE",
     "SSL_CERT_FILE",
     "REQUESTS_CA_BUNDLE",
     "CURL_CA_BUNDLE",
@@ -26,7 +26,7 @@ _SKIP_VALUES = {"1", "true", "yes", "on"}
 
 
 def _skip_ssl_guard_enabled() -> bool:
-    return os.getenv("LYDIA_SKIP_SSL_GUARD", "").strip().lower() in _SKIP_VALUES
+    return os.getenv("ALICE_SKIP_SSL_GUARD", "").strip().lower() in _SKIP_VALUES
 
 
 def _repair_hint() -> str:
@@ -67,7 +67,7 @@ def verify_ca_bundle() -> None:
             missing/corrupt.
     """
     if _skip_ssl_guard_enabled():
-        logger.debug("SSL CA bundle guard skipped via LYDIA_SKIP_SSL_GUARD")
+        logger.debug("SSL CA bundle guard skipped via ALICE_SKIP_SSL_GUARD")
         return
 
     for env_var in _CA_BUNDLE_ENV_VARS:

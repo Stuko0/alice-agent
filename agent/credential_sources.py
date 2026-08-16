@@ -4,7 +4,7 @@ Alice seeds its credential pool from many places:
 
     env:<VAR>     — os.environ / ~/.alice/.env
     claude_code   — ~/.claude/.credentials.json
-    lydia_pkce   — ~/.alice/.anthropic_oauth.json
+    alice_pkce   — ~/.alice/.anthropic_oauth.json
     device_code   — auth.json providers.<provider> (nous, openai-codex, ...)
     qwen-cli      — ~/.qwen/oauth_creds.json
     gh_cli        — gh auth token
@@ -21,7 +21,7 @@ unify here is **removal**:
 Before this module, every source had an ad-hoc removal branch in
 ``auth_remove_command``, and several sources had no branch at all — so
 ``auth remove`` silently reverted on the next ``load_pool()`` call for
-qwen-cli, nous device_code (partial), lydia_pkce, copilot gh_cli, and
+qwen-cli, nous device_code (partial), alice_pkce, copilot gh_cli, and
 custom-config sources.
 
 Now every source registers a ``RemovalStep`` that does exactly three things
@@ -407,7 +407,7 @@ def _register_all_sources() -> None:
         description="~/.claude/.credentials.json",
     ))
     register(RemovalStep(
-        provider="anthropic", source_id="lydia_pkce",
+        provider="anthropic", source_id="alice_pkce",
         remove_fn=_remove_alice_pkce,
         description="~/.alice/.anthropic_oauth.json",
     ))

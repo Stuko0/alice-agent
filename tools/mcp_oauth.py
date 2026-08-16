@@ -112,7 +112,7 @@ _SKIP_TOKENS = frozenset({"skip", "cancel", "s", "n", "no", "q", "quit"})
 # _wait_for_callback maps this to OAuthNonInteractiveError ("user_skipped")
 # so the MCP setup path treats it as a non-fatal "continue without this
 # server" rather than a hard failure.
-_USER_SKIPPED_SENTINEL = "__lydia_user_skipped__"
+_USER_SKIPPED_SENTINEL = "__alice_user_skipped__"
 
 
 # ---------------------------------------------------------------------------

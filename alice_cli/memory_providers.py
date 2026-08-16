@@ -38,7 +38,7 @@ class ProviderField:
     A field is stored in exactly one place, decided by ``kind``:
 
     * ``text`` / ``select`` — persisted to the provider's JSON config file
-      (``<lydia_home>/<provider>/config.json``) under ``key``.
+      (``<alice_home>/<provider>/config.json``) under ``key``.
     * ``secret`` — persisted to the env store under ``env_key`` and never read
       back out over the API (only an ``is_set`` flag is surfaced).
 

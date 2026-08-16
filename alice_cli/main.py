@@ -148,13 +148,13 @@ def _wants_tui_early(argv: "list[str] | None" = None) -> bool:
     """Earliest TUI decision, usable before argparse/config imports.
 
     Precedence: explicit ``--cli`` wins (forces classic REPL), then
-    ``--tui``/``LYDIA_TUI=1``, then ``display.interface`` in config.
+    ``--tui``/``ALICE_TUI=1``, then ``display.interface`` in config.
     """
     if argv is None:
         argv = sys.argv[1:]
     if "--cli" in argv:
         return False
-    if os.environ.get("LYDIA_TUI") == "1" or "--tui" in argv:
+    if os.environ.get("ALICE_TUI") == "1" or "--tui" in argv:
         return True
     return _config_default_interface_early() == "tui"
 
@@ -165,10 +165,10 @@ def _wants_tui_early(argv: "list[str] | None" = None) -> bool:
 # before the Node TUI takes stdin into raw mode). During that window any
 # incoming bytes are echoed straight back to the user's shell scrollback as
 # ``^[[<…M`` text. The TUI itself runs `resetTerminalModes()` again in
-# `entry.tsx`; this is just the earlier cousin. ``LYDIA_TUI_NO_EARLY_DISABLE``
+# `entry.tsx`; this is just the earlier cousin. ``ALICE_TUI_NO_EARLY_DISABLE``
 # escapes the behaviour for diagnostics.
 def _suppress_mouse_residue_early() -> None:
-    if os.environ.get("LYDIA_TUI_NO_EARLY_DISABLE") == "1":
+    if os.environ.get("ALICE_TUI_NO_EARLY_DISABLE") == "1":
         return
     if not _wants_tui_early():
         return
@@ -240,7 +240,7 @@ def _print_fast_version_info() -> None:
 
 def _try_termux_ultrafast_version() -> bool:
     """Handle ``alice --version`` before config/logging imports on Termux."""
-    if os.environ.get("LYDIA_TERMUX_DISABLE_FAST_CLI") == "1":
+    if os.environ.get("ALICE_TERMUX_DISABLE_FAST_CLI") == "1":
         return False
     if not _is_termux_startup_environment_fast():
         return False
@@ -451,15 +451,15 @@ def _apply_profile_override() -> None:
     # still read active_profile — the user may have switched profiles via
     # `alice profile use` and the gateway should honour that choice.
     # See issue #22502.
-    lydia_home_env = os.environ.get("ALICE_HOME", "")
-    if profile_name is None and lydia_home_env:
-        if Path(lydia_home_env).parent.name == "profiles":
+    alice_home_env = os.environ.get("ALICE_HOME", "")
+    if profile_name is None and alice_home_env:
+        if Path(alice_home_env).parent.name == "profiles":
             return
 
     # 2. If no flag, check active_profile in the alice root.
     #
     # EXCEPTION: a supervised s6 gateway child (exported by the container
-    # run-script as LYDIA_S6_SUPERVISED_CHILD=1) must NOT follow the sticky
+    # run-script as ALICE_S6_SUPERVISED_CHILD=1) must NOT follow the sticky
     # active_profile. Each supervised slot has a fixed profile identity: named
     # slots pass ``-p <name>`` explicitly (handled in step 1 above), and the
     # reserved ``gateway-default`` slot runs bare ``alice gateway run`` to mean
@@ -468,7 +468,7 @@ def _apply_profile_override() -> None:
     # would silently redirect the default gateway into that profile — yielding a
     # duplicate gateway for the active profile and no real default gateway. See
     # the "Docker & Profiles & Dashboard" report.
-    if profile_name is None and not os.environ.get("LYDIA_S6_SUPERVISED_CHILD"):
+    if profile_name is None and not os.environ.get("ALICE_S6_SUPERVISED_CHILD"):
         try:
             from alice_constants import get_default_alice_root
 
@@ -486,10 +486,10 @@ def _apply_profile_override() -> None:
         try:
             from alice_cli.profiles import resolve_profile_env
 
-            lydia_home = resolve_profile_env(profile_name)
+            alice_home = resolve_profile_env(profile_name)
         except FileNotFoundError as exc:
-            lydia_home = _resolve_sudo_user_profile_env(profile_name)
-            if not lydia_home:
+            alice_home = _resolve_sudo_user_profile_env(profile_name)
+            if not alice_home:
                 print(f"Error: {exc}", file=sys.stderr)
                 sys.exit(1)
         except ValueError as exc:
@@ -502,7 +502,7 @@ def _apply_profile_override() -> None:
                 file=sys.stderr,
             )
             return
-        os.environ["ALICE_HOME"] = lydia_home
+        os.environ["ALICE_HOME"] = alice_home
         # Strip the flag from argv so argparse doesn't choke
         if consume > 0 and profile_index is not None:
             start = profile_index + 1  # +1 because argv is sys.argv[1:]
@@ -518,7 +518,7 @@ from alice_cli.env_loader import load_alice_dotenv
 
 load_alice_dotenv(project_env=PROJECT_ROOT / ".env")
 
-# Bridge security.redact_secrets from config.yaml → LYDIA_REDACT_SECRETS env
+# Bridge security.redact_secrets from config.yaml → ALICE_REDACT_SECRETS env
 # var BEFORE alice_logging imports agent.redact (which snapshots the flag at
 # module-import time). Without this, config.yaml's toggle is ignored because
 # the setup_logging() call below imports agent.redact, which reads the env var
@@ -547,12 +547,12 @@ try:
             _early_cfg_raw = managed_scope.apply_managed_overlay(_early_cfg_raw)
         except Exception:
             pass
-        if "LYDIA_REDACT_SECRETS" not in os.environ:
+        if "ALICE_REDACT_SECRETS" not in os.environ:
             _early_sec_cfg = _early_cfg_raw.get("security", {})
             if isinstance(_early_sec_cfg, dict):
                 _early_redact = _early_sec_cfg.get("redact_secrets")
                 if _early_redact is not None:
-                    os.environ["LYDIA_REDACT_SECRETS"] = str(_early_redact).lower()
+                    os.environ["ALICE_REDACT_SECRETS"] = str(_early_redact).lower()
         _early_net_cfg = _early_cfg_raw.get("network", {})
         if isinstance(_early_net_cfg, dict) and _early_net_cfg.get("force_ipv4"):
             _FORCE_IPV4_EARLY = True
@@ -719,7 +719,7 @@ def _termux_bundled_skills_stamp_path() -> Path:
 def _termux_bundled_skills_sync_needed() -> bool:
     if not _is_termux_startup_environment():
         return True
-    if os.environ.get("LYDIA_TERMUX_FORCE_SKILLS_SYNC") == "1":
+    if os.environ.get("ALICE_TERMUX_FORCE_SKILLS_SYNC") == "1":
         return True
     try:
         stamp = _termux_bundled_skills_stamp_path()
@@ -759,7 +759,7 @@ def _sync_bundled_skills_for_startup() -> bool:
 def _termux_should_prefetch_update_check() -> bool:
     if not _is_termux_startup_environment():
         return True
-    return os.environ.get("LYDIA_TERMUX_PREFETCH_UPDATES") == "1"
+    return os.environ.get("ALICE_TERMUX_PREFETCH_UPDATES") == "1"
 
 
 def _relative_time(ts) -> str:
@@ -800,7 +800,7 @@ def _has_any_provider_configured() -> bool:
         _model_name = model_cfg.strip()
     else:
         _model_name = ""
-    _has_lydia_config = _model_name and _model_name != _DEFAULT_MODEL
+    _has_alice_config = _model_name and _model_name != _DEFAULT_MODEL
 
     # Check env vars (may be set by .env or shell).
     # OPENAI_BASE_URL alone counts — local models (vLLM, llama.cpp, etc.)
@@ -878,7 +878,7 @@ def _has_any_provider_configured() -> bool:
     # Check for Claude Code OAuth credentials (~/.claude/.credentials.json)
     # Only count these if Alice has been explicitly configured — Claude Code
     # being installed doesn't mean the user wants Alice to use their tokens.
-    if _has_lydia_config:
+    if _has_alice_config:
         try:
             from agent.anthropic_adapter import (
                 read_claude_code_credentials,
@@ -1184,14 +1184,14 @@ def _exec_in_container(container_info: dict, cli_args: list):
     On failure, OSError propagates naturally.
 
     Args:
-        container_info: dict with backend, container_name, exec_user, lydia_bin
+        container_info: dict with backend, container_name, exec_user, alice_bin
         cli_args: the original CLI arguments (everything after 'alice')
     """
 
     backend = container_info["backend"]
     container_name = container_info["container_name"]
     exec_user = container_info["exec_user"]
-    lydia_bin = container_info["lydia_bin"]
+    alice_bin = container_info["alice_bin"]
 
     runtime = shutil.which(backend)
     if not runtime:
@@ -1261,7 +1261,7 @@ def _exec_in_container(container_info: dict, cli_args: list):
         + tty_flags
         + ["-u", exec_user]
         + env_flags
-        + [container_name, lydia_bin]
+        + [container_name, alice_bin]
         + cli_args
     )
 
@@ -1570,9 +1570,9 @@ def _tui_need_rebuild(root: Path) -> bool:
     The TUI bundle is self-contained. Rebuilding it on every launch adds a
     visible cold-start tax on slow Termux CPUs, while a simple mtime freshness
     check still rebuilds immediately after source updates, dependency updates,
-    or local edits. Set ``LYDIA_TUI_FORCE_BUILD=1`` to force the old behaviour.
+    or local edits. Set ``ALICE_TUI_FORCE_BUILD=1`` to force the old behaviour.
     """
-    force = (os.environ.get("LYDIA_TUI_FORCE_BUILD") or "").strip().lower()
+    force = (os.environ.get("ALICE_TUI_FORCE_BUILD") or "").strip().lower()
     if force in {"1", "true", "yes", "on"}:
         return True
 
@@ -1602,18 +1602,18 @@ def _ensure_tui_node() -> None:
     was used (nvm, fnm, proto, brew, or the bundled fallback).
 
     Idempotent no-op when node+npm are already discoverable. Set
-    ``LYDIA_SKIP_NODE_BOOTSTRAP=1`` to disable auto-install.
+    ``ALICE_SKIP_NODE_BOOTSTRAP=1`` to disable auto-install.
     """
     if shutil.which("node") and shutil.which("npm"):
         return
-    if os.environ.get("LYDIA_SKIP_NODE_BOOTSTRAP"):
+    if os.environ.get("ALICE_SKIP_NODE_BOOTSTRAP"):
         return
 
     helper = PROJECT_ROOT / "scripts" / "lib" / "node-bootstrap.sh"
     if not helper.is_file():
         return
 
-    lydia_home = os.environ.get("ALICE_HOME") or str(Path.home() / ".alice")
+    alice_home = os.environ.get("ALICE_HOME") or str(Path.home() / ".alice")
     try:
         # Helper writes logs to stderr; we ask bash to print `command -v node`
         # on stdout once ensure_node succeeds. Subshell PATH edits don't leak
@@ -1624,7 +1624,7 @@ def _ensure_tui_node() -> None:
                 "-c",
                 f'source "{helper}" >&2 && ensure_node >&2 && command -v node',
             ],
-            env={**os.environ, "ALICE_HOME": lydia_home},
+            env={**os.environ, "ALICE_HOME": alice_home},
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -1641,7 +1641,7 @@ def _ensure_tui_node() -> None:
     if resolved:
         extras.append(Path(resolved).resolve().parent)
 
-    extras.extend([Path(lydia_home) / "node" / "bin", Path.home() / ".local" / "bin"])
+    extras.extend([Path(alice_home) / "node" / "bin", Path.home() / ".local" / "bin"])
 
     for extra in extras:
         s = str(extra)
@@ -1698,7 +1698,7 @@ def _ensure_tui_workspace(tui_dir: Path) -> None:
         return
 
     if _restore_tui_workspace(tui_dir):
-        if not os.environ.get("LYDIA_QUIET"):
+        if not os.environ.get("ALICE_QUIET"):
             print(f"Restored missing TUI workspace: {tui_dir}")
         return
 
@@ -1717,12 +1717,12 @@ def _ensure_tui_workspace(tui_dir: Path) -> None:
 
 
 def _make_tui_argv(tui_dir: Path, tui_dev: bool) -> tuple[list[str], Path]:
-    """TUI: --dev → tsx src; else node dist (LYDIA_TUI_DIR prebuilt or esbuild)."""
+    """TUI: --dev → tsx src; else node dist (ALICE_TUI_DIR prebuilt or esbuild)."""
     _ensure_tui_node()
 
     def _node_bin(bin: str) -> str:
         if bin == "node":
-            env_node = os.environ.get("LYDIA_NODE")
+            env_node = os.environ.get("ALICE_NODE")
             if env_node and os.path.isfile(env_node) and os.access(env_node, os.X_OK):
                 return env_node
         path = shutil.which(bin)
@@ -1739,12 +1739,12 @@ def _make_tui_argv(tui_dir: Path, tui_dev: bool) -> tuple[list[str], Path]:
         return path
 
     # Footgun: --dev against a prebuilt bundle that has no source/node_modules.
-    ext_dir = os.environ.get("LYDIA_TUI_DIR")
+    ext_dir = os.environ.get("ALICE_TUI_DIR")
     if tui_dev and ext_dir:
         print(
-            f"Error: --dev is incompatible with LYDIA_TUI_DIR={ext_dir}\n"
+            f"Error: --dev is incompatible with ALICE_TUI_DIR={ext_dir}\n"
             f"The prebuilt TUI has no source code to hot-reload.\n"
-            f"Unset LYDIA_TUI_DIR (e.g. `unset LYDIA_TUI_DIR`) to use --dev from a checkout.",
+            f"Unset ALICE_TUI_DIR (e.g. `unset ALICE_TUI_DIR`) to use --dev from a checkout.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -1785,7 +1785,7 @@ def _make_tui_argv(tui_dir: Path, tui_dev: bool) -> tuple[list[str], Path]:
         and _tui_need_npm_install(tui_dir)
     ):
         npm = _node_bin("npm")
-        if not os.environ.get("LYDIA_QUIET"):
+        if not os.environ.get("ALICE_QUIET"):
             print("Installing TUI dependencies…")
         npm_cwd = _workspace_root(tui_dir)
         # --workspace ui-tui avoids resolving apps/desktop (Electron + node-pty).
@@ -2012,12 +2012,12 @@ def _launch_tui(
         prefix="alice-tui-active-session-", suffix=".json"
     )
     os.close(active_session_fd)
-    env["LYDIA_TUI_ACTIVE_SESSION_FILE"] = active_session_file
-    env["LYDIA_PYTHON_SRC_ROOT"] = os.environ.get(
-        "LYDIA_PYTHON_SRC_ROOT", str(PROJECT_ROOT)
+    env["ALICE_TUI_ACTIVE_SESSION_FILE"] = active_session_file
+    env["ALICE_PYTHON_SRC_ROOT"] = os.environ.get(
+        "ALICE_PYTHON_SRC_ROOT", str(PROJECT_ROOT)
     )
-    env.setdefault("LYDIA_PYTHON", sys.executable)
-    env.setdefault("LYDIA_CWD", os.getcwd())
+    env.setdefault("ALICE_PYTHON", sys.executable)
+    env.setdefault("ALICE_CWD", os.getcwd())
     env.setdefault("NODE_ENV", "development" if tui_dev else "production")
 
     wt_info = None
@@ -2039,18 +2039,18 @@ def _launch_tui(
             wt_info = None
         if not wt_info:
             sys.exit(1)
-        env["LYDIA_CWD"] = wt_info["path"]
+        env["ALICE_CWD"] = wt_info["path"]
         env["TERMINAL_CWD"] = wt_info["path"]
 
     if model:
-        env["LYDIA_MODEL"] = model
-        env["LYDIA_INFERENCE_MODEL"] = model
+        env["ALICE_MODEL"] = model
+        env["ALICE_INFERENCE_MODEL"] = model
     if provider:
-        env["LYDIA_TUI_PROVIDER"] = provider
-        env["LYDIA_INFERENCE_PROVIDER"] = provider
+        env["ALICE_TUI_PROVIDER"] = provider
+        env["ALICE_INFERENCE_PROVIDER"] = provider
     tui_toolsets = _normalize_tui_toolsets(toolsets)
     if tui_toolsets:
-        env["LYDIA_TUI_TOOLSETS"] = ",".join(tui_toolsets)
+        env["ALICE_TUI_TOOLSETS"] = ",".join(tui_toolsets)
     if skills:
         if isinstance(skills, (list, tuple)):
             flattened = []
@@ -2059,27 +2059,27 @@ def _launch_tui(
                     part.strip() for part in str(item).split(",") if part.strip()
                 )
             if flattened:
-                env["LYDIA_TUI_SKILLS"] = ",".join(flattened)
+                env["ALICE_TUI_SKILLS"] = ",".join(flattened)
         else:
             value = str(skills).strip()
             if value:
-                env["LYDIA_TUI_SKILLS"] = value
+                env["ALICE_TUI_SKILLS"] = value
     if query:
-        env["LYDIA_TUI_QUERY"] = query
+        env["ALICE_TUI_QUERY"] = query
     if image:
-        env["LYDIA_TUI_IMAGE"] = image
+        env["ALICE_TUI_IMAGE"] = image
     if checkpoints:
-        env["LYDIA_TUI_CHECKPOINTS"] = "1"
+        env["ALICE_TUI_CHECKPOINTS"] = "1"
     if pass_session_id:
-        env["LYDIA_TUI_PASS_SESSION_ID"] = "1"
+        env["ALICE_TUI_PASS_SESSION_ID"] = "1"
     if max_turns is not None:
-        env["LYDIA_TUI_MAX_TURNS"] = str(max_turns)
+        env["ALICE_TUI_MAX_TURNS"] = str(max_turns)
     if verbose:
-        env["LYDIA_TUI_TOOL_PROGRESS"] = "verbose"
+        env["ALICE_TUI_TOOL_PROGRESS"] = "verbose"
     elif quiet:
-        env["LYDIA_TUI_TOOL_PROGRESS"] = "off"
+        env["ALICE_TUI_TOOL_PROGRESS"] = "off"
     if accept_hooks:
-        env["LYDIA_ACCEPT_HOOKS"] = "1"
+        env["ALICE_ACCEPT_HOOKS"] = "1"
     # Guarantee a generous V8 heap for the TUI. Default node cap is ~1.5–4GB
     # depending on version and can fatal-OOM on long sessions with large
     # transcripts / reasoning blobs. We target 8GB on an unconstrained host,
@@ -2098,16 +2098,16 @@ def _launch_tui(
     if not any(t.startswith("--max-old-space-size=") for t in _tokens):
         _tokens.append(f"--max-old-space-size={_resolve_tui_heap_mb()}")
     env["NODE_OPTIONS"] = " ".join(_tokens)
-    # LYDIA_TUI_RESUME is an internal hand-off from the Python wrapper to the
+    # ALICE_TUI_RESUME is an internal hand-off from the Python wrapper to the
     # Ink app.  Because we start from os.environ.copy(), an exported/stale value
     # in the user's shell would otherwise make a plain `alice --tui` try to
     # resume a non-existent session and leave the UI at "error: session not
     # found" with no live session.  Only forward a resume id that argparse
     # resolved for this invocation; direct `node ui-tui/dist/entry.js` users can
-    # still set LYDIA_TUI_RESUME themselves.
-    env.pop("LYDIA_TUI_RESUME", None)
+    # still set ALICE_TUI_RESUME themselves.
+    env.pop("ALICE_TUI_RESUME", None)
     if resume_session_id:
-        env["LYDIA_TUI_RESUME"] = resume_session_id
+        env["ALICE_TUI_RESUME"] = resume_session_id
 
     argv, cwd = _make_tui_argv(tui_dir, tui_dev)
     code: Optional[int] = None
@@ -2146,7 +2146,7 @@ def _launch_tui(
 
 
 def _pin_kanban_board_env() -> None:
-    """Pin the active kanban board into ``LYDIA_KANBAN_BOARD`` for the chat session.
+    """Pin the active kanban board into ``ALICE_KANBAN_BOARD`` for the chat session.
 
     Without this, in-process tools (``kanban_*``) and shelled-out CLI calls
     (``alice kanban …``) resolve the board on different paths: the env-pin if
@@ -2156,12 +2156,12 @@ def _pin_kanban_board_env() -> None:
     calls hit board B (#20074). Pinning at chat boot mirrors what the
     dispatcher already does for spawned workers.
     """
-    if os.environ.get("LYDIA_KANBAN_BOARD"):
+    if os.environ.get("ALICE_KANBAN_BOARD"):
         return
     try:
         from alice_cli.kanban_db import get_current_board
 
-        os.environ["LYDIA_KANBAN_BOARD"] = get_current_board()
+        os.environ["ALICE_KANBAN_BOARD"] = get_current_board()
     except Exception:
         pass
 
@@ -2191,7 +2191,7 @@ def _resolve_use_tui(args) -> bool:
 
     Precedence (highest first):
       1. ``--cli`` flag         → always classic REPL
-      2. ``--tui`` flag / ``LYDIA_TUI=1`` → always TUI
+      2. ``--tui`` flag / ``ALICE_TUI=1`` → always TUI
       3. ``display.interface`` config value ("cli" | "tui")
       4. default → classic REPL
 
@@ -2200,7 +2200,7 @@ def _resolve_use_tui(args) -> bool:
     """
     if getattr(args, "cli", False):
         return False
-    if getattr(args, "tui", False) or os.environ.get("LYDIA_TUI") == "1":
+    if getattr(args, "tui", False) or os.environ.get("ALICE_TUI") == "1":
         return True
     try:
         from alice_cli.config import load_config
@@ -2323,19 +2323,19 @@ def cmd_chat(args):
 
     # --yolo: bypass all dangerous command approvals
     if getattr(args, "yolo", False):
-        os.environ["LYDIA_YOLO_MODE"] = "1"
+        os.environ["ALICE_YOLO_MODE"] = "1"
 
     # --safe-mode: troubleshooting mode that disables ALL customizations.
     # Inspired by Claude Code v2.1.169's --safe-mode (June 2026): run with a
     # pristine environment to isolate whether a problem comes from the user's
     # setup (config, rules files, plugins, MCP servers) or from Alice itself.
     # Implemented as a superset of --ignore-user-config + --ignore-rules plus
-    # plugin/MCP discovery suppression (LYDIA_SAFE_MODE is checked by
+    # plugin/MCP discovery suppression (ALICE_SAFE_MODE is checked by
     # alice_cli/plugins.py and tools/mcp_tool.py).
     if getattr(args, "safe_mode", False):
-        os.environ["LYDIA_SAFE_MODE"] = "1"
-        os.environ["LYDIA_IGNORE_USER_CONFIG"] = "1"
-        os.environ["LYDIA_IGNORE_RULES"] = "1"
+        os.environ["ALICE_SAFE_MODE"] = "1"
+        os.environ["ALICE_IGNORE_USER_CONFIG"] = "1"
+        os.environ["ALICE_IGNORE_RULES"] = "1"
 
     # --ignore-user-config: make load_cli_config() / load_config() skip the
     # user's ~/.alice/config.yaml and return built-in defaults. Set BEFORE
@@ -2343,17 +2343,17 @@ def cmd_chat(args):
     # import time). Credentials in .env are still loaded — this flag only
     # ignores behavioral/config settings.
     if getattr(args, "ignore_user_config", False):
-        os.environ["LYDIA_IGNORE_USER_CONFIG"] = "1"
+        os.environ["ALICE_IGNORE_USER_CONFIG"] = "1"
 
     # --ignore-rules: skip auto-injection of AGENTS.md/SOUL.md/.cursorrules
     # (rules), memory entries, and any preloaded skills coming from user config.
     # Maps to AIAgent(skip_context_files=True, skip_memory=True).
     if getattr(args, "ignore_rules", False):
-        os.environ["LYDIA_IGNORE_RULES"] = "1"
+        os.environ["ALICE_IGNORE_RULES"] = "1"
 
     # --source: tag session source for filtering (e.g. 'tool' for third-party integrations)
     if getattr(args, "source", None):
-        os.environ["LYDIA_SESSION_SOURCE"] = args.source
+        os.environ["ALICE_SESSION_SOURCE"] = args.source
 
     _pin_kanban_board_env()
 
@@ -2770,7 +2770,7 @@ def select_provider_and_model(args=None):
         config_provider = model_cfg.get("provider")
 
     effective_provider = (
-        config_provider or os.getenv("LYDIA_INFERENCE_PROVIDER") or "auto"
+        config_provider or os.getenv("ALICE_INFERENCE_PROVIDER") or "auto"
     )
     compatible_custom_providers = get_compatible_custom_providers(config)
     def _named_custom_provider_map(cfg) -> dict[str, dict[str, str]]:
@@ -5533,7 +5533,7 @@ def _desktop_launch_options() -> tuple[list[str], str]:
 
     Returns ``(electron_flags, disable_gpu)`` where ``electron_flags`` is a list
     of extra Electron CLI flags and ``disable_gpu`` is one of "auto"/"1"/"0"
-    (normalized for the LYDIA_DESKTOP_DISABLE_GPU env var the Electron app
+    (normalized for the ALICE_DESKTOP_DISABLE_GPU env var the Electron app
     reads). Best-effort: any config error yields the safe defaults
     ``([], "auto")`` so a malformed config never blocks the launch.
     """
@@ -5584,21 +5584,21 @@ def cmd_gui(args: argparse.Namespace):
     # with_alice_node_path() copies os.environ when called with no arg.
     env = with_alice_node_path()
     if getattr(args, "fake_boot", False):
-        env["LYDIA_DESKTOP_BOOT_FAKE"] = "1"
+        env["ALICE_DESKTOP_BOOT_FAKE"] = "1"
     if getattr(args, "ignore_existing", False):
-        env["LYDIA_DESKTOP_IGNORE_EXISTING"] = "1"
-    if getattr(args, "lydia_root", None):
-        env["LYDIA_DESKTOP_LYDIA_ROOT"] = str(Path(args.lydia_root).expanduser().resolve())
+        env["ALICE_DESKTOP_IGNORE_EXISTING"] = "1"
+    if getattr(args, "alice_root", None):
+        env["ALICE_DESKTOP_ALICE_ROOT"] = str(Path(args.alice_root).expanduser().resolve())
     if getattr(args, "cwd", None):
-        env["LYDIA_DESKTOP_CWD"] = str(Path(args.cwd).expanduser().resolve())
+        env["ALICE_DESKTOP_CWD"] = str(Path(args.cwd).expanduser().resolve())
 
     # Desktop launch options from config.yaml (`desktop.electron_flags`,
     # `desktop.disable_gpu`). The GPU policy is bridged to the env var the
     # Electron app already reads; an explicit env var still wins over config so
-    # `LYDIA_DESKTOP_DISABLE_GPU=... alice desktop` keeps working.
+    # `ALICE_DESKTOP_DISABLE_GPU=... alice desktop` keeps working.
     config_electron_flags, config_disable_gpu = _desktop_launch_options()
-    if config_disable_gpu != "auto" and "LYDIA_DESKTOP_DISABLE_GPU" not in os.environ:
-        env["LYDIA_DESKTOP_DISABLE_GPU"] = config_disable_gpu
+    if config_disable_gpu != "auto" and "ALICE_DESKTOP_DISABLE_GPU" not in os.environ:
+        env["ALICE_DESKTOP_DISABLE_GPU"] = config_disable_gpu
 
     source_mode = getattr(args, "source", False)
     skip_build = getattr(args, "skip_build", False)
@@ -5809,7 +5809,7 @@ def _find_stale_dashboard_pids(
     backend child process: when the desktop spawns ``alice serve`` as
     a backend and triggers an auto-update, the update must not kill the
     backend that the desktop itself manages.  The desktop sets the
-    environment variable ``LYDIA_DESKTOP_CHILD_PID`` on the spawned
+    environment variable ``ALICE_DESKTOP_CHILD_PID`` on the spawned
     backend process; ``_kill_stale_dashboard_processes`` reads it and
     passes it here.  (#37532)
 
@@ -6054,10 +6054,10 @@ def _kill_stale_dashboard_processes(
     restarts it manually; a hint is printed.
     """
     # When the Alice Desktop Electron app spawns this dashboard as a
-    # backend child, it sets LYDIA_DESKTOP_CHILD_PID so that the update
+    # backend child, it sets ALICE_DESKTOP_CHILD_PID so that the update
     # path can skip killing the desktop-managed process.  (#37532)
     exclude: set[int] | None = None
-    raw_pid = os.environ.get("LYDIA_DESKTOP_CHILD_PID")
+    raw_pid = os.environ.get("ALICE_DESKTOP_CHILD_PID")
     if raw_pid:
         # The desktop may manage several backends (one per active profile) and
         # passes them comma-separated; a lone int still parses for back-compat.
@@ -11259,7 +11259,7 @@ def cmd_profile(args):
             # Preview: stage the distribution into a scratch dir, show the
             # manifest, then do the real install.  The double-stage avoids
             # any side-effects if the user declines.
-            with tempfile.TemporaryDirectory(prefix="lydia_dist_preview_") as tmp:
+            with tempfile.TemporaryDirectory(prefix="alice_dist_preview_") as tmp:
                 plan = plan_install(
                     args.source,
                     Path(tmp),
@@ -11368,8 +11368,8 @@ def cmd_profile(args):
             print(f"Author:       {data['author']}")
         if data.get("license"):
             print(f"License:      {data['license']}")
-        if data.get("lydia_requires"):
-            print(f"Requires:     Alice {data['lydia_requires']}")
+        if data.get("alice_requires"):
+            print(f"Requires:     Alice {data['alice_requires']}")
         if data.get("source"):
             print(f"Source:       {data['source']}")
         if data.get("installed_at"):
@@ -11397,8 +11397,8 @@ def _render_distribution_plan(plan) -> None:
         print(f"  {mf.description}")
     if mf.author:
         print(f"  Author:   {mf.author}")
-    if mf.lydia_requires:
-        print(f"  Requires: Alice {mf.lydia_requires}")
+    if mf.alice_requires:
+        print(f"  Requires: Alice {mf.alice_requires}")
     print(f"  Source:   {plan.provenance}")
     print(f"  Target:   {plan.target_dir}")
     if plan.existing:
@@ -11569,7 +11569,7 @@ def _maybe_setup_dashboard_auth_interactively(args) -> None:
             "the dashboard again:\n"
             "    alice dashboard register\n"
             "  It provisions a Nous Portal OAuth client and writes "
-            "LYDIA_DASHBOARD_OAUTH_CLIENT_ID into ~/.alice/.env for you.\n"
+            "ALICE_DASHBOARD_OAUTH_CLIENT_ID into ~/.alice/.env for you.\n"
             "  Docs: https://alice-agent.nousresearch.com/docs/"
             "user-guide/features/web-dashboard#authentication-gated-mode"
         )
@@ -11687,7 +11687,7 @@ def cmd_dashboard(args):
         and not getattr(args, "isolated", False)
         and not getattr(args, "open_profile", "")
         # Desktop pool backends are intentionally per-profile.
-        and os.environ.get("LYDIA_DESKTOP") != "1"
+        and os.environ.get("ALICE_DESKTOP") != "1"
     ):
         url = f"http://{args.host or '127.0.0.1'}:{args.port}/?profile={_launch_profile}"
         if _dashboard_listening(args.host, args.port):
@@ -11777,7 +11777,7 @@ def cmd_dashboard(args):
     # backend is the desktop's primary entrypoint and needs the same.
     _sync_bundled_skills_quietly()
 
-    if "LYDIA_WEB_DIST" not in os.environ and not getattr(args, "skip_build", False):
+    if "ALICE_WEB_DIST" not in os.environ and not getattr(args, "skip_build", False):
         if not _build_web_ui(PROJECT_ROOT / "web", fatal=True):
             sys.exit(1)
     elif getattr(args, "skip_build", False):
@@ -11785,8 +11785,8 @@ def cmd_dashboard(args):
         # Verify the dist actually exists; otherwise the server will start
         # and serve 404s with no obvious cause (issue #23817).
         _dist_root = (
-            Path(os.environ["LYDIA_WEB_DIST"])
-            if "LYDIA_WEB_DIST" in os.environ
+            Path(os.environ["ALICE_WEB_DIST"])
+            if "ALICE_WEB_DIST" in os.environ
             else PROJECT_ROOT / "alice_cli" / "web_dist"
         )
         if not (_dist_root / "index.html").exists():
@@ -12045,7 +12045,7 @@ _AGENT_SUBCOMMANDS = {
 
 
 def _is_tui_chat_launch(args) -> bool:
-    return bool(getattr(args, "tui", False) or os.environ.get("LYDIA_TUI") == "1")
+    return bool(getattr(args, "tui", False) or os.environ.get("ALICE_TUI") == "1")
 
 
 def _command_has_dedicated_mcp_startup(args) -> bool:
@@ -12150,7 +12150,7 @@ def _try_termux_fast_cli_launch() -> bool:
     """Run obvious Termux non-TUI chat/oneshot/version paths on a light parser."""
     if not _is_termux_startup_environment():
         return False
-    if os.environ.get("LYDIA_TERMUX_DISABLE_FAST_CLI") == "1":
+    if os.environ.get("ALICE_TERMUX_DISABLE_FAST_CLI") == "1":
         return False
 
     argv = sys.argv[1:]
@@ -12207,10 +12207,10 @@ def _try_termux_fast_cli_launch() -> bool:
             # Bare Termux CLI should reach the prompt first and do agent-only
             # discovery on the first submitted turn instead of before input.
             setattr(args, "compact", True)
-            os.environ["LYDIA_DEFER_AGENT_STARTUP"] = "1"
-            os.environ["LYDIA_FAST_STARTUP_BANNER"] = "1"
+            os.environ["ALICE_DEFER_AGENT_STARTUP"] = "1"
+            os.environ["ALICE_FAST_STARTUP_BANNER"] = "1"
             if getattr(args, "accept_hooks", False):
-                os.environ["LYDIA_ACCEPT_HOOKS"] = "1"
+                os.environ["ALICE_ACCEPT_HOOKS"] = "1"
         else:
             _prepare_agent_startup(args)
         cmd_chat(args)
@@ -13035,7 +13035,7 @@ def main():
             import shutil
             import subprocess
             from alice_cli.tools_config import _cua_driver_cmd
-            # Honor LYDIA_CUA_DRIVER_CMD for local-build testing — same
+            # Honor ALICE_CUA_DRIVER_CMD for local-build testing — same
             # resolver `install_cua_driver` and the runtime backend use,
             # so `status` reports what `computer_use` will actually invoke.
             driver_cmd = _cua_driver_cmd()

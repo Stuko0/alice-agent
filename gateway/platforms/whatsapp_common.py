@@ -427,8 +427,8 @@ def resolve_whatsapp_bridge_dir() -> Path:
     install_bridge = _Path(__file__).resolve().parents[2] / "scripts" / "whatsapp-bridge"
 
     # Try ALICE_HOME location first
-    lydia_home = get_alice_home()
-    lydia_home_bridge = lydia_home / "scripts" / "whatsapp-bridge"
+    alice_home = get_alice_home()
+    alice_home_bridge = alice_home / "scripts" / "whatsapp-bridge"
 
     # Check if install dir is writable
     try:
@@ -443,17 +443,17 @@ def resolve_whatsapp_bridge_dir() -> Path:
         return install_bridge
 
     # Install dir is read-only, mirror to ALICE_HOME if needed
-    if lydia_home_bridge.exists():
-        return lydia_home_bridge
+    if alice_home_bridge.exists():
+        return alice_home_bridge
 
     # Mirror the bridge source to ALICE_HOME
     try:
-        lydia_home_bridge.parent.mkdir(parents=True, exist_ok=True)
+        alice_home_bridge.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(
             install_bridge,
-            lydia_home_bridge,
+            alice_home_bridge,
             dirs_exist_ok=False,
         )
-        return lydia_home_bridge
+        return alice_home_bridge
     except Exception:
         return install_bridge

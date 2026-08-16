@@ -379,12 +379,12 @@ def _cmd_migrate(args):
         return
 
     # Show what we're doing
-    lydia_home = get_alice_home()
+    alice_home = get_alice_home()
     auto_yes = getattr(args, "yes", False)
     print()
     print_header("Migration Settings")
     print_info(f"Source:      {source_dir}")
-    print_info(f"Target:      {lydia_home}")
+    print_info(f"Target:      {alice_home}")
     print_info(f"Preset:      {preset}")
     print_info(f"Overwrite:   {'yes' if overwrite else 'no (skip conflicts)'}")
     print_info(f"Secrets:     {'yes (allowlisted only)' if migrate_secrets else 'no'}")
@@ -425,7 +425,7 @@ def _cmd_migrate(args):
     try:
         preview = mod.Migrator(
             source_root=source_dir.resolve(),
-            target_root=lydia_home.resolve(),
+            target_root=alice_home.resolve(),
             execute=False,
             workspace_target=ws_target,
             overwrite=overwrite,
@@ -509,7 +509,7 @@ def _cmd_migrate(args):
     if not no_backup:
         try:
             from alice_cli.backup import create_pre_migration_backup, _format_size
-            backup_archive = create_pre_migration_backup(lydia_home=lydia_home)
+            backup_archive = create_pre_migration_backup(alice_home=alice_home)
             if backup_archive:
                 size_str = _format_size(backup_archive.stat().st_size)
                 print()
@@ -527,7 +527,7 @@ def _cmd_migrate(args):
     try:
         migrator = mod.Migrator(
             source_root=source_dir.resolve(),
-            target_root=lydia_home.resolve(),
+            target_root=alice_home.resolve(),
             execute=True,
             workspace_target=ws_target,
             overwrite=overwrite,
@@ -858,7 +858,7 @@ def _migration_run(
     except Exception as exc:  # pragma: no cover - defensive
         return {"ok": False, "error": f"Could not load the migration script: {exc}"}
 
-    lydia_home = get_alice_home()
+    alice_home = get_alice_home()
     try:
         config_path = get_config_path()
         if not config_path.exists():
@@ -871,7 +871,7 @@ def _migration_run(
         ws_target = Path(workspace_target).resolve() if workspace_target else None
         migrator = mod.Migrator(
             source_root=source_dir.resolve(),
-            target_root=lydia_home.resolve(),
+            target_root=alice_home.resolve(),
             execute=execute,
             workspace_target=ws_target,
             overwrite=overwrite,

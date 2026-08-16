@@ -44,11 +44,11 @@ def build_gui_parser(subparsers, *, cmd_gui: Callable) -> None:
     )
     gui_parser.add_argument(
         "--alice-root",
-        help="Override the Alice source root used by Desktop (sets LYDIA_DESKTOP_LYDIA_ROOT)",
+        help="Override the Alice source root used by Desktop (sets ALICE_DESKTOP_ALICE_ROOT)",
     )
     gui_parser.add_argument(
         "--cwd",
-        help="Initial project directory for Desktop chat sessions (sets LYDIA_DESKTOP_CWD)",
+        help="Initial project directory for Desktop chat sessions (sets ALICE_DESKTOP_CWD)",
     )
     gui_parser.add_argument(
         "--skip-build",

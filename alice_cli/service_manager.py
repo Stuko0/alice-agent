@@ -348,11 +348,11 @@ def _profile_dir_for_gateway_service(name: str) -> Path:
 
     profile = name[len(S6_SERVICE_PREFIX):] if name.startswith(S6_SERVICE_PREFIX) else name
     validate_profile_name(profile)
-    lydia_home = Path(os.environ.get("ALICE_HOME", "/opt/data"))
-    if lydia_home.parent.name == "profiles":
-        root = lydia_home.parent.parent
+    alice_home = Path(os.environ.get("ALICE_HOME", "/opt/data"))
+    if alice_home.parent.name == "profiles":
+        root = alice_home.parent.parent
     else:
-        root = lydia_home
+        root = alice_home
     return root if profile == "default" else root / "profiles" / profile
 
 
@@ -409,8 +409,8 @@ _S6_BIN_DIR = "/command"
 # ``stage2-hook.sh`` enforces (the runtime invariant — see also
 # tests/docker/test_uid_remap.py). The container starts s6-supervise
 # under root and immediately drops to this UID via ``s6-setuidgid``.
-_LYDIA_UID = 10000
-_LYDIA_GID = 10000
+_ALICE_UID = 10000
+_ALICE_GID = 10000
 
 
 def _seed_supervise_skeleton(svc_dir: Path) -> None:
@@ -489,7 +489,7 @@ def _seed_supervise_skeleton(svc_dir: Path) -> None:
         path.mkdir(parents=False, exist_ok=False)
         path.chmod(mode)
         try:
-            os.chown(path, _LYDIA_UID, _LYDIA_GID)
+            os.chown(path, _ALICE_UID, _ALICE_GID)
         except PermissionError:
             # Running as the alice user already — directory is alice-
             # owned by default. The chown is a no-op in that case, so
@@ -519,7 +519,7 @@ def _seed_supervise_skeleton(svc_dir: Path) -> None:
         os.mkfifo(control, 0o660)
         control.chmod(0o660)
         try:
-            os.chown(control, _LYDIA_UID, _LYDIA_GID)
+            os.chown(control, _ALICE_UID, _ALICE_GID)
         except PermissionError:
             pass
 
@@ -539,7 +539,7 @@ def _seed_supervise_skeleton(svc_dir: Path) -> None:
             os.mkfifo(log_control, 0o660)
             log_control.chmod(0o660)
             try:
-                os.chown(log_control, _LYDIA_UID, _LYDIA_GID)
+                os.chown(log_control, _ALICE_UID, _ALICE_GID)
             except PermissionError:
                 pass
 
@@ -683,7 +683,7 @@ class S6ServiceManager:
         # `gateway run --replace` which would re-dispatch `gateway
         # start`, etc. See `_gateway_command_inner` for the matching
         # guard.
-        lines.append("export LYDIA_S6_SUPERVISED_CHILD=1")
+        lines.append("export ALICE_S6_SUPERVISED_CHILD=1")
         # ``--replace`` makes the supervised gateway authoritative for its
         # profile's ALICE_HOME. Without it, a gateway started OUTSIDE s6
         # (a stray ``alice gateway run`` from a shell, an agent action, or
@@ -694,7 +694,7 @@ class S6ServiceManager:
         # log and never binds (NS-505). ``--replace``
         # instead reaps the stale holder (hardened takeover path: marker +
         # SIGTERM→SIGKILL-with-confirmation + scoped-lock cleanup, see
-        # gateway/run.py) so s6 always wins. The LYDIA_S6_SUPERVISED_CHILD
+        # gateway/run.py) so s6 always wins. The ALICE_S6_SUPERVISED_CHILD
         # sentinel above prevents the run→start→run redirect recursion.
         # Each profile is scoped to its own ALICE_HOME and s6 guarantees a
         # single supervised instance per slot, so there is no legitimate

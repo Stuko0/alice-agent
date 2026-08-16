@@ -123,7 +123,7 @@ def _pr_target_url(remote_url: str | None, provider: str, branch: str | None) ->
 # passphrase, username prompt). The script POSTs the prompt to the desktop
 # gateway and prints the user's answer to stdout. The path is stable so
 # `git` keeps a single cached askpass invocation per process.
-_LYDIA_ASKPASS_SCRIPT: str | None = None
+_ALICE_ASKPASS_SCRIPT: str | None = None
 ASKPASS_FILENAME = "alice-git-askpass.py"
 
 
@@ -135,9 +135,9 @@ def askpass_path() -> str:
     The script is plain Python (any Python on PATH) so it works in
     bundled/pip-installed environments where ``sh`` might not be on PATH.
     """
-    global _LYDIA_ASKPASS_SCRIPT
-    if _LYDIA_ASKPASS_SCRIPT is not None:
-        return _LYDIA_ASKPASS_SCRIPT
+    global _ALICE_ASKPASS_SCRIPT
+    if _ALICE_ASKPASS_SCRIPT is not None:
+        return _ALICE_ASKPASS_SCRIPT
     import os as _os
     from pathlib import Path as _Path
 
@@ -152,8 +152,8 @@ def askpass_path() -> str:
             # Windows doesn't support chmod uniformly; the python invocation
             # in the shebang works regardless.
             pass
-    _LYDIA_ASKPASS_SCRIPT = str(script)
-    return _LYDIA_ASKPASS_SCRIPT
+    _ALICE_ASKPASS_SCRIPT = str(script)
+    return _ALICE_ASKPASS_SCRIPT
 
 
 _ASKPASS_BODY = '''#!/usr/bin/env python3
@@ -174,7 +174,7 @@ import urllib.error
 import urllib.request
 
 PROMPT = sys.argv[1] if len(sys.argv) > 1 else "Input:"
-GATEWAY_PORT = os.environ.get("LYDIA_GATEWAY_PORT", "8765")
+GATEWAY_PORT = os.environ.get("ALICE_GATEWAY_PORT", "8765")
 # localhost-only — the askpass must never talk to anything else.
 URL = f"http://127.0.0.1:{GATEWAY_PORT}/api/git/askpass"
 

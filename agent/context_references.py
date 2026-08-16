@@ -20,7 +20,7 @@ REFERENCE_PATTERN = re.compile(
 )
 TRAILING_PUNCTUATION = ",.;!?"
 _SENSITIVE_HOME_DIRS = (".ssh", ".aws", ".gnupg", ".kube", ".docker", ".azure", ".config/gh")
-_SENSITIVE_LYDIA_DIRS = (Path("skills") / ".hub",)
+_SENSITIVE_ALICE_DIRS = (Path("skills") / ".hub",)
 _SENSITIVE_HOME_FILES = (
     Path(".ssh") / "authorized_keys",
     Path(".ssh") / "id_rsa",
@@ -364,12 +364,12 @@ def _resolve_path(cwd: Path, target: str, *, allowed_root: Path | None = None) -
 def _ensure_reference_path_allowed(path: Path) -> None:
     from alice_constants import get_alice_home
     home = Path(os.path.expanduser("~")).resolve()
-    lydia_home = get_alice_home().resolve()
+    alice_home = get_alice_home().resolve()
 
     blocked_exact = {home / rel for rel in _SENSITIVE_HOME_FILES}
-    blocked_exact.add(lydia_home / ".env")
+    blocked_exact.add(alice_home / ".env")
     blocked_dirs = [home / rel for rel in _SENSITIVE_HOME_DIRS]
-    blocked_dirs.extend(lydia_home / rel for rel in _SENSITIVE_LYDIA_DIRS)
+    blocked_dirs.extend(alice_home / rel for rel in _SENSITIVE_ALICE_DIRS)
 
     if path in blocked_exact:
         raise ValueError("path is a sensitive credential file and cannot be attached")

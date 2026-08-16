@@ -47,7 +47,7 @@ _config_passthrough: frozenset[str] | None = None
 
 def _is_alice_provider_credential(name: str) -> bool:
     """True if ``name`` is a Alice-managed provider credential (API key,
-    token, or similar) per ``_LYDIA_PROVIDER_ENV_BLOCKLIST``.
+    token, or similar) per ``_ALICE_PROVIDER_ENV_BLOCKLIST``.
 
     Skill-declared ``required_environment_variables`` frontmatter must
     not be able to override this list — that was the bypass in
@@ -66,7 +66,7 @@ def _is_alice_provider_credential(name: str) -> bool:
     let a skill tunnel a Alice credential into the execute_code child.
     """
     try:
-        from tools.environments.local import _LYDIA_PROVIDER_ENV_BLOCKLIST
+        from tools.environments.local import _ALICE_PROVIDER_ENV_BLOCKLIST
     except Exception as e:
         logger.warning(
             "env passthrough: provider credential blocklist import failed; "
@@ -75,7 +75,7 @@ def _is_alice_provider_credential(name: str) -> bool:
             e,
         )
         return True
-    return name in _LYDIA_PROVIDER_ENV_BLOCKLIST
+    return name in _ALICE_PROVIDER_ENV_BLOCKLIST
 
 
 def register_env_passthrough(var_names: Iterable[str]) -> None:
@@ -84,7 +84,7 @@ def register_env_passthrough(var_names: Iterable[str]) -> None:
     Typically called when a skill declares ``required_environment_variables``.
 
     Variables that are Alice-managed provider credentials (from
-    ``_LYDIA_PROVIDER_ENV_BLOCKLIST``) are rejected here to preserve
+    ``_ALICE_PROVIDER_ENV_BLOCKLIST``) are rejected here to preserve
     the ``execute_code`` sandbox's credential-scrubbing guarantee per
     GHSA-rhgp-j443-p4rf. A skill that needs to talk to a Alice-managed
     provider should do so via the agent's main-process tools (web_search,
@@ -101,7 +101,7 @@ def register_env_passthrough(var_names: Iterable[str]) -> None:
         if _is_alice_provider_credential(name):
             logger.warning(
                 "env passthrough: refusing to register Alice provider "
-                "credential %r (blocked by _LYDIA_PROVIDER_ENV_BLOCKLIST). "
+                "credential %r (blocked by _ALICE_PROVIDER_ENV_BLOCKLIST). "
                 "Skills must not override the execute_code sandbox's "
                 "credential scrubbing; see GHSA-rhgp-j443-p4rf.",
                 name,
@@ -136,7 +136,7 @@ def _load_config_passthrough() -> frozenset[str]:
                     logger.warning(
                         "env passthrough: refusing to register Alice "
                         "provider credential %r from config.yaml (blocked "
-                        "by _LYDIA_PROVIDER_ENV_BLOCKLIST). Operator "
+                        "by _ALICE_PROVIDER_ENV_BLOCKLIST). Operator "
                         "configuration must not override the execute_code "
                         "sandbox's credential scrubbing; see "
                         "GHSA-rhgp-j443-p4rf.",

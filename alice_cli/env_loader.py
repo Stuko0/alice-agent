@@ -211,7 +211,7 @@ def _sanitize_env_file_if_needed(path: Path) -> None:
 
 def load_alice_dotenv(
     *,
-    lydia_home: str | os.PathLike | None = None,
+    alice_home: str | os.PathLike | None = None,
     project_env: str | os.PathLike | None = None,
 ) -> list[Path]:
     """Load Alice environment files with user config taking precedence.
@@ -224,7 +224,7 @@ def load_alice_dotenv(
     """
     loaded: list[Path] = []
 
-    home_path = Path(lydia_home or os.getenv("ALICE_HOME", Path.home() / ".alice"))
+    home_path = Path(alice_home or os.getenv("ALICE_HOME", Path.home() / ".alice"))
     user_env = home_path / ".env"
     project_env_path = Path(project_env) if project_env else None
 

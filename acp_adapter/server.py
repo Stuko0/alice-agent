@@ -82,9 +82,9 @@ from tools.approval import (
 logger = logging.getLogger(__name__)
 
 try:
-    from alice_cli import __version__ as LYDIA_VERSION
+    from alice_cli import __version__ as ALICE_VERSION
 except Exception:
-    LYDIA_VERSION = "0.0.0"
+    ALICE_VERSION = "0.0.0"
 
 # Thread pool for running AIAgent (synchronous) in parallel.
 _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="acp-agent")
@@ -717,16 +717,16 @@ class LydiaACPAgent(acp.Agent):
     def _provenance_meta(
         self,
         acp_session_id: str,
-        current_lydia_session_id: str,
-        previous_lydia_session_id: Optional[str] = None,
+        current_alice_session_id: str,
+        previous_alice_session_id: Optional[str] = None,
     ) -> Optional[dict]:
         """Best-effort ``_meta.alice.sessionProvenance`` for an ACP session."""
         try:
             return session_provenance_meta(
                 self.session_manager._get_db(),
                 acp_session_id,
-                current_lydia_session_id,
-                previous_lydia_session_id=previous_lydia_session_id,
+                current_alice_session_id,
+                previous_alice_session_id=previous_alice_session_id,
             )
         except Exception:
             logger.debug(
@@ -738,13 +738,13 @@ class LydiaACPAgent(acp.Agent):
         self,
         session_id: str,
         *,
-        current_lydia_session_id: Optional[str] = None,
-        previous_lydia_session_id: Optional[str] = None,
+        current_alice_session_id: Optional[str] = None,
+        previous_alice_session_id: Optional[str] = None,
     ) -> None:
         """Send ACP native session metadata after Alice changes it.
 
         When the internal Alice head rotated (e.g. compression-driven session
-        split during a turn), pass ``previous_lydia_session_id`` so the
+        split during a turn), pass ``previous_alice_session_id`` so the
         attached ``_meta.alice.sessionProvenance`` flags the rotation reason.
         """
         if not self._conn:
@@ -765,8 +765,8 @@ class LydiaACPAgent(acp.Agent):
         updated_at = datetime.now(timezone.utc).isoformat()
         meta = self._provenance_meta(
             session_id,
-            current_lydia_session_id or session_id,
-            previous_lydia_session_id,
+            current_alice_session_id or session_id,
+            previous_alice_session_id,
         )
         update = SessionInfoUpdate(
             session_update="session_info_update",
@@ -883,7 +883,7 @@ class LydiaACPAgent(acp.Agent):
 
         return InitializeResponse(
             protocol_version=acp.PROTOCOL_VERSION,
-            agent_info=Implementation(name="alice-agent", version=LYDIA_VERSION),
+            agent_info=Implementation(name="alice-agent", version=ALICE_VERSION),
             agent_capabilities=AgentCapabilities(
                 load_session=True,
                 prompt_capabilities=PromptCapabilities(image=True),
@@ -1452,13 +1452,13 @@ class LydiaACPAgent(acp.Agent):
         # thread — setting it here would write to the event-loop thread's TLS,
         # not the executor's. Interactive routing uses a contextvar in
         # tools.approval (set_alice_interactive_context) rather than
-        # os.environ["LYDIA_INTERACTIVE"], so concurrent executor workers can't
+        # os.environ["ALICE_INTERACTIVE"], so concurrent executor workers can't
         # race on a process-global flag — one session's restore can't drop
         # another onto the non-interactive auto-approve path mid-run
         # (GHSA-96vc-wcxf-jjff). The contextvar write is isolated by the
         # contextvars.copy_context() wrapper around the executor call below.
         # ACP's conn.request_permission maps cleanly to the interactive
-        # callback shape — not the gateway-queue LYDIA_EXEC_ASK path,
+        # callback shape — not the gateway-queue ALICE_EXEC_ASK path,
         # which requires a notify_cb registered in _gateway_notify_cbs.
         previous_approval_cb = None
         interactive_token = None
@@ -1467,7 +1467,7 @@ class LydiaACPAgent(acp.Agent):
 
         def _run_agent() -> dict:
             nonlocal previous_approval_cb, interactive_token, edit_approval_token, previous_session_id
-            # Bind LYDIA_SESSION_KEY for this session so per-session caches
+            # Bind ALICE_SESSION_KEY for this session so per-session caches
             # (e.g. the interactive sudo password cache in tools.terminal_tool)
             # scope to the ACP session rather than leaking across sessions
             # that land on the same reused executor thread. This call runs
@@ -1507,8 +1507,8 @@ class LydiaACPAgent(acp.Agent):
             # the new task so clients can render a per-session board). Save
             # and restore around the agent call so a re-used executor thread
             # never leaks one session's id into the next session's tools.
-            previous_session_id = os.environ.get("LYDIA_SESSION_ID")
-            os.environ["LYDIA_SESSION_ID"] = session_id
+            previous_session_id = os.environ.get("ALICE_SESSION_ID")
+            os.environ["ALICE_SESSION_ID"] = session_id
             try:
                 result = agent.run_conversation(
                     user_message=user_content,
@@ -1524,11 +1524,11 @@ class LydiaACPAgent(acp.Agent):
                 # Restore the interactive contextvar for this context.
                 if interactive_token is not None:
                     reset_alice_interactive_context(interactive_token)
-                # Restore LYDIA_SESSION_ID symmetrically.
+                # Restore ALICE_SESSION_ID symmetrically.
                 if previous_session_id is None:
-                    os.environ.pop("LYDIA_SESSION_ID", None)
+                    os.environ.pop("ALICE_SESSION_ID", None)
                 else:
-                    os.environ["LYDIA_SESSION_ID"] = previous_session_id
+                    os.environ["ALICE_SESSION_ID"] = previous_session_id
                 if approval_cb:
                     try:
                         from tools import terminal_tool as _terminal_tool
@@ -1553,10 +1553,10 @@ class LydiaACPAgent(acp.Agent):
             # can detect a compression-driven session rotation afterwards. The
             # ACP `session_id` stays the stable client handle; agent.session_id
             # is the live internal head that compression may rotate.
-            pre_turn_lydia_id = getattr(state.agent, "session_id", None)
+            pre_turn_alice_id = getattr(state.agent, "session_id", None)
             # Wrap the executor call in a fresh copy of the current context so
             # concurrent ACP sessions on the shared ThreadPoolExecutor don't
-            # stomp on each other's ContextVar writes (LYDIA_SESSION_KEY in
+            # stomp on each other's ContextVar writes (ALICE_SESSION_KEY in
             # particular — used by the interactive sudo password cache scope).
             ctx = contextvars.copy_context()
             result = await loop.run_in_executor(_executor, ctx.run, _run_agent)
@@ -1576,18 +1576,18 @@ class LydiaACPAgent(acp.Agent):
         # DB head moved during the turn, emit a session_info_update carrying
         # _meta.alice.sessionProvenance so ACP clients can render the boundary
         # and keep old/new ids in lineage. The ACP session_id is unchanged.
-        post_turn_lydia_id = getattr(state.agent, "session_id", None)
+        post_turn_alice_id = getattr(state.agent, "session_id", None)
         if (
             conn
-            and post_turn_lydia_id
-            and pre_turn_lydia_id
-            and post_turn_lydia_id != pre_turn_lydia_id
+            and post_turn_alice_id
+            and pre_turn_alice_id
+            and post_turn_alice_id != pre_turn_alice_id
         ):
             try:
                 await self._send_session_info_update(
                     session_id,
-                    current_lydia_session_id=post_turn_lydia_id,
-                    previous_lydia_session_id=pre_turn_lydia_id,
+                    current_alice_session_id=post_turn_alice_id,
+                    previous_alice_session_id=pre_turn_alice_id,
                 )
             except Exception:
                 logger.debug(
@@ -1988,7 +1988,7 @@ class LydiaACPAgent(acp.Agent):
         return f"Queued for the next turn. ({depth} queued)"
 
     def _cmd_version(self, args: str, state: SessionState) -> str:
-        return f"Alice Agent v{LYDIA_VERSION}"
+        return f"Alice Agent v{ALICE_VERSION}"
 
     # ---- Model switching (ACP protocol method) -------------------------------
 

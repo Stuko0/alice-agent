@@ -404,9 +404,9 @@ class MemoryManager:
         # (#40466). Reject it here, at the door, so it never enters the routing
         # table at all — matching the built-ins-always-win invariant used by
         # the TTS/browser/search provider registries.
-        from toolsets import _LYDIA_CORE_TOOLS
+        from toolsets import _ALICE_CORE_TOOLS
 
-        _core_tool_names = set(_LYDIA_CORE_TOOLS)
+        _core_tool_names = set(_ALICE_CORE_TOOLS)
 
         # Index tool names → provider for routing
         for raw_schema in provider.get_tool_schemas():
@@ -693,9 +693,9 @@ class MemoryManager:
         :meth:`add_provider`, so the manager must not advertise a schema it
         will never route. Built-ins always win (#40466).
         """
-        from toolsets import _LYDIA_CORE_TOOLS
+        from toolsets import _ALICE_CORE_TOOLS
 
-        _core_tool_names = set(_LYDIA_CORE_TOOLS)
+        _core_tool_names = set(_ALICE_CORE_TOOLS)
         schemas = []
         seen = set()
         for provider in self._providers:
@@ -1064,13 +1064,13 @@ class MemoryManager:
     def initialize_all(self, session_id: str, **kwargs) -> None:
         """Initialize all providers.
 
-        Automatically injects ``lydia_home`` into *kwargs* so that every
+        Automatically injects ``alice_home`` into *kwargs* so that every
         provider can resolve profile-scoped storage paths without importing
         ``get_alice_home()`` themselves.
         """
-        if "lydia_home" not in kwargs:
+        if "alice_home" not in kwargs:
             from alice_constants import get_alice_home
-            kwargs["lydia_home"] = str(get_alice_home())
+            kwargs["alice_home"] = str(get_alice_home())
         for provider in self._providers:
             try:
                 provider.initialize(session_id=session_id, **kwargs)

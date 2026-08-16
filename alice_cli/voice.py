@@ -224,7 +224,7 @@ logger = logging.getLogger(__name__)
 
 
 def _debug(msg: str) -> None:
-    """Emit a debug breadcrumb when LYDIA_VOICE_DEBUG=1.
+    """Emit a debug breadcrumb when ALICE_VOICE_DEBUG=1.
 
     Goes to stderr so the TUI gateway wraps it as a gateway.stderr event,
     which createGatewayEventHandler shows as an Activity line — exactly
@@ -236,7 +236,7 @@ def _debug(msg: str) -> None:
     broken stderr pipe must not kill the whole gateway — the main
     command pipe (stdin+stdout) is what actually matters.
     """
-    if os.environ.get("LYDIA_VOICE_DEBUG", "").strip() != "1":
+    if os.environ.get("ALICE_VOICE_DEBUG", "").strip() != "1":
         return
     try:
         print(f"[voice] {msg}", file=sys.stderr, flush=True)
@@ -799,10 +799,10 @@ def speak_text(text: str) -> None:
         # MP3 output path, pre-chosen so we can play the MP3 directly even
         # when text_to_speech_tool auto-converts to OGG for messaging
         # platforms.  afplay's OGG support is flaky, MP3 always works.
-        os.makedirs(os.path.join(tempfile.gettempdir(), "lydia_voice"), exist_ok=True)
+        os.makedirs(os.path.join(tempfile.gettempdir(), "alice_voice"), exist_ok=True)
         mp3_path = os.path.join(
             tempfile.gettempdir(),
-            "lydia_voice",
+            "alice_voice",
             f"tts_{time.strftime('%Y%m%d_%H%M%S')}.mp3",
         )
 

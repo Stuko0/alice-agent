@@ -21,10 +21,10 @@ _DHH = display_alice_home()  # user-facing display path (e.g. ~/.alice or ~/.ali
 
 # Load environment variables from ~/.alice/.env so API key checks work
 _env_path = get_env_path()
-load_alice_dotenv(lydia_home=_env_path.parent, project_env=PROJECT_ROOT / ".env")
+load_alice_dotenv(alice_home=_env_path.parent, project_env=PROJECT_ROOT / ".env")
 
 from alice_cli.colors import Colors, color
-from alice_cli.models import _LYDIA_USER_AGENT
+from alice_cli.models import _ALICE_USER_AGENT
 from alice_constants import OPENROUTER_MODELS_URL
 from utils import base_url_host_matches
 
@@ -118,7 +118,7 @@ def _is_kanban_worker_env_gate(item: dict) -> bool:
     """Return True when Kanban is unavailable only because this is not a worker process."""
     if item.get("name") != "kanban":
         return False
-    if os.environ.get("LYDIA_KANBAN_TASK"):
+    if os.environ.get("ALICE_KANBAN_TASK"):
         return False
 
     tools = item.get("tools") or []
@@ -127,7 +127,7 @@ def _is_kanban_worker_env_gate(item: dict) -> bool:
 
 def _doctor_tool_availability_detail(toolset: str) -> str:
     """Optional explanatory suffix for toolsets whose doctor status needs context."""
-    if toolset == "kanban" and not os.environ.get("LYDIA_KANBAN_TASK"):
+    if toolset == "kanban" and not os.environ.get("ALICE_KANBAN_TASK"):
         return "(runtime-gated; loaded only for dispatcher-spawned workers)"
     return ""
 
@@ -461,7 +461,7 @@ def managed_scope_check() -> None:
     """Report the active managed scope (resolved dir + pinned key counts).
 
     Silent when no managed scope is present. When the managed directory was
-    resolved from the LYDIA_MANAGED_DIR override (rather than the system
+    resolved from the ALICE_MANAGED_DIR override (rather than the system
     default), that is surfaced too — a redirected scope is the documented
     foot-gun (see docs/design/managed-scope.md §7) and an operator should see it.
     """
@@ -478,8 +478,8 @@ def managed_scope_check() -> None:
         f"Managed scope active: {n_cfg} config key(s), {n_env} env key(s) "
         f"pinned by {managed_dir}"
     )
-    if os.environ.get("LYDIA_MANAGED_DIR", "").strip():
-        check_info(f"managed dir set via LYDIA_MANAGED_DIR={managed_dir}")
+    if os.environ.get("ALICE_MANAGED_DIR", "").strip():
+        check_info(f"managed dir set via ALICE_MANAGED_DIR={managed_dir}")
 
 
 def run_doctor(args):
@@ -489,7 +489,7 @@ def run_doctor(args):
 
     # Doctor runs from the interactive CLI, so CLI-gated tool availability
     # checks (like cronjob management) should see the same context as `alice`.
-    os.environ.setdefault("LYDIA_INTERACTIVE", "1")
+    os.environ.setdefault("ALICE_INTERACTIVE", "1")
 
     # Handle `alice doctor --ack <id>` as a fast path. Persist the ack and
     # return without running the rest of the diagnostics — the user has
@@ -966,11 +966,11 @@ def run_doctor(args):
         except Exception:
             pass
 
-        # Detect stale LYDIA_MAX_ITERATIONS ghost in .env shadowing
+        # Detect stale ALICE_MAX_ITERATIONS ghost in .env shadowing
         # agent.max_turns in config.yaml (issue #17534). The setup wizard
         # used to dual-write the iteration budget to both stores; users who
         # later edit only config.yaml are left with a .env ghost. The gateway
-        # bridge normally derives LYDIA_MAX_ITERATIONS from agent.max_turns
+        # bridge normally derives ALICE_MAX_ITERATIONS from agent.max_turns
         # at startup, but if that bridge bails (any earlier config-parse
         # error), the stale .env value silently wins and the agent runs at the
         # wrong budget — e.g. config says 400 but the activity line reads N/90.
@@ -990,7 +990,7 @@ def run_doctor(args):
             # Legacy root-level key counts too.
             if cfg_max_turns is None:
                 cfg_max_turns = raw_config.get("max_turns")
-            env_ghost = load_env().get("LYDIA_MAX_ITERATIONS")
+            env_ghost = load_env().get("ALICE_MAX_ITERATIONS")
             drift = (
                 cfg_max_turns is not None
                 and env_ghost is not None
@@ -998,26 +998,26 @@ def run_doctor(args):
             )
             if drift:
                 check_warn(
-                    f"LYDIA_MAX_ITERATIONS={env_ghost} in .env shadows "
+                    f"ALICE_MAX_ITERATIONS={env_ghost} in .env shadows "
                     f"agent.max_turns={cfg_max_turns} in config.yaml",
                     "(stale ghost from an earlier `alice setup` run)",
                 )
                 if should_fix:
-                    if remove_env_value("LYDIA_MAX_ITERATIONS"):
+                    if remove_env_value("ALICE_MAX_ITERATIONS"):
                         check_ok(
-                            "Removed stale LYDIA_MAX_ITERATIONS from .env "
+                            "Removed stale ALICE_MAX_ITERATIONS from .env "
                             f"(config.yaml agent.max_turns={cfg_max_turns} is now authoritative)"
                         )
                         fixed_count += 1
                     else:
-                        check_warn("Could not remove LYDIA_MAX_ITERATIONS from .env")
+                        check_warn("Could not remove ALICE_MAX_ITERATIONS from .env")
                         manual_issues.append(
-                            "Manually delete the LYDIA_MAX_ITERATIONS line from "
+                            "Manually delete the ALICE_MAX_ITERATIONS line from "
                             f"{_DHH}/.env — config.yaml agent.max_turns is authoritative."
                         )
                 else:
                     issues.append(
-                        "Stale LYDIA_MAX_ITERATIONS in .env shadows config.yaml — "
+                        "Stale ALICE_MAX_ITERATIONS in .env shadows config.yaml — "
                         "run 'alice doctor --fix'"
                     )
         except Exception:
@@ -1123,11 +1123,11 @@ def run_doctor(args):
         pass
 
     _section("Directory Structure")
-    lydia_home = ALICE_HOME
-    if lydia_home.exists():
+    alice_home = ALICE_HOME
+    if alice_home.exists():
         check_ok(f"{_DHH} directory exists")
     elif should_fix:
-        lydia_home.mkdir(parents=True, exist_ok=True)
+        alice_home.mkdir(parents=True, exist_ok=True)
         check_ok(f"Created {_DHH} directory")
         fixed_count += 1
     else:
@@ -1136,7 +1136,7 @@ def run_doctor(args):
     # Check expected subdirectories
     expected_subdirs = ["cron", "sessions", "logs", "skills", "memories"]
     for subdir_name in expected_subdirs:
-        subdir_path = lydia_home / subdir_name
+        subdir_path = alice_home / subdir_name
         if subdir_path.exists():
             check_ok(f"{_DHH}/{subdir_name}/ exists")
         elif should_fix:
@@ -1147,7 +1147,7 @@ def run_doctor(args):
             check_warn(f"{_DHH}/{subdir_name}/ not found", "(will be created on first use)")
     
     # Check for SOUL.md persona file
-    soul_path = lydia_home / "SOUL.md"
+    soul_path = alice_home / "SOUL.md"
     if soul_path.exists():
         content = soul_path.read_text(encoding="utf-8").strip()
         # Check if it's just the template comments (no real content)
@@ -1170,7 +1170,7 @@ def run_doctor(args):
             fixed_count += 1
     
     # Check memory directory
-    memories_dir = lydia_home / "memories"
+    memories_dir = alice_home / "memories"
     if memories_dir.exists():
         check_ok(f"{_DHH}/memories/ directory exists")
         memory_file = memories_dir / "MEMORY.md"
@@ -1193,7 +1193,7 @@ def run_doctor(args):
             fixed_count += 1
     
     # Check SQLite session store
-    state_db_path = lydia_home / "state.db"
+    state_db_path = alice_home / "state.db"
     if state_db_path.exists():
         try:
             import sqlite3
@@ -1294,7 +1294,7 @@ def run_doctor(args):
         check_info(f"{_DHH}/state.db not created yet (will be created on first session)")
 
     # Check WAL file size (unbounded growth indicates missed checkpoints)
-    wal_path = lydia_home / "state.db-wal"
+    wal_path = alice_home / "state.db-wal"
     if wal_path.exists():
         try:
             wal_size = wal_path.stat().st_size
@@ -1895,7 +1895,7 @@ def run_doctor(args):
             url = (base.rstrip("/") + "/models") if base else default_url
             headers = {
                 "Authorization": f"Bearer {key}",
-                "User-Agent": _LYDIA_USER_AGENT,
+                "User-Agent": _ALICE_USER_AGENT,
             }
             if base_url_host_matches(base, "api.kimi.com"):
                 headers["User-Agent"] = "claude-code/0.1.0"

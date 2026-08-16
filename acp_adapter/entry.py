@@ -102,14 +102,14 @@ def _load_env() -> None:
     """Load .env from ALICE_HOME (default ``~/.alice``)."""
     from alice_cli.env_loader import load_alice_dotenv
 
-    lydia_home = get_alice_home()
-    loaded = load_alice_dotenv(lydia_home=lydia_home)
+    alice_home = get_alice_home()
+    loaded = load_alice_dotenv(alice_home=alice_home)
     if loaded:
         for env_file in loaded:
             logging.getLogger(__name__).info("Loaded env from %s", env_file)
     else:
         logging.getLogger(__name__).info(
-            "No .env found at %s, using system env", lydia_home / ".env"
+            "No .env found at %s, using system env", alice_home / ".env"
         )
 
 
@@ -147,9 +147,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def _print_version() -> None:
-    from alice_cli import __version__ as lydia_version
+    from alice_cli import __version__ as alice_version
 
-    print(lydia_version)
+    print(alice_version)
 
 
 def _run_check() -> None:
@@ -160,12 +160,12 @@ def _run_check() -> None:
 
 
 def _run_setup() -> None:
-    from alice_cli.main import main as lydia_main
+    from alice_cli.main import main as alice_main
 
     old_argv = sys.argv[:]
     try:
         sys.argv = [old_argv[0] if old_argv else "alice", "model"]
-        lydia_main()
+        alice_main()
     finally:
         sys.argv = old_argv
 

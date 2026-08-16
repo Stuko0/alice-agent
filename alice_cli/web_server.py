@@ -115,7 +115,7 @@ except ImportError:
             f"Install with: {sys.executable} -m pip install 'fastapi' 'uvicorn[standard]'"
         )
 
-WEB_DIST = Path(os.environ["LYDIA_WEB_DIST"]) if "LYDIA_WEB_DIST" in os.environ else Path(__file__).parent / "web_dist"
+WEB_DIST = Path(os.environ["ALICE_WEB_DIST"]) if "ALICE_WEB_DIST" in os.environ else Path(__file__).parent / "web_dist"
 _log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -179,19 +179,19 @@ async def _lifespan(app: "FastAPI"):
     app.state.chat_argv_lock = asyncio.Lock()
 
     # Fire alice_cli.gateway import into a background thread so the event
-    # loop is not blocked and LYDIA_DASHBOARD_READY fires without delay.
+    # loop is not blocked and ALICE_DASHBOARD_READY fires without delay.
     # On a cold Windows install the module chain triggers .pyc compilation
     # and Defender real-time scans that can stall the event loop for 15-30s.
     # Running in an executor means the cost is paid in a worker thread while
     # the server socket is already open and accepting probes.
     asyncio.get_event_loop().run_in_executor(None, _warm_gateway_module)
 
-    # Desktop-spawned backends (LYDIA_DESKTOP=1) fire cron jobs themselves,
+    # Desktop-spawned backends (ALICE_DESKTOP=1) fire cron jobs themselves,
     # since the app has no gateway running the scheduler. Server `alice
     # dashboard` is unaffected — it relies on its own gateway.
     cron_stop: "threading.Event | None" = None
     cron_thread: "threading.Thread | None" = None
-    if os.getenv("LYDIA_DESKTOP") == "1":
+    if os.getenv("ALICE_DESKTOP") == "1":
         cron_stop = threading.Event()
         cron_thread = threading.Thread(
             target=_start_desktop_cron_ticker,
@@ -258,15 +258,15 @@ app.include_router(_memory_oauth_router)
 # ---------------------------------------------------------------------------
 # Session token for protecting sensitive endpoints (reveal).
 # The desktop shell mints the token and injects it via
-# LYDIA_DASHBOARD_SESSION_TOKEN so its main process can authenticate the
+# ALICE_DASHBOARD_SESSION_TOKEN so its main process can authenticate the
 # /api calls it makes on the user's behalf; otherwise we generate one fresh
 # on every server start. Either way it dies when the process exits and is
 # injected into the SPA HTML so only the legitimate web UI can use it.
 # ---------------------------------------------------------------------------
-_SESSION_TOKEN = os.environ.get("LYDIA_DASHBOARD_SESSION_TOKEN") or secrets.token_urlsafe(32)
+_SESSION_TOKEN = os.environ.get("ALICE_DASHBOARD_SESSION_TOKEN") or secrets.token_urlsafe(32)
 _SESSION_HEADER_NAME = "X-Alice-Session-Token"
 # Backward compat: the desktop build (app.asar) still sends X-Alice-*.
-_LYDIA_LEGACY_HEADER = "X-Alice-Session-Token"
+_ALICE_LEGACY_HEADER = "X-Alice-Session-Token"
 
 # In-browser Chat tab (/chat, /api/pty, /api/ws, …).  Always enabled: the
 # desktop app and the dashboard's own Chat tab both drive the agent over the
@@ -326,7 +326,7 @@ def _has_valid_session_token(request: Request) -> bool:
         return True
 
     # Legacy: desktop build (app.asar) still sends X-Alice-Session-Token.
-    legacy = request.headers.get(_LYDIA_LEGACY_HEADER, "")
+    legacy = request.headers.get(_ALICE_LEGACY_HEADER, "")
     if legacy and hmac.compare_digest(
         legacy.encode(),
         _SESSION_TOKEN.encode(),
@@ -1101,7 +1101,7 @@ _MEDIA_CONTENT_TYPES = {
     ".ico": "image/x-icon",
 }
 _MEDIA_MAX_BYTES = 25 * 1024 * 1024
-_MANAGED_FILES_ROOT_ENV = "LYDIA_DASHBOARD_FILES_ROOT"
+_MANAGED_FILES_ROOT_ENV = "ALICE_DASHBOARD_FILES_ROOT"
 _MANAGED_FILE_MAX_BYTES = 100 * 1024 * 1024
 _HOSTED_MANAGED_FILES_ROOT = Path("/opt/data")
 
@@ -1451,7 +1451,7 @@ def _managed_files_policy(request: Request, *, create_root: bool = True) -> Mana
     # local dashboard through the auth gate (for example a macOS launchd install)
     # and still expect the Files page to browse their local home directory. Lock
     # to /opt/data only when the installation's Alice root is actually /opt/data
-    # (the container/hosted layout) or when LYDIA_DASHBOARD_FILES_ROOT is set.
+    # (the container/hosted layout) or when ALICE_DASHBOARD_FILES_ROOT is set.
     if _default_alice_root_is_opt_data():
         root = _ensure_managed_root(_HOSTED_MANAGED_FILES_ROOT) if create_root else _HOSTED_MANAGED_FILES_ROOT
         return ManagedFilesPolicy(default_path=root, locked_root=root, can_change_path=False)
@@ -2361,7 +2361,7 @@ async def get_status(profile: Optional[str] = None):
         # envelope — the same loopback/gated split ``should_require_auth`` draws.
         if not auth_required:
             status.update({
-                "lydia_home": str(get_alice_home()),
+                "alice_home": str(get_alice_home()),
                 "config_path": str(get_config_path()),
                 "env_path": str(get_env_path()),
                 "gateway_pid": gateway_pid,
@@ -2438,7 +2438,7 @@ async def get_system_stats():
         "hostname": _platform.node(),
         "python_version": _platform.python_version(),
         "python_impl": _platform.python_implementation(),
-        "lydia_version": __version__,
+        "alice_version": __version__,
         "cpu_count": os.cpu_count(),
     }
 
@@ -2840,7 +2840,7 @@ def _spawn_alice_action(subcommand: List[str], name: str) -> subprocess.Popen:
         "stdin": subprocess.DEVNULL,
         "stdout": log_file,
         "stderr": subprocess.STDOUT,
-        "env": {**os.environ, "LYDIA_NONINTERACTIVE": "1"},
+        "env": {**os.environ, "ALICE_NONINTERACTIVE": "1"},
     }
     if sys.platform == "win32":
         popen_kwargs["creationflags"] = windows_detach_flags()
@@ -2984,7 +2984,7 @@ async def gateway_drain(request: Request):
     Authenticated by the non-interactive token-auth seam: the
     ``dashboard_auth/drain`` plugin registers this exact path as a token route
     and verifies the ``Authorization`` bearer secret. If that plugin isn't
-    active (no ``LYDIA_DASHBOARD_DRAIN_SECRET``), the route is NOT a token
+    active (no ``ALICE_DASHBOARD_DRAIN_SECRET``), the route is NOT a token
     route, so on a gated bind the cookie gate handles it (a browser session can
     still drive it from the dashboard) and on a loopback bind the legacy
     session-token gate applies — either way it is never unauthenticated on a
@@ -6542,26 +6542,26 @@ def _anthropic_oauth_status() -> Dict[str, Any]:
     try:
         from agent.anthropic_adapter import (
             read_alice_oauth_credentials,
-            _LYDIA_OAUTH_FILE,
+            _ALICE_OAUTH_FILE,
         )
     except ImportError:
         read_alice_oauth_credentials = None  # type: ignore
-        _LYDIA_OAUTH_FILE = None  # type: ignore
+        _ALICE_OAUTH_FILE = None  # type: ignore
 
-    lydia_creds = None
+    alice_creds = None
     if read_alice_oauth_credentials:
         try:
-            lydia_creds = read_alice_oauth_credentials()
+            alice_creds = read_alice_oauth_credentials()
         except Exception:
-            lydia_creds = None
-    if lydia_creds and lydia_creds.get("accessToken"):
+            alice_creds = None
+    if alice_creds and alice_creds.get("accessToken"):
         return {
             "logged_in": True,
-            "source": "lydia_pkce",
-            "source_label": f"Alice PKCE ({_LYDIA_OAUTH_FILE})",
-            "token_preview": _truncate_token(lydia_creds.get("accessToken")),
-            "expires_at": lydia_creds.get("expiresAt"),
-            "has_refresh_token": bool(lydia_creds.get("refreshToken")),
+            "source": "alice_pkce",
+            "source_label": f"Alice PKCE ({_ALICE_OAUTH_FILE})",
+            "token_preview": _truncate_token(alice_creds.get("accessToken")),
+            "expires_at": alice_creds.get("expiresAt"),
+            "has_refresh_token": bool(alice_creds.get("refreshToken")),
         }
 
     # Env-var / secret-source path. ``get_env_value`` checks the process
@@ -6931,7 +6931,7 @@ async def list_oauth_providers(profile: Optional[str] = None):
         docs_url        external docs/portal link for the "Learn more" link
         status:
           logged_in        bool — currently has usable creds
-          source           short slug ("lydia_pkce", "claude_code", ...)
+          source           short slug ("alice_pkce", "claude_code", ...)
           source_label     human-readable origin (file path, env var name)
           token_preview    last N chars of the token, never the full token
           expires_at       ISO timestamp string or null
@@ -7000,9 +7000,9 @@ async def disconnect_oauth_provider(
         if provider_id == "anthropic":
             cleared = False
             try:
-                from agent.anthropic_adapter import _LYDIA_OAUTH_FILE
-                if _LYDIA_OAUTH_FILE.exists():
-                    _LYDIA_OAUTH_FILE.unlink()
+                from agent.anthropic_adapter import _ALICE_OAUTH_FILE
+                if _ALICE_OAUTH_FILE.exists():
+                    _ALICE_OAUTH_FILE.unlink()
                     cleared = True
             except Exception:
                 pass
@@ -7159,24 +7159,24 @@ def _save_anthropic_oauth_creds(access_token: str, refresh_token: str, expires_a
     Mirrors what auth_commands.add_command does so the dashboard flow leaves
     the system in the same state as ``alice auth add anthropic``.
     """
-    from agent.anthropic_adapter import _LYDIA_OAUTH_FILE
+    from agent.anthropic_adapter import _ALICE_OAUTH_FILE
     payload = {
         "accessToken": access_token,
         "refreshToken": refresh_token,
         "expiresAt": expires_at_ms,
     }
-    _LYDIA_OAUTH_FILE.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = _LYDIA_OAUTH_FILE.with_name(
-        f"{_LYDIA_OAUTH_FILE.name}.tmp.{os.getpid()}.{secrets.token_hex(8)}"
+    _ALICE_OAUTH_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = _ALICE_OAUTH_FILE.with_name(
+        f"{_ALICE_OAUTH_FILE.name}.tmp.{os.getpid()}.{secrets.token_hex(8)}"
     )
     try:
         with tmp_path.open("w", encoding="utf-8") as handle:
             handle.write(json.dumps(payload, indent=2))
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(tmp_path, _LYDIA_OAUTH_FILE)
+        os.replace(tmp_path, _ALICE_OAUTH_FILE)
         try:
-            _LYDIA_OAUTH_FILE.chmod(stat.S_IRUSR | stat.S_IWUSR)
+            _ALICE_OAUTH_FILE.chmod(stat.S_IRUSR | stat.S_IWUSR)
         except OSError:
             pass
     finally:
@@ -7345,7 +7345,7 @@ async def _start_device_code_flow(
         import httpx
         pconfig = PROVIDER_REGISTRY["nous"]
         portal_base_url = (
-            os.getenv("LYDIA_PORTAL_BASE_URL")
+            os.getenv("ALICE_PORTAL_BASE_URL")
             or os.getenv("NOUS_PORTAL_BASE_URL")
             or pconfig.portal_base_url
         ).rstrip("/")
@@ -7640,7 +7640,7 @@ def _xai_loopback_worker(session_id: str) -> None:
             _fail("xAI token exchange did not return the expected tokens.")
             return
         base_url = hauth._xai_validate_inference_base_url(
-            os.getenv("LYDIA_XAI_BASE_URL", "").strip().rstrip("/")
+            os.getenv("ALICE_XAI_BASE_URL", "").strip().rstrip("/")
             or os.getenv("XAI_BASE_URL", "").strip().rstrip("/"),
             fallback=hauth.DEFAULT_XAI_OAUTH_BASE_URL,
         )
@@ -8735,7 +8735,7 @@ def _annotate_cron_job(job: Dict[str, Any], profile: str, home: Path) -> Dict[st
     annotated = dict(job)
     annotated["profile"] = profile
     annotated["profile_name"] = profile
-    annotated["lydia_home"] = str(home)
+    annotated["alice_home"] = str(home)
     annotated["is_default_profile"] = profile == "default"
     return annotated
 
@@ -10375,7 +10375,7 @@ async def delete_hook(body: HookDelete):
 @app.get("/api/ops/checkpoints")
 async def list_checkpoints():
     """List the /rollback shadow store checkpoints (read-only)."""
-    # Checkpoints live under <lydia_home>/checkpoints/.  Surface a count +
+    # Checkpoints live under <alice_home>/checkpoints/.  Surface a count +
     # total size so the dashboard can show what a prune would reclaim; the
     # actual prune is a spawned action so confirmation/pruning logic stays
     # in one place (the CLI).
@@ -12577,21 +12577,21 @@ def _resolve_chat_argv(
     function to inject a tiny fake command (``cat``, ``sh -c 'printf …'``)
     so nothing has to build Node or the TUI bundle.
 
-    Session resume is propagated via the ``LYDIA_TUI_RESUME`` env var —
+    Session resume is propagated via the ``ALICE_TUI_RESUME`` env var —
     matching what ``alice_cli.main._launch_tui`` does for the CLI path.
     Appending ``--resume <id>`` to argv doesn't work because ``ui-tui`` does
     not parse its argv.
 
-    ``LYDIA_TUI_GATEWAY_URL`` is injected so the PTY child can attach to
+    ``ALICE_TUI_GATEWAY_URL`` is injected so the PTY child can attach to
     this process's in-memory ``tui_gateway`` instance instead of spawning
     its own Python gateway subprocess.
 
-    `sidecar_url` (when set) is forwarded as ``LYDIA_TUI_SIDECAR_URL`` so
+    `sidecar_url` (when set) is forwarded as ``ALICE_TUI_SIDECAR_URL`` so
     the spawned ``tui_gateway.entry`` can mirror dispatcher emits to the
     dashboard's ``/api/pub`` endpoint (see :func:`pub_ws`).
 
     `active_session_file` (when set) is forwarded as
-    ``LYDIA_TUI_ACTIVE_SESSION_FILE``. The TUI writes the current session id
+    ``ALICE_TUI_ACTIVE_SESSION_FILE``. The TUI writes the current session id
     there whenever it creates/resumes/switches sessions, giving the dashboard a
     small cross-process breadcrumb for reconnecting after an unexpected browser
     WebSocket close.
@@ -12602,7 +12602,7 @@ def _resolve_chat_argv(
     ``get_alice_home()`` from that env var at its own import, so the child
     binds the profile's config, skills, memory, and state.db from the start
     — the same propagation ``alice -p <name>`` performs. The in-process
-    ``LYDIA_TUI_GATEWAY_URL`` attach is SKIPPED for scoped chats: the
+    ``ALICE_TUI_GATEWAY_URL`` attach is SKIPPED for scoped chats: the
     dashboard's in-memory gateway runs under the dashboard's own profile,
     so a profile-scoped chat must spawn its own gateway subprocess.
     """
@@ -12627,9 +12627,9 @@ def _resolve_chat_argv(
     # makes browser-side transcript scrolling feel broken. Keep the terminal
     # build unchanged for native CLI usage; only disable mouse tracking for
     # the dashboard PTY path.
-    env.setdefault("LYDIA_TUI_DISABLE_MOUSE", "1")
-    env.setdefault("LYDIA_TUI_INLINE", "1")
-    env["LYDIA_TUI_DASHBOARD"] = "1"
+    env.setdefault("ALICE_TUI_DISABLE_MOUSE", "1")
+    env.setdefault("ALICE_TUI_INLINE", "1")
+    env["ALICE_TUI_DASHBOARD"] = "1"
 
     if profile_dir is not None:
         env["ALICE_HOME"] = str(profile_dir)
@@ -12638,13 +12638,13 @@ def _resolve_chat_argv(
         latest_resume, _latest_path = _session_latest_descendant(resume)
         if latest_resume:
             resume = latest_resume
-        env["LYDIA_TUI_RESUME"] = resume
+        env["ALICE_TUI_RESUME"] = resume
 
     if sidecar_url:
-        env["LYDIA_TUI_SIDECAR_URL"] = sidecar_url
+        env["ALICE_TUI_SIDECAR_URL"] = sidecar_url
 
     if active_session_file:
-        env["LYDIA_TUI_ACTIVE_SESSION_FILE"] = active_session_file
+        env["ALICE_TUI_ACTIVE_SESSION_FILE"] = active_session_file
 
     # Profile-scoped chats must NOT attach to the dashboard's in-memory
     # gateway — it runs under the dashboard's own profile. Without the
@@ -12652,7 +12652,7 @@ def _resolve_chat_argv(
     # inherits the profile ALICE_HOME set above.
     if profile_dir is None:
         if gateway_ws_url := _build_gateway_ws_url():
-            env["LYDIA_TUI_GATEWAY_URL"] = gateway_ws_url
+            env["ALICE_TUI_GATEWAY_URL"] = gateway_ws_url
 
     return list(argv), str(cwd) if cwd else None, env
 
@@ -13045,7 +13045,7 @@ async def gateway_ws(ws: WebSocket) -> None:
 # /api/pub + /api/events — chat-tab event broadcast.
 #
 # The PTY-side ``tui_gateway.entry`` opens /api/pub at startup (driven by
-# LYDIA_TUI_SIDECAR_URL set in /api/pty's PTY env) and writes every
+# ALICE_TUI_SIDECAR_URL set in /api/pty's PTY env) and writes every
 # dispatcher emit through it.  The dashboard fans those frames out to any
 # subscriber that opened /api/events on the same channel id.  This is what
 # gives the React sidebar its tool-call feed without breaking the PTY
@@ -13148,7 +13148,7 @@ def mount_spa(application: FastAPI):
     ``mission-control.tilos.com/alice/*`` -> local Caddy -> :9119), the
     proxy injects ``X-Forwarded-Prefix: /alice`` on every request. We
     rewrite the served ``index.html`` so absolute asset URLs (``/assets/...``)
-    and the SPA's runtime ``__LYDIA_BASE_PATH__`` honour that prefix
+    and the SPA's runtime ``__ALICE_BASE_PATH__`` honour that prefix
     without rebuilding the bundle.
     """
     if not WEB_DIST.exists():
@@ -13171,7 +13171,7 @@ def mount_spa(application: FastAPI):
         When the OAuth auth gate is active (``app.state.auth_required``),
         the legacy ``_SESSION_TOKEN`` is NOT injected — the SPA reads
         identity from ``/api/auth/me`` over cookie auth instead.  The
-        ``__LYDIA_AUTH_REQUIRED__`` flag lets the SPA pick the right
+        ``__ALICE_AUTH_REQUIRED__`` flag lets the SPA pick the right
         auth scheme for /api/pty and /api/ws (ticket vs token).
         """
         html = _index_path.read_text(encoding="utf-8")
@@ -13181,17 +13181,17 @@ def mount_spa(application: FastAPI):
         if gated:
             bootstrap_script = (
                 f"<script>"
-                f"window.__LYDIA_DASHBOARD_EMBEDDED_CHAT__={chat_js};"
-                f'window.__LYDIA_BASE_PATH__="{prefix}";'
-                f"window.__LYDIA_AUTH_REQUIRED__={gated_js};"
+                f"window.__ALICE_DASHBOARD_EMBEDDED_CHAT__={chat_js};"
+                f'window.__ALICE_BASE_PATH__="{prefix}";'
+                f"window.__ALICE_AUTH_REQUIRED__={gated_js};"
                 f"</script>"
             )
         else:
             bootstrap_script = (
-                f'<script>window.__LYDIA_SESSION_TOKEN__="{_SESSION_TOKEN}";'
-                f"window.__LYDIA_DASHBOARD_EMBEDDED_CHAT__={chat_js};"
-                f'window.__LYDIA_BASE_PATH__="{prefix}";'
-                f"window.__LYDIA_AUTH_REQUIRED__={gated_js};"
+                f'<script>window.__ALICE_SESSION_TOKEN__="{_SESSION_TOKEN}";'
+                f"window.__ALICE_DASHBOARD_EMBEDDED_CHAT__={chat_js};"
+                f'window.__ALICE_BASE_PATH__="{prefix}";'
+                f"window.__ALICE_AUTH_REQUIRED__={gated_js};"
                 f"</script>"
             )
         if prefix:
@@ -13653,7 +13653,7 @@ def _discover_dashboard_plugins() -> list:
     Checks three plugin sources (same as alice_cli.plugins):
     1. User plugins:    ~/.alice/plugins/<name>/dashboard/manifest.json
     2. Bundled plugins: <repo>/plugins/<name>/dashboard/manifest.json  (memory/, etc.)
-    3. Project plugins: ./.alice/plugins/  (only if LYDIA_ENABLE_PROJECT_PLUGINS)
+    3. Project plugins: ./.alice/plugins/  (only if ALICE_ENABLE_PROJECT_PLUGINS)
     """
     plugins = []
     seen_names: set = set()
@@ -13674,7 +13674,7 @@ def _discover_dashboard_plugins() -> list:
     # opt-in into a sticky always-on switch.  Use the shared truthy
     # semantics (``1`` / ``true`` / ``yes`` / ``on``) so the gate matches
     # ``alice_cli/plugins.py`` and the documented user contract.
-    if env_var_enabled("LYDIA_ENABLE_PROJECT_PLUGINS"):
+    if env_var_enabled("ALICE_ENABLE_PROJECT_PLUGINS"):
         search_dirs.append((Path.cwd() / ".alice" / "plugins", "project"))
 
     for plugins_root, source in search_dirs:
@@ -14171,7 +14171,7 @@ def _mount_plugin_api_routes():
             _log.warning("Plugin %s declares api=%s but file not found", plugin["name"], api_file_name)
             continue
         try:
-            module_name = f"lydia_dashboard_plugin_{plugin['name']}"
+            module_name = f"alice_dashboard_plugin_{plugin['name']}"
             spec = importlib.util.spec_from_file_location(module_name, api_path)
             if spec is None or spec.loader is None:
                 continue
@@ -14229,10 +14229,10 @@ def _write_dashboard_ready_file(actual_port: int) -> None:
 
     Windows Desktop can launch dashboard backends with ``pythonw.exe`` to avoid
     console flashes. That path cannot rely on stdout for the port announcement,
-    so Electron passes ``LYDIA_DESKTOP_READY_FILE`` and waits for this JSON.
+    so Electron passes ``ALICE_DESKTOP_READY_FILE`` and waits for this JSON.
     Normal CLI/dashboard launches still use the stdout READY line below.
     """
-    target = os.environ.get("LYDIA_DESKTOP_READY_FILE")
+    target = os.environ.get("ALICE_DESKTOP_READY_FILE")
     if not target:
         return
 
@@ -14355,7 +14355,7 @@ def start_server(
         from alice_cli.dashboard_auth import list_providers
         if not list_providers():
             # Surface the *specific* reason any bundled provider declined
-            # to register (e.g. missing LYDIA_DASHBOARD_OAUTH_CLIENT_ID).
+            # to register (e.g. missing ALICE_DASHBOARD_OAUTH_CLIENT_ID).
             # Each provider plugin that ships with Alice Agent exposes a
             # module-level ``LAST_SKIP_REASON`` string for this purpose;
             # without it the operator would only see "no providers" which
@@ -14412,7 +14412,7 @@ def start_server(
     # We use uvicorn.Server directly (not uvicorn.run) so we can split
     # startup from the main loop.  After startup() the socket is actually
     # bound — we read the OS-assigned port from the live socket, print
-    # LYDIA_DASHBOARD_READY, open the browser, *then* serve.
+    # ALICE_DASHBOARD_READY, open the browser, *then* serve.
     #
     # This eliminates the TOCTOU of the old pre-bind-then-close approach
     # (bind port 0 → close → uvicorn rebind): the socket is held by
@@ -14464,7 +14464,7 @@ def start_server(
             app.state.bound_port = actual_port
 
             _write_dashboard_ready_file(actual_port)
-            print(f"LYDIA_DASHBOARD_READY port={actual_port}", flush=True)
+            print(f"ALICE_DASHBOARD_READY port={actual_port}", flush=True)
             print(f"  Alice Web UI → http://{host}:{actual_port}")
             _maybe_open_browser(host, actual_port, open_browser, initial_profile)
 

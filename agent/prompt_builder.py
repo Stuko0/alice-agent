@@ -75,7 +75,7 @@ def _find_git_root(start: Path) -> Optional[Path]:
     return None
 
 
-_LYDIA_MD_NAMES = (".alice.md", "ALICE.md")
+_ALICE_MD_NAMES = (".alice.md", "ALICE.md")
 
 
 def _find_alice_md(cwd: Path) -> Optional[Path]:
@@ -93,7 +93,7 @@ def _find_alice_md(cwd: Path) -> Optional[Path]:
     search_dirs = [current, *current.parents] if stop_at else [current]
 
     for directory in search_dirs:
-        for name in _LYDIA_MD_NAMES:
+        for name in _ALICE_MD_NAMES:
             candidate = directory / name
             if candidate.is_file():
                 return candidate
@@ -133,7 +133,7 @@ DEFAULT_AGENT_IDENTITY = (
     "Be targeted and efficient in your exploration and investigations."
 )
 
-LYDIA_AGENT_HELP_GUIDANCE = (
+ALICE_AGENT_HELP_GUIDANCE = (
     "You run on Alice Agent (by Nous Research). When the user needs help with "
     "Alice itself — configuring, setting up, using, extending, or troubleshooting "
     "it — or when you need to understand your own features, tools, or capabilities, "
@@ -186,7 +186,7 @@ KANBAN_GUIDANCE = (
     "# Kanban task execution protocol\n"
     "You have been assigned ONE task from "
     "the shared board at `~/.alice/kanban.db`. Your task id is in "
-    "`$LYDIA_KANBAN_TASK`; your workspace is `$LYDIA_KANBAN_WORKSPACE`. "
+    "`$ALICE_KANBAN_TASK`; your workspace is `$ALICE_KANBAN_WORKSPACE`. "
     "The `kanban_*` tools in your schema are your primary coordination surface — "
     "they write directly to the shared SQLite DB and work regardless of terminal "
     "backend (local/docker/modal/ssh).\n"
@@ -198,7 +198,7 @@ KANBAN_GUIDANCE = (
     "metadata), any prior attempts on this task if you're a retry, the full "
     "comment thread, and a pre-formatted `worker_context` you can treat as "
     "ground truth.\n"
-    "2. **Work inside the workspace.** `cd $LYDIA_KANBAN_WORKSPACE` before "
+    "2. **Work inside the workspace.** `cd $ALICE_KANBAN_WORKSPACE` before "
     "any file operations. The workspace is yours for this run. Don't modify "
     "files outside it unless the task explicitly asks.\n"
     "3. **Heartbeat on long operations.** Call `kanban_heartbeat(note=...)` "
@@ -243,11 +243,11 @@ KANBAN_GUIDANCE = (
     "\n"
     "## Reference details that change outcomes\n"
     "\n"
-    "- **Workspace.** `cd $LYDIA_KANBAN_WORKSPACE` first. For a `worktree` kind "
+    "- **Workspace.** `cd $ALICE_KANBAN_WORKSPACE` first. For a `worktree` kind "
     "with no `.git`, `git worktree add <path> "
-    "${LYDIA_KANBAN_BRANCH:-wt/$LYDIA_KANBAN_TASK}` from the main repo, then "
+    "${ALICE_KANBAN_BRANCH:-wt/$ALICE_KANBAN_TASK}` from the main repo, then "
     "cd there. For a project-linked task the workspace is a fresh "
-    "`<repo>/.worktrees/<task-id>` and `$LYDIA_KANBAN_BRANCH` a deterministic "
+    "`<repo>/.worktrees/<task-id>` and `$ALICE_KANBAN_BRANCH` a deterministic "
     "`<project-slug>/<task-id>` — the main repo is two levels up, so run "
     "`git worktree add` from there.\n"
     "- **Deliverables.** Files a human wants go in "
@@ -1128,11 +1128,11 @@ def build_environment_hints() -> str:
             )
 
     # Alice desktop GUI — any agent running under the desktop app should know
-    # it. LYDIA_DESKTOP marks the backend powering the chat; LYDIA_DESKTOP_TERMINAL
+    # it. ALICE_DESKTOP marks the backend powering the chat; ALICE_DESKTOP_TERMINAL
     # marks a alice launched in the embedded terminal pane. Both set by main.cjs.
     _truthy = ("1", "true", "yes")
-    _in_desktop = (os.getenv("LYDIA_DESKTOP") or "").strip().lower() in _truthy
-    _in_desktop_term = (os.getenv("LYDIA_DESKTOP_TERMINAL") or "").strip().lower() in _truthy
+    _in_desktop = (os.getenv("ALICE_DESKTOP") or "").strip().lower() in _truthy
+    _in_desktop_term = (os.getenv("ALICE_DESKTOP_TERMINAL") or "").strip().lower() in _truthy
     if _in_desktop or _in_desktop_term:
         _desktop_hint = "Runtime surface: you're running inside the Alice desktop GUI app."
         if _in_desktop_term:
@@ -1153,7 +1153,7 @@ def build_environment_hints() -> str:
     # it's part of the stable, cache-safe system prompt. The env var is the
     # build-time/embedder mechanism (set in a container ENV); config.yaml
     # ``agent.environment_hint`` is the user-facing surface. Env var wins.
-    extra = (os.getenv("LYDIA_ENVIRONMENT_HINT") or "").strip()
+    extra = (os.getenv("ALICE_ENVIRONMENT_HINT") or "").strip()
     if not extra:
         try:
             from alice_cli.config import load_config
@@ -1450,8 +1450,8 @@ def build_skills_system_prompt(
     # produce distinct cache entries (gateway serves multiple platforms).
     from gateway.session_context import get_session_env
     _platform_hint = (
-        os.environ.get("LYDIA_PLATFORM")
-        or get_session_env("LYDIA_SESSION_PLATFORM")
+        os.environ.get("ALICE_PLATFORM")
+        or get_session_env("ALICE_SESSION_PLATFORM")
         or ""
     )
     disabled = get_disabled_skill_names(_platform_hint or None)
@@ -1826,27 +1826,27 @@ def load_soul_md(context_length: Optional[int] = None) -> Optional[str]:
 
 def _load_alice_md(cwd_path: Path, context_length: Optional[int] = None) -> str:
     """.alice.md / ALICE.md — walk to git root."""
-    lydia_md_path = _find_alice_md(cwd_path)
-    if not lydia_md_path:
+    alice_md_path = _find_alice_md(cwd_path)
+    if not alice_md_path:
         return ""
     try:
-        content = lydia_md_path.read_text(encoding="utf-8").strip()
+        content = alice_md_path.read_text(encoding="utf-8").strip()
         if not content:
             return ""
         content = _strip_yaml_frontmatter(content)
-        rel = lydia_md_path.name
+        rel = alice_md_path.name
         try:
-            rel = str(lydia_md_path.relative_to(cwd_path))
+            rel = str(alice_md_path.relative_to(cwd_path))
         except ValueError:
             pass
         content = _scan_context_content(content, rel)
         result = f"## {rel}\n\n{content}"
         return _truncate_content(
             result, ".alice.md", context_length=context_length,
-            read_path=str(lydia_md_path),
+            read_path=str(alice_md_path),
         )
     except Exception as e:
-        logger.debug("Could not read %s: %s", lydia_md_path, e)
+        logger.debug("Could not read %s: %s", alice_md_path, e)
         return ""
 
 

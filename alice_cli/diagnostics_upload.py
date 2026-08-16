@@ -28,7 +28,7 @@ import urllib.request
 # Overridable via env so the feature can be pointed at staging / a local dev
 # NAS instance during testing.
 NAS_BASE = os.environ.get(
-    "LYDIA_DIAGNOSTICS_BASE_URL", "https://portal.nousresearch.com"
+    "ALICE_DIAGNOSTICS_BASE_URL", "https://portal.nousresearch.com"
 )
 
 # Network timeout for each request (seconds). The upload itself can be larger

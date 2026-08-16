@@ -5,7 +5,7 @@ Provides a single ``now()`` helper that returns a timezone-aware datetime
 based on the user's configured IANA timezone (e.g. ``Asia/Kolkata``).
 
 Resolution order:
-  1. ``LYDIA_TIMEZONE`` environment variable
+  1. ``ALICE_TIMEZONE`` environment variable
   2. ``timezone`` key in ``~/.alice/config.yaml``
   3. Falls back to the server's local time (``datetime.now().astimezone()``)
 
@@ -41,7 +41,7 @@ def _resolve_timezone_name() -> str:
     should cache the result rather than calling on every ``now()``.
     """
     # 1. Environment variable (highest priority — set by Supervisor, etc.)
-    tz_env = os.getenv("LYDIA_TIMEZONE", "").strip()
+    tz_env = os.getenv("ALICE_TIMEZONE", "").strip()
     if tz_env:
         return tz_env
 
@@ -99,7 +99,7 @@ def reset_cache() -> None:
     """Clear the cached timezone so the next call re-resolves it.
 
     Call this after the configured timezone may have changed (e.g. after a
-    config edit or ``LYDIA_TIMEZONE`` update) to force ``get_timezone()`` /
+    config edit or ``ALICE_TIMEZONE`` update) to force ``get_timezone()`` /
     ``now()`` to read the new value instead of the value cached at first use.
     """
     global _cached_tz, _cached_tz_name, _cache_resolved

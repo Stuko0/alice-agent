@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 _sleep = time.sleep
 
 _SYNC_INTERVAL_SECONDS = 5.0
-_FORCE_SYNC_ENV = "LYDIA_FORCE_FILE_SYNC"
+_FORCE_SYNC_ENV = "ALICE_FORCE_FILE_SYNC"
 
 # Transport callbacks provided by each backend
 UploadFn = Callable[[str, str], None]  # (host_path, remote_path) -> raises on failure
@@ -139,7 +139,7 @@ class FileSyncManager:
         """Run a sync cycle: upload changed files, delete removed files.
 
         Rate-limited to once per ``sync_interval`` unless *force* is True
-        or ``LYDIA_FORCE_FILE_SYNC=1`` is set.
+        or ``ALICE_FORCE_FILE_SYNC=1`` is set.
 
         Transactional: state only committed if ALL operations succeed.
         On failure, state rolls back so the next cycle retries everything.
@@ -214,7 +214,7 @@ class FileSyncManager:
     # Sync-back: pull remote changes to host on teardown
     # ------------------------------------------------------------------
 
-    def sync_back(self, lydia_home: Path | None = None) -> None:
+    def sync_back(self, alice_home: Path | None = None) -> None:
         """Pull remote changes back to the host filesystem.
 
         Downloads the remote ``.alice/`` directory as a tar archive,
@@ -234,7 +234,7 @@ class FileSyncManager:
             logger.debug("sync_back: no prior push state — skipping")
             return
 
-        lock_path = (lydia_home or get_alice_home()) / ".sync.lock"
+        lock_path = (alice_home or get_alice_home()) / ".sync.lock"
         lock_path.parent.mkdir(parents=True, exist_ok=True)
 
         last_exc: Exception | None = None

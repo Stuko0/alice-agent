@@ -413,8 +413,8 @@ class SessionManager:
             return self._db_instance
         try:
             from alice_state import SessionDB
-            lydia_home = get_alice_home()
-            self._db_instance = SessionDB(db_path=lydia_home / "state.db")
+            alice_home = get_alice_home()
+            self._db_instance = SessionDB(db_path=alice_home / "state.db")
             return self._db_instance
         except Exception:
             logger.debug("SessionDB unavailable for ACP persistence", exc_info=True)

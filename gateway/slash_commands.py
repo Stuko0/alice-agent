@@ -4067,9 +4067,9 @@ class GatewaySlashCommandsMixin:
         if not git_dir.exists():
             return t("gateway.update.not_git_repo")
 
-        lydia_cmd = _resolve_alice_bin()
-        if not lydia_cmd:
-            return t("gateway.update.lydia_cmd_not_found")
+        alice_cmd = _resolve_alice_bin()
+        if not alice_cmd:
+            return t("gateway.update.alice_cmd_not_found")
 
         pending_path = _alice_home_webhook / ".update_pending.json"
         output_path = _alice_home_webhook / ".update_output.txt"
@@ -4121,7 +4121,7 @@ class GatewaySlashCommandsMixin:
                 import textwrap
                 from alice_cli._subprocess_compat import windows_detach_popen_kwargs
 
-                # lydia_cmd is a list of argv parts we can pass directly
+                # alice_cmd is a list of argv parts we can pass directly
                 # (no shell-quoting needed).
                 helper = textwrap.dedent(
                     """
@@ -4142,16 +4142,16 @@ class GatewaySlashCommandsMixin:
                     [
                         sys.executable, "-c", helper,
                         str(output_path), str(exit_code_path),
-                        *lydia_cmd, "update", "--gateway",
+                        *alice_cmd, "update", "--gateway",
                     ],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     **windows_detach_popen_kwargs(),
                 )
             else:
-                lydia_cmd_str = " ".join(shlex.quote(part) for part in lydia_cmd)
+                alice_cmd_str = " ".join(shlex.quote(part) for part in alice_cmd)
                 update_cmd = (
-                    f"PYTHONUNBUFFERED=1 {lydia_cmd_str} update --gateway"
+                    f"PYTHONUNBUFFERED=1 {alice_cmd_str} update --gateway"
                     f" > {shlex.quote(str(output_path))} 2>&1; "
                     # Avoid `status=$?`: `status` is a read-only special parameter
                     # in zsh, and this command string is copied/reused in macOS/zsh

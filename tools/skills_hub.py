@@ -637,9 +637,9 @@ class GitHubSource(SkillSource):
         tags = []
         metadata = fm.get("metadata", {})
         if isinstance(metadata, dict):
-            lydia_meta = metadata.get("alice", {})
-            if isinstance(lydia_meta, dict):
-                tags = lydia_meta.get("tags", [])
+            alice_meta = metadata.get("alice", {})
+            if isinstance(alice_meta, dict):
+                tags = alice_meta.get("tags", [])
         if not tags:
             raw_tags = fm.get("tags", [])
             tags = raw_tags if isinstance(raw_tags, list) else []
@@ -1375,9 +1375,9 @@ class UrlSource(SkillSource):
         tags: List[str] = []
         metadata = fm.get("metadata", {})
         if isinstance(metadata, dict):
-            lydia_meta = metadata.get("alice", {})
-            if isinstance(lydia_meta, dict):
-                raw_tags = lydia_meta.get("tags", [])
+            alice_meta = metadata.get("alice", {})
+            if isinstance(alice_meta, dict):
+                raw_tags = alice_meta.get("tags", [])
                 if isinstance(raw_tags, list):
                     tags = [str(t) for t in raw_tags]
         return SkillMeta(
@@ -3179,9 +3179,9 @@ class OptionalSkillSource(SkillSource):
             tags = []
             meta_block = fm.get("metadata", {})
             if isinstance(meta_block, dict):
-                lydia_meta = meta_block.get("alice", {})
-                if isinstance(lydia_meta, dict):
-                    tags = lydia_meta.get("tags", [])
+                alice_meta = meta_block.get("alice", {})
+                if isinstance(alice_meta, dict):
+                    tags = alice_meta.get("tags", [])
 
             rel_path = str(parent.relative_to(self._optional_dir))
 
@@ -3649,8 +3649,8 @@ def check_for_skill_updates(
 # Alice centralized index source
 # ---------------------------------------------------------------------------
 
-LYDIA_INDEX_URL = "https://alice-agent.nousresearch.com/docs/api/skills-index.json"
-LYDIA_INDEX_TTL = 6 * 3600  # 6 hours
+ALICE_INDEX_URL = "https://alice-agent.nousresearch.com/docs/api/skills-index.json"
+ALICE_INDEX_TTL = 6 * 3600  # 6 hours
 
 
 def _alice_index_cache_file() -> Path:
@@ -3661,22 +3661,22 @@ def _load_alice_index() -> Optional[dict]:
     """Fetch the centralized skills index, with local cache.
 
     The index is a JSON file hosted on the docs site, rebuilt daily by CI.
-    We cache it locally for LYDIA_INDEX_TTL seconds to avoid repeated
+    We cache it locally for ALICE_INDEX_TTL seconds to avoid repeated
     downloads within a session.
     """
     # Check local cache
-    lydia_index_cache_file = _alice_index_cache_file()
-    if lydia_index_cache_file.exists():
+    alice_index_cache_file = _alice_index_cache_file()
+    if alice_index_cache_file.exists():
         try:
-            age = time.time() - lydia_index_cache_file.stat().st_mtime
-            if age < LYDIA_INDEX_TTL:
-                return json.loads(lydia_index_cache_file.read_text())
+            age = time.time() - alice_index_cache_file.stat().st_mtime
+            if age < ALICE_INDEX_TTL:
+                return json.loads(alice_index_cache_file.read_text())
         except (OSError, json.JSONDecodeError):
             pass
 
     # Fetch from docs site
     try:
-        resp = httpx.get(LYDIA_INDEX_URL, timeout=15, follow_redirects=True)
+        resp = httpx.get(ALICE_INDEX_URL, timeout=15, follow_redirects=True)
         if resp.status_code != 200:
             logger.debug("Alice index fetch returned %d", resp.status_code)
             return _load_stale_index_cache()
@@ -3691,8 +3691,8 @@ def _load_alice_index() -> Optional[dict]:
 
     # Cache locally
     try:
-        lydia_index_cache_file.parent.mkdir(parents=True, exist_ok=True)
-        lydia_index_cache_file.write_text(json.dumps(data))
+        alice_index_cache_file.parent.mkdir(parents=True, exist_ok=True)
+        alice_index_cache_file.write_text(json.dumps(data))
     except OSError:
         pass
 
@@ -3701,10 +3701,10 @@ def _load_alice_index() -> Optional[dict]:
 
 def _load_stale_index_cache() -> Optional[dict]:
     """Fall back to stale cache when the network fetch fails."""
-    lydia_index_cache_file = _alice_index_cache_file()
-    if lydia_index_cache_file.exists():
+    alice_index_cache_file = _alice_index_cache_file()
+    if alice_index_cache_file.exists():
         try:
-            return json.loads(lydia_index_cache_file.read_text())
+            return json.loads(alice_index_cache_file.read_text())
         except (OSError, json.JSONDecodeError):
             pass
     return None

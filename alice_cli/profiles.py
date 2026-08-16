@@ -216,7 +216,7 @@ _DEFAULT_EXPORT_EXCLUDE_ROOT = frozenset({
     ".env",                 # API keys (dotenv)
     "auth.lock", "active_profile", ".update_check",
     "errors.log",
-    ".lydia_history",
+    ".alice_history",
     # Caches (regenerated on use)
     "image_cache", "audio_cache", "document_cache",
     "browser_screenshots", "checkpoints",
@@ -230,7 +230,7 @@ _RESERVED_NAMES = frozenset({
 })
 
 # Alice subcommands that cannot be used as profile names/aliases
-_LYDIA_SUBCOMMANDS = frozenset({
+_ALICE_SUBCOMMANDS = frozenset({
     "chat", "model", "gateway", "setup", "whatsapp", "login", "logout",
     "status", "cron", "doctor", "dump", "config", "pairing", "skills", "tools",
     "mcp", "sessions", "insights", "version", "update", "uninstall",
@@ -378,7 +378,7 @@ def check_alias_collision(name: str) -> Optional[str]:
         return str(exc)
     if canon in _RESERVED_NAMES:
         return f"'{canon}' is a reserved name"
-    if canon in _LYDIA_SUBCOMMANDS:
+    if canon in _ALICE_SUBCOMMANDS:
         return f"'{canon}' conflicts with a alice subcommand"
 
     # Check existing commands in PATH
@@ -439,7 +439,7 @@ def create_wrapper_script(name: str, target: Optional[str] = None) -> Optional[P
     if is_windows:
         wrapper_path = wrapper_dir / f"{canon}.bat"
         try:
-            wrapper_path.write_text(f"@echo off\r\nlydia -p {profile} %*\r\n")
+            wrapper_path.write_text(f"@echo off\r\nalice -p {profile} %*\r\n")
             return wrapper_path
         except OSError as e:
             print(f"⚠ Could not create wrapper at {wrapper_path}: {e}")
@@ -447,8 +447,8 @@ def create_wrapper_script(name: str, target: Optional[str] = None) -> Optional[P
     else:
         wrapper_path = wrapper_dir / canon
         try:
-            lydia_exe = shutil.which("alice") or "alice"
-            wrapper_path.write_text(f'#!/bin/sh\nexec {shlex.quote(lydia_exe)} -p {profile} "$@"\n')
+            alice_exe = shutil.which("alice") or "alice"
+            wrapper_path.write_text(f'#!/bin/sh\nexec {shlex.quote(alice_exe)} -p {profile} "$@"\n')
             wrapper_path.chmod(wrapper_path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
             return wrapper_path
         except OSError as e:
@@ -928,7 +928,7 @@ def list_profiles() -> List[ProfileInfo]:
 
 
 def profiles_to_serve(multiplex: bool) -> List[Tuple[str, Path]]:
-    """Return the ``(profile_name, lydia_home)`` pairs a gateway should serve.
+    """Return the ``(profile_name, alice_home)`` pairs a gateway should serve.
 
     This is the single chokepoint for "which profiles does the inbound gateway
     handle" so later multiplexing phases never re-derive the set.
@@ -944,7 +944,7 @@ def profiles_to_serve(multiplex: bool) -> List[Tuple[str, Path]]:
     per-profile config reads, gateway-running probes, or skill counts like
     :func:`list_profiles`. It runs on gateway startup and must stay cheap.
 
-    The returned ``lydia_home`` is the path to pass to
+    The returned ``alice_home`` is the path to pass to
     ``set_alice_home_override`` when scoping a turn to that profile.
     """
     active = get_active_profile_name() or "default"
@@ -1631,8 +1631,8 @@ def get_active_profile_name() -> str:
     Returns ``"custom"`` if ALICE_HOME is set to an unrecognized path.
     """
     from alice_constants import get_alice_home
-    lydia_home = get_alice_home()
-    resolved = lydia_home.resolve()
+    alice_home = get_alice_home()
+    resolved = alice_home.resolve()
 
     default_resolved = _get_default_alice_home().resolve()
     if resolved == default_resolved:
@@ -1842,7 +1842,7 @@ def import_profile(archive_path: str, name: Optional[str] = None) -> Path:
     profiles_root = _get_profiles_root()
     profiles_root.mkdir(parents=True, exist_ok=True)
 
-    with tempfile.TemporaryDirectory(prefix="lydia_profile_import_") as tmpdir:
+    with tempfile.TemporaryDirectory(prefix="alice_profile_import_") as tmpdir:
         staging_root = Path(tmpdir)
         _safe_extract_profile_archive(archive, staging_root)
 
@@ -1868,9 +1868,9 @@ def import_profile(archive_path: str, name: Optional[str] = None) -> Path:
 
 def _migrate_honcho_profile_host(old_name: str, new_name: str, new_dir: Path) -> None:
     """Rename Honcho host blocks for a renamed profile without changing peers."""
-    old_host = f"lydia_{old_name}"
+    old_host = f"alice_{old_name}"
     legacy_old_host = f"alice.{old_name}"
-    new_host = f"lydia_{new_name}"
+    new_host = f"alice_{new_name}"
 
     candidates = [
         new_dir / "honcho.json",
@@ -1906,7 +1906,7 @@ def _migrate_honcho_profile_host(old_name: str, new_name: str, new_dir: Path) ->
 
         block = hosts[source_host]
         if isinstance(block, dict) and "aiPeer" not in block:
-            if source_host.startswith("lydia_"):
+            if source_host.startswith("alice_"):
                 bare = source_host.split("_", 1)[1]
             else:
                 bare = source_host.split(".", 1)[1] if "." in source_host else source_host

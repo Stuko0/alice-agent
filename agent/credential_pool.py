@@ -970,7 +970,7 @@ class CredentialPool:
 
                 refreshed = refresh_anthropic_oauth_pure(
                     entry.refresh_token,
-                    use_json=entry.source.endswith("lydia_pkce"),
+                    use_json=entry.source.endswith("alice_pkce"),
                 )
                 updated = replace(
                     entry,
@@ -1051,7 +1051,7 @@ class CredentialPool:
                         from agent.anthropic_adapter import refresh_anthropic_oauth_pure
                         refreshed = refresh_anthropic_oauth_pure(
                             synced.refresh_token,
-                            use_json=synced.source.endswith("lydia_pkce"),
+                            use_json=synced.source.endswith("alice_pkce"),
                         )
                         updated = replace(
                             synced,
@@ -1712,7 +1712,7 @@ def _normalize_pool_priorities(provider: str, entries: List[PooledCredential]) -
     source_rank = {
         "env:ANTHROPIC_TOKEN": 0,
         "env:CLAUDE_CODE_OAUTH_TOKEN": 1,
-        "lydia_pkce": 2,
+        "alice_pkce": 2,
         "claude_code": 3,
         "env:ANTHROPIC_API_KEY": 4,
     }
@@ -1771,7 +1771,7 @@ def _seed_from_singletons(provider: str, entries: List[PooledCredential]) -> Tup
         # API key and zeros ANTHROPIC_TOKEN; `save_anthropic_oauth_token()`
         # does the inverse.  When that signal is present we MUST NOT seed
         # autodiscovered OAuth tokens (~/.claude/.credentials.json from the
-        # Claude Code CLI, lydia_pkce creds from a previous OAuth login)
+        # Claude Code CLI, alice_pkce creds from a previous OAuth login)
         # into the anthropic pool — otherwise rotation on a 401/429 silently
         # flips the session onto an OAuth credential, which forces the Claude
         # Code identity injection, `mcp_` tool-name rewrite, and claude-cli
@@ -1799,7 +1799,7 @@ def _seed_from_singletons(provider: str, entries: List[PooledCredential]) -> Tup
             # transient 401 could revive them.
             retained = [
                 entry for entry in entries
-                if entry.source not in {"lydia_pkce", "claude_code"}
+                if entry.source not in {"alice_pkce", "claude_code"}
             ]
             if len(retained) != len(entries):
                 entries[:] = retained
@@ -1809,7 +1809,7 @@ def _seed_from_singletons(provider: str, entries: List[PooledCredential]) -> Tup
         from agent.anthropic_adapter import read_claude_code_credentials, read_alice_oauth_credentials
 
         for source_name, creds in (
-            ("lydia_pkce", read_alice_oauth_credentials()),
+            ("alice_pkce", read_alice_oauth_credentials()),
             ("claude_code", read_claude_code_credentials()),
         ):
             if creds and creds.get("accessToken"):
@@ -2207,7 +2207,7 @@ def _prune_stale_seeded_entries(
         # PKCE should disappear from the pool when their backing file is gone.
         return (
             is_borrowed_credential_source(entry.source, entry.provider)
-            or entry.source == "lydia_pkce"
+            or entry.source == "alice_pkce"
         )
 
     retained = [

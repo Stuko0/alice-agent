@@ -116,7 +116,7 @@ def _in_container() -> bool:
     """Best-effort container detection (Docker / Podman / generic OCI)."""
     if os.path.exists("/.dockerenv"):
         return True
-    if os.environ.get("LYDIA_DESKTOP_CHILD_PID"):
+    if os.environ.get("ALICE_DESKTOP_CHILD_PID"):
         return False  # desktop child, not a server container
     try:
         cgroup = Path("/proc/1/cgroup").read_text(encoding="utf-8", errors="replace")
@@ -168,7 +168,7 @@ def _path_is_mounted(path: Path) -> bool:
 def _container_no_volume_mount(alice_home: Optional[Path]) -> Optional[str]:
     if not _in_container():
         return None
-    home = lydia_home or Path(
+    home = alice_home or Path(
         os.environ.get("ALICE_HOME", os.path.expanduser("~/.alice"))
     )
     try:
@@ -241,7 +241,7 @@ def run_security_audit(
         except Exception:
             continue
     try:
-        r = _container_no_volume_mount(lydia_home)
+        r = _container_no_volume_mount(alice_home)
         if r:
             findings.append(r)
     except Exception:
@@ -269,7 +269,7 @@ def log_startup_security_warnings(
         return []
     _AUDIT_RAN = True
     try:
-        findings = run_security_audit(lydia_home=lydia_home, config=config)
+        findings = run_security_audit(alice_home=alice_home, config=config)
     except Exception:
         return []
     if findings:

@@ -617,14 +617,14 @@ def _coerce_gateway_timestamp(value: Any) -> Optional[float]:
 def _auto_continue_freshness_window() -> float:
     """Return the configured auto-continue freshness window in seconds.
 
-    Reads ``LYDIA_AUTO_CONTINUE_FRESHNESS`` (bridged from
+    Reads ``ALICE_AUTO_CONTINUE_FRESHNESS`` (bridged from
     ``config.yaml`` ``agent.gateway_auto_continue_freshness`` at gateway
-    startup, same pattern as ``LYDIA_AGENT_TIMEOUT``).  Falls back to the
+    startup, same pattern as ``ALICE_AGENT_TIMEOUT``).  Falls back to the
     module default when unset or malformed.  Non-positive values disable
     the freshness gate (restores the pre-fix "always fresh" behaviour for
     users who want to opt out).
     """
-    raw = os.environ.get("LYDIA_AUTO_CONTINUE_FRESHNESS")
+    raw = os.environ.get("ALICE_AUTO_CONTINUE_FRESHNESS")
     if raw is None or raw == "":
         return float(_AUTO_CONTINUE_FRESHNESS_SECS_DEFAULT)
     try:
@@ -636,7 +636,7 @@ def _auto_continue_freshness_window() -> float:
 def _float_env(name: str, default: float) -> float:
     """Read an env var as float, falling back to ``default`` on typos/empty.
 
-    A misconfigured env var (e.g. ``LYDIA_AGENT_TIMEOUT=abc``) must not
+    A misconfigured env var (e.g. ``ALICE_AGENT_TIMEOUT=abc``) must not
     crash the gateway or an agent turn.  Unset/empty also falls back.
     """
     raw = os.environ.get(name)
@@ -1252,7 +1252,7 @@ def _clear_planned_restart_notification() -> None:
 
 # Mark this process as a gateway so cli.py's module-level load_cli_config()
 # knows not to clobber TERMINAL_CWD if lazily imported.
-os.environ["_LYDIA_GATEWAY"] = "1"
+os.environ["_ALICE_GATEWAY"] = "1"
 
 _ensure_ssl_certs()
 
@@ -1269,7 +1269,7 @@ _alice_home_webhook = get_alice_home()
 from dotenv import load_dotenv  # noqa: F401  # backward-compat for tests that monkeypatch this symbol
 from alice_cli.env_loader import load_alice_dotenv
 _env_path = _alice_home_webhook / '.env'
-load_alice_dotenv(lydia_home=_alice_home_webhook, project_env=Path(__file__).resolve().parents[1] / '.env')
+load_alice_dotenv(alice_home=_alice_home_webhook, project_env=Path(__file__).resolve().parents[1] / '.env')
 
 
 def _reload_runtime_env_preserving_config_authority() -> None:
@@ -1277,7 +1277,7 @@ def _reload_runtime_env_preserving_config_authority() -> None:
 
     Gateway processes are long-lived, so per-turn code reloads ~/.alice/.env to
     pick up rotated API keys. config.yaml remains authoritative for agent budget
-    settings such as agent.max_turns; otherwise a stale LYDIA_MAX_ITERATIONS in
+    settings such as agent.max_turns; otherwise a stale ALICE_MAX_ITERATIONS in
     .env can replace the startup bridge on later turns.
 
     In multiplex mode this is a NO-OP for the credential reload: secrets come
@@ -1295,14 +1295,14 @@ def _reload_runtime_env_preserving_config_authority() -> None:
         return
 
     load_alice_dotenv(
-        lydia_home=_alice_home_webhook,
+        alice_home=_alice_home_webhook,
         project_env=Path(__file__).resolve().parents[1] / '.env',
     )
     _bridge_max_turns_from_config(_alice_home_webhook)
 
 
 def _bridge_max_turns_from_config(home: "Path") -> None:
-    """Bridge config.yaml agent.max_turns into LYDIA_MAX_ITERATIONS (a global)."""
+    """Bridge config.yaml agent.max_turns into ALICE_MAX_ITERATIONS (a global)."""
     config_path = home / 'config.yaml'
     if not config_path.exists():
         return
@@ -1326,14 +1326,14 @@ def _bridge_max_turns_from_config(home: "Path") -> None:
 
     agent_cfg = cfg.get("agent", {})
     if isinstance(agent_cfg, dict) and "max_turns" in agent_cfg:
-        os.environ["LYDIA_MAX_ITERATIONS"] = str(agent_cfg["max_turns"])
+        os.environ["ALICE_MAX_ITERATIONS"] = str(agent_cfg["max_turns"])
 
 
 def _current_max_iterations() -> int:
     """Return the current per-turn iteration budget after runtime env refresh."""
     _reload_runtime_env_preserving_config_authority()
     try:
-        return int(os.getenv("LYDIA_MAX_ITERATIONS", "90"))
+        return int(os.getenv("ALICE_MAX_ITERATIONS", "90"))
     except (TypeError, ValueError):
         return 90
 
@@ -1421,7 +1421,7 @@ if _config_path.exists():
         # env vars, so a managed timezone / redact_secrets / max_turns / terminal
         # setting wins over the user's value at the env layer too. This bridge
         # reads config.yaml directly (not via load_config), so without the
-        # overlay every LYDIA_*/TERMINAL_* env var below would carry the user's
+        # overlay every ALICE_*/TERMINAL_* env var below would carry the user's
         # value even when an administrator pinned it. Fail-open via the helper.
         try:
             from alice_cli import managed_scope
@@ -1526,49 +1526,49 @@ if _config_path.exists():
         # config.yaml is the documented, authoritative source for these
         # settings — it unconditionally wins over .env values. Previously
         # the guards below read `if X not in os.environ` and let stale
-        # .env entries (e.g. LYDIA_MAX_ITERATIONS=60 written by an old
+        # .env entries (e.g. ALICE_MAX_ITERATIONS=60 written by an old
         # `alice setup` run) silently shadow the user's current config.
         # See PR #18413 / the 60-vs-500 max_turns incident.
         _agent_cfg = _cfg.get("agent", {})
         if _agent_cfg and isinstance(_agent_cfg, dict):
             if "max_turns" in _agent_cfg:
-                os.environ["LYDIA_MAX_ITERATIONS"] = str(_agent_cfg["max_turns"])
+                os.environ["ALICE_MAX_ITERATIONS"] = str(_agent_cfg["max_turns"])
             if "gateway_timeout" in _agent_cfg:
-                os.environ["LYDIA_AGENT_TIMEOUT"] = str(_agent_cfg["gateway_timeout"])
+                os.environ["ALICE_AGENT_TIMEOUT"] = str(_agent_cfg["gateway_timeout"])
             if "gateway_timeout_warning" in _agent_cfg:
-                os.environ["LYDIA_AGENT_TIMEOUT_WARNING"] = str(_agent_cfg["gateway_timeout_warning"])
+                os.environ["ALICE_AGENT_TIMEOUT_WARNING"] = str(_agent_cfg["gateway_timeout_warning"])
             if "gateway_notify_interval" in _agent_cfg:
-                os.environ["LYDIA_AGENT_NOTIFY_INTERVAL"] = str(_agent_cfg["gateway_notify_interval"])
+                os.environ["ALICE_AGENT_NOTIFY_INTERVAL"] = str(_agent_cfg["gateway_notify_interval"])
             if "restart_drain_timeout" in _agent_cfg:
-                os.environ["LYDIA_RESTART_DRAIN_TIMEOUT"] = str(_agent_cfg["restart_drain_timeout"])
+                os.environ["ALICE_RESTART_DRAIN_TIMEOUT"] = str(_agent_cfg["restart_drain_timeout"])
             if "gateway_auto_continue_freshness" in _agent_cfg:
-                os.environ["LYDIA_AUTO_CONTINUE_FRESHNESS"] = str(
+                os.environ["ALICE_AUTO_CONTINUE_FRESHNESS"] = str(
                     _agent_cfg["gateway_auto_continue_freshness"]
                 )
         _display_cfg = _cfg.get("display", {})
         if _display_cfg and isinstance(_display_cfg, dict):
             if "busy_input_mode" in _display_cfg:
-                os.environ["LYDIA_GATEWAY_BUSY_INPUT_MODE"] = str(_display_cfg["busy_input_mode"])
+                os.environ["ALICE_GATEWAY_BUSY_INPUT_MODE"] = str(_display_cfg["busy_input_mode"])
             if "busy_text_mode" in _display_cfg:
-                os.environ["LYDIA_GATEWAY_BUSY_TEXT_MODE"] = str(_display_cfg["busy_text_mode"])
+                os.environ["ALICE_GATEWAY_BUSY_TEXT_MODE"] = str(_display_cfg["busy_text_mode"])
             if "busy_ack_enabled" in _display_cfg:
-                os.environ["LYDIA_GATEWAY_BUSY_ACK_ENABLED"] = str(_display_cfg["busy_ack_enabled"])
-        # Timezone: bridge config.yaml → LYDIA_TIMEZONE env var.
+                os.environ["ALICE_GATEWAY_BUSY_ACK_ENABLED"] = str(_display_cfg["busy_ack_enabled"])
+        # Timezone: bridge config.yaml → ALICE_TIMEZONE env var.
         _tz_cfg = _cfg.get("timezone", "")
         if _tz_cfg and isinstance(_tz_cfg, str):
-            os.environ["LYDIA_TIMEZONE"] = _tz_cfg.strip()
+            os.environ["ALICE_TIMEZONE"] = _tz_cfg.strip()
         # Security settings
         _security_cfg = _cfg.get("security", {})
         if isinstance(_security_cfg, dict):
             _redact = _security_cfg.get("redact_secrets")
             if _redact is not None:
-                os.environ["LYDIA_REDACT_SECRETS"] = str(_redact).lower()
+                os.environ["ALICE_REDACT_SECRETS"] = str(_redact).lower()
         # Gateway settings (media delivery allowlist + recency trust + strict mode)
         _gateway_cfg = _cfg.get("gateway", {})
         if isinstance(_gateway_cfg, dict):
             _strict = _gateway_cfg.get("strict")
             if _strict is not None:
-                os.environ["LYDIA_MEDIA_DELIVERY_STRICT"] = (
+                os.environ["ALICE_MEDIA_DELIVERY_STRICT"] = (
                     "1" if _strict else "0"
                 )
             _allow_dirs = _gateway_cfg.get("media_delivery_allow_dirs")
@@ -1580,15 +1580,15 @@ if _config_path.exists():
                 else:
                     _allow_dirs_str = ""
                 if _allow_dirs_str:
-                    os.environ["LYDIA_MEDIA_ALLOW_DIRS"] = _allow_dirs_str
+                    os.environ["ALICE_MEDIA_ALLOW_DIRS"] = _allow_dirs_str
             _trust_recent = _gateway_cfg.get("trust_recent_files")
             if _trust_recent is not None:
-                os.environ["LYDIA_MEDIA_TRUST_RECENT_FILES"] = (
+                os.environ["ALICE_MEDIA_TRUST_RECENT_FILES"] = (
                     "1" if _trust_recent else "0"
                 )
             _trust_recent_seconds = _gateway_cfg.get("trust_recent_files_seconds")
             if _trust_recent_seconds is not None:
-                os.environ["LYDIA_MEDIA_TRUST_RECENT_SECONDS"] = str(_trust_recent_seconds)
+                os.environ["ALICE_MEDIA_TRUST_RECENT_SECONDS"] = str(_trust_recent_seconds)
             # Bridge gateway.platform_connect_timeout → the internal env var the
             # connect path + Discord adapter ready-wait both read (#19776).
             # Unlike the agent.*/display.* bridges above (config-authoritative),
@@ -1596,9 +1596,9 @@ if _config_path.exists():
             # already set explicitly; otherwise config.yaml supplies the value.
             if (
                 "platform_connect_timeout" in _gateway_cfg
-                and not os.environ.get("LYDIA_GATEWAY_PLATFORM_CONNECT_TIMEOUT", "").strip()
+                and not os.environ.get("ALICE_GATEWAY_PLATFORM_CONNECT_TIMEOUT", "").strip()
             ):
-                os.environ["LYDIA_GATEWAY_PLATFORM_CONNECT_TIMEOUT"] = str(
+                os.environ["ALICE_GATEWAY_PLATFORM_CONNECT_TIMEOUT"] = str(
                     _gateway_cfg["platform_connect_timeout"]
                 )
     except Exception as _bridge_err:
@@ -1644,10 +1644,10 @@ except Exception as _bootstrap_exc:
     print(f"  Warning: deprecation check failed: {_bootstrap_exc}", file=sys.stderr)
 
 # Gateway runs in quiet mode - suppress debug output and use cwd directly (no temp dirs)
-os.environ["LYDIA_QUIET"] = "1"
+os.environ["ALICE_QUIET"] = "1"
 
 # Enable interactive exec approval for dangerous commands on messaging platforms
-os.environ["LYDIA_EXEC_ASK"] = "1"
+os.environ["ALICE_EXEC_ASK"] = "1"
 
 # Set terminal working directory for messaging platforms.
 # config.yaml terminal.cwd is the canonical source (bridged to TERMINAL_CWD
@@ -1753,7 +1753,7 @@ def _resolve_runtime_agent_kwargs() -> dict:
 
     model_cfg = _get_model_config()
     max_tokens = None
-    _env_mt = os.environ.get("LYDIA_MAX_TOKENS")
+    _env_mt = os.environ.get("ALICE_MAX_TOKENS")
     if _env_mt:
         try:
             max_tokens = int(_env_mt)
@@ -2254,9 +2254,9 @@ def _resolve_alice_bin() -> Optional[list[str]]:
     """
     import shutil
 
-    lydia_bin = shutil.which("alice")
-    if lydia_bin:
-        return [lydia_bin]
+    alice_bin = shutil.which("alice")
+    if alice_bin:
+        return [alice_bin]
 
     try:
         import importlib.util
@@ -3120,7 +3120,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         cleanup, so the next start dies with "PID file race lost" (#14128).
 
         Each await is wrapped in the existing per-adapter timeout budget
-        (``LYDIA_GATEWAY_ADAPTER_DISCONNECT_TIMEOUT``). On timeout we log
+        (``ALICE_GATEWAY_ADAPTER_DISCONNECT_TIMEOUT``). On timeout we log
         and force forward progress; the loop never hangs regardless of any
         adapter's internal behavior. Never raises.
         """
@@ -3163,13 +3163,13 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
 
     def _adapter_disconnect_timeout_secs(self) -> float:
         """Return the per-adapter disconnect timeout used during shutdown."""
-        raw = os.getenv("LYDIA_GATEWAY_ADAPTER_DISCONNECT_TIMEOUT", "").strip()
+        raw = os.getenv("ALICE_GATEWAY_ADAPTER_DISCONNECT_TIMEOUT", "").strip()
         if raw:
             try:
                 timeout = float(raw)
             except ValueError:
                 logger.warning(
-                    "Ignoring invalid LYDIA_GATEWAY_ADAPTER_DISCONNECT_TIMEOUT=%r",
+                    "Ignoring invalid ALICE_GATEWAY_ADAPTER_DISCONNECT_TIMEOUT=%r",
                     raw,
                 )
             else:
@@ -3178,13 +3178,13 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
 
     def _platform_connect_timeout_secs(self) -> float:
         """Return the per-platform connect timeout used during startup/retry."""
-        raw = os.getenv("LYDIA_GATEWAY_PLATFORM_CONNECT_TIMEOUT", "").strip()
+        raw = os.getenv("ALICE_GATEWAY_PLATFORM_CONNECT_TIMEOUT", "").strip()
         if raw:
             try:
                 timeout = float(raw)
             except ValueError:
                 logger.warning(
-                    "Ignoring invalid LYDIA_GATEWAY_PLATFORM_CONNECT_TIMEOUT=%r",
+                    "Ignoring invalid ALICE_GATEWAY_PLATFORM_CONNECT_TIMEOUT=%r",
                     raw,
                 )
             else:
@@ -3810,7 +3810,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
     def _log_scale_to_zero_not_armed_reason(self) -> None:
         """Log why the idle watcher did NOT arm — but only for an OPTED-IN instance.
 
-        A non-opted instance (no LYDIA_SCALE_TO_ZERO stamp) not arming is the normal
+        A non-opted instance (no ALICE_SCALE_TO_ZERO stamp) not arming is the normal
         case and must stay silent. When the Labs stamp IS set but the watcher still
         didn't arm, that's the surprising case worth one INFO line so "why won't it
         suspend/wake?" is a log grep, not a box-dive.
@@ -3892,7 +3892,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         """Watch for idle and drive the relay dormant so the platform can suspend.
 
         Started ONLY when _scale_to_zero_should_arm() (opted in via the Labs
-        LYDIA_SCALE_TO_ZERO stamp + relay-only/absent messaging + a wakeUrl).
+        ALICE_SCALE_TO_ZERO stamp + relay-only/absent messaging + a wakeUrl).
         On a sustained idle window it runs the DORMANT sequence (D12/F12/F14):
           - mark runtime status `draining` (composes with the existing state
             machine, §3.4(6); does NOT set _running=False),
@@ -4288,12 +4288,12 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
     def _load_prefill_messages() -> List[Dict[str, Any]]:
         """Load ephemeral prefill messages from config or env var.
         
-        Checks LYDIA_PREFILL_MESSAGES_FILE env var first, then falls back to
+        Checks ALICE_PREFILL_MESSAGES_FILE env var first, then falls back to
         the top-level prefill_messages_file key in ~/.alice/config.yaml.
         agent.prefill_messages_file is accepted as a legacy fallback.
         Relative paths are resolved from ~/.alice/.
         """
-        file_path = os.getenv("LYDIA_PREFILL_MESSAGES_FILE", "")
+        file_path = os.getenv("ALICE_PREFILL_MESSAGES_FILE", "")
         if not file_path:
             cfg = _load_gateway_runtime_config()
             file_path = str(cfg.get("prefill_messages_file", "") or "")
@@ -4322,10 +4322,10 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
     def _load_ephemeral_system_prompt() -> str:
         """Load ephemeral system prompt from config or env var.
         
-        Checks LYDIA_EPHEMERAL_SYSTEM_PROMPT env var first, then falls back to
+        Checks ALICE_EPHEMERAL_SYSTEM_PROMPT env var first, then falls back to
         agent.system_prompt in ~/.alice/config.yaml.
         """
-        prompt = os.getenv("LYDIA_EPHEMERAL_SYSTEM_PROMPT", "")
+        prompt = os.getenv("ALICE_EPHEMERAL_SYSTEM_PROMPT", "")
         if prompt:
             return prompt
         cfg = _load_gateway_runtime_config()
@@ -4438,7 +4438,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
     @staticmethod
     def _load_busy_input_mode() -> str:
         """Load gateway drain-time busy-input behavior from config/env."""
-        mode = os.getenv("LYDIA_GATEWAY_BUSY_INPUT_MODE", "").strip().lower()
+        mode = os.getenv("ALICE_GATEWAY_BUSY_INPUT_MODE", "").strip().lower()
         if not mode:
             cfg = _load_gateway_runtime_config()
             mode = str(cfg_get(cfg, "display", "busy_input_mode", default="") or "").strip().lower()
@@ -4460,7 +4460,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         ``busy_input_mode`` and maps to non-queue text handling here).
         """
         # Legacy explicit override wins for backward compat.
-        legacy = os.getenv("LYDIA_GATEWAY_BUSY_TEXT_MODE", "").strip().lower()
+        legacy = os.getenv("ALICE_GATEWAY_BUSY_TEXT_MODE", "").strip().lower()
         if not legacy:
             cfg = _load_gateway_runtime_config()
             legacy = str(cfg_get(cfg, "display", "busy_text_mode", default="") or "").strip().lower()
@@ -4475,7 +4475,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
     @staticmethod
     def _load_restart_drain_timeout() -> float:
         """Load graceful gateway restart/stop drain timeout in seconds."""
-        raw = os.getenv("LYDIA_RESTART_DRAIN_TIMEOUT", "").strip()
+        raw = os.getenv("ALICE_RESTART_DRAIN_TIMEOUT", "").strip()
         if not raw:
             cfg = _load_gateway_runtime_config()
             raw = str(cfg_get(cfg, "agent", "restart_drain_timeout", default="") or "").strip()
@@ -4501,7 +4501,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
           - ``error``  — only the final message when exit code is non-zero
           - ``off``    — no watcher messages at all
         """
-        mode = os.getenv("LYDIA_BACKGROUND_NOTIFICATIONS", "")
+        mode = os.getenv("ALICE_BACKGROUND_NOTIFICATIONS", "")
         if not mode:
             cfg = _load_gateway_runtime_config()
             raw = cfg_get(cfg, "display", "background_process_notifications")
@@ -4924,7 +4924,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         # Check if busy ack is disabled — skip sending but still process the input.
         # Placed before debounce so we don't stamp a "last ack" timestamp that was
         # never actually delivered.
-        busy_ack_enabled = os.environ.get("LYDIA_GATEWAY_BUSY_ACK_ENABLED", "true").lower() == "true"
+        busy_ack_enabled = os.environ.get("ALICE_GATEWAY_BUSY_ACK_ENABLED", "true").lower() == "true"
         if not busy_ack_enabled:
             logger.debug("Busy ack suppressed for session %s", session_key)
             return True  # input still processed, just no ack sent
@@ -5551,8 +5551,8 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         import shutil
         import subprocess
 
-        lydia_cmd = _resolve_alice_bin()
-        if not lydia_cmd:
+        alice_cmd = _resolve_alice_bin()
+        if not alice_cmd:
             logger.error("Could not locate alice binary for detached /restart")
             return
         if self._detached_restart_helper_started:
@@ -5571,7 +5571,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             import textwrap
             from alice_cli._subprocess_compat import windows_detach_popen_kwargs
 
-            cmd_argv = [*lydia_cmd, "gateway", "restart"]
+            cmd_argv = [*alice_cmd, "gateway", "restart"]
             watcher = textwrap.dedent(
                 """
                 import os, subprocess, sys, time
@@ -5624,7 +5624,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             # This watcher is intentionally outside the running gateway. If it
             # inherits the gateway marker, `alice gateway restart` refuses to
             # run as a self-restart loop guard and the gateway stays stopped.
-            watcher_env.pop("_LYDIA_GATEWAY", None)
+            watcher_env.pop("_ALICE_GATEWAY", None)
             project_root = Path(__file__).resolve().parent.parent
             watcher_python = sys.executable
             try:
@@ -5656,7 +5656,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             )
             return
 
-        cmd = " ".join(shlex.quote(part) for part in lydia_cmd)
+        cmd = " ".join(shlex.quote(part) for part in alice_cmd)
         shell_cmd = (
             f"deadline=$(( $(date +%s) + {int(restart_after_s)} )); "
             f"while kill -0 {current_pid} 2>/dev/null && [ $(date +%s) -lt $deadline ]; do sleep 0.2; done; "
@@ -5664,11 +5664,11 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         )
         # Same marker scrub as the Windows watcher above: this watcher runs
         # `alice gateway restart` from outside the gateway, but it inherits
-        # _LYDIA_GATEWAY=1 from us, and the CLI's self-restart loop guard
+        # _ALICE_GATEWAY=1 from us, and the CLI's self-restart loop guard
         # refuses to run when that marker is set — silently (DEVNULL), so the
         # gateway stops and never comes back.
         watcher_env = os.environ.copy()
-        watcher_env.pop("_LYDIA_GATEWAY", None)
+        watcher_env.pop("_ALICE_GATEWAY", None)
         setsid_bin = shutil.which("setsid")
         if setsid_bin:
             subprocess.Popen(
@@ -5869,7 +5869,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             # Mark this replay so _handle_message does not queue it again while
             # the restore gate remains closed for any fresh inbound arrivals.
             try:
-                setattr(event, "_lydia_startup_restore_replay", True)
+                setattr(event, "_alice_startup_restore_replay", True)
             except Exception:
                 pass
             await adapter.handle_message(event)
@@ -6062,10 +6062,10 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         # config.yaml → env bridge did the right thing at a glance (instead
         # of silently running at a stale .env value for weeks).
         try:
-            _effective_max_iter = int(os.getenv("LYDIA_MAX_ITERATIONS", "90"))
+            _effective_max_iter = int(os.getenv("ALICE_MAX_ITERATIONS", "90"))
             logger.info(
                 "Agent budget: max_iterations=%d (agent.max_turns from config.yaml, "
-                "or LYDIA_MAX_ITERATIONS from .env, or default 90)",
+                "or ALICE_MAX_ITERATIONS from .env, or default 90)",
                 _effective_max_iter,
             )
         except Exception:
@@ -6076,7 +6076,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         # state at import time, so this log line is the source of truth
         # for this process's lifetime.
         try:
-            _redact_raw = os.getenv("LYDIA_REDACT_SECRETS", "true")
+            _redact_raw = os.getenv("ALICE_REDACT_SECRETS", "true")
             _redact_on = _redact_raw.lower() in {"1", "true", "yes", "on"}
             if _redact_on:
                 logger.info(
@@ -6085,7 +6085,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                 )
             else:
                 logger.warning(
-                    "Secret redaction: DISABLED (LYDIA_REDACT_SECRETS=%s). "
+                    "Secret redaction: DISABLED (ALICE_REDACT_SECRETS=%s). "
                     "API keys and tokens may appear verbatim in chat output, "
                     "session JSONs, and logs. Set security.redact_secrets: true "
                     "in config.yaml to re-enable.",
@@ -6246,7 +6246,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
 
         # Register declarative shell hooks from cli-config.yaml.  Gateway
         # has no TTY, so consent has to come from one of the three opt-in
-        # channels (--accept-hooks on launch, LYDIA_ACCEPT_HOOKS env var,
+        # channels (--accept-hooks on launch, ALICE_ACCEPT_HOOKS env var,
         # or hooks_auto_accept: true in config.yaml).  We pass
         # accept_hooks=False here and let register_from_config resolve
         # the effective value from env + config itself — the CLI-side
@@ -6656,7 +6656,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         asyncio.create_task(self._async_delegation_watcher())
 
         # Start the scale-to-zero idle watcher ONLY when this instance is opted
-        # in (the NAS "Labs" LYDIA_SCALE_TO_ZERO stamp), messaging is
+        # in (the NAS "Labs" ALICE_SCALE_TO_ZERO stamp), messaging is
         # relay-only/absent, and a wakeUrl is registered (decisions.md D1/D11/
         # §3.4(1)). A non-opted instance never starts it, so behaviour is exactly
         # as today. When armed, the watcher drives the relay dormant on sustained
@@ -8075,7 +8075,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         if (
             getattr(self, "_startup_restore_in_progress", False)
             and not getattr(event, "internal", False)
-            and not getattr(event, "_lydia_startup_restore_replay", False)
+            and not getattr(event, "_alice_startup_restore_replay", False)
         ):
             self._queue_startup_restore_event(event)
             return None
@@ -8352,7 +8352,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         # wall-clock age alone isn't sufficient.  Evict only when the agent
         # has been *idle* beyond the inactivity threshold (or when the agent
         # object has no activity tracker and wall-clock age is extreme).
-        _raw_stale_timeout = _float_env("LYDIA_AGENT_TIMEOUT", 1800)
+        _raw_stale_timeout = _float_env("ALICE_AGENT_TIMEOUT", 1800)
         _stale_ts = self._running_agents_ts.get(_quick_key, 0)
         if _quick_key in self._running_agents and _stale_ts:
             _stale_age = time.time() - _stale_ts
@@ -8670,7 +8670,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                 return None
 
             _telegram_followup_grace = float(
-                os.getenv("LYDIA_TELEGRAM_FOLLOWUP_GRACE_SECONDS", "3.0")
+                os.getenv("ALICE_TELEGRAM_FOLLOWUP_GRACE_SECONDS", "3.0")
             )
             _started_at = self._running_agents_ts.get(_quick_key, 0)
             if (
@@ -11621,7 +11621,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                 generation = None
                 active = getattr(adapter, "_active_sessions", {}).get(session_key)
                 if active is not None:
-                    generation = getattr(active, "_lydia_run_generation", None)
+                    generation = getattr(active, "_alice_run_generation", None)
                 adapter.register_post_delivery_callback(
                     session_key,
                     _deliver,
@@ -11998,7 +11998,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             # Other platforms keep the existing MP3 default.
             audio_ext = "ogg" if event.source.platform == Platform.TELEGRAM else "mp3"
             audio_path = os.path.join(
-                tempfile.gettempdir(), "lydia_voice",
+                tempfile.gettempdir(), "alice_voice",
                 f"tts_reply_{_uuid.uuid4().hex[:12]}.{audio_ext}",
             )
             os.makedirs(os.path.dirname(audio_path), exist_ok=True)
@@ -14783,7 +14783,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         try:
             interrupt_event = getattr(adapter, "_active_sessions", {}).get(session_key)
             if interrupt_event is not None:
-                setattr(interrupt_event, "_lydia_run_generation", int(generation))
+                setattr(interrupt_event, "_alice_run_generation", int(generation))
         except Exception:
             pass
 
@@ -15563,7 +15563,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
 
         # Tool progress mode — resolved per-platform with env var fallback
         _resolved_tp = resolve_display_setting(user_config, platform_key, "tool_progress")
-        _env_tp = os.getenv("LYDIA_TOOL_PROGRESS_MODE")
+        _env_tp = os.getenv("ALICE_TOOL_PROGRESS_MODE")
         _display_cfg = display_config if isinstance(display_config, dict) else {}
         _platforms_cfg = _display_cfg.get("platforms") or {}
         _platform_cfg = _platforms_cfg.get(platform_key) or {}
@@ -16361,7 +16361,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             # session_key is propagated via contextvars in _set_session_env()
             # (_SESSION_KEY) and via set_current_session_key() (_approval_session_key)
             # below — both concurrency-safe and inherited by tool worker threads.
-            # We deliberately do NOT write os.environ["LYDIA_SESSION_KEY"] here:
+            # We deliberately do NOT write os.environ["ALICE_SESSION_KEY"] here:
             # os.environ is process-global, so concurrent gateway sessions (e.g.
             # two Discord threads) would clobber each other's value, and a tool
             # thread whose contextvar is unset would fall back to os.environ and
@@ -16369,7 +16369,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             # the wrong thread (#24100). The non-gateway surfaces don't depend on
             # this write: CLI and cron bind the session via contextvars
             # (set_current_session_key / session context), and only the TUI
-            # slash-worker *subprocess* exports LYDIA_SESSION_KEY (from its own
+            # slash-worker *subprocess* exports ALICE_SESSION_KEY (from its own
             # --session-key argv, a separate process) — so removing this in-process
             # gateway write does not affect any of them.
 
@@ -17559,9 +17559,9 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
         # Periodic "still working" notifications for long-running tasks.
         # Fires every N seconds so the user knows the agent hasn't died.
         # Config: agent.gateway_notify_interval in config.yaml, or
-        # LYDIA_AGENT_NOTIFY_INTERVAL env var.  Default 180s (3 min).
+        # ALICE_AGENT_NOTIFY_INTERVAL env var.  Default 180s (3 min).
         # 0 = disable notifications.
-        _NOTIFY_INTERVAL_RAW = _float_env("LYDIA_AGENT_NOTIFY_INTERVAL", 180)
+        _NOTIFY_INTERVAL_RAW = _float_env("ALICE_AGENT_NOTIFY_INTERVAL", 180)
         _NOTIFY_INTERVAL = _NOTIFY_INTERVAL_RAW if _NOTIFY_INTERVAL_RAW > 0 else None
         if not bool(
             resolve_display_setting(
@@ -17690,11 +17690,11 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             # configured duration is caught and killed.  (#4815)
             #
             # Config: agent.gateway_timeout in config.yaml, or
-            # LYDIA_AGENT_TIMEOUT env var (env var takes precedence).
+            # ALICE_AGENT_TIMEOUT env var (env var takes precedence).
             # Default 1800s (30 min inactivity).  0 = unlimited.
-            _agent_timeout_raw = _float_env("LYDIA_AGENT_TIMEOUT", 1800)
+            _agent_timeout_raw = _float_env("ALICE_AGENT_TIMEOUT", 1800)
             _agent_timeout = _agent_timeout_raw if _agent_timeout_raw > 0 else None
-            _agent_warning_raw = _float_env("LYDIA_AGENT_TIMEOUT_WARNING", 900)
+            _agent_warning_raw = _float_env("ALICE_AGENT_TIMEOUT_WARNING", 900)
             _agent_warning = _agent_warning_raw if _agent_warning_raw > 0 else None
             _warning_fired = False
             _executor_task = asyncio.ensure_future(
@@ -18667,11 +18667,11 @@ async def start_gateway(config: Optional[GatewayConfig] = None, replace: bool = 
             except Exception:
                 pass
         else:
-            lydia_home = str(get_alice_home())
+            alice_home = str(get_alice_home())
             logger.error(
                 "Another gateway instance is already running (PID %d, ALICE_HOME=%s). "
                 "Use 'alice gateway restart' to replace it, or 'alice gateway stop' first.",
-                existing_pid, lydia_home,
+                existing_pid, alice_home,
             )
             print(
                 f"\n❌ Gateway already running (PID {existing_pid}).\n"
@@ -18692,7 +18692,7 @@ async def start_gateway(config: Optional[GatewayConfig] = None, replace: bool = 
     # and gateway.log (INFO+, gateway-component records only).
     # Idempotent, so repeated calls from AIAgent.__init__ won't duplicate.
     from alice_logging import setup_logging, _safe_stderr
-    setup_logging(lydia_home=_alice_home_webhook, mode="gateway")
+    setup_logging(alice_home=_alice_home_webhook, mode="gateway")
 
     # Startup security posture audit — warn-on-load, never blocks. Surfaces
     # root / weak-SSH / ephemeral-container / unauthenticated-listener posture
@@ -18708,7 +18708,7 @@ async def start_gateway(config: Optional[GatewayConfig] = None, replace: bool = 
             _audit_cfg = read_raw_config()
         except Exception:
             _audit_cfg = None
-        log_startup_security_warnings(lydia_home=_alice_home_webhook, config=_audit_cfg)
+        log_startup_security_warnings(alice_home=_alice_home_webhook, config=_audit_cfg)
     except Exception as _audit_exc:
         logger.debug("Startup security audit failed (non-fatal): %s", _audit_exc)
 

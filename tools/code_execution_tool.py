@@ -76,14 +76,14 @@ MAX_STDERR_BYTES = 10_000    # 10 KB
 
 # Environment variable scrubbing rules (shared between the local + remote
 # backends).  Secret-substring block is applied first; anything left must
-# match a safe prefix, the operational LYDIA_ allowlist, or (on Windows) an
+# match a safe prefix, the operational ALICE_ allowlist, or (on Windows) an
 # OS-essential name.
 #
-# NB: the broad "LYDIA_" prefix was deliberately removed (#27303) — it leaked
-# LYDIA_*-named config that lacks a secret substring (e.g. LYDIA_BASE_URL,
-# LYDIA_KANBAN_DB, LYDIA_*_WEBHOOK).  The child only needs the few
-# location/profile vars in _LYDIA_CHILD_ALLOWED below; LYDIA_RPC_SOCKET /
-# LYDIA_RPC_DIR / TZ / HOME are injected explicitly after scrubbing.
+# NB: the broad "ALICE_" prefix was deliberately removed (#27303) — it leaked
+# ALICE_*-named config that lacks a secret substring (e.g. ALICE_BASE_URL,
+# ALICE_KANBAN_DB, ALICE_*_WEBHOOK).  The child only needs the few
+# location/profile vars in _ALICE_CHILD_ALLOWED below; ALICE_RPC_SOCKET /
+# ALICE_RPC_DIR / TZ / HOME are injected explicitly after scrubbing.
 _SAFE_ENV_PREFIXES = ("PATH", "HOME", "USER", "LANG", "LC_", "TERM",
                       "TMPDIR", "TMP", "TEMP", "SHELL", "LOGNAME",
                       "XDG_", "PYTHONPATH", "VIRTUAL_ENV", "CONDA")
@@ -99,15 +99,15 @@ _SECRET_SUBSTRINGS = ("KEY", "TOKEN", "SECRET", "PASSWORD", "CREDENTIAL",
                       # PASSWORD/PASSWD already cover the credential cases.
                       "CREDS", "BEARER", "APIKEY")
 
-# Operational LYDIA_* vars the child legitimately needs by exact name — these
+# Operational ALICE_* vars the child legitimately needs by exact name — these
 # are non-secret runtime-location flags (the same set alice_cli treats as the
 # runtime location) that repo-root modules a sandbox script imports may read at
 # import time.  None match _SECRET_SUBSTRINGS.
-_LYDIA_CHILD_ALLOWED = frozenset({
+_ALICE_CHILD_ALLOWED = frozenset({
     "ALICE_HOME",
-    "LYDIA_PROFILE",
-    "LYDIA_CONFIG",
-    "LYDIA_ENV",
+    "ALICE_PROFILE",
+    "ALICE_CONFIG",
+    "ALICE_ENV",
 })
 
 # Windows-only: a handful of variables are required by the OS/CRT itself.
@@ -149,7 +149,7 @@ def _scrub_child_env(source_env, is_passthrough=None, is_windows=None):
       1. Passthrough vars (skill- or config-declared) always pass.
       2. Secret-substring names (KEY/TOKEN/DSN/WEBHOOK/etc.) are blocked.
       3. Names matching a safe prefix pass.
-      4. Operational LYDIA_* vars (_LYDIA_CHILD_ALLOWED) pass by exact name.
+      4. Operational ALICE_* vars (_ALICE_CHILD_ALLOWED) pass by exact name.
       5. On Windows, a small OS-essential allowlist passes by exact name
          — without these the child can't even create a socket or spawn a
          subprocess.
@@ -167,14 +167,14 @@ def _scrub_child_env(source_env, is_passthrough=None, is_windows=None):
         is_windows = _IS_WINDOWS
 
     scrubbed = {}
-    # Non-secret LYDIA_* vars dropped by the tightened allowlist (#27303). The
-    # broad "LYDIA_" prefix used to pass these through; now only the
+    # Non-secret ALICE_* vars dropped by the tightened allowlist (#27303). The
+    # broad "ALICE_" prefix used to pass these through; now only the
     # operational set does. The drop is intentional (those vars can carry
-    # config like LYDIA_KANBAN_DB / LYDIA_BASE_URL), but a sandbox script
+    # config like ALICE_KANBAN_DB / ALICE_BASE_URL), but a sandbox script
     # that imports a repo module reading one at import time would otherwise see
     # it silently unset. Surface the drop once so the behavior change is
     # diagnosable and points at the env_passthrough opt-in escape hatch.
-    _dropped_lydia = []
+    _dropped_alice = []
     for k, v in source_env.items():
         if is_passthrough(k):
             scrubbed[k] = v
@@ -184,24 +184,24 @@ def _scrub_child_env(source_env, is_passthrough=None, is_windows=None):
         if any(k.startswith(p) for p in _SAFE_ENV_PREFIXES):
             scrubbed[k] = v
             continue
-        if k in _LYDIA_CHILD_ALLOWED:
+        if k in _ALICE_CHILD_ALLOWED:
             scrubbed[k] = v
             continue
         if is_windows and k.upper() in _WINDOWS_ESSENTIAL_ENV_VARS:
             scrubbed[k] = v
             continue
-        if k.startswith("LYDIA_"):
+        if k.startswith("ALICE_"):
             # Non-secret (secrets were already dropped above) and not in any
-            # allowlist — a deliberately-dropped LYDIA_* var.
-            _dropped_lydia.append(k)
-    if _dropped_lydia:
+            # allowlist — a deliberately-dropped ALICE_* var.
+            _dropped_alice.append(k)
+    if _dropped_alice:
         logger.debug(
-            "execute_code: dropped %d non-allowlisted LYDIA_* var(s) from the "
+            "execute_code: dropped %d non-allowlisted ALICE_* var(s) from the "
             "sandbox child env (%s). This is intentional hardening (#27303); if "
             "a sandbox script legitimately needs one, declare it via "
             "env_passthrough in the skill/config so it passes by explicit opt-in.",
-            len(_dropped_lydia),
-            ", ".join(sorted(_dropped_lydia)),
+            len(_dropped_alice),
+            ", ".join(sorted(_dropped_alice)),
         )
     return scrubbed
 
@@ -357,7 +357,7 @@ _call_lock = threading.Lock()
 def _connect():
     """Connect to the parent's RPC server via the transport it picked.
 
-    LYDIA_RPC_SOCKET can be either:
+    ALICE_RPC_SOCKET can be either:
       - a filesystem path (POSIX Unix domain socket — the default on
         Linux and macOS)
       - a string of the form ``tcp://127.0.0.1:<port>`` (Windows, where
@@ -365,7 +365,7 @@ def _connect():
     """
     global _sock
     if _sock is None:
-        endpoint = os.environ["LYDIA_RPC_SOCKET"]
+        endpoint = os.environ["ALICE_RPC_SOCKET"]
         if endpoint.startswith("tcp://"):
             # tcp://host:port  (host is always 127.0.0.1 in practice — we
             # only bind loopback server-side)
@@ -410,7 +410,7 @@ _FILE_TRANSPORT_HEADER = '''\
 """Auto-generated Alice native RPC stubs (file-based transport)."""
 import json, os, shlex, tempfile, threading, time
 
-_RPC_DIR = os.environ.get("LYDIA_RPC_DIR") or os.path.join(tempfile.gettempdir(), "lydia_rpc")
+_RPC_DIR = os.environ.get("ALICE_RPC_DIR") or os.path.join(tempfile.gettempdir(), "alice_rpc")
 _seq = 0
 # `_seq += 1` is not atomic (read-modify-write), so concurrent _call()
 # invocations from multiple threads could allocate the same sequence number
@@ -909,7 +909,7 @@ def _execute_remote(
 
     sandbox_id = uuid.uuid4().hex[:12]
     temp_dir = _env_temp_dir(env)
-    sandbox_dir = f"{temp_dir}/lydia_exec_{sandbox_id}"
+    sandbox_dir = f"{temp_dir}/alice_exec_{sandbox_id}"
     quoted_sandbox_dir = shlex.quote(sandbox_dir)
     quoted_rpc_dir = shlex.quote(f"{sandbox_dir}/rpc")
 
@@ -965,10 +965,10 @@ def _execute_remote(
 
         # Build environment variable prefix for the script
         env_prefix = (
-            f"LYDIA_RPC_DIR={shlex.quote(f'{sandbox_dir}/rpc')} "
+            f"ALICE_RPC_DIR={shlex.quote(f'{sandbox_dir}/rpc')} "
             f"PYTHONDONTWRITEBYTECODE=1"
         )
-        tz = os.getenv("LYDIA_TIMEZONE", "").strip()
+        tz = os.getenv("ALICE_TIMEZONE", "").strip()
         if tz:
             env_prefix += f" TZ={shlex.quote(tz)}"
 
@@ -1157,7 +1157,7 @@ def execute_code(
         sandbox_tools = SANDBOX_ALLOWED_TOOLS
 
     # --- Set up temp directory with alice_tools.py and script.py ---
-    tmpdir = tempfile.mkdtemp(prefix="lydia_sandbox_")
+    tmpdir = tempfile.mkdtemp(prefix="alice_sandbox_")
     # Use /tmp on macOS to avoid the long /var/folders/... path that pushes
     # Unix domain socket paths past the 104-byte macOS AF_UNIX limit.
     # On Linux, tempfile.gettempdir() already returns /tmp.
@@ -1168,14 +1168,14 @@ def execute_code(
     # on the same temp drive as the script).  Fall back to loopback TCP —
     # same ephemeral port, same 1-connection listen queue, same serialized
     # request/response framing.  The generated client reads the transport
-    # selector from LYDIA_RPC_SOCKET (path vs. ``tcp://host:port``).
+    # selector from ALICE_RPC_SOCKET (path vs. ``tcp://host:port``).
     _sock_tmpdir = "/tmp" if sys.platform == "darwin" else tempfile.gettempdir()
     _use_tcp_rpc = _IS_WINDOWS
     if _use_tcp_rpc:
         sock_path = None  # not used on Windows; TCP endpoint stored below
         rpc_endpoint = None  # set after bind()
     else:
-        sock_path = os.path.join(_sock_tmpdir, f"lydia_rpc_{uuid.uuid4().hex}.sock")
+        sock_path = os.path.join(_sock_tmpdir, f"alice_rpc_{uuid.uuid4().hex}.sock")
         rpc_endpoint = sock_path
 
     tool_call_log: list = []
@@ -1210,7 +1210,7 @@ def execute_code(
         #   Windows: AF_INET stream socket on 127.0.0.1 with an ephemeral
         #   port.  No filesystem permission story, but loopback-only bind
         #   means only the current user's processes (not remote) can
-        #   connect.  LYDIA_RPC_SOCKET is set to ``tcp://127.0.0.1:<port>``
+        #   connect.  ALICE_RPC_SOCKET is set to ``tcp://127.0.0.1:<port>``
         #   which the generated client parses to pick AF_INET.
         if _use_tcp_rpc:
             server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -1247,7 +1247,7 @@ def execute_code(
         # passed through — without those, the child can't create a socket
         # or spawn a subprocess.  See ``_scrub_child_env`` for the rules.
         child_env = _scrub_child_env(os.environ)
-        child_env["LYDIA_RPC_SOCKET"] = rpc_endpoint
+        child_env["ALICE_RPC_SOCKET"] = rpc_endpoint
         child_env["PYTHONDONTWRITEBYTECODE"] = "1"
         # Force UTF-8 for the child's stdio and default file encoding.
         #
@@ -1272,20 +1272,20 @@ def execute_code(
         # repo-root modules are available to child scripts.  We also prepend
         # the staging tmpdir so ``from alice_tools import ...`` resolves even
         # when the subprocess CWD is not tmpdir (project mode).
-        _lydia_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        _alice_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         _existing_pp = child_env.get("PYTHONPATH", "")
-        _pp_parts = [tmpdir, _lydia_root]
+        _pp_parts = [tmpdir, _alice_root]
         if _existing_pp:
             _pp_parts.append(_existing_pp)
         child_env["PYTHONPATH"] = os.pathsep.join(_pp_parts)
         # Inject user's configured timezone so datetime.now() in sandboxed
         # code reflects the correct wall-clock time.  Only TZ is set —
-        # LYDIA_TIMEZONE is an internal Alice setting and must not leak
+        # ALICE_TIMEZONE is an internal Alice setting and must not leak
         # into child processes.
-        _tz_name = os.getenv("LYDIA_TIMEZONE", "").strip()
+        _tz_name = os.getenv("ALICE_TIMEZONE", "").strip()
         if _tz_name:
             child_env["TZ"] = _tz_name
-        child_env.pop("LYDIA_TIMEZONE", None)
+        child_env.pop("ALICE_TIMEZONE", None)
 
         from alice_constants import apply_subprocess_home_env
         apply_subprocess_home_env(child_env)

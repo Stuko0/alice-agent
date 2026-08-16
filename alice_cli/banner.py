@@ -68,14 +68,14 @@ def _skin_color(key: str, fallback: str) -> str:
 from alice_cli import __release_date__ as RELEASE_DATE
 from alice_cli import __version__ as VERSION
 
-LYDIA_AGENT_LOGO = """[bold #c4a7e7]██╗     ██╗   ██╗██████╗ ██╗█████╗         █████╗  ██████╗ ███████╗███╗   ██╗████████╗[/]
+ALICE_AGENT_LOGO = """[bold #c4a7e7]██╗     ██╗   ██╗██████╗ ██╗█████╗         █████╗  ██████╗ ███████╗███╗   ██╗████████╗[/]
 [bold #c4a7e7]██║     ╚██╗ ██╔╝██╔══██╗██║██╔══██╗       ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝[/]
 [#a78ec4]██║      ╚████╔╝ ██║  ██║██║███████║█████╗███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║[/]
 [#a78ec4]██║       ╚██╔╝  ██║  ██║██║██╔══██║╚════╝██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║[/]
 [#7f6c96]███████╗   ██║   ██████╔╝██║██║  ██║      ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║[/]
 [#7f6c96]╚══════╝   ╚═╝   ╚═════╝ ╚═╝╚═╝  ╚═╝      ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝[/]"""
 
-LYDIA_GOTHIC_L = """[#c4a7e7]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
+ALICE_GOTHIC_L = """[#c4a7e7]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
 [#c4a7e7]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
 [#a78ec4]⠀⠀⠀⠀⠀⠀⠀⠀⠀⣴⡿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
 [#a78ec4]⠀⠀⠀⠀⠀⠀⠀⠀⣰⠟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
@@ -317,7 +317,7 @@ def check_via_pypi() -> Optional[int]:
 def check_for_updates() -> Optional[int]:
     """Check whether a Alice update is available.
 
-    Two paths: if ``LYDIA_REVISION`` is set (nix builds embed it), compare
+    Two paths: if ``ALICE_REVISION`` is set (nix builds embed it), compare
     it to upstream main via ``git ls-remote``. Otherwise look for a local
     git checkout and count commits behind ``origin/main``.
 
@@ -325,13 +325,13 @@ def check_for_updates() -> Optional[int]:
     if behind but the count is unknown, ``0`` if up-to-date, or ``None`` if
     the check failed or doesn't apply. Cached for 6 hours.
     """
-    lydia_home = get_alice_home()
-    cache_file = lydia_home / ".update_check"
-    embedded_rev = os.environ.get("LYDIA_REVISION") or None
+    alice_home = get_alice_home()
+    cache_file = alice_home / ".update_check"
+    embedded_rev = os.environ.get("ALICE_REVISION") or None
 
     # Docker images have no working tree to count commits against — the
     # published image excludes `.git` (see .dockerignore) and sets no
-    # LYDIA_REVISION (that's nix-only). Without this guard the checks below
+    # ALICE_REVISION (that's nix-only). Without this guard the checks below
     # fall through to `check_via_pypi()`, whose PyPI-version mismatch flag (1)
     # then gets rendered by the CLI banner and the TUI badge as a phantom
     # "1 commit behind" — even though no git repo or commit math is involved,
@@ -375,7 +375,7 @@ def check_for_updates() -> Optional[int]:
         # Path(__file__) always resolves to the actual installed checkout.
         repo_dir = Path(__file__).parent.parent.resolve()
         if not (repo_dir / ".git").exists():
-            repo_dir = lydia_home / "alice-agent"
+            repo_dir = alice_home / "alice-agent"
         if not (repo_dir / ".git").exists():
             behind = check_via_pypi()
         else:
@@ -405,8 +405,8 @@ def _resolve_repo_dir() -> Optional[Path]:
     """
     repo_dir = Path(__file__).parent.parent.resolve()
     if not (repo_dir / ".git").exists():
-        lydia_home = get_alice_home()
-        repo_dir = lydia_home / "alice-agent"
+        alice_home = get_alice_home()
+        repo_dir = alice_home / "alice-agent"
     return repo_dir if (repo_dir / ".git").exists() else None
 
 
@@ -869,11 +869,11 @@ def build_welcome_banner(
         _hero = (
             _bskin.banner_hero
             if hasattr(_bskin, "banner_hero") and _bskin.banner_hero
-            else LYDIA_GOTHIC_L
+            else ALICE_GOTHIC_L
         )
     except Exception:
         _bskin = None
-        _hero = LYDIA_GOTHIC_L
+        _hero = ALICE_GOTHIC_L
     left_lines = ["", _hero, ""]
     if (provider or "").strip().lower() == "moa":
         # MoA virtual provider: ``model`` is a preset name. Show the preset and
@@ -918,7 +918,7 @@ def build_welcome_banner(
             f"[{accent}]{model_short}[/]{ctx_str} [dim {dim}]·[/] [dim {dim}]Nous Research[/]"
         )
 
-    if os.getenv("LYDIA_YOLO_MODE"):
+    if os.getenv("ALICE_YOLO_MODE"):
         left_lines.append(
             f"[bold red]⚠ YOLO mode[/] [dim {dim}]— all approval prompts bypassed[/]"
         )
@@ -1170,12 +1170,12 @@ def build_welcome_banner(
         logo = (
             _render_skin.banner_logo
             if hasattr(_render_skin, "banner_logo") and _render_skin.banner_logo
-            else LYDIA_AGENT_LOGO
+            else ALICE_AGENT_LOGO
         )
         hero = (
             _render_skin.banner_hero
             if hasattr(_render_skin, "banner_hero") and _render_skin.banner_hero
-            else LYDIA_GOTHIC_L
+            else ALICE_GOTHIC_L
         )
 
         border_color = _skin_color("banner_border", "#56526e")
@@ -1290,7 +1290,7 @@ def build_welcome_banner(
             _logo = (
                 _render_skin.banner_logo
                 if _render_skin and hasattr(_render_skin, "banner_logo") and _render_skin.banner_logo
-                else LYDIA_AGENT_LOGO
+                else ALICE_AGENT_LOGO
             )
             console.print(_logo)
             console.print()

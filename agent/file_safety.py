@@ -27,8 +27,8 @@ def _alice_root_path() -> Path:
 
 def build_write_denied_paths(home: str) -> set[str]:
     """Return exact sensitive paths that must never be written."""
-    lydia_home = _alice_home_path()
-    lydia_root = _alice_root_path()
+    alice_home = _alice_home_path()
+    alice_root = _alice_root_path()
     return {
         os.path.realpath(p)
         for p in [
@@ -37,15 +37,15 @@ def build_write_denied_paths(home: str) -> set[str]:
             os.path.join(home, ".ssh", "id_ed25519"),
             os.path.join(home, ".ssh", "config"),
             # Active profile .env (or top-level .env when not in profile mode).
-            str(lydia_home / ".env"),
+            str(alice_home / ".env"),
             # Top-level .env, even when running under a profile — overwriting it
             # leaks credentials across every profile that inherits from root (#15981).
-            str(lydia_root / ".env"),
+            str(alice_root / ".env"),
             # Active profile Anthropic PKCE credential store.
-            str(lydia_home / ".anthropic_oauth.json"),
+            str(alice_home / ".anthropic_oauth.json"),
             # Top-level Anthropic PKCE credential store remains sensitive even
             # when a profile is active; default/non-profile sessions still read it.
-            str(lydia_root / ".anthropic_oauth.json"),
+            str(alice_root / ".anthropic_oauth.json"),
             os.path.join(home, ".netrc"),
             os.path.join(home, ".pgpass"),
             os.path.join(home, ".npmrc"),
@@ -78,10 +78,10 @@ def build_write_denied_prefixes(home: str) -> list[str]:
 
 
 def get_safe_write_roots() -> set[str]:
-    """Return resolved LYDIA_WRITE_SAFE_ROOT paths. Supports multiple directories
+    """Return resolved ALICE_WRITE_SAFE_ROOT paths. Supports multiple directories
     separated by ``os.pathsep`` (``:`` on Unix, ``;`` on Windows).
     E.g., ``/opt/data:/var/www/html`` on Unix, ``C:\\data;D:\\www`` on Windows."""
-    env = os.getenv("LYDIA_WRITE_SAFE_ROOT", "")
+    env = os.getenv("ALICE_WRITE_SAFE_ROOT", "")
     if not env:
         return set()
     roots: set[str] = set()
@@ -108,16 +108,16 @@ def is_write_denied(path: str) -> bool:
 
     mcp_tokens_dir_name = "mcp-tokens"
 
-    lydia_dirs = []
+    alice_dirs = []
     for base in (_alice_home_path(), _alice_root_path()):
         try:
             real = os.path.realpath(base)
-            if real not in lydia_dirs:
-                lydia_dirs.append(real)
+            if real not in alice_dirs:
+                alice_dirs.append(real)
         except Exception:
             continue
 
-    for base_real in lydia_dirs:
+    for base_real in alice_dirs:
         try:
             mcp_real = os.path.realpath(os.path.join(base_real, mcp_tokens_dir_name))
             if resolved == mcp_real or resolved.startswith(mcp_real + os.sep):
@@ -210,17 +210,17 @@ def get_read_block_error(path: str) -> Optional[str]:
     # blocked when running under a profile (ALICE_HOME points at
     # <root>/profiles/<name> in profile mode). Same shape as the write
     # deny widening (#15981, #14157).
-    lydia_dirs: list[Path] = []
+    alice_dirs: list[Path] = []
     for base in (_alice_home_path(), _alice_root_path()):
         try:
             real = base.resolve()
-            if real not in lydia_dirs:
-                lydia_dirs.append(real)
+            if real not in alice_dirs:
+                alice_dirs.append(real)
         except Exception:
             continue
 
     # Skills .hub: prompt-injection carriers.
-    for hd in lydia_dirs:
+    for hd in alice_dirs:
         blocked_dirs = [
             hd / "skills" / ".hub" / "index-cache",
             hd / "skills" / ".hub",
@@ -250,7 +250,7 @@ def get_read_block_error(path: str) -> Optional[str]:
         # was introduced by #31968 but not added to this guard.
         os.path.join("cache", "bws_cache.json"),
     )
-    for hd in lydia_dirs:
+    for hd in alice_dirs:
         for name in credential_file_names:
             try:
                 blocked = (hd / name).resolve()
@@ -267,7 +267,7 @@ def get_read_block_error(path: str) -> Optional[str]:
 
     # mcp-tokens/: directory prefix match — anything inside is OAuth
     # token material.
-    for hd in lydia_dirs:
+    for hd in alice_dirs:
         try:
             mcp_tokens = (hd / "mcp-tokens").resolve()
         except Exception:

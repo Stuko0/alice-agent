@@ -359,7 +359,7 @@ def _scan_gateway_pids(
             return (
                 f"--profile {current_profile_name_lc}" in command_lc
                 or f"-p {current_profile_name_lc}" in command_lc
-                or f"lydia_home={current_home_lc}" in command_lc
+                or f"alice_home={current_home_lc}" in command_lc
             )
 
         # Default-profile case: no profile flag in argv. Accept as long as
@@ -370,8 +370,8 @@ def _scan_gateway_pids(
         if "--profile " in command_lc or " -p " in command_lc:
             return False
         if (
-            "lydia_home=" in command_lc
-            and f"lydia_home={current_home_lc}" not in command_lc
+            "alice_home=" in command_lc
+            and f"alice_home={current_home_lc}" not in command_lc
         ):
             return False
         return True
@@ -1642,13 +1642,13 @@ def _windows_gateway_should_absorb_console_controls() -> bool:
 
     Foreground ``alice gateway run`` must remain interruptible from
     PowerShell/CMD. Detached service-style launches opt in via
-    ``LYDIA_GATEWAY_DETACHED=1``; older wrappers without the env marker are
+    ``ALICE_GATEWAY_DETACHED=1``; older wrappers without the env marker are
     treated as detached when no interactive stdin is attached.
     """
     if not is_windows():
         return False
 
-    detached = os.getenv("LYDIA_GATEWAY_DETACHED", "").strip().lower()
+    detached = os.getenv("ALICE_GATEWAY_DETACHED", "").strip().lower()
     if detached in {"1", "true", "yes", "on"}:
         return True
 
@@ -1694,7 +1694,7 @@ def _profile_suffix() -> str:
     return hashlib.sha256(str(home).encode()).hexdigest()[:8]
 
 
-def _profile_arg(lydia_home: str | None = None, default_root: str | Path | None = None) -> str:
+def _profile_arg(alice_home: str | None = None, default_root: str | Path | None = None) -> str:
     """Return ``--profile <name>`` only when ALICE_HOME is a named profile.
 
     For ``~/.alice/profiles/<name>``, returns ``"--profile <name>"``.
@@ -1712,7 +1712,7 @@ def _profile_arg(lydia_home: str | None = None, default_root: str | Path | None 
     import re
     from alice_constants import get_default_alice_root
 
-    home = Path(lydia_home or str(get_alice_home())).resolve()
+    home = Path(alice_home or str(get_alice_home())).resolve()
     default = Path(default_root).resolve() if default_root else get_default_alice_root().resolve()
     if home == default:
         return ""
@@ -1727,14 +1727,14 @@ def _profile_arg(lydia_home: str | None = None, default_root: str | Path | None 
     return ""
 
 
-def _profile_arg_for_target_user(lydia_home: str, target_home_dir: str) -> str:
+def _profile_arg_for_target_user(alice_home: str, target_home_dir: str) -> str:
     """Return the profile arg for a system service running as another user."""
     target_root = Path(target_home_dir) / ".alice"
     try:
-        Path(lydia_home).resolve().relative_to(target_root.resolve())
-        return _profile_arg(lydia_home, default_root=target_root)
+        Path(alice_home).resolve().relative_to(target_root.resolve())
+        return _profile_arg(alice_home, default_root=target_root)
     except ValueError:
-        return _profile_arg(lydia_home)
+        return _profile_arg(alice_home)
 
 
 def get_service_name() -> str:
@@ -2567,21 +2567,21 @@ def _alice_home_for_target_user(target_home_dir: str) -> str:
       /root/.alice/profiles/coder     → /home/alice/.alice/profiles/coder
       /opt/custom-alice               → /opt/custom-alice  (kept as-is)
     """
-    current_lydia = get_alice_home().resolve()
+    current_alice = get_alice_home().resolve()
     current_default = (Path.home() / ".alice").resolve()
     target_default = Path(target_home_dir) / ".alice"
 
     # Default ~/.alice → remap to target user's default
-    if current_lydia == current_default:
+    if current_alice == current_default:
         return str(target_default)
 
     # Profile or subdir of ~/.alice → preserve the relative structure
     try:
-        relative = current_lydia.relative_to(current_default)
+        relative = current_alice.relative_to(current_default)
         return str(target_default / relative)
     except ValueError:
         # Completely custom path (not under ~/.alice) — keep as-is
-        return str(current_lydia)
+        return str(current_alice)
 
 
 def _build_service_path_dirs(project_root: Path | None = None) -> list[str]:
@@ -2607,13 +2607,13 @@ def _build_service_path_dirs(project_root: Path | None = None) -> list[str]:
     if _is_dir(node_bin):
         candidates.append(str(node_bin))
 
-    lydia_home = get_alice_home()
-    lydia_node = lydia_home / "node" / "bin"
-    if _is_dir(lydia_node):
-        candidates.append(str(lydia_node))
-    lydia_nm = lydia_home / "node_modules" / ".bin"
-    if _is_dir(lydia_nm):
-        candidates.append(str(lydia_nm))
+    alice_home = get_alice_home()
+    alice_node = alice_home / "node" / "bin"
+    if _is_dir(alice_node):
+        candidates.append(str(alice_node))
+    alice_nm = alice_home / "node_modules" / ".bin"
+    if _is_dir(alice_nm):
+        candidates.append(str(alice_nm))
 
     return candidates
 
@@ -2678,8 +2678,8 @@ def generate_systemd_unit(system: bool = False, run_as_user: str | None = None) 
 
     if system:
         username, group_name, home_dir = _system_service_identity(run_as_user)
-        lydia_home = _alice_home_for_target_user(home_dir)
-        profile_arg = _profile_arg_for_target_user(lydia_home, home_dir)
+        alice_home = _alice_home_for_target_user(home_dir)
+        profile_arg = _profile_arg_for_target_user(alice_home, home_dir)
         # Remap all paths that may resolve under the calling user's home
         # (e.g. /root/) to the target user's home so the service can
         # actually access them.
@@ -2687,7 +2687,7 @@ def generate_systemd_unit(system: bool = False, run_as_user: str | None = None) 
         # Anchor cwd to the target user's ALICE_HOME (stable, always exists)
         # rather than a remapped source-checkout path that can rot. See
         # _stable_service_working_dir() for the full rationale.
-        working_dir = str(lydia_home) if lydia_home else _remap_path_for_user(working_dir, home_dir)
+        working_dir = str(alice_home) if alice_home else _remap_path_for_user(working_dir, home_dir)
         venv_dir = _remap_path_for_user(venv_dir, home_dir)
         path_entries = [_remap_path_for_user(p, home_dir) for p in path_entries]
         path_entries.extend(_build_user_local_paths(Path(home_dir), path_entries))
@@ -2711,7 +2711,7 @@ Environment="USER={username}"
 Environment="LOGNAME={username}"
 Environment="PATH={sane_path}"
 Environment="VIRTUAL_ENV={venv_dir}"
-Environment="ALICE_HOME={lydia_home}"
+Environment="ALICE_HOME={alice_home}"
 Restart=always
 RestartSec=5
 RestartForceExitStatus={GATEWAY_SERVICE_RESTART_EXIT_CODE}
@@ -2727,8 +2727,8 @@ StandardError=journal
 WantedBy=multi-user.target
 """
 
-    lydia_home = str(get_alice_home().resolve())
-    profile_arg = _profile_arg(lydia_home)
+    alice_home = str(get_alice_home().resolve())
+    profile_arg = _profile_arg(alice_home)
     path_entries.extend(_build_user_local_paths(Path.home(), path_entries))
     path_entries.extend(_build_wsl_interop_paths(path_entries))
     path_entries.extend(common_bin_paths)
@@ -2745,7 +2745,7 @@ ExecStart={python_path} -m alice_cli.main{f" {profile_arg}" if profile_arg else 
 WorkingDirectory={working_dir}
 Environment="PATH={sane_path}"
 Environment="VIRTUAL_ENV={venv_dir}"
-Environment="ALICE_HOME={lydia_home}"
+Environment="ALICE_HOME={alice_home}"
 Restart=always
 RestartSec=5
 RestartForceExitStatus={GATEWAY_SERVICE_RESTART_EXIT_CODE}
@@ -2802,7 +2802,7 @@ def _normalize_launchd_plist_for_comparison(text: str) -> str:
     normalized = _normalize_service_definition(text)
     return re.sub(
         r"(<key>PATH</key>\s*<string>)(.*?)(</string>)",
-        r"\1__LYDIA_PATH__\3",
+        r"\1__ALICE_PATH__\3",
         normalized,
         flags=re.S,
     )
@@ -2900,7 +2900,7 @@ def refresh_systemd_unit_if_needed(system: bool = False) -> bool:
     # The user-scope unit path resolves under ``Path.home()``, which is NOT
     # sandboxed by the test conftest (only ALICE_HOME is). If a test
     # exercises ``run_gateway()`` with a pytest-tmp ALICE_HOME, the freshly
-    # generated unit bakes that ``/tmp/pytest-of-.../lydia_test`` path into
+    # generated unit bakes that ``/tmp/pytest-of-.../alice_test`` path into
     # ``Environment="ALICE_HOME=..."``. Writing that to the developer's
     # real user systemd unit file silently breaks their gateway on the next
     # reboot (systemd loads the polluted env, the gateway looks at an empty
@@ -2912,8 +2912,8 @@ def refresh_systemd_unit_if_needed(system: bool = False) -> bool:
     # still works.
     if not system and (
         "/pytest-of-" in new_unit
-        or '/lydia_test"' in new_unit
-        or "/lydia_test/" in new_unit
+        or '/alice_test"' in new_unit
+        or "/alice_test/" in new_unit
     ):
         return False
 
@@ -3039,7 +3039,7 @@ def _print_system_scope_remediation(action: str) -> None:
 
 def _get_restart_drain_timeout() -> float:
     """Return the configured gateway restart drain timeout in seconds."""
-    raw = os.getenv("LYDIA_RESTART_DRAIN_TIMEOUT", "").strip()
+    raw = os.getenv("ALICE_RESTART_DRAIN_TIMEOUT", "").strip()
     if not raw:
         cfg = read_raw_config()
         agent_cfg = cfg.get("agent", {}) if isinstance(cfg, dict) else {}
@@ -3653,11 +3653,11 @@ def generate_launchd_plist() -> str:
     # _stable_service_working_dir() for the rationale (same rot risk applies
     # to launchd's WorkingDirectory as to systemd's).
     working_dir = _stable_service_working_dir()
-    lydia_home = str(get_alice_home().resolve())
+    alice_home = str(get_alice_home().resolve())
     log_dir = get_alice_home() / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     label = get_launchd_label()
-    profile_arg = _profile_arg(lydia_home)
+    profile_arg = _profile_arg(alice_home)
     # Build a sane PATH for the launchd plist.  launchd provides only a
     # minimal default (/usr/bin:/bin:/usr/sbin:/sbin) which misses Homebrew,
     # nvm, cargo, etc.  We prepend venv/bin and node_modules/.bin (matching
@@ -3719,7 +3719,7 @@ def generate_launchd_plist() -> str:
         <key>VIRTUAL_ENV</key>
         <string>{venv_dir}</string>
         <key>ALICE_HOME</key>
-        <string>{lydia_home}</string>
+        <string>{alice_home}</string>
     </dict>
 
     <key>LimitLoadToSessionType</key>
@@ -4223,11 +4223,11 @@ def _running_under_gateway_supervisor() -> bool:
         marker ``gateway/run.py`` already uses to pick the restart path).
       - launchd sets ``XPC_SERVICE_NAME`` to the job label for jobs it spawns;
         interactive shells inherit the sentinel ``"0"`` instead.
-      - the s6-overlay container longrun exports ``LYDIA_S6_SUPERVISED_CHILD``.
+      - the s6-overlay container longrun exports ``ALICE_S6_SUPERVISED_CHILD``.
     """
     if os.environ.get("INVOCATION_ID"):
         return True
-    if os.environ.get("LYDIA_S6_SUPERVISED_CHILD"):
+    if os.environ.get("ALICE_S6_SUPERVISED_CHILD"):
         return True
     xpc_service = os.environ.get("XPC_SERVICE_NAME", "")
     if xpc_service and xpc_service != "0":
@@ -4391,7 +4391,7 @@ def _guard_official_docker_root_gateway() -> None:
     """Refuse gateway startup when the official Docker privilege drop was bypassed."""
     if not hasattr(os, "geteuid") or os.geteuid() != 0:
         return
-    if _truthy_env(os.getenv("LYDIA_ALLOW_ROOT_GATEWAY")):
+    if _truthy_env(os.getenv("ALICE_ALLOW_ROOT_GATEWAY")):
         return
     if not _is_official_docker_checkout():
         return
@@ -4409,7 +4409,7 @@ def _guard_official_docker_root_gateway() -> None:
         "$ALICE_HOME and break later non-root dashboard/gateway runs."
     )
     print(
-        "  Set LYDIA_ALLOW_ROOT_GATEWAY=1 only if you intentionally accept this risk."
+        "  Set ALICE_ALLOW_ROOT_GATEWAY=1 only if you intentionally accept this risk."
     )
     sys.exit(1)
 
@@ -4435,7 +4435,7 @@ def run_gateway(verbose: int = 0, quiet: bool = False, replace: bool = False, fo
     # Detached Windows gateway runs must ignore console-control broadcasts
     # from sibling CLI processes, but foreground `alice gateway run` still
     # needs to obey the banner's "Press Ctrl+C to stop" contract.
-    # Service-style launchers set LYDIA_GATEWAY_DETACHED=1; older wrappers
+    # Service-style launchers set ALICE_GATEWAY_DETACHED=1; older wrappers
     # without the marker are handled by the non-TTY fallback.
     try:
         _stdin_is_tty = bool(sys.stdin and sys.stdin.isatty())
@@ -4508,14 +4508,14 @@ def run_gateway(verbose: int = 0, quiet: bool = False, replace: bool = False, fo
     # the next silent death yields evidence instead of a mystery. This
     # is diagnostic scaffolding; cheap to keep on, costs nothing during
     # normal operation, and the emitted lines are opt-in via the
-    # LYDIA_GATEWAY_EXIT_DIAG env var (default: on while we're still
+    # ALICE_GATEWAY_EXIT_DIAG env var (default: on while we're still
     # chasing the Windows lifecycle bug).
     import atexit as _atexit
     import traceback as _traceback
     from datetime import datetime as _dt, timezone as _tz
 
     def _exit_diag(tag: str, **extra: object) -> None:
-        if os.environ.get("LYDIA_GATEWAY_EXIT_DIAG", "1") != "1":
+        if os.environ.get("ALICE_GATEWAY_EXIT_DIAG", "1") != "1":
             return
         try:
             from alice_constants import get_alice_home as _ghh
@@ -6148,24 +6148,24 @@ def _maybe_redirect_run_to_s6_supervision(args) -> bool:
       1. ``_dispatch_via_service_manager_if_s6`` returns False unless
          we're in a container with s6 as PID 1. Host runs of
          ``alice gateway run`` are unaffected.
-      2. ``LYDIA_S6_SUPERVISED_CHILD`` is exported by
+      2. ``ALICE_S6_SUPERVISED_CHILD`` is exported by
          ``S6ServiceManager._render_run_script`` for the supervised
          process itself — i.e. when s6-supervise execs ``alice gateway
          run --replace`` as a longrun, this guard short-circuits the
          redirect so the supervised gateway actually runs in
          foreground (otherwise we'd recurse: run → start → run → start
          → ...).
-      3. ``--no-supervise`` (or ``LYDIA_GATEWAY_NO_SUPERVISE=1``) opts
+      3. ``--no-supervise`` (or ``ALICE_GATEWAY_NO_SUPERVISE=1``) opts
          out for users who genuinely want pre-s6 semantics — CI smoke
          tests, debugging the foreground startup path, etc.
 
     Returns True iff dispatched (caller should ``return``).
     """
     no_supervise = getattr(args, "no_supervise", False) or \
-        os.environ.get("LYDIA_GATEWAY_NO_SUPERVISE", "").lower() in ("1", "true", "yes")
+        os.environ.get("ALICE_GATEWAY_NO_SUPERVISE", "").lower() in ("1", "true", "yes")
     if no_supervise:
         return False
-    if os.environ.get("LYDIA_S6_SUPERVISED_CHILD"):
+    if os.environ.get("ALICE_S6_SUPERVISED_CHILD"):
         # We ARE the supervised child s6-supervise is running. Fall
         # through to the foreground code path so the gateway actually
         # starts.
@@ -6180,10 +6180,10 @@ def _maybe_redirect_run_to_s6_supervision(args) -> bool:
     # gateway's own stdout/stderr from the supervisor.
     print(
         "→ gateway is now running under s6 supervision (auto-restart on crash,\n"
-        "  dashboard supervised alongside if LYDIA_DASHBOARD is set).\n"
+        "  dashboard supervised alongside if ALICE_DASHBOARD is set).\n"
         "  This is the recommended setup for the s6 container image — the\n"
         "  gateway will keep running even if it crashes.\n"
-        "  Use `--no-supervise` (or LYDIA_GATEWAY_NO_SUPERVISE=1) to opt out\n"
+        "  Use `--no-supervise` (or ALICE_GATEWAY_NO_SUPERVISE=1) to opt out\n"
         "  and get the pre-s6 foreground behavior instead.",
         file=sys.stderr,
         flush=True,
@@ -6486,7 +6486,7 @@ def _gateway_command_inner(args):
     elif subcmd == "stop":
         # Defense: refuse self-targeting gateway stop from inside the gateway.
         # Prevents agent-initiated kill loops when combined with supervisor KeepAlive.
-        if os.getenv("_LYDIA_GATEWAY") == "1":
+        if os.getenv("_ALICE_GATEWAY") == "1":
             print_error(
                 "Refusing to stop the gateway from inside the gateway process.\n"
                 "This command was blocked to prevent restart loops.\n"
@@ -6579,7 +6579,7 @@ def _gateway_command_inner(args):
     elif subcmd == "restart":
         # Defense: refuse self-targeting gateway restart from inside the gateway.
         # Prevents agent-initiated kill loops when combined with supervisor KeepAlive.
-        if os.getenv("_LYDIA_GATEWAY") == "1":
+        if os.getenv("_ALICE_GATEWAY") == "1":
             print_error(
                 "Refusing to restart the gateway from inside the gateway process.\n"
                 "This command was blocked to prevent restart loops.\n"

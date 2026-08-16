@@ -282,7 +282,7 @@ SILENCE_RMS_THRESHOLD = 200  # RMS below this = silence (int16 range 0-32767)
 SILENCE_DURATION_SECONDS = 3.0  # Seconds of continuous silence before auto-stop
 
 # Temp directory for voice recordings
-_TEMP_DIR = os.path.join(tempfile.gettempdir(), "lydia_voice")
+_TEMP_DIR = os.path.join(tempfile.gettempdir(), "alice_voice")
 
 
 # ============================================================================

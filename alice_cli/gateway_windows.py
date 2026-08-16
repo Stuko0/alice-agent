@@ -244,15 +244,15 @@ def _launch_elevated_install(
     start_on_login: bool | None = None,
 ) -> bool:
     """Launch an elevated gateway install via UAC and return True on handoff."""
-    old_start_now = os.environ.get("LYDIA_GATEWAY_INSTALL_START_NOW")
-    old_start_on_login = os.environ.get("LYDIA_GATEWAY_INSTALL_START_ON_LOGIN")
-    old_handoff = os.environ.get("LYDIA_GATEWAY_ELEVATED_HANDOFF")
+    old_start_now = os.environ.get("ALICE_GATEWAY_INSTALL_START_NOW")
+    old_start_on_login = os.environ.get("ALICE_GATEWAY_INSTALL_START_ON_LOGIN")
+    old_handoff = os.environ.get("ALICE_GATEWAY_ELEVATED_HANDOFF")
     try:
         if start_now is not None:
-            os.environ["LYDIA_GATEWAY_INSTALL_START_NOW"] = "1" if start_now else "0"
+            os.environ["ALICE_GATEWAY_INSTALL_START_NOW"] = "1" if start_now else "0"
         if start_on_login is not None:
-            os.environ["LYDIA_GATEWAY_INSTALL_START_ON_LOGIN"] = "1" if start_on_login else "0"
-        os.environ["LYDIA_GATEWAY_ELEVATED_HANDOFF"] = "1"
+            os.environ["ALICE_GATEWAY_INSTALL_START_ON_LOGIN"] = "1" if start_on_login else "0"
+        os.environ["ALICE_GATEWAY_ELEVATED_HANDOFF"] = "1"
         extra_args = ["--elevated-handoff"]
         if force:
             extra_args.append("--force")
@@ -263,9 +263,9 @@ def _launch_elevated_install(
         return _launch_elevated_gateway_command("install", extra_args)
     finally:
         for key, old in (
-            ("LYDIA_GATEWAY_INSTALL_START_NOW", old_start_now),
-            ("LYDIA_GATEWAY_INSTALL_START_ON_LOGIN", old_start_on_login),
-            ("LYDIA_GATEWAY_ELEVATED_HANDOFF", old_handoff),
+            ("ALICE_GATEWAY_INSTALL_START_NOW", old_start_now),
+            ("ALICE_GATEWAY_INSTALL_START_ON_LOGIN", old_start_on_login),
+            ("ALICE_GATEWAY_ELEVATED_HANDOFF", old_handoff),
         ):
             if old is None:
                 os.environ.pop(key, None)
@@ -381,7 +381,7 @@ def _stable_gateway_working_dir(project_root: Path) -> str:
 def _build_gateway_cmd_script(
     python_path: str,
     working_dir: str,
-    lydia_home: str,
+    alice_home: str,
     profile_arg: str,
 ) -> str:
     """Build the ``gateway.cmd`` wrapper content (CRLF-terminated).
@@ -398,9 +398,9 @@ def _build_gateway_cmd_script(
     """
     lines = ["@echo off", f"rem {_TASK_DESCRIPTION}"]
     lines.append(f"cd /d {_quote_cmd_script_arg(working_dir)}")
-    lines.append(f'set "ALICE_HOME={lydia_home}"')
+    lines.append(f'set "ALICE_HOME={alice_home}"')
     lines.append('set "PYTHONIOENCODING=utf-8"')
-    lines.append('set "LYDIA_GATEWAY_DETACHED=1"')
+    lines.append('set "ALICE_GATEWAY_DETACHED=1"')
     pythonw_path, venv_dir, extra_pythonpath = _resolve_detached_python(python_path)
     # VIRTUAL_ENV lets the gateway's own python detection find the venv
     # if someone imports alice_constants-based logic during startup.
@@ -440,7 +440,7 @@ def _quote_vbs_string(value: str) -> str:
 def _build_gateway_vbs_script(
     python_path: str,
     working_dir: str,
-    lydia_home: str,
+    alice_home: str,
     profile_arg: str,
 ) -> str:
     """Build a console-less ``gateway.vbs`` launcher (CRLF-terminated).
@@ -480,9 +480,9 @@ def _build_gateway_vbs_script(
         "Dim sh, env, existing_pp",
         'Set sh = CreateObject("WScript.Shell")',
         'Set env = sh.Environment("PROCESS")',
-        f"env.Item({_quote_vbs_string('ALICE_HOME')}) = {_quote_vbs_string(lydia_home)}",
+        f"env.Item({_quote_vbs_string('ALICE_HOME')}) = {_quote_vbs_string(alice_home)}",
         f"env.Item({_quote_vbs_string('PYTHONIOENCODING')}) = {_quote_vbs_string('utf-8')}",
-        f"env.Item({_quote_vbs_string('LYDIA_GATEWAY_DETACHED')}) = {_quote_vbs_string('1')}",
+        f"env.Item({_quote_vbs_string('ALICE_GATEWAY_DETACHED')}) = {_quote_vbs_string('1')}",
         f"env.Item({_quote_vbs_string('VIRTUAL_ENV')}) = {_quote_vbs_string(_preserve_alice_home_path(venv_dir))}",
         # Mirror the cmd wrapper's ``PYTHONPATH=<static>;%PYTHONPATH%``: chain onto
         # whatever PYTHONPATH the task environment already carries, at runtime.
@@ -537,10 +537,10 @@ def _write_task_script() -> Path:
 
     python_path = _preserve_alice_home_path(get_python_path())
     working_dir = _stable_gateway_working_dir(PROJECT_ROOT)
-    lydia_home = str(Path(get_alice_home()))
-    profile_arg = _profile_arg(lydia_home)
+    alice_home = str(Path(get_alice_home()))
+    profile_arg = _profile_arg(alice_home)
 
-    content = _build_gateway_cmd_script(python_path, working_dir, lydia_home, profile_arg)
+    content = _build_gateway_cmd_script(python_path, working_dir, alice_home, profile_arg)
     script_path = get_task_script_path()
     tmp = script_path.with_suffix(".tmp")
     tmp.write_text(content, encoding="utf-8", newline="")
@@ -549,7 +549,7 @@ def _write_task_script() -> Path:
     # Also render the console-less .vbs launcher used by Scheduled Task and the
     # Startup-folder fallback via wscript.exe (issue #45599 fix A). The .cmd
     # wrapper stays as a generated helper/compatibility artifact.
-    vbs_content = _build_gateway_vbs_script(python_path, working_dir, lydia_home, profile_arg)
+    vbs_content = _build_gateway_vbs_script(python_path, working_dir, alice_home, profile_arg)
     vbs_path = script_path.with_suffix(".vbs")
     vbs_tmp = vbs_path.with_name(vbs_path.name + ".tmp")
     vbs_tmp.write_text(vbs_content, encoding="utf-8", newline="")
@@ -786,8 +786,8 @@ def _build_gateway_argv() -> tuple[list[str], str, dict[str, str]]:
     )
     project_root = _preserve_alice_home_path(PROJECT_ROOT)
     working_dir = _stable_gateway_working_dir(PROJECT_ROOT)
-    lydia_home = str(Path(get_alice_home()))
-    profile_arg = _profile_arg(lydia_home)
+    alice_home = str(Path(get_alice_home()))
+    profile_arg = _profile_arg(alice_home)
 
     argv = [python_exe, "-m", "alice_cli.main"]
     if profile_arg:
@@ -795,9 +795,9 @@ def _build_gateway_argv() -> tuple[list[str], str, dict[str, str]]:
     argv.extend(["gateway", "run"])
 
     env_overlay = {
-        "ALICE_HOME": lydia_home,
+        "ALICE_HOME": alice_home,
         "PYTHONIOENCODING": "utf-8",
-        "LYDIA_GATEWAY_DETACHED": "1",
+        "ALICE_GATEWAY_DETACHED": "1",
         "VIRTUAL_ENV": _preserve_alice_home_path(venv_dir),
     }
     _prepend_pythonpath(
@@ -862,17 +862,17 @@ def windowless_gateway_restart_spec(
     working_dir = _stable_gateway_working_dir(PROJECT_ROOT)
     project_root = str(PROJECT_ROOT)
     try:
-        lydia_home = str(Path(get_alice_home()).resolve())
+        alice_home = str(Path(get_alice_home()).resolve())
     except Exception:
-        lydia_home = ""
+        alice_home = ""
 
     env_overlay: dict[str, str] = {
         "PYTHONIOENCODING": "utf-8",
-        "LYDIA_GATEWAY_DETACHED": "1",
+        "ALICE_GATEWAY_DETACHED": "1",
         "VIRTUAL_ENV": str(venv_dir),
     }
-    if lydia_home:
-        env_overlay["ALICE_HOME"] = lydia_home
+    if alice_home:
+        env_overlay["ALICE_HOME"] = alice_home
     _prepend_pythonpath(
         env_overlay,
         [project_root, *extra_pythonpath] if extra_pythonpath else [project_root],
@@ -973,8 +973,8 @@ def _prompt_install_choices(
     start_on_login: bool | None = None,
 ) -> tuple[bool, bool]:
     """Return (start_now, start_on_login), asking before any UAC escalation."""
-    env_start_now = _install_choice_from_env("LYDIA_GATEWAY_INSTALL_START_NOW")
-    env_start_on_login = _install_choice_from_env("LYDIA_GATEWAY_INSTALL_START_ON_LOGIN")
+    env_start_now = _install_choice_from_env("ALICE_GATEWAY_INSTALL_START_NOW")
+    env_start_on_login = _install_choice_from_env("ALICE_GATEWAY_INSTALL_START_ON_LOGIN")
     if start_now is None:
         start_now = env_start_now
     if start_on_login is None:
@@ -1179,11 +1179,11 @@ def _report_gateway_start(via: str) -> None:
 def _print_next_steps() -> None:
     from alice_cli.config import get_alice_home
 
-    lydia_home = Path(get_alice_home())
+    alice_home = Path(get_alice_home())
     print()
     print("Next steps:")
     print("  alice gateway status                      # Check status")
-    print(f"  type {lydia_home}\\logs\\gateway.log       # View logs")
+    print(f"  type {alice_home}\\logs\\gateway.log       # View logs")
 
 
 def uninstall() -> None:

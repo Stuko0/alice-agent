@@ -1135,7 +1135,7 @@ def run_conversation(
                 except Exception:
                     pass
 
-                if env_var_enabled("LYDIA_DUMP_REQUESTS"):
+                if env_var_enabled("ALICE_DUMP_REQUESTS"):
                     agent._dump_api_request_debug(api_kwargs, reason="preflight")
 
                 # Always prefer the streaming path — even without stream

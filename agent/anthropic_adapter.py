@@ -1380,7 +1380,7 @@ _OAUTH_TOKEN_URLS = [
 _OAUTH_TOKEN_URL = _OAUTH_TOKEN_URLS[0]
 _OAUTH_REDIRECT_URI = "https://console.anthropic.com/oauth/code/callback"
 _OAUTH_SCOPES = "org:create_api_key user:profile user:inference"
-_LYDIA_OAUTH_FILE = get_alice_home() / ".anthropic_oauth.json"
+_ALICE_OAUTH_FILE = get_alice_home() / ".anthropic_oauth.json"
 
 
 def _generate_pkce() -> tuple:
@@ -1525,9 +1525,9 @@ def run_alice_oauth_login_pure() -> Optional[Dict[str, Any]]:
 
 def read_alice_oauth_credentials() -> Optional[Dict[str, Any]]:
     """Read Alice-managed OAuth credentials from ~/.alice/.anthropic_oauth.json."""
-    if _LYDIA_OAUTH_FILE.exists():
+    if _ALICE_OAUTH_FILE.exists():
         try:
-            data = json.loads(_LYDIA_OAUTH_FILE.read_text(encoding="utf-8"))
+            data = json.loads(_ALICE_OAUTH_FILE.read_text(encoding="utf-8"))
             if data.get("accessToken"):
                 return data
         except (json.JSONDecodeError, OSError, IOError) as e:

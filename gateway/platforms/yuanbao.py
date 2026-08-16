@@ -78,7 +78,7 @@ from gateway.platforms.yuanbao_proto import (
     _parse_fields,
     WS_HEARTBEAT_RUNNING,
     WS_HEARTBEAT_FINISH,
-    LYDIA_INSTANCE_ID,
+    ALICE_INSTANCE_ID,
     decode_conn_msg,
     decode_inbound_push,
     decode_forward_msg_data,
@@ -103,13 +103,13 @@ logger = logging.getLogger(__name__)
 # Version / platform constants (used in AUTH_BIND and sign-token headers)
 # ---------------------------------------------------------------------------
 try:
-    from alice_cli import __version__ as _LYDIA_VERSION
+    from alice_cli import __version__ as _ALICE_VERSION
 except ImportError:
-    _LYDIA_VERSION = "0.0.0"
+    _ALICE_VERSION = "0.0.0"
 
-_APP_VERSION = _LYDIA_VERSION
-_BOT_VERSION = _LYDIA_VERSION
-_YUANBAO_INSTANCE_ID = str(LYDIA_INSTANCE_ID)  # single source: yuanbao_proto.LYDIA_INSTANCE_ID
+_APP_VERSION = _ALICE_VERSION
+_BOT_VERSION = _ALICE_VERSION
+_YUANBAO_INSTANCE_ID = str(ALICE_INSTANCE_ID)  # single source: yuanbao_proto.ALICE_INSTANCE_ID
 _OPERATION_SYSTEM = sys.platform
 
 # ---------------------------------------------------------------------------

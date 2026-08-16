@@ -254,18 +254,18 @@ def setup_isolated_home(enabled: bool) -> Path:
     Also reads OPENROUTER_API_KEY from the user's real ``~/.alice/.env`` so
     the agent can authenticate against OpenRouter inside the isolated home.
     """
-    home_dir = Path(tempfile.mkdtemp(prefix="lydia_ts_live_"))
-    lydia_home = home_dir / ".alice"
-    lydia_home.mkdir(parents=True)
+    home_dir = Path(tempfile.mkdtemp(prefix="alice_ts_live_"))
+    alice_home = home_dir / ".alice"
+    alice_home.mkdir(parents=True)
 
     if ORIGINAL_AUTH.exists():
-        shutil.copy(ORIGINAL_AUTH, lydia_home / "auth.json")
+        shutil.copy(ORIGINAL_AUTH, alice_home / "auth.json")
 
     # Copy .env so OPENROUTER_API_KEY (or others) are visible to the agent
     # running inside the isolated home.
     real_env_file = Path.home() / ".alice" / ".env"
     if real_env_file.exists():
-        shutil.copy(real_env_file, lydia_home / ".env")
+        shutil.copy(real_env_file, alice_home / ".env")
         # Also load the real user env into this process so the provider
         # resolver can authenticate. We go through the canonical loader
         # (python-dotenv under the hood) rather than parsing the file by
@@ -273,7 +273,7 @@ def setup_isolated_home(enabled: bool) -> Path:
         # this module, which both avoids a hand-rolled parser bug and keeps
         # static analysis from tainting the transcript records with the key.
         from alice_cli.env_loader import load_alice_dotenv
-        load_alice_dotenv(lydia_home=str(Path.home() / ".alice"))
+        load_alice_dotenv(alice_home=str(Path.home() / ".alice"))
 
     cfg = {
         "model": {
@@ -290,8 +290,8 @@ def setup_isolated_home(enabled: bool) -> Path:
         },
         "logging": {"level": "WARNING"},
     }
-    (lydia_home / "config.yaml").write_text(_yaml_dump(cfg), encoding="utf-8")
-    return lydia_home
+    (alice_home / "config.yaml").write_text(_yaml_dump(cfg), encoding="utf-8")
+    return alice_home
 
 
 def _yaml_dump(obj: Any) -> str:

@@ -516,7 +516,7 @@ def resolve_requested_provider(requested: Optional[str] = None) -> str:
 
     # Prefer the persisted config selection over any stale shell/.env
     # provider override so chat uses the endpoint the user last saved.
-    env_provider = _getenv("LYDIA_INFERENCE_PROVIDER", "").strip().lower()
+    env_provider = _getenv("ALICE_INFERENCE_PROVIDER", "").strip().lower()
     if env_provider:
         return env_provider
 
@@ -814,7 +814,7 @@ def canonical_custom_identity(
        (the one fact that always survives the persistence round-trip when a
        URL was recorded).
     2. ``config_provider`` — the active ``config.model.provider`` (or its
-       ``provider``/``LYDIA_INFERENCE_PROVIDER`` equivalent). When the agent
+       ``provider``/``ALICE_INFERENCE_PROVIDER`` equivalent). When the agent
        was built without a base_url on the override (the recurring
        Desktop/TUI regression vector), the configured provider is the only
        durable identity left, so fall back to it when it names a real entry.
@@ -837,7 +837,7 @@ def canonical_custom_identity(
         except Exception:
             candidate = ""
     if not candidate:
-        candidate = os.environ.get("LYDIA_INFERENCE_PROVIDER", "").strip()
+        candidate = os.environ.get("ALICE_INFERENCE_PROVIDER", "").strip()
 
     candidate_norm = _normalize_custom_provider_name(candidate)
     # A bare/non-routable candidate cannot heal a bare custom override.
@@ -1373,14 +1373,14 @@ def _resolve_explicit_runtime(
             str(state.get("agent_key") or "").strip()
             if _agent_key_is_usable(
                 state,
-                max(60, env_int("LYDIA_NOUS_MIN_KEY_TTL_SECONDS", 1800)),
+                max(60, env_int("ALICE_NOUS_MIN_KEY_TTL_SECONDS", 1800)),
             )
             else ""
         )
         expires_at = state.get("agent_key_expires_at") or state.get("expires_at")
         if not api_key:
             creds = resolve_nous_runtime_credentials(
-                timeout_seconds=float(_getenv("LYDIA_NOUS_TIMEOUT_SECONDS", "15")),
+                timeout_seconds=float(_getenv("ALICE_NOUS_TIMEOUT_SECONDS", "15")),
             )
             api_key = creds.get("api_key", "")
             expires_at = creds.get("expires_at")
@@ -1619,7 +1619,7 @@ def resolve_runtime_provider(
         # expired/missing, refresh the selected pool entry before falling back
         # to singleton auth resolution.
         if provider == "nous" and entry is not None:
-            min_ttl = max(60, env_int("LYDIA_NOUS_MIN_KEY_TTL_SECONDS", 1800))
+            min_ttl = max(60, env_int("ALICE_NOUS_MIN_KEY_TTL_SECONDS", 1800))
             nous_state = {
                 "agent_key": getattr(entry, "agent_key", None),
                 "agent_key_expires_at": getattr(entry, "agent_key_expires_at", None),
@@ -1659,7 +1659,7 @@ def resolve_runtime_provider(
     if provider == "nous":
         try:
             creds = resolve_nous_runtime_credentials(
-                timeout_seconds=float(_getenv("LYDIA_NOUS_TIMEOUT_SECONDS", "15")),
+                timeout_seconds=float(_getenv("ALICE_NOUS_TIMEOUT_SECONDS", "15")),
             )
             return {
                 "provider": "nous",

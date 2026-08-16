@@ -59,9 +59,9 @@ def get_env_value(name: str, default=None):
     xAI credential resolver.
     """
     try:
-        from alice_cli.config import get_env_value as _lydia_get_env_value
+        from alice_cli.config import get_env_value as _alice_get_env_value
 
-        value = _lydia_get_env_value(name)
+        value = _alice_get_env_value(name)
         if value is not None:
             return value
     except Exception:

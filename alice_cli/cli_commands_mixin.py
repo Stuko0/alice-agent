@@ -865,7 +865,7 @@ class CLICommandsMixin:
         try:
             self._session_db.create_session(
                 session_id=new_session_id,
-                source=os.environ.get("LYDIA_SESSION_SOURCE", "cli"),
+                source=os.environ.get("ALICE_SESSION_SOURCE", "cli"),
                 model=self.model,
                 model_config={
                     "max_iterations": self.max_turns,
@@ -2253,7 +2253,7 @@ class CLICommandsMixin:
             "#! Compose your prompt below. Lines starting with '#!' are ignored.\n"
             "#! Save and quit to send; leave empty to cancel.\n\n"
         )
-        fd, path = tempfile.mkstemp(suffix=".md", prefix="lydia_prompt_")
+        fd, path = tempfile.mkstemp(suffix=".md", prefix="alice_prompt_")
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 fh.write(header)

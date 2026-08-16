@@ -341,9 +341,9 @@ def render_skill_page(
     # Heuristic nicer title from name
     display_name = name.replace("-", " ").replace("_", " ").title()
 
-    lydia_meta = (fm.get("metadata") or {}).get("alice") or {}
-    tags = lydia_meta.get("tags") or []
-    related = lydia_meta.get("related_skills") or []
+    alice_meta = (fm.get("metadata") or {}).get("alice") or {}
+    tags = alice_meta.get("tags") or []
+    related = alice_meta.get("related_skills") or []
     platforms = fm.get("platforms")
     version = fm.get("version")
     author = fm.get("author")

@@ -27,10 +27,10 @@ from tools.interrupt import is_interrupted
 logger = logging.getLogger(__name__)
 
 # Opt-in debug tracing for the interrupt/activity/poll machinery.  Set
-# LYDIA_DEBUG_INTERRUPT=1 to log loop entry/exit, periodic heartbeats, and
+# ALICE_DEBUG_INTERRUPT=1 to log loop entry/exit, periodic heartbeats, and
 # every is_interrupted() state change from _wait_for_process.  Off by default
 # to avoid flooding production gateway logs.
-_DEBUG_INTERRUPT = bool(os.getenv("LYDIA_DEBUG_INTERRUPT"))
+_DEBUG_INTERRUPT = bool(os.getenv("ALICE_DEBUG_INTERRUPT"))
 
 if _DEBUG_INTERRUPT:
     # AIAgent's quiet_mode path (run_agent.py) forces the `tools` logger to
@@ -279,7 +279,7 @@ class _ThreadedProcessHandle:
 
 
 def _cwd_marker(session_id: str) -> str:
-    return f"__LYDIA_CWD_{session_id}__"
+    return f"__ALICE_CWD_{session_id}__"
 
 
 # ---------------------------------------------------------------------------
@@ -403,8 +403,8 @@ class BaseEnvironment(ABC):
             # ``declare -f`` with no name args dumps ALL functions, so an empty
             # name list (only private funcs present) would otherwise leak the
             # very functions we meant to drop.
-            f"__lydia_fns=$(declare -F | awk '{{print $3}}' | grep -vE '^_[^_]') || true\n"
-            f"[ -n \"$__lydia_fns\" ] && declare -f $__lydia_fns "
+            f"__alice_fns=$(declare -F | awk '{{print $3}}' | grep -vE '^_[^_]') || true\n"
+            f"[ -n \"$__alice_fns\" ] && declare -f $__alice_fns "
             f">> {_snap_tmp} 2>/dev/null || true\n"
             f"alias -p >> {_snap_tmp}\n"
             f"echo 'shopt -s expand_aliases' >> {_snap_tmp}\n"
@@ -496,7 +496,7 @@ class BaseEnvironment(ABC):
 
         # Run the actual command
         parts.append(f"eval '{escaped}'")
-        parts.append("__lydia_ec=$?")
+        parts.append("__alice_ec=$?")
 
         # Re-dump env vars to snapshot (atomic replacement to avoid races).
         # Chain mv on the export succeeding so a failed/partial dump never
@@ -517,7 +517,7 @@ class BaseEnvironment(ABC):
         parts.append(
             f"printf '\\n{self._cwd_marker}%s{self._cwd_marker}\\n' \"$(pwd -P)\""
         )
-        parts.append("exit $__lydia_ec")
+        parts.append("exit $__alice_ec")
 
         return "\n".join(parts)
 
@@ -528,7 +528,7 @@ class BaseEnvironment(ABC):
     @staticmethod
     def _embed_stdin_heredoc(command: str, stdin_data: str) -> str:
         """Append stdin_data as a shell heredoc to the command string."""
-        delimiter = f"LYDIA_STDIN_{uuid.uuid4().hex[:12]}"
+        delimiter = f"ALICE_STDIN_{uuid.uuid4().hex[:12]}"
         return f"{command} << '{delimiter}'\n{stdin_data}\n{delimiter}"
 
     # ------------------------------------------------------------------
@@ -686,7 +686,7 @@ class BaseEnvironment(ABC):
             "start": _now,
         }
 
-        # --- Debug tracing (opt-in via LYDIA_DEBUG_INTERRUPT=1) -------------
+        # --- Debug tracing (opt-in via ALICE_DEBUG_INTERRUPT=1) -------------
         # Captures loop entry/exit, interrupt state changes, and periodic
         # heartbeats so we can diagnose "agent never sees the interrupt"
         # reports without reproducing locally.
@@ -830,7 +830,7 @@ class BaseEnvironment(ABC):
         self._extract_cwd_from_output(result)
 
     def _extract_cwd_from_output(self, result: dict):
-        """Parse the __LYDIA_CWD_{session}__ marker from stdout output.
+        """Parse the __ALICE_CWD_{session}__ marker from stdout output.
 
         Updates self.cwd and strips the marker from result["output"].
         Used by remote backends (Docker, SSH, Modal, Daytona, Singularity).

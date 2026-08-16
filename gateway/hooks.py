@@ -122,7 +122,7 @@ class HookRegistry:
                 # in the handler). Without this, a handler that declares a
                 # Pydantic BaseModel for webhook/event payloads fails at first
                 # dispatch with "TypeAdapter ... is not fully defined".
-                module_name = f"lydia_hook_{hook_name}"
+                module_name = f"alice_hook_{hook_name}"
                 spec = importlib.util.spec_from_file_location(
                     module_name, handler_path
                 )

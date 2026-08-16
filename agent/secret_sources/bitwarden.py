@@ -6,7 +6,7 @@ so they don't have to live in plaintext in ``~/.alice/.env``.
 Design summary
 --------------
 
-* The ``bws`` binary is auto-installed into ``<lydia_home>/bin/bws`` on
+* The ``bws`` binary is auto-installed into ``<alice_home>/bin/bws`` on
   first use.  Alice pins one version (``_BWS_VERSION``) and downloads
   the matching asset from the official GitHub Releases page, verifying
   the SHA-256 against the release's published checksum file.
@@ -78,7 +78,7 @@ _CACHE: Dict[_CacheKey, "_CachedFetch"] = {}
 # fetches WITHIN one process; this saves repeated fetches ACROSS processes.
 #
 # Layout: one JSON object per cache key, written atomically with mode 0600 in
-# <lydia_home>/cache/bws_cache.json. The file holds only the secret VALUES,
+# <alice_home>/cache/bws_cache.json. The file holds only the secret VALUES,
 # never the access token. It's plaintext-equivalent to ~/.alice/.env (which
 # we already accept) but kept out of the .env file so users editing it won't
 # accidentally commit BSM-sourced secrets.
@@ -86,7 +86,7 @@ _DISK_CACHE_BASENAME = "bws_cache.json"
 
 
 def _disk_cache_path(home_path: Optional[Path] = None) -> Path:
-    """Return the disk cache path under lydia_home/cache/.
+    """Return the disk cache path under alice_home/cache/.
 
     `home_path` is what `load_alice_dotenv()` already resolved; falling back
     to `$ALICE_HOME` / `~/.alice` keeps direct callers working too.
@@ -217,7 +217,7 @@ def find_bws(*, install_if_missing: bool = False) -> Optional[Path]:
     """Return a path to a usable ``bws`` binary, or None.
 
     Resolution order:
-      1. ``<lydia_home>/bin/bws``  (our managed copy — preferred)
+      1. ``<alice_home>/bin/bws``  (our managed copy — preferred)
       2. ``shutil.which("bws")``    (system PATH)
 
     When ``install_if_missing`` is True and neither resolves, this calls
@@ -458,7 +458,7 @@ def fetch_bitwarden_secrets(
 
     Caching is a two-layer LRU: an in-process dict (for hot-reload paths
     inside one process) and a disk-persisted JSON file under
-    ``<lydia_home>/cache/bws_cache.json`` (for back-to-back CLI invocations).
+    ``<alice_home>/cache/bws_cache.json`` (for back-to-back CLI invocations).
     Both share the same TTL.  Pass ``home_path`` so disk cache lookups find
     the right directory in tests / non-standard installs; otherwise we fall
     back to ``$ALICE_HOME`` / ``~/.alice``.

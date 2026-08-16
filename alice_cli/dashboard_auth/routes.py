@@ -58,7 +58,7 @@ def _redirect_uri(request: Request) -> str:
 
     Three resolution tiers:
 
-      1. ``LYDIA_DASHBOARD_PUBLIC_URL`` env var or
+      1. ``ALICE_DASHBOARD_PUBLIC_URL`` env var or
          ``dashboard.public_url`` in config.yaml — when set, this is
          the complete authority (scheme + host + optional path prefix)
          and we append ``/auth/callback`` verbatim. ``X-Forwarded-Prefix``
@@ -217,7 +217,7 @@ async def auth_login(request: Request, provider: str, next: str = ""):
     # Pack the provider name into the PKCE cookie so the callback can
     # find it without a separate cookie. Provider may or may not have
     # already included a ``provider=`` segment.
-    pkce = ls.cookie_payload.get("lydia_session_pkce", "")
+    pkce = ls.cookie_payload.get("alice_session_pkce", "")
     if "provider=" not in pkce:
         pkce = f"provider={provider};{pkce}" if pkce else f"provider={provider}"
     # Carry ``next=`` through the round trip in the PKCE cookie. Real

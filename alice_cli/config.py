@@ -163,14 +163,14 @@ _ENV_VAR_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 #   ``$EDITOR``.
 # * ``SHELL`` — what subprocess uses with ``shell=True`` (we try to
 #   avoid that, but defense in depth).
-# * ``ALICE_HOME`` / ``LYDIA_PROFILE`` / ``LYDIA_CONFIG`` /
-#   ``LYDIA_ENV`` — Alice runtime location flags. Writing these into
+# * ``ALICE_HOME`` / ``ALICE_PROFILE`` / ``ALICE_CONFIG`` /
+#   ``ALICE_ENV`` — Alice runtime location flags. Writing these into
 #   ``.env`` would relocate state in ways the user did not request from
 #   the dashboard. ``config.yaml`` is the supported surface for these.
 #
-# IMPORTANT: ``LYDIA_*`` overall is NOT blocked. Many legitimate
-# integration credentials follow that prefix (LYDIA_LANGFUSE_PUBLIC_KEY,
-# LYDIA_SPOTIFY_CLIENT_ID, ...). The
+# IMPORTANT: ``ALICE_*`` overall is NOT blocked. Many legitimate
+# integration credentials follow that prefix (ALICE_LANGFUSE_PUBLIC_KEY,
+# ALICE_SPOTIFY_CLIENT_ID, ...). The
 # denylist is name-by-name on purpose so the gate stays narrow and
 # doesn't accidentally break provider setup wizards.
 #
@@ -193,9 +193,9 @@ _ENV_VAR_NAME_DENYLIST: frozenset[str] = frozenset({
     # Git
     "GIT_SSH_COMMAND", "GIT_EXEC_PATH", "GIT_SHELL",
     # Alice runtime location — never via dashboard env writer.
-    # NOT a LYDIA_* blanket: integration credentials (LYDIA_GEMINI_*,
-    # LYDIA_LANGFUSE_*, LYDIA_SPOTIFY_*, ...) ARE allowed.
-    "ALICE_HOME", "LYDIA_PROFILE", "LYDIA_CONFIG", "LYDIA_ENV",
+    # NOT a ALICE_* blanket: integration credentials (ALICE_GEMINI_*,
+    # ALICE_LANGFUSE_*, ALICE_SPOTIFY_*, ...) ARE allowed.
+    "ALICE_HOME", "ALICE_PROFILE", "ALICE_CONFIG", "ALICE_ENV",
 })
 
 
@@ -210,7 +210,7 @@ def _reject_denylisted_env_var(key: str) -> None:
             f"Environment variable {key!r} is on the writer denylist. "
             "Names that influence subprocess execution (LD_PRELOAD, "
             "PYTHONPATH, PATH, EDITOR, ...) or Alice runtime location "
-            "(ALICE_HOME, LYDIA_PROFILE, ...) cannot be persisted via "
+            "(ALICE_HOME, ALICE_PROFILE, ...) cannot be persisted via "
             "the env writer. If you really need this, edit "
             "~/.alice/.env directly."
         )
@@ -277,7 +277,7 @@ _EXTRA_ENV_KEYS = frozenset({
     # config.yaml. Kept known here so .env sanitization/reload still handle
     # them for existing users (gateway reads them as a back-compat fallback),
     # without surfacing them in user-facing OPTIONAL_ENV_VARS listings.
-    "LYDIA_TOOL_PROGRESS", "LYDIA_TOOL_PROGRESS_MODE",
+    "ALICE_TOOL_PROGRESS", "ALICE_TOOL_PROGRESS_MODE",
     "WHATSAPP_MODE", "WHATSAPP_ENABLED",
     "MATTERMOST_HOME_CHANNEL", "MATTERMOST_HOME_CHANNEL_NAME", "MATTERMOST_REPLY_MODE",
     "MATRIX_PASSWORD", "MATRIX_ENCRYPTION", "MATRIX_DEVICE_ID", "MATRIX_HOME_ROOM",
@@ -287,11 +287,11 @@ _EXTRA_ENV_KEYS = frozenset({
     # Activation is via plugins.enabled (opt-in through `alice plugins enable
     # observability/langfuse` or `alice native → Langfuse`); credentials gate
     # the plugin at runtime.
-    "LYDIA_LANGFUSE_ENV",
-    "LYDIA_LANGFUSE_RELEASE",
-    "LYDIA_LANGFUSE_SAMPLE_RATE",
-    "LYDIA_LANGFUSE_MAX_CHARS",
-    "LYDIA_LANGFUSE_DEBUG",
+    "ALICE_LANGFUSE_ENV",
+    "ALICE_LANGFUSE_RELEASE",
+    "ALICE_LANGFUSE_SAMPLE_RATE",
+    "ALICE_LANGFUSE_MAX_CHARS",
+    "ALICE_LANGFUSE_DEBUG",
     "LANGFUSE_PUBLIC_KEY",
     "LANGFUSE_SECRET_KEY",
     "LANGFUSE_BASE_URL",
@@ -317,7 +317,7 @@ _MANAGED_SYSTEM_NAMES = {
 
 def get_managed_system() -> Optional[str]:
     """Return the package manager owning this install, if any."""
-    raw = os.getenv("LYDIA_MANAGED", "").strip()
+    raw = os.getenv("ALICE_MANAGED", "").strip()
     if raw:
         normalized = raw.lower()
         if normalized in _MANAGED_TRUE_VALUES:
@@ -333,7 +333,7 @@ def get_managed_system() -> Optional[str]:
 def is_managed() -> bool:
     """Check if Alice is running in package-manager-managed mode.
 
-    Two signals: the LYDIA_MANAGED env var (set by the systemd service),
+    Two signals: the ALICE_MANAGED env var (set by the systemd service),
     or a .managed marker file in ALICE_HOME (set by the NixOS activation
     script, so interactive shells also see it).
     """
@@ -376,7 +376,7 @@ def detect_install_method(project_root: Optional[Path] = None) -> str:
     2. Legacy home-scoped stamp ``$ALICE_HOME/.install_method`` — read for
        backward compatibility, but a ``docker`` value is IGNORED when we are
        not actually running inside a container (see below).
-    3. LYDIA_MANAGED env / .managed marker (NixOS, Homebrew)
+    3. ALICE_MANAGED env / .managed marker (NixOS, Homebrew)
     4. .git directory presence -> 'git'
     5. Fallback -> 'pip'
 
@@ -585,13 +585,13 @@ def format_docker_update_message() -> str:
 def format_managed_message(action: str = "modify this Alice installation") -> str:
     """Build a user-facing error for managed installs."""
     managed_system = get_managed_system() or "a package manager"
-    raw = os.getenv("LYDIA_MANAGED", "").strip().lower()
+    raw = os.getenv("ALICE_MANAGED", "").strip().lower()
 
     if managed_system == "NixOS":
         env_hint = "true" if raw in _MANAGED_TRUE_VALUES else raw or "true"
         return (
             f"Cannot {action}: this Alice installation is managed by NixOS "
-            f"(LYDIA_MANAGED={env_hint}).\n"
+            f"(ALICE_MANAGED={env_hint}).\n"
             "Edit services.alice-agent.settings in your configuration.nix and run:\n"
             "  sudo nixos-rebuild switch"
         )
@@ -600,7 +600,7 @@ def format_managed_message(action: str = "modify this Alice installation") -> st
         env_hint = raw or "homebrew"
         return (
             f"Cannot {action}: this Alice installation is managed by Homebrew "
-            f"(LYDIA_MANAGED={env_hint}).\n"
+            f"(ALICE_MANAGED={env_hint}).\n"
             "Use:\n"
             "  brew upgrade alice-agent"
         )
@@ -622,15 +622,15 @@ def managed_error(action: str = "modify configuration"):
 def get_container_exec_info() -> Optional[dict]:
     """Read container mode metadata from ALICE_HOME/.container-mode.
 
-    Returns a dict with keys: backend, container_name, exec_user, lydia_bin
+    Returns a dict with keys: backend, container_name, exec_user, alice_bin
     or None if container mode is not active, we're already inside the
-    container, or LYDIA_DEV=1 is set.
+    container, or ALICE_DEV=1 is set.
 
     The .container-mode file is written by the NixOS activation script when
     container.enable = true. It tells the host CLI to exec into the container
     instead of running locally.
     """
-    if os.environ.get("LYDIA_DEV") == "1":
+    if os.environ.get("ALICE_DEV") == "1":
         return None
 
     from alice_constants import is_container
@@ -654,13 +654,13 @@ def get_container_exec_info() -> Optional[dict]:
     backend = info.get("backend", "docker")
     container_name = info.get("container_name", "alice-agent")
     exec_user = info.get("exec_user", "alice")
-    lydia_bin = info.get("lydia_bin", "/data/current-package/bin/alice")
+    alice_bin = info.get("alice_bin", "/data/current-package/bin/alice")
 
     return {
         "backend": backend,
         "container_name": container_name,
         "exec_user": exec_user,
-        "lydia_bin": lydia_bin,
+        "alice_bin": alice_bin,
     }
 
 
@@ -685,7 +685,7 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent.resolve()
 
 def _resolve_alice_uid_gid() -> tuple[Optional[int], Optional[int]]:
-    """Read the LYDIA_UID / LYDIA_GID env vars set by Docker deployments.
+    """Read the ALICE_UID / ALICE_GID env vars set by Docker deployments.
 
     Docker containers running Alice commonly set these to map the in-container
     user to a host user so volume-mounted state files end up with the right
@@ -701,8 +701,8 @@ def _resolve_alice_uid_gid() -> tuple[Optional[int], Optional[int]]:
     """
     if sys.platform == "win32":
         return None, None
-    uid_str = os.environ.get("LYDIA_UID", "").strip()
-    gid_str = os.environ.get("LYDIA_GID", "").strip()
+    uid_str = os.environ.get("ALICE_UID", "").strip()
+    gid_str = os.environ.get("ALICE_GID", "").strip()
     try:
         uid = int(uid_str) if uid_str else None
     except ValueError:
@@ -715,7 +715,7 @@ def _resolve_alice_uid_gid() -> tuple[Optional[int], Optional[int]]:
 
 
 def _chown_to_alice_uid(path) -> None:
-    """Chown ``path`` to ``LYDIA_UID:LYDIA_GID`` if those env vars are set.
+    """Chown ``path`` to ``ALICE_UID:ALICE_GID`` if those env vars are set.
 
     No-op when:
       - Either env var is unset/invalid
@@ -756,7 +756,7 @@ def _secure_dir(path):
     The execute-only bit on a directory permits cd-through without exposing
     directory listings.
 
-    Also applies ``LYDIA_UID``/``LYDIA_GID``-based ownership when those env
+    Also applies ``ALICE_UID``/``ALICE_GID``-based ownership when those env
     vars are set (#34107 — Docker deployments need this so profile subdirs
     created at runtime by kanban workers don't land as root:root and block
     subsequent uid-mapped workers).
@@ -784,7 +784,7 @@ def _is_container() -> bool:
     permissions.
     """
     # Explicit opt-out
-    if os.environ.get("LYDIA_CONTAINER") or os.environ.get("LYDIA_SKIP_CHMOD"):
+    if os.environ.get("ALICE_CONTAINER") or os.environ.get("ALICE_SKIP_CHMOD"):
         return True
     # Docker / Podman marker file
     if os.path.exists("/.dockerenv"):
@@ -807,7 +807,7 @@ def _secure_file(path):
     group-readable permissions (0640) on config files.
 
     Skipped in containers — Docker/Podman volume mounts often need broader
-    permissions.  Set LYDIA_SKIP_CHMOD=1 to force-skip on other systems.
+    permissions.  Set ALICE_SKIP_CHMOD=1 to force-skip on other systems.
     """
     if is_managed() or _is_container():
         return
@@ -981,7 +981,7 @@ DEFAULT_CONFIG = {
         # prompt's environment-hints block. Lets a host that wraps Alice
         # (sandbox runner, managed platform) explain the runtime environment
         # — proxy, credential handling, mount layout — without editing the
-        # identity slot (SOUL.md). Empty by default. The LYDIA_ENVIRONMENT_HINT
+        # identity slot (SOUL.md). Empty by default. The ALICE_ENVIRONMENT_HINT
         # env var overrides this (build-time/container mechanism).
         "environment_hint": "",
         # Coding posture — on interactive coding surfaces (CLI, TUI, desktop
@@ -1667,12 +1667,12 @@ DEFAULT_CONFIG = {
         #   "cli" — the classic prompt_toolkit REPL (default, preserves prior behavior)
         #   "tui" — the modern Ink TUI (same as passing `--tui`)
         # Explicit flags always win over this setting: `--cli` forces the classic
-        # REPL and `--tui` (or LYDIA_TUI=1) forces the TUI regardless of config.
+        # REPL and `--tui` (or ALICE_TUI=1) forces the TUI regardless of config.
         "interface": "cli",
         # When true, `alice --tui` auto-resumes the most recent human-
         # facing session on launch instead of forging a fresh one.
         # Mirrors `alice -c` muscle memory.  Default off so existing
-        # users aren't surprised.  LYDIA_TUI_RESUME=<id> always wins.
+        # users aren't surprised.  ALICE_TUI_RESUME=<id> always wins.
         "tui_auto_resume_recent": False,
         # When true (default), `alice --tui` drops a one-time hint
         # ("subagents working · /agents to watch live") the first time a turn
@@ -1854,8 +1854,8 @@ DEFAULT_CONFIG = {
         # ``--insecure`` is not). The bundled Nous Portal plugin reads
         # both keys at startup; they are the canonical surface for these
         # settings. Each can be overridden by an environment variable —
-        # ``LYDIA_DASHBOARD_OAUTH_CLIENT_ID`` and
-        # ``LYDIA_DASHBOARD_PORTAL_URL`` respectively — and the env var
+        # ``ALICE_DASHBOARD_OAUTH_CLIENT_ID`` and
+        # ``ALICE_DASHBOARD_PORTAL_URL`` respectively — and the env var
         # wins when set to a non-empty value. The override path is what
         # Fly.io's platform-secret injection uses to push the per-deploy
         # client_id at provisioning time without operators needing to
@@ -1874,7 +1874,7 @@ DEFAULT_CONFIG = {
         # either ``password_hash`` (preferred — no plaintext at rest) or
         # ``password`` (plaintext, hashed in-memory at load) are set. Each
         # key is overridable by an env var
-        # (``LYDIA_DASHBOARD_BASIC_AUTH_USERNAME`` /
+        # (``ALICE_DASHBOARD_BASIC_AUTH_USERNAME`` /
         # ``_PASSWORD_HASH`` / ``_PASSWORD`` / ``_SECRET`` /
         # ``_TTL_SECONDS``), env winning when non-empty. Leave ``username``
         # empty (the default) to keep the plugin a no-op — loopback /
@@ -1900,7 +1900,7 @@ DEFAULT_CONFIG = {
         # generic non-interactive token-auth capability). The SECRET itself
         # is a credential and is NOT configured here: it is provisioned by
         # nous-account-service at deploy time via the
-        # ``LYDIA_DASHBOARD_DRAIN_SECRET`` env var (the .env-is-for-secrets
+        # ``ALICE_DASHBOARD_DRAIN_SECRET`` env var (the .env-is-for-secrets
         # rule). These are the behavioural knobs only. The plugin is a no-op
         # unless that env var is set to a >=256-bit secret; a weak secret is
         # rejected at registration (fail-closed) and the drain endpoint stays
@@ -1911,7 +1911,7 @@ DEFAULT_CONFIG = {
             "scope": "drain",
             "min_secret_chars": 43,
         },
-        # Public URL override (env: ``LYDIA_DASHBOARD_PUBLIC_URL``).
+        # Public URL override (env: ``ALICE_DASHBOARD_PUBLIC_URL``).
         # When set, this is the complete authority — scheme + host +
         # optional path prefix (e.g. ``https://example.com/alice``) —
         # the OAuth ``redirect_uri`` is built from. Set this for deploys
@@ -2184,7 +2184,7 @@ DEFAULT_CONFIG = {
     # always goes to ~/.alice/skills/.
     "skills": {
         "external_dirs": [],   # e.g. ["~/.agents/skills", "/shared/team-skills"]
-        # Substitute ${LYDIA_SKILL_DIR} and ${LYDIA_SESSION_ID} in SKILL.md
+        # Substitute ${ALICE_SKILL_DIR} and ${ALICE_SESSION_ID} in SKILL.md
         # content with the absolute skill directory and the active session id
         # before the agent sees it.  Lets skill authors reference bundled
         # scripts without the agent having to join paths.
@@ -2410,7 +2410,7 @@ DEFAULT_CONFIG = {
         # through tools.slash_confirm — native yes/no buttons on Telegram,
         # Discord, and Slack; text fallback elsewhere.  Users click "Always
         # Approve" to silence the prompt permanently; that flips this key to
-        # false.  TUI has its own modal overlay (LYDIA_TUI_NO_CONFIRM=1 to
+        # false.  TUI has its own modal overlay (ALICE_TUI_NO_CONFIRM=1 to
         # opt out there).
         "destructive_slash_confirm": True,
     },
@@ -2446,7 +2446,7 @@ DEFAULT_CONFIG = {
     "hooks": {},
 
     # Auto-accept shell-hook registrations without a TTY prompt.  Also
-    # toggleable per-invocation via --accept-hooks or LYDIA_ACCEPT_HOOKS=1.
+    # toggleable per-invocation via --accept-hooks or ALICE_ACCEPT_HOOKS=1.
     # Gateway / cron / non-interactive runs need this (or one of the other
     # channels) to pick up newly-added hooks.
     "hooks_auto_accept": False,
@@ -2540,7 +2540,7 @@ DEFAULT_CONFIG = {
         # Maximum number of due jobs to run in parallel per tick.
         # null/0 = unbounded (limited only by thread count).
         # 1 = serial (pre-v0.9 behaviour).
-        # Also overridable via LYDIA_CRON_MAX_PARALLEL env var.
+        # Also overridable via ALICE_CRON_MAX_PARALLEL env var.
         "max_parallel_jobs": None,
         # Per-job output-file retention: save_job_output keeps the N most
         # recent .md files and prunes older ones. 0 or negative disables
@@ -2702,13 +2702,13 @@ DEFAULT_CONFIG = {
         # if your gateway hits "discord connect timed out" / "Timeout waiting
         # for connection to Discord" restart loops. ``0`` or negative disables
         # the timeout entirely (wait indefinitely). Bridged at startup to the
-        # internal LYDIA_GATEWAY_PLATFORM_CONNECT_TIMEOUT env var, which still
+        # internal ALICE_GATEWAY_PLATFORM_CONNECT_TIMEOUT env var, which still
         # works as a manual override and wins if set explicitly.
         "platform_connect_timeout": 30,
 
         # Scale-to-zero idle detection (Phase 0). The gateway watches for idle
         # and, when an instance is opted in via the NAS "Labs" toggle (carried as
-        # the LYDIA_SCALE_TO_ZERO env stamp) AND messaging is relay-only/absent
+        # the ALICE_SCALE_TO_ZERO env stamp) AND messaging is relay-only/absent
         # AND a wakeUrl is registered, drives the relay transport dormant so the
         # platform (e.g. Fly autostop:"suspend") can suspend the now-idle machine;
         # it wakes on the connector's wakeUrl poke. This is the idle TIMEOUT only
@@ -2752,7 +2752,7 @@ DEFAULT_CONFIG = {
         # ``trust_recent_files_seconds`` window. Recommended for
         # public-facing gateways where prompt injection from one user
         # shouldn't be able to exfiltrate the host's secrets to that same
-        # user. Bridged to LYDIA_MEDIA_DELIVERY_STRICT.
+        # user. Bridged to ALICE_MEDIA_DELIVERY_STRICT.
         "strict": False,
         # Extra directories from which model-emitted bare file paths may be
         # uploaded as native gateway attachments. Files inside the Alice
@@ -2760,7 +2760,7 @@ DEFAULT_CONFIG = {
         # are always trusted; this list adds operator-controlled roots
         # (project dirs, scratch dirs, mounted shares). Accepts a list of
         # absolute paths or a single os.pathsep-separated string. Bridged
-        # to LYDIA_MEDIA_ALLOW_DIRS at gateway startup. Tilde paths are
+        # to ALICE_MEDIA_ALLOW_DIRS at gateway startup. Tilde paths are
         # expanded. Honored in both default and strict mode.
         "media_delivery_allow_dirs": [],
         # When true, files whose mtime is within ``trust_recent_files_seconds``
@@ -2769,11 +2769,11 @@ DEFAULT_CONFIG = {
         # PDFs the agent writes into a working directory. System paths
         # (/etc, /proc, ~/.ssh, ~/.aws, etc.) remain blocked regardless.
         # Disable to fall back to pure-allowlist mode. Bridged to
-        # LYDIA_MEDIA_TRUST_RECENT_FILES. Only consulted when ``strict``
+        # ALICE_MEDIA_TRUST_RECENT_FILES. Only consulted when ``strict``
         # is true; in default mode the denylist alone gates delivery.
         "trust_recent_files": True,
         # Recency window in seconds. 600 (10 min) comfortably covers a
-        # multi-tool agent turn. Bridged to LYDIA_MEDIA_TRUST_RECENT_SECONDS.
+        # multi-tool agent turn. Bridged to ALICE_MEDIA_TRUST_RECENT_SECONDS.
         # Only consulted when ``strict`` is true.
         "trust_recent_files_seconds": 600,
 
@@ -3065,7 +3065,7 @@ DEFAULT_CONFIG = {
         #   true    - always disable GPU acceleration (software rendering).
         #             Use on no-GPU VMs / Proxmox hosts where the GPU path hangs.
         #   false   - always keep GPU acceleration on, even over a remote display.
-        # Bridged to the LYDIA_DESKTOP_DISABLE_GPU env var the Electron app reads.
+        # Bridged to the ALICE_DESKTOP_DISABLE_GPU env var the Electron app reads.
         "disable_gpu": "auto",
     },
 
@@ -3352,7 +3352,7 @@ OPTIONAL_ENV_VARS = {
         "category": "provider",
         "advanced": True,
     },
-    "LYDIA_QWEN_BASE_URL": {
+    "ALICE_QWEN_BASE_URL": {
         "description": "Qwen Portal base URL override (default: https://portal.qwen.ai/v1)",
         "prompt": "Qwen Portal base URL (leave empty for default)",
         "url": None,
@@ -3794,21 +3794,21 @@ OPTIONAL_ENV_VARS = {
     },
 
     # ── Langfuse observability ──
-    "LYDIA_LANGFUSE_PUBLIC_KEY": {
+    "ALICE_LANGFUSE_PUBLIC_KEY": {
         "description": "Langfuse project public key (pk-lf-...)",
         "prompt": "Langfuse public key",
         "url": "https://cloud.langfuse.com",
         "password": False,
         "category": "tool",
     },
-    "LYDIA_LANGFUSE_SECRET_KEY": {
+    "ALICE_LANGFUSE_SECRET_KEY": {
         "description": "Langfuse project secret key (sk-lf-...)",
         "prompt": "Langfuse secret key",
         "url": "https://cloud.langfuse.com",
         "password": True,
         "category": "tool",
     },
-    "LYDIA_LANGFUSE_BASE_URL": {
+    "ALICE_LANGFUSE_BASE_URL": {
         "description": "Langfuse server URL (default: https://cloud.langfuse.com)",
         "prompt": "Langfuse server URL (leave empty for cloud.langfuse.com)",
         "url": None,
@@ -3983,7 +3983,7 @@ OPTIONAL_ENV_VARS = {
         "advanced": True,
     },
     "MATRIX_DEVICE_ID": {
-        "description": "Stable Matrix device ID for E2EE persistence across restarts (e.g. LYDIA_BOT)",
+        "description": "Stable Matrix device ID for E2EE persistence across restarts (e.g. ALICE_BOT)",
         "prompt": "Matrix device ID (stable across restarts)",
         "url": None,
         "password": False,
@@ -4199,21 +4199,21 @@ OPTIONAL_ENV_VARS = {
         "password": True,
         "category": "setting",
     },
-    # LYDIA_TOOL_PROGRESS and LYDIA_TOOL_PROGRESS_MODE are deprecated —
+    # ALICE_TOOL_PROGRESS and ALICE_TOOL_PROGRESS_MODE are deprecated —
     # now configured via display.tool_progress in config.yaml (off|new|all|verbose).
     # The gateway still falls back to these env vars for backward compatibility,
     # so they live in _EXTRA_ENV_KEYS (known to .env sanitization/reload) but
     # are intentionally NOT listed here: OPTIONAL_ENV_VARS feeds user-facing
     # surfaces (dashboard keys page, setup checklists) and deprecated knobs
     # shouldn't be offered there.
-    "LYDIA_PREFILL_MESSAGES_FILE": {
+    "ALICE_PREFILL_MESSAGES_FILE": {
         "description": "Path to JSON file with ephemeral prefill messages for few-shot priming",
         "prompt": "Prefill messages file path",
         "url": None,
         "password": False,
         "category": "setting",
     },
-    "LYDIA_EPHEMERAL_SYSTEM_PROMPT": {
+    "ALICE_EPHEMERAL_SYSTEM_PROMPT": {
         "description": "Ephemeral system prompt injected at API-call time (never persisted to sessions)",
         "prompt": "Ephemeral system prompt",
         "url": None,
@@ -5049,14 +5049,14 @@ def migrate_config(interactive: bool = True, quiet: bool = False) -> Dict[str, A
         if not isinstance(display, dict):
             display = {}
         if "tool_progress" not in display:
-            old_enabled = get_env_value("LYDIA_TOOL_PROGRESS")
-            old_mode = get_env_value("LYDIA_TOOL_PROGRESS_MODE")
+            old_enabled = get_env_value("ALICE_TOOL_PROGRESS")
+            old_mode = get_env_value("ALICE_TOOL_PROGRESS_MODE")
             if old_enabled and old_enabled.lower() in {"false", "0", "no"}:
                 display["tool_progress"] = "off"
-                results["config_added"].append("display.tool_progress=off (from LYDIA_TOOL_PROGRESS=false)")
+                results["config_added"].append("display.tool_progress=off (from ALICE_TOOL_PROGRESS=false)")
             elif old_mode and old_mode.lower() in {"new", "all"}:
                 display["tool_progress"] = old_mode.lower()
-                results["config_added"].append(f"display.tool_progress={old_mode.lower()} (from LYDIA_TOOL_PROGRESS_MODE)")
+                results["config_added"].append(f"display.tool_progress={old_mode.lower()} (from ALICE_TOOL_PROGRESS_MODE)")
             else:
                 display["tool_progress"] = "all"
                 results["config_added"].append("display.tool_progress=all (default)")
@@ -5069,10 +5069,10 @@ def migrate_config(interactive: bool = True, quiet: bool = False) -> Dict[str, A
     if current_ver < 5:
         config = read_raw_config()
         if "timezone" not in config:
-            old_tz = os.getenv("LYDIA_TIMEZONE", "")
+            old_tz = os.getenv("ALICE_TIMEZONE", "")
             if old_tz and old_tz.strip():
                 config["timezone"] = old_tz.strip()
-                results["config_added"].append(f"timezone={old_tz.strip()} (from LYDIA_TIMEZONE)")
+                results["config_added"].append(f"timezone={old_tz.strip()} (from ALICE_TIMEZONE)")
             else:
                 config["timezone"] = ""
                 results["config_added"].append("timezone= (empty, uses server-local)")
@@ -7254,14 +7254,14 @@ def show_config():
     print(f"  Model:        {redact_config_value(config.get('model', 'not set'))}")
     _cfg_max_turns = config.get('agent', {}).get('max_turns', DEFAULT_CONFIG['agent']['max_turns'])
     print(f"  Max turns:    {_cfg_max_turns}")
-    # Warn on stale LYDIA_MAX_ITERATIONS ghost in .env that disagrees with
+    # Warn on stale ALICE_MAX_ITERATIONS ghost in .env that disagrees with
     # config.yaml (issue #17534). Read the .env FILE directly so we catch the
     # ghost even when the gateway bridge already overrode os.environ.
     try:
-        _env_ghost = load_env().get("LYDIA_MAX_ITERATIONS")
+        _env_ghost = load_env().get("ALICE_MAX_ITERATIONS")
         if _env_ghost is not None and str(_env_ghost).strip() != str(_cfg_max_turns).strip():
             print(color(
-                f"                ⚠ .env has stale LYDIA_MAX_ITERATIONS={_env_ghost} "
+                f"                ⚠ .env has stale ALICE_MAX_ITERATIONS={_env_ghost} "
                 f"(run 'alice doctor --fix' to remove)",
                 Colors.YELLOW,
             ))

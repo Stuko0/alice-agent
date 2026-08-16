@@ -53,7 +53,7 @@ from alice_cli.env_loader import load_alice_dotenv
 
 _alice_home_webhook = get_alice_home()
 _project_env = Path(__file__).parent / ".env"
-load_alice_dotenv(lydia_home=_alice_home_webhook, project_env=_project_env)
+load_alice_dotenv(alice_home=_alice_home_webhook, project_env=_project_env)
 
 
 def _effective_temperature_for_model(

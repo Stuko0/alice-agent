@@ -22,18 +22,18 @@ _MAX_WALK = 100
 def build_session_provenance(
     db: Any,
     acp_session_id: str,
-    current_lydia_session_id: str,
+    current_alice_session_id: str,
     *,
-    previous_lydia_session_id: Optional[str] = None,
+    previous_alice_session_id: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """Build ``_meta.alice.sessionProvenance`` for an ACP session.
 
     Args:
         db: A ``SessionDB`` (must expose ``get_session``).
         acp_session_id: The stable ACP/editor-facing session handle.
-        current_lydia_session_id: The live internal Alice DB session id
+        current_alice_session_id: The live internal Alice DB session id
             (``state.agent.session_id``).
-        previous_lydia_session_id: The internal id from before the most recent
+        previous_alice_session_id: The internal id from before the most recent
             turn, when known. Supplied by ``prompt()`` to flag a rotation.
 
     Returns:
@@ -41,7 +41,7 @@ def build_session_provenance(
         ACP ``_meta``, or ``None`` if the session can't be read.
     """
     try:
-        row = db.get_session(current_lydia_session_id)
+        row = db.get_session(current_alice_session_id)
     except Exception:
         return None
     if not row:
@@ -54,10 +54,10 @@ def build_session_provenance(
     # compression-split parents (parent.end_reason == 'compression') count
     # toward depth — delegate/branch children share the parent_session_id
     # column but are not compaction boundaries.
-    root_id = current_lydia_session_id
+    root_id = current_alice_session_id
     compression_depth = 0
     cursor_parent = parent_id
-    seen = {current_lydia_session_id}
+    seen = {current_alice_session_id}
     for _ in range(_MAX_WALK):
         if not cursor_parent or cursor_parent in seen:
             break
@@ -85,20 +85,20 @@ def build_session_provenance(
             is_continuation = True
 
     rotated = bool(
-        previous_lydia_session_id
-        and previous_lydia_session_id != current_lydia_session_id
+        previous_alice_session_id
+        and previous_alice_session_id != current_alice_session_id
     )
 
     provenance: Dict[str, Any] = {
         "acpSessionId": acp_session_id,
-        "currentLydiaSessionId": current_lydia_session_id,
+        "currentLydiaSessionId": current_alice_session_id,
         "rootLydiaSessionId": root_id,
         "parentLydiaSessionId": parent_id,
         "sessionKind": "continuation" if is_continuation else "root",
         "compressionDepth": compression_depth,
     }
-    if previous_lydia_session_id:
-        provenance["previousLydiaSessionId"] = previous_lydia_session_id
+    if previous_alice_session_id:
+        provenance["previousLydiaSessionId"] = previous_alice_session_id
     if rotated:
         # The head moved during the last turn. The only mechanism that rotates
         # the internal id mid-turn is compression-driven session splitting.
@@ -111,16 +111,16 @@ def build_session_provenance(
 def session_provenance_meta(
     db: Any,
     acp_session_id: str,
-    current_lydia_session_id: str,
+    current_alice_session_id: str,
     *,
-    previous_lydia_session_id: Optional[str] = None,
+    previous_alice_session_id: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """Return a ready ``_meta`` payload: ``{"alice": {"sessionProvenance": ...}}``."""
     prov = build_session_provenance(
         db,
         acp_session_id,
-        current_lydia_session_id,
-        previous_lydia_session_id=previous_lydia_session_id,
+        current_alice_session_id,
+        previous_alice_session_id=previous_alice_session_id,
     )
     if prov is None:
         return None

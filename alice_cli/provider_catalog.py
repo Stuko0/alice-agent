@@ -115,16 +115,16 @@ def provider_catalog() -> list[ProviderDescriptor]:
     # entry of their own — notably the ``moa`` virtual provider (auth_type
     # "virtual"), which has no real credential and no network endpoint.
     try:
-        from alice_cli.providers import LYDIA_OVERLAYS
+        from alice_cli.providers import ALICE_OVERLAYS
     except Exception:
-        LYDIA_OVERLAYS = {}
+        ALICE_OVERLAYS = {}
 
     out: list[ProviderDescriptor] = []
     for order, entry in enumerate(CANONICAL_PROVIDERS):
         slug = entry.slug
         cfg = PROVIDER_REGISTRY.get(slug)
         prof = profiles.get(slug)
-        overlay = LYDIA_OVERLAYS.get(slug)
+        overlay = ALICE_OVERLAYS.get(slug)
 
         # auth_type: registry is authoritative; fall back to profile, then the
         # Alice overlay (e.g. moa → "virtual"), then api_key.

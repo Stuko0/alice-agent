@@ -82,7 +82,7 @@ def finalize_turn(
         # a task whose worker keeps exhausting its budget would block
         # silently each run, get auto-promoted by the operator (or never
         # surface), and re-block in an endless loop with no signal.
-        _kanban_task = os.environ.get("LYDIA_KANBAN_TASK")
+        _kanban_task = os.environ.get("ALICE_KANBAN_TASK")
         if _kanban_task:
             try:
                 from alice_cli import kanban_db as _kb

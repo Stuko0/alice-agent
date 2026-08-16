@@ -1505,7 +1505,7 @@ AUTHOR_MAP = {
     "ayman.a.kamal@hotmail.com": "A-kamal",  # PR #18678 (xAI image resolution fix)
     # Kanban bug-fix batch salvage (May 2026)
     "frowte3k@gmail.com": "Frowtek",  # salvage of #23206 (gateway --board auto-subscribe)
-    "sylw3st3rr@gmail.com": "Sylw3ster",  # salvage of #23252 (LYDIA_KANBAN_BOARD restore)
+    "sylw3st3rr@gmail.com": "Sylw3ster",  # salvage of #23252 (ALICE_KANBAN_BOARD restore)
     "hello@dominikh.com": "dmnkhorvath",  # salvage of #23358 (kanban worker send_message)
     "413011+smwbev@users.noreply.github.com": "smwbev",  # salvage of #23659 (aria-label colLabel)
     "58116817+TurgutKural@users.noreply.github.com": "TurgutKural",  # salvage of #23356 (ALICE_HOME inject)

@@ -961,36 +961,36 @@ _CACHE_DIR_IMPORT_DEFAULTS = {
     "SCREENSHOT_CACHE_DIR": SCREENSHOT_CACHE_DIR,
 }
 
-_LYDIA_HOME = get_alice_home()
-_LYDIA_ROOT = get_default_alice_root()
-MEDIA_DELIVERY_ALLOW_DIRS_ENV = "LYDIA_MEDIA_ALLOW_DIRS"
-MEDIA_DELIVERY_TRUST_RECENT_ENV = "LYDIA_MEDIA_TRUST_RECENT_FILES"
-MEDIA_DELIVERY_TRUST_RECENT_SECONDS_ENV = "LYDIA_MEDIA_TRUST_RECENT_SECONDS"
+_ALICE_HOME = get_alice_home()
+_ALICE_ROOT = get_default_alice_root()
+MEDIA_DELIVERY_ALLOW_DIRS_ENV = "ALICE_MEDIA_ALLOW_DIRS"
+MEDIA_DELIVERY_TRUST_RECENT_ENV = "ALICE_MEDIA_TRUST_RECENT_FILES"
+MEDIA_DELIVERY_TRUST_RECENT_SECONDS_ENV = "ALICE_MEDIA_TRUST_RECENT_SECONDS"
 # Strict mode toggles the original allowlist+recency path-validation behavior.
 # Off by default — symmetric with inbound (we accept any document type the
 # user uploads), and with the denylist still blocking obvious credential /
 # system paths. Operators running public-facing gateways where prompt
 # injection from one user could exfiltrate the host's secrets to that same
 # user should set this to true.
-MEDIA_DELIVERY_STRICT_ENV = "LYDIA_MEDIA_DELIVERY_STRICT"
+MEDIA_DELIVERY_STRICT_ENV = "ALICE_MEDIA_DELIVERY_STRICT"
 MEDIA_DELIVERY_SAFE_ROOTS = (
     IMAGE_CACHE_DIR,
     AUDIO_CACHE_DIR,
     VIDEO_CACHE_DIR,
     DOCUMENT_CACHE_DIR,
     SCREENSHOT_CACHE_DIR,
-    _LYDIA_HOME / "image_cache",
-    _LYDIA_HOME / "audio_cache",
-    _LYDIA_HOME / "video_cache",
-    _LYDIA_HOME / "document_cache",
-    _LYDIA_HOME / "browser_screenshots",
+    _ALICE_HOME / "image_cache",
+    _ALICE_HOME / "audio_cache",
+    _ALICE_HOME / "video_cache",
+    _ALICE_HOME / "document_cache",
+    _ALICE_HOME / "browser_screenshots",
     # Canonical cache layout — listed alongside the legacy *_cache dirs so
     # generated artifacts deliver on installs that have both (#31733).
-    _LYDIA_HOME / "cache" / "images",
-    _LYDIA_HOME / "cache" / "audio",
-    _LYDIA_HOME / "cache" / "videos",
-    _LYDIA_HOME / "cache" / "documents",
-    _LYDIA_HOME / "cache" / "screenshots",
+    _ALICE_HOME / "cache" / "images",
+    _ALICE_HOME / "cache" / "audio",
+    _ALICE_HOME / "cache" / "videos",
+    _ALICE_HOME / "cache" / "documents",
+    _ALICE_HOME / "cache" / "screenshots",
 )
 
 # Default recency window for trusting freshly-produced files (seconds).
@@ -1062,7 +1062,7 @@ def _profile_cache_roots() -> List[Path]:
     denied prefix and $HOME is not that prefix). See issue #31733.
     """
     roots: List[Path] = []
-    profiles_dir = _LYDIA_ROOT / "profiles"
+    profiles_dir = _ALICE_ROOT / "profiles"
     try:
         profile_dirs = [p for p in profiles_dir.iterdir() if p.is_dir()]
     except OSError:
@@ -1167,11 +1167,11 @@ def _media_delivery_denied_paths() -> List[Path]:
     _ROOT_CREDENTIAL_DIRS = (
         "pairing",
     )
-    for lydia_root in (_LYDIA_HOME, _LYDIA_ROOT):
+    for alice_root in (_ALICE_HOME, _ALICE_ROOT):
         for rel in _ROOT_CREDENTIAL_FILES:
-            denied.append(lydia_root / rel)
+            denied.append(alice_root / rel)
         for rel in _ROOT_CREDENTIAL_DIRS:
-            denied.append(lydia_root / rel)
+            denied.append(alice_root / rel)
     return denied
 
 
@@ -1244,9 +1244,9 @@ def validate_media_delivery_path(path: str) -> Optional[str]:
     back any file that isn't a credential.
 
     Strict mode (opt-in via ``gateway.strict`` in ``config.yaml`` or
-    ``LYDIA_MEDIA_DELIVERY_STRICT=1``): the file MUST live under a
+    ``ALICE_MEDIA_DELIVERY_STRICT=1``): the file MUST live under a
     Alice-managed cache, under an operator-allowlisted root
-    (``LYDIA_MEDIA_ALLOW_DIRS``), or be freshly produced inside the
+    (``ALICE_MEDIA_ALLOW_DIRS``), or be freshly produced inside the
     configured recency window. Suitable for public-facing bots where
     prompt injection from one user shouldn't be able to exfiltrate the
     host's secrets to that same user.
@@ -2231,7 +2231,7 @@ class BasePlatformAdapter(ABC):
     # the watcher/drain loops). False for stateless request/response adapters
     # (the API server): every route closes its channel when the turn ends, so
     # there is nowhere to push a later completion. The gateway propagates this
-    # into the ``LYDIA_SESSION_ASYNC_DELIVERY`` contextvar at session-bind
+    # into the ``ALICE_SESSION_ASYNC_DELIVERY`` contextvar at session-bind
     # time; tools read it via ``async_delivery_supported()`` and refuse to make
     # a delivery promise they can't keep. A new stateless adapter only needs to
     # set this to False to stay correct-by-default.
@@ -2287,14 +2287,14 @@ class BasePlatformAdapter(ABC):
         # pre-sync read matches the single-knob default rather than silently
         # queueing.
         self._busy_text_mode: str = (
-            os.environ.get("LYDIA_GATEWAY_BUSY_TEXT_MODE", "interrupt").strip().lower()
+            os.environ.get("ALICE_GATEWAY_BUSY_TEXT_MODE", "interrupt").strip().lower()
             or "interrupt"
         )
         self._busy_text_debounce_seconds: float = _float_env(
-            "LYDIA_GATEWAY_BUSY_TEXT_DEBOUNCE_SECONDS", 0.35
+            "ALICE_GATEWAY_BUSY_TEXT_DEBOUNCE_SECONDS", 0.35
         )
         self._busy_text_hard_cap_seconds: float = _float_env(
-            "LYDIA_GATEWAY_BUSY_TEXT_HARD_CAP_SECONDS", 1.0
+            "ALICE_GATEWAY_BUSY_TEXT_HARD_CAP_SECONDS", 1.0
         )
         self._text_debounce: dict[str, TextDebounceState] = {}
         # Background message-processing tasks spawned by handle_message().
@@ -4712,11 +4712,11 @@ class BasePlatformAdapter(ABC):
         Return a random delay in seconds for human-like response pacing.
 
         Reads from env vars:
-          LYDIA_HUMAN_DELAY_MODE: "off" (default) | "natural" | "custom"
-          LYDIA_HUMAN_DELAY_MIN_MS: minimum delay in ms (default 800, custom mode)
-          LYDIA_HUMAN_DELAY_MAX_MS: maximum delay in ms (default 2500, custom mode)
+          ALICE_HUMAN_DELAY_MODE: "off" (default) | "natural" | "custom"
+          ALICE_HUMAN_DELAY_MIN_MS: minimum delay in ms (default 800, custom mode)
+          ALICE_HUMAN_DELAY_MAX_MS: maximum delay in ms (default 2500, custom mode)
         """
-        mode = os.getenv("LYDIA_HUMAN_DELAY_MODE", "off").lower()
+        mode = os.getenv("ALICE_HUMAN_DELAY_MODE", "off").lower()
         if mode == "off":
             return 0.0
         if mode == "natural":
@@ -4724,11 +4724,11 @@ class BasePlatformAdapter(ABC):
             return random.uniform(min_ms / 1000.0, max_ms / 1000.0)
         # custom mode — tolerate malformed env vars instead of crashing.
         try:
-            min_ms = int(os.getenv("LYDIA_HUMAN_DELAY_MIN_MS", "800"))
+            min_ms = int(os.getenv("ALICE_HUMAN_DELAY_MIN_MS", "800"))
         except (TypeError, ValueError):
             min_ms = 800
         try:
-            max_ms = int(os.getenv("LYDIA_HUMAN_DELAY_MAX_MS", "2500"))
+            max_ms = int(os.getenv("ALICE_HUMAN_DELAY_MAX_MS", "2500"))
         except (TypeError, ValueError):
             max_ms = 2500
         return random.uniform(min_ms / 1000.0, max_ms / 1000.0)
@@ -5166,7 +5166,7 @@ class BasePlatformAdapter(ABC):
             # session (e.g. deferred background-review notifications).
             #
             # Snapshot the callback generation HERE (after the agent has run),
-            # not at the top of this task.  _lydia_run_generation is set on
+            # not at the top of this task.  _alice_run_generation is set on
             # the interrupt event by GatewayRunner._bind_adapter_run_generation
             # during _handle_message_with_agent — which happens DURING the
             # self._message_handler(event) await above.  Snapshotting earlier
@@ -5175,7 +5175,7 @@ class BasePlatformAdapter(ABC):
             # fresher run's callbacks.
             _callback_generation = getattr(
                 interrupt_event,
-                "_lydia_run_generation",
+                "_alice_run_generation",
                 None,
             )
             if hasattr(self, "pop_post_delivery_callback"):

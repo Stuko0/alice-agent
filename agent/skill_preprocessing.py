@@ -9,10 +9,10 @@ from alice_cli._subprocess_compat import IS_WINDOWS, windows_hide_flags
 
 logger = logging.getLogger(__name__)
 
-# Matches ${LYDIA_SKILL_DIR} / ${LYDIA_SESSION_ID} tokens in SKILL.md.
-# Tokens that don't resolve (e.g. ${LYDIA_SESSION_ID} with no session) are
+# Matches ${ALICE_SKILL_DIR} / ${ALICE_SESSION_ID} tokens in SKILL.md.
+# Tokens that don't resolve (e.g. ${ALICE_SESSION_ID} with no session) are
 # left as-is so the user can debug them.
-_SKILL_TEMPLATE_RE = re.compile(r"\$\{(LYDIA_SKILL_DIR|LYDIA_SESSION_ID)\}")
+_SKILL_TEMPLATE_RE = re.compile(r"\$\{(ALICE_SKILL_DIR|ALICE_SESSION_ID)\}")
 
 # Matches inline shell snippets like:  !`date +%Y-%m-%d`
 # Non-greedy, single-line only -- no newlines inside the backticks.
@@ -41,7 +41,7 @@ def substitute_template_vars(
     skill_dir: Path | None,
     session_id: str | None,
 ) -> str:
-    """Replace ${LYDIA_SKILL_DIR} / ${LYDIA_SESSION_ID} in skill content.
+    """Replace ${ALICE_SKILL_DIR} / ${ALICE_SESSION_ID} in skill content.
 
     Only substitutes tokens for which a concrete value is available --
     unresolved tokens are left in place so the author can spot them.
@@ -53,9 +53,9 @@ def substitute_template_vars(
 
     def _replace(match: re.Match) -> str:
         token = match.group(1)
-        if token == "LYDIA_SKILL_DIR" and skill_dir_str:
+        if token == "ALICE_SKILL_DIR" and skill_dir_str:
             return skill_dir_str
-        if token == "LYDIA_SESSION_ID" and session_id:
+        if token == "ALICE_SESSION_ID" and session_id:
             return str(session_id)
         return match.group(0)
 

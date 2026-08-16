@@ -106,7 +106,7 @@ class MigrationReport:
 # Alice keys that codex's MCP schema doesn't support — dropped during
 # migration with a warning. Anything not on the keep list AND not the
 # transport keys is added to skipped.
-_KNOWN_LYDIA_KEYS = {
+_KNOWN_ALICE_KEYS = {
     # transport — stdio
     "command", "args", "env", "cwd",
     # transport — http
@@ -125,21 +125,21 @@ _KEYS_DROPPED_WITH_WARNING = {
 
 
 def _translate_one_server(
-    name: str, lydia_cfg: dict
+    name: str, alice_cfg: dict
 ) -> tuple[Optional[dict], list[str]]:
     """Translate one Alice MCP server config to the codex inline-table dict
     representation. Returns (codex_entry, skipped_keys).
 
     codex_entry is a dict ready for TOML serialization, or None when the
     server can't be translated (e.g. neither command nor url present)."""
-    if not isinstance(lydia_cfg, dict):
+    if not isinstance(alice_cfg, dict):
         return None, []
 
     skipped: list[str] = []
     out: dict[str, Any] = {}
 
-    has_command = bool(lydia_cfg.get("command"))
-    has_url = bool(lydia_cfg.get("url"))
+    has_command = bool(alice_cfg.get("command"))
+    has_url = bool(alice_cfg.get("url"))
 
     if has_command and has_url:
         skipped.append("url (both command and url set; preferring stdio)")
@@ -147,50 +147,50 @@ def _translate_one_server(
 
     if has_command:
         # Stdio transport
-        out["command"] = str(lydia_cfg["command"])
-        args = lydia_cfg.get("args") or []
+        out["command"] = str(alice_cfg["command"])
+        args = alice_cfg.get("args") or []
         if args:
             out["args"] = [str(a) for a in args]
-        env = lydia_cfg.get("env") or {}
+        env = alice_cfg.get("env") or {}
         if env:
             # Codex expects string values
             out["env"] = {str(k): str(v) for k, v in env.items()}
-        cwd = lydia_cfg.get("cwd")
+        cwd = alice_cfg.get("cwd")
         if cwd:
             out["cwd"] = str(cwd)
     elif has_url:
         # streamable_http transport (codex covers both http and SSE here)
-        out["url"] = str(lydia_cfg["url"])
-        headers = lydia_cfg.get("headers") or {}
+        out["url"] = str(alice_cfg["url"])
+        headers = alice_cfg.get("headers") or {}
         if headers:
             out["http_headers"] = {str(k): str(v) for k, v in headers.items()}
         # Alice' transport: sse hint is informational; codex auto-negotiates
-        if lydia_cfg.get("transport") == "sse":
+        if alice_cfg.get("transport") == "sse":
             skipped.append("transport=sse (codex auto-negotiates)")
     else:
         return None, ["no command or url field"]
 
     # Timeouts
-    if "timeout" in lydia_cfg:
+    if "timeout" in alice_cfg:
         try:
-            out["tool_timeout_sec"] = float(lydia_cfg["timeout"])
+            out["tool_timeout_sec"] = float(alice_cfg["timeout"])
         except (TypeError, ValueError):
             skipped.append("timeout (not numeric)")
-    if "connect_timeout" in lydia_cfg:
+    if "connect_timeout" in alice_cfg:
         try:
-            out["startup_timeout_sec"] = float(lydia_cfg["connect_timeout"])
+            out["startup_timeout_sec"] = float(alice_cfg["connect_timeout"])
         except (TypeError, ValueError):
             skipped.append("connect_timeout (not numeric)")
 
     # Enabled flag (codex defaults to true so we only emit when explicitly false)
-    if lydia_cfg.get("enabled") is False:
+    if alice_cfg.get("enabled") is False:
         out["enabled"] = False
 
     # Detect keys we explicitly drop with warning
-    for key in lydia_cfg:
+    for key in alice_cfg:
         if key in _KEYS_DROPPED_WITH_WARNING:
             skipped.append(f"{key} (no codex equivalent)")
-        elif key not in _KNOWN_LYDIA_KEYS:
+        elif key not in _KNOWN_ALICE_KEYS:
             skipped.append(f"{key} (unknown Alice key)")
 
     return out, skipped
@@ -579,23 +579,23 @@ def _build_alice_tools_mcp_entry() -> dict:
     # a sibling test's monkeypatch.setenv("ALICE_HOME", tmp_path) would
     # otherwise leak a transient pytest tempdir into the user's real
     # ~/.codex/config.toml and silently brick codex once the tempdir is GC'd.
-    lydia_home = os.environ.get("ALICE_HOME") or ""
-    if lydia_home and _looks_like_test_tempdir(lydia_home):
-        lydia_home = ""
-    if lydia_home:
-        env["ALICE_HOME"] = lydia_home
+    alice_home = os.environ.get("ALICE_HOME") or ""
+    if alice_home and _looks_like_test_tempdir(alice_home):
+        alice_home = ""
+    if alice_home:
+        env["ALICE_HOME"] = alice_home
     # PYTHONPATH passes through so a worktree-launched alice finds the
     # branch's modules instead of the installed package.
     pythonpath = os.environ.get("PYTHONPATH")
     if pythonpath:
         env["PYTHONPATH"] = pythonpath
     # Quiet mode + redaction defaults so the MCP wire stays clean.
-    env["LYDIA_QUIET"] = "1"
-    env["LYDIA_REDACT_SECRETS"] = env.get("LYDIA_REDACT_SECRETS", "true")
+    env["ALICE_QUIET"] = "1"
+    env["ALICE_REDACT_SECRETS"] = env.get("ALICE_REDACT_SECRETS", "true")
 
     out: dict[str, Any] = {
         "command": sys.executable,
-        "args": ["-m", "agent.transports.lydia_tools_mcp_server"],
+        "args": ["-m", "agent.transports.alice_tools_mcp_server"],
     }
     if env:
         out["env"] = env
@@ -607,19 +607,19 @@ def _build_alice_tools_mcp_entry() -> dict:
 
 
 def migrate(
-    lydia_config: dict,
+    alice_config: dict,
     *,
     codex_home: Optional[Path] = None,
     dry_run: bool = False,
     discover_plugins: bool = True,
     default_permission_profile: Optional[str] = ":workspace",
-    expose_lydia_tools: bool = True,
+    expose_alice_tools: bool = True,
 ) -> MigrationReport:
     """Translate Alice mcp_servers config + Codex curated plugins into
     ~/.codex/config.toml.
 
     Args:
-        lydia_config: full ~/.alice/config.yaml dict
+        alice_config: full ~/.alice/config.yaml dict
         codex_home: override CODEX_HOME (defaults to ~/.codex)
         dry_run: skip the actual write; report what would happen
         discover_plugins: when True (default), query `plugin/list` against
@@ -635,7 +635,7 @@ def migrate(
             configured in their own [permissions.<name>] table. Set None
             to leave permissions unset and let codex use its compiled-in
             default (which is read-only).
-        expose_lydia_tools: when True (default), register Alice' own
+        expose_alice_tools: when True (default), register Alice' own
             tool surface (web_search, browser_*, delegate_task, vision,
             memory, skills, etc.) as an MCP server in ~/.codex/config.toml
             so the codex subprocess can call back into Alice for tools
@@ -646,15 +646,15 @@ def migrate(
     target = codex_home / "config.toml"
     report.target_path = target
 
-    lydia_servers = (lydia_config or {}).get("mcp_servers") or {}
-    if not isinstance(lydia_servers, dict):
+    alice_servers = (alice_config or {}).get("mcp_servers") or {}
+    if not isinstance(alice_servers, dict):
         report.errors.append(
             "mcp_servers in Alice config is not a dict; cannot migrate."
         )
         return report
 
     translated: dict[str, dict] = {}
-    for name, cfg in lydia_servers.items():
+    for name, cfg in alice_servers.items():
         out, skipped = _translate_one_server(str(name), cfg or {})
         if out is None:
             report.errors.append(
@@ -691,9 +691,9 @@ def migrate(
     # codex subprocess can call back into Alice for the tools codex
     # doesn't ship with — web_search, browser_*, delegate_task, vision,
     # memory, skills, session_search, image_generate, text_to_speech.
-    # The server itself is agent/transports/lydia_tools_mcp_server.py
+    # The server itself is agent/transports/alice_tools_mcp_server.py
     # and is launched on demand by codex (stdio MCP).
-    if expose_lydia_tools:
+    if expose_alice_tools:
         translated["alice-tools"] = _build_alice_tools_mcp_entry()
         if "alice-tools" not in report.migrated:
             report.migrated.append("alice-tools")

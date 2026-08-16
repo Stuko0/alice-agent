@@ -131,7 +131,7 @@ def _node_symlink_candidate_dirs() -> "list[Path]":
     return dirs
 
 
-def remove_node_symlinks(lydia_home: Path) -> list:
+def remove_node_symlinks(alice_home: Path) -> list:
     """Remove the node/npm/npx symlinks the installer placed on PATH.
 
     The POSIX installer (``scripts/install.sh`` / ``scripts/lib/node-bootstrap.sh``)
@@ -148,7 +148,7 @@ def remove_node_symlinks(lydia_home: Path) -> list:
     directory are removed — links the user has repointed elsewhere (nvm, fnm,
     etc.) are left untouched.
     """
-    node_dir = (lydia_home / "node").resolve()
+    node_dir = (alice_home / "node").resolve()
     removed = []
 
     for name in ("node", "npm", "npx"):
@@ -319,9 +319,9 @@ def uninstall_gateway_service():
 # or open a new terminal anyway).
 
 
-def _alice_path_markers(lydia_home: Path) -> list[str]:
+def _alice_path_markers(alice_home: Path) -> list[str]:
     """Path-entry substrings that identify Alice-owned User-PATH entries."""
-    root = str(lydia_home).rstrip("\\/")
+    root = str(alice_home).rstrip("\\/")
     # Match on prefix so sub-entries (git\cmd, git\bin, git\usr\bin, node, etc.)
     # all get swept.  Also match the bare alice-agent install dir.
     markers = [root + "\\alice-agent", root + "\\git", root + "\\node", root + "\\venv"]
@@ -332,7 +332,7 @@ def _alice_path_markers(lydia_home: Path) -> list[str]:
     return markers
 
 
-def remove_path_from_windows_registry(lydia_home: Path) -> list[str]:
+def remove_path_from_windows_registry(alice_home: Path) -> list[str]:
     """Strip Alice-owned entries from User-scope PATH in the registry.
 
     Returns the list of removed path entries.  Operates on HKCU\\Environment,
@@ -354,7 +354,7 @@ def remove_path_from_windows_registry(lydia_home: Path) -> list[str]:
                 return []
             # Preserve REG_EXPAND_SZ vs REG_SZ so unexpanded %VARS% survive.
             entries = [e for e in path_value.split(";") if e]
-            markers = _alice_path_markers(lydia_home)
+            markers = _alice_path_markers(alice_home)
             kept: list[str] = []
             for entry in entries:
                 entry_norm = entry.rstrip("\\/")
@@ -397,13 +397,13 @@ def remove_alice_env_vars_windows() -> list[str]:
     return removed
 
 
-def remove_portable_tooling_windows(lydia_home: Path) -> list[Path]:
+def remove_portable_tooling_windows(alice_home: Path) -> list[Path]:
     """Delete PortableGit and Node installs the Windows installer created under
     ``%LOCALAPPDATA%\\alice\\``.  Only called on full uninstall; they're
     isolated from any system Git / Node so they cannot break other tools."""
     removed: list[Path] = []
     for sub in ("git", "node", "gateway-service"):
-        target = lydia_home / sub
+        target = alice_home / sub
         if target.exists():
             try:
                 shutil.rmtree(target, ignore_errors=False)
@@ -418,11 +418,11 @@ def _is_windows() -> bool:
     return sys.platform == "win32"
 
 
-def _is_default_alice_home(lydia_home: Path) -> bool:
-    """Return True when ``lydia_home`` points at the default (non-profile) root."""
+def _is_default_alice_home(alice_home: Path) -> bool:
+    """Return True when ``alice_home`` points at the default (non-profile) root."""
     try:
         from alice_constants import get_default_alice_root
-        return lydia_home.resolve() == get_default_alice_root().resolve()
+        return alice_home.resolve() == get_default_alice_root().resolve()
     except Exception:
         return False
 
@@ -459,11 +459,11 @@ def _uninstall_profile(profile) -> None:
     # 1. Stop and remove this profile's gateway service.
     #    Use `python -m alice_cli.main` so we don't depend on a `alice`
     #    wrapper that may be half-removed mid-uninstall.
-    lydia_invocation = [_sys.executable, "-m", "alice_cli.main", "--profile", name]
+    alice_invocation = [_sys.executable, "-m", "alice_cli.main", "--profile", name]
     for subcmd in ("stop", "uninstall"):
         try:
             subprocess.run(
-                lydia_invocation + ["gateway", subcmd],
+                alice_invocation + ["gateway", subcmd],
                 capture_output=True,
                 text=True,
                 timeout=60,
@@ -506,8 +506,8 @@ def run_gui_uninstall(args):
         uninstall_gui,
     )
 
-    lydia_home = get_alice_home()
-    summary = gui_install_summary(lydia_home)
+    alice_home = get_alice_home()
+    summary = gui_install_summary(alice_home)
     skip_confirm = bool(getattr(args, "yes", False))
 
     print()
@@ -518,7 +518,7 @@ def run_gui_uninstall(args):
 
     if not summary["gui_installed"]:
         print("No Alice Chat GUI installation was found.")
-        print(f"  Checked: {lydia_home}, and the standard app locations for this OS.")
+        print(f"  Checked: {alice_home}, and the standard app locations for this OS.")
         return
 
     print(color("This removes the Chat GUI only. The Alice Agent stays installed.", Colors.CYAN))
@@ -531,10 +531,10 @@ def run_gui_uninstall(args):
     if summary["userdata_exists"]:
         print(f"  • {summary['userdata_dir']}  (desktop app data)")
     print()
-    if agent_is_installed(lydia_home):
+    if agent_is_installed(alice_home):
         print(color("Kept intact:", Colors.GREEN, Colors.BOLD))
-        print(f"  • The Alice Agent at {lydia_home / 'alice-agent'}")
-        print(f"  • Your config, sessions, and secrets under {lydia_home}")
+        print(f"  • The Alice Agent at {alice_home / 'alice-agent'}")
+        print(f"  • Your config, sessions, and secrets under {alice_home}")
         print()
 
     if not skip_confirm:
@@ -552,7 +552,7 @@ def run_gui_uninstall(args):
     print()
     print(color("Uninstalling Chat GUI...", Colors.CYAN, Colors.BOLD))
     print()
-    uninstall_gui(lydia_home)
+    uninstall_gui(alice_home)
 
     print()
     print(color("┌─────────────────────────────────────────────────────────┐", Colors.GREEN, Colors.BOLD))
@@ -573,12 +573,12 @@ def run_uninstall(args):
     - Keep data: removes code but keeps ~/.alice/ for future reinstall
     """
     project_root = get_project_root()
-    lydia_home = get_alice_home()
+    alice_home = get_alice_home()
 
     # Detect named profiles when uninstalling from the default root —
-    # offer to clean them up too instead of leaving zombie LYDIA_HOMEs
+    # offer to clean them up too instead of leaving zombie ALICE_HOMEs
     # and systemd units behind.
-    is_default_profile = _is_default_alice_home(lydia_home)
+    is_default_profile = _is_default_alice_home(alice_home)
     named_profiles = _discover_named_profiles() if is_default_profile else []
 
     # Non-interactive fast path (``--yes``): no prompts. ``--full`` selects a
@@ -592,7 +592,7 @@ def run_uninstall(args):
         full_uninstall = bool(getattr(args, "full", False))
         _perform_uninstall(
             project_root=project_root,
-            lydia_home=lydia_home,
+            alice_home=alice_home,
             full_uninstall=full_uninstall,
             remove_profiles=False,
             named_profiles=named_profiles,
@@ -608,9 +608,9 @@ def run_uninstall(args):
     # Show what will be affected
     print(color("Current Installation:", Colors.CYAN, Colors.BOLD))
     print(f"  Code:    {project_root}")
-    print(f"  Config:  {lydia_home / 'config.yaml'}")
-    print(f"  Secrets: {lydia_home / '.env'}")
-    print(f"  Data:    {lydia_home / 'cron/'}, {lydia_home / 'sessions/'}, {lydia_home / 'logs/'}")
+    print(f"  Config:  {alice_home / 'config.yaml'}")
+    print(f"  Secrets: {alice_home / '.env'}")
+    print(f"  Data:    {alice_home / 'cron/'}, {alice_home / 'sessions/'}, {alice_home / 'logs/'}")
     print()
 
     if named_profiles:
@@ -697,7 +697,7 @@ def run_uninstall(args):
 
     _perform_uninstall(
         project_root=project_root,
-        lydia_home=lydia_home,
+        alice_home=alice_home,
         full_uninstall=full_uninstall,
         remove_profiles=remove_profiles,
         named_profiles=named_profiles,
@@ -707,7 +707,7 @@ def run_uninstall(args):
 def _perform_uninstall(
     *,
     project_root: Path,
-    lydia_home: Path,
+    alice_home: Path,
     full_uninstall: bool,
     remove_profiles: bool,
     named_profiles: list,
@@ -742,10 +742,10 @@ def _perform_uninstall(
 
     if _is_windows():
         log_info("Removing PATH entries from Windows User environment...")
-        # Expand %LOCALAPPDATA% etc. in lydia_home so the marker matching is
+        # Expand %LOCALAPPDATA% etc. in alice_home so the marker matching is
         # against fully resolved paths — installer writes literal strings
         # like C:\Users\<u>\AppData\Local\alice\git\cmd, not %LOCALAPPDATA%.
-        removed_path_entries = remove_path_from_windows_registry(Path(os.path.expandvars(str(lydia_home))))
+        removed_path_entries = remove_path_from_windows_registry(Path(os.path.expandvars(str(alice_home))))
         if removed_path_entries:
             for entry in removed_path_entries:
                 log_success(f"Removed from User PATH: {entry}")
@@ -773,7 +773,7 @@ def _perform_uninstall(
     #     (only when they still point into this Alice home's node dir, so we
     #     never clobber an existing nvm / user-managed Node).
     log_info("Removing Alice-managed node/npm/npx symlinks...")
-    removed_node_links = remove_node_symlinks(lydia_home)
+    removed_node_links = remove_node_symlinks(alice_home)
     if removed_node_links:
         for link in removed_node_links:
             log_success(f"Removed {link}")
@@ -786,13 +786,13 @@ def _perform_uninstall(
     #     code, so the GUI — which is just another consumer of the same
     #     checkout — should go with it. uninstall_gui() never touches config /
     #     sessions / .env, so it's safe in keep-data mode; on full uninstall the
-    #     step-5 rmtree(lydia_home) would sweep the in-tree artifacts anyway,
+    #     step-5 rmtree(alice_home) would sweep the in-tree artifacts anyway,
     #     but the packaged app + Electron userData live OUTSIDE ALICE_HOME and
     #     must be cleaned explicitly here.
     log_info("Removing desktop Chat GUI artifacts...")
     try:
         from alice_cli.gui_uninstall import uninstall_gui
-        gui_removed = uninstall_gui(lydia_home)
+        gui_removed = uninstall_gui(alice_home)
         if not gui_removed:
             log_info("No desktop GUI artifacts found")
     except Exception as e:
@@ -806,7 +806,7 @@ def _perform_uninstall(
     try:
         if project_root.exists():
             # If the install is inside ~/.alice/, just remove the alice-agent subdir
-            if lydia_home in project_root.parents or project_root.parent == lydia_home:
+            if alice_home in project_root.parents or project_root.parent == alice_home:
                 shutil.rmtree(project_root)
                 log_success(f"Removed {project_root}")
             else:
@@ -821,11 +821,11 @@ def _perform_uninstall(
     #     PortableGit, bundled Node, gateway-service dir.  Installer put them
     #     under ALICE_HOME but they're install tooling, not config — safe to
     #     remove even in "keep data" mode.  If we're doing a full uninstall
-    #     the step-5 rmtree(lydia_home) would sweep them anyway; calling
+    #     the step-5 rmtree(alice_home) would sweep them anyway; calling
     #     this helper there is a no-op since they'll already be gone.
     if _is_windows():
         log_info("Removing Windows installer artifacts (PortableGit, Node, gateway-service)...")
-        removed_artifacts = remove_portable_tooling_windows(lydia_home)
+        removed_artifacts = remove_portable_tooling_windows(alice_home)
         if removed_artifacts:
             for path in removed_artifacts:
                 log_success(f"Removed {path}")
@@ -845,14 +845,14 @@ def _perform_uninstall(
 
         log_info("Removing configuration and data...")
         try:
-            if lydia_home.exists():
-                shutil.rmtree(lydia_home)
-                log_success(f"Removed {lydia_home}")
+            if alice_home.exists():
+                shutil.rmtree(alice_home)
+                log_success(f"Removed {alice_home}")
         except Exception as e:
-            log_warn(f"Could not fully remove {lydia_home}: {e}")
+            log_warn(f"Could not fully remove {alice_home}: {e}")
             log_info("You may need to manually remove it")
     else:
-        log_info(f"Keeping configuration and data in {lydia_home}")
+        log_info(f"Keeping configuration and data in {alice_home}")
     
     # Done
     print()
@@ -863,7 +863,7 @@ def _perform_uninstall(
     
     if not full_uninstall:
         print(color("Your configuration and data have been preserved:", Colors.CYAN))
-        print(f"  {lydia_home}/")
+        print(f"  {alice_home}/")
         print()
         print("To reinstall later with your existing settings:")
         if _is_windows():

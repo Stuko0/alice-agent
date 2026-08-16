@@ -530,13 +530,13 @@ def _resolve_stdio_command(command: str, env: dict) -> tuple[str, dict]:
         if which_hit:
             resolved_command = which_hit
         elif resolved_command in {"npx", "npm", "node"}:
-            lydia_home = os.path.expanduser(
+            alice_home = os.path.expanduser(
                 os.getenv(
                     "ALICE_HOME", os.path.join(os.path.expanduser("~"), ".alice")
                 )
             )
             candidates = [
-                os.path.join(lydia_home, "node", "bin", resolved_command),
+                os.path.join(alice_home, "node", "bin", resolved_command),
                 os.path.join(os.path.expanduser("~"), ".local", "bin", resolved_command),
                 # /usr/local/bin is the canonical install location for Node on
                 # Linux from-source builds, the upstream node:bookworm-slim
@@ -1352,7 +1352,7 @@ class ElicitationHandler:
         # normalizes the answer to one of accept / decline / cancel.
         #
         # The recv-loop task that fires this callback does NOT inherit
-        # the agent's contextvars (LYDIA_SESSION_PLATFORM etc.). When
+        # the agent's contextvars (ALICE_SESSION_PLATFORM etc.). When
         # the MCP tool wrapper captured the agent's context onto
         # owner._pending_call_context we replay it here via
         # contextvars.Context.run so the gateway-platform detection in
@@ -1464,7 +1464,7 @@ class MCPServerTask:
         # contextvars snapshot of the agent task that's currently in
         # session.call_tool(). The MCP recv loop dispatches incoming
         # elicitation/create requests on a SEPARATE asyncio task whose
-        # context doesn't inherit LYDIA_SESSION_PLATFORM, so the
+        # context doesn't inherit ALICE_SESSION_PLATFORM, so the
         # elicitation handler has no way to detect the gateway session
         # that triggered the call. Capturing the agent's context here
         # and replaying it inside the elicitation callback restores
@@ -3208,10 +3208,10 @@ def _load_mcp_config() -> Dict[str, dict]:
     """
     try:
         from alice_cli.config import load_config
-        # Safe mode (--safe-mode / LYDIA_SAFE_MODE=1): troubleshooting run
+        # Safe mode (--safe-mode / ALICE_SAFE_MODE=1): troubleshooting run
         # with all customizations disabled — no MCP servers connect.
         from utils import env_var_enabled as _env_enabled
-        if _env_enabled("LYDIA_SAFE_MODE"):
+        if _env_enabled("ALICE_SAFE_MODE"):
             return {}
         config = load_config()
         servers = config.get("mcp_servers")

@@ -31,7 +31,7 @@ Manifest format (``distribution.yaml`` at the profile root)::
     name: telemetry
     version: 0.1.0
     description: "Compliance monitoring harness"
-    lydia_requires: ">=0.12.0"
+    alice_requires: ">=0.12.0"
     author: "..."
     license: "..."
     env_requires:
@@ -106,7 +106,7 @@ USER_OWNED_EXCLUDE: frozenset = frozenset({
     "response_store.db-shm", "response_store.db-wal",
     "gateway.pid", "gateway_state.json", "processes.json",
     "auth.lock", "active_profile", ".update_check",
-    "errors.log", ".lydia_history",
+    "errors.log", ".alice_history",
     # User data
     "memories", "sessions", "logs", "plans", "workspace", "home",
     "image_cache", "audio_cache", "document_cache",
@@ -170,7 +170,7 @@ class DistributionManifest:
     name: str
     version: str = "0.1.0"
     description: str = ""
-    lydia_requires: str = ""
+    alice_requires: str = ""
     author: str = ""
     license: str = ""
     env_requires: List[EnvRequirement] = field(default_factory=list)
@@ -203,7 +203,7 @@ class DistributionManifest:
             name=name,
             version=str(data.get("version") or "0.1.0"),
             description=str(data.get("description") or ""),
-            lydia_requires=str(data.get("lydia_requires") or ""),
+            alice_requires=str(data.get("alice_requires") or ""),
             author=str(data.get("author") or ""),
             license=str(data.get("license") or ""),
             env_requires=env_requires,
@@ -219,8 +219,8 @@ class DistributionManifest:
         }
         if self.description:
             out["description"] = self.description
-        if self.lydia_requires:
-            out["lydia_requires"] = self.lydia_requires
+        if self.alice_requires:
+            out["alice_requires"] = self.alice_requires
         if self.author:
             out["author"] = self.author
         if self.license:
@@ -495,7 +495,7 @@ def plan_install(
         normalize_profile_name,
         validate_profile_name,
     )
-    from alice_cli import __version__ as lydia_version
+    from alice_cli import __version__ as alice_version
 
     staged, provenance = _stage_source(source, workdir)
     _reject_distribution_symlinks(staged)
@@ -507,7 +507,7 @@ def plan_install(
         )
 
     # Version check up-front so we fail fast
-    check_alice_requires(manifest.lydia_requires, lydia_version)
+    check_alice_requires(manifest.alice_requires, alice_version)
 
     # Resolve target profile name
     target_name = override_name or manifest.name
@@ -619,7 +619,7 @@ def install_distribution(
         create_wrapper_script,
     )
 
-    with tempfile.TemporaryDirectory(prefix="lydia_dist_install_") as tmp:
+    with tempfile.TemporaryDirectory(prefix="alice_dist_install_") as tmp:
         plan = plan_install(source, Path(tmp), override_name=name)
 
         if plan.existing and not force:
@@ -681,7 +681,7 @@ def update_distribution(
             "`alice profile install <source> --name {canon} --force`."
         )
 
-    with tempfile.TemporaryDirectory(prefix="lydia_dist_update_") as tmp:
+    with tempfile.TemporaryDirectory(prefix="alice_dist_update_") as tmp:
         plan = plan_install(
             existing_manifest.source,
             Path(tmp),

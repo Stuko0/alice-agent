@@ -72,8 +72,8 @@ DIALOG_BRIDGE_URL_PATTERN = f"http://{DIALOG_BRIDGE_HOST}/*"
 # in the first place — the overrides take precedence.
 _DIALOG_BRIDGE_SCRIPT = r"""
 (() => {
-  if (window.__lydiaDialogBridgeInstalled) return;
-  window.__lydiaDialogBridgeInstalled = true;
+  if (window.__aliceDialogBridgeInstalled) return;
+  window.__aliceDialogBridgeInstalled = true;
   const ENDPOINT = "http://alice-dialog-bridge.invalid/";
   function ask(kind, message, defaultPrompt) {
     try {
