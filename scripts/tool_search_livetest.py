@@ -272,8 +272,8 @@ def setup_isolated_home(enabled: bool) -> Path:
         # hand — it never materializes the secret in a local variable in
         # this module, which both avoids a hand-rolled parser bug and keeps
         # static analysis from tainting the transcript records with the key.
-        from alice_cli.env_loader import load_lydia_dotenv
-        load_lydia_dotenv(lydia_home=str(Path.home() / ".alice"))
+        from alice_cli.env_loader import load_alice_dotenv
+        load_alice_dotenv(lydia_home=str(Path.home() / ".alice"))
 
     cfg = {
         "model": {

@@ -5,17 +5,17 @@
 //
 // A GUI app launched from Explorer inherits the environment block captured at
 // login, so a variable set via `setx` AFTER login is invisible in process.env
-// even though a fresh shell — and the Lydia CLI — sees it immediately. The
-// desktop's LYDIA_HOME resolution relies on process.env, so that stale-snapshot
-// gap silently sends the backend to the default %LOCALAPPDATA%\lydia. Reading
+// even though a fresh shell — and the Alice CLI — sees it immediately. The
+// desktop's ALICE_HOME resolution relies on process.env, so that stale-snapshot
+// gap silently sends the backend to the default %LOCALAPPDATA%\\alice. Reading
 // the live registry value closes the gap. See #45471.
 
 const { execFileSync } = require('node:child_process')
 
 // Parse the output of `reg query HKCU\Environment /v <name>`, which looks like:
 //
-//   HKEY_CURRENT_USER\Environment
-//       LYDIA_HOME    REG_SZ    F:\Lydia\data
+//   HKEY_CURRENT_USER\\Environment
+//       ALICE_HOME    REG_SZ    F:\\Alice\\data
 //
 // Returns the raw value string (spaces inside the value preserved), or null when
 // the requested value line isn't present.

@@ -684,13 +684,13 @@ def get_project_root() -> Path:
     """Get the project installation directory."""
     return Path(__file__).parent.parent.resolve()
 
-def _resolve_lydia_uid_gid() -> tuple[Optional[int], Optional[int]]:
+def _resolve_alice_uid_gid() -> tuple[Optional[int], Optional[int]]:
     """Read the LYDIA_UID / LYDIA_GID env vars set by Docker deployments.
 
     Docker containers running Alice commonly set these to map the in-container
     user to a host user so volume-mounted state files end up with the right
     ownership. The entrypoint chowns the top-level ALICE_HOME once, but
-    subdirectories created at runtime by ``ensure_lydia_home()`` (especially
+    subdirectories created at runtime by ``ensure_alice_home()`` (especially
     for profile namespaces under ``profiles/<name>/``) need the same chown
     or they land as ``root:root`` and block subsequent uid-mapped workers
     with ``PermissionError [Errno 13]``. See #34107.
@@ -714,7 +714,7 @@ def _resolve_lydia_uid_gid() -> tuple[Optional[int], Optional[int]]:
     return uid, gid
 
 
-def _chown_to_lydia_uid(path) -> None:
+def _chown_to_alice_uid(path) -> None:
     """Chown ``path`` to ``LYDIA_UID:LYDIA_GID`` if those env vars are set.
 
     No-op when:
@@ -723,10 +723,10 @@ def _chown_to_lydia_uid(path) -> None:
       - On Windows (chown semantics don't apply)
 
     Used by :func:`_secure_dir` to keep ownership consistent across all
-    directories created by :func:`ensure_lydia_home` on Docker deployments.
+    directories created by :func:`ensure_alice_home` on Docker deployments.
     See #34107.
     """
-    uid, gid = _resolve_lydia_uid_gid()
+    uid, gid = _resolve_alice_uid_gid()
     if uid is None and gid is None:
         return
     try:
@@ -750,8 +750,8 @@ def _secure_dir(path):
     permissions (0750) so interactive users in the alice group can
     share state with the gateway service.
 
-    The mode can be overridden via the LYDIA_HOME_MODE environment variable
-    (e.g. LYDIA_HOME_MODE=0701) for deployments where a web server (nginx,
+    The mode can be overridden via the ALICE_HOME_MODE environment variable
+    (e.g. ALICE_HOME_MODE=0701) for deployments where a web server (nginx,
     caddy, etc.) needs to traverse ALICE_HOME to reach a served subdirectory.
     The execute-only bit on a directory permits cd-through without exposing
     directory listings.
@@ -764,7 +764,7 @@ def _secure_dir(path):
     if is_managed():
         return
     try:
-        mode_str = os.environ.get("LYDIA_HOME_MODE", "").strip()
+        mode_str = os.environ.get("ALICE_HOME_MODE", "").strip()
         mode = int(mode_str, 8) if mode_str else 0o700
     except ValueError:
         mode = 0o700
@@ -772,7 +772,7 @@ def _secure_dir(path):
         os.chmod(path, mode)
     except (OSError, NotImplementedError):
         pass
-    _chown_to_lydia_uid(path)
+    _chown_to_alice_uid(path)
 
 
 def _is_container() -> bool:
@@ -839,7 +839,7 @@ def _ensure_default_soul_md(home: Path) -> None:
     _secure_file(soul_path)
 
 
-def ensure_lydia_home():
+def ensure_alice_home():
     """Ensure ~/.alice directory structure exists with secure permissions.
 
     In managed mode (NixOS), dirs are created by the activation script with
@@ -850,7 +850,7 @@ def ensure_lydia_home():
     if is_managed():
         old_umask = os.umask(0o007)
         try:
-            _ensure_lydia_home_managed(home)
+            _ensure_alice_home_managed(home)
         finally:
             os.umask(old_umask)
     else:
@@ -866,7 +866,7 @@ def ensure_lydia_home():
         _ensure_default_soul_md(home)
 
 
-def _ensure_lydia_home_managed(home: Path):
+def _ensure_alice_home_managed(home: Path):
     """Managed-mode variant: verify dirs exist (activation creates them), seed SOUL.md."""
     if not home.is_dir():
         raise RuntimeError(
@@ -5379,7 +5379,7 @@ def migrate_config(interactive: bool = True, quiet: bool = False) -> Dict[str, A
     #      base_url, api_key, timeout, extra_body) — canonical slot for
     #      routing the curator fork to a cheaper aux model.
     #   3. Creates `~/.alice/logs/curator/` if missing (belt-and-suspenders
-    #      on top of ensure_lydia_home() — old profiles that predate this
+    #      on top of ensure_alice_home() — old profiles that predate this
     #      migration still benefit).
     if current_ver < 23:
         try:
@@ -6326,7 +6326,7 @@ def apply_terminal_config_to_env(
 
 def _load_config_impl(*, want_deepcopy: bool) -> Dict[str, Any]:
     with _CONFIG_LOCK:
-        ensure_lydia_home()
+        ensure_alice_home()
         config_path = get_config_path()
         path_key = str(config_path)
 
@@ -6531,7 +6531,7 @@ def save_config(
                 )
         from utils import atomic_yaml_write
 
-        ensure_lydia_home()
+        ensure_alice_home()
         config_path = get_config_path()
         # Compute explicit user paths BEFORE any normalisation --------
         # _normalize_max_turns_config may inject agent.max_turns from
@@ -6887,7 +6887,7 @@ def save_env_value(key: str, value: str):
     value = value.replace("\n", "").replace("\r", "")
     # API keys / tokens must be ASCII — strip non-ASCII with a warning.
     value = _check_non_ascii_credential(key, value)
-    ensure_lydia_home()
+    ensure_alice_home()
     env_path = get_env_path()
 
     # On Windows, open() defaults to the system locale (cp1252) which can
@@ -7507,7 +7507,7 @@ def set_config_value(key: str, value: str):
         key = "model.base_url"
         print("  (note: 'api_base' is an alias — saved as model.base_url)")
     # Write only user config back (not the full merged defaults)
-    ensure_lydia_home()
+    ensure_alice_home()
     from utils import atomic_yaml_write
     atomic_yaml_write(config_path, user_config, sort_keys=False)
     

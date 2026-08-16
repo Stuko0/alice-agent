@@ -3615,8 +3615,8 @@ def browser_vision(question: str, annotate: bool = False, task_id: Optional[str]
 
     import base64
     import uuid as uuid_mod
-    from alice_constants import get_lydia_dir
-    screenshots_dir = get_lydia_dir("cache/screenshots", "browser_screenshots")
+    from alice_constants import get_alice_dir
+    screenshots_dir = get_alice_dir("cache/screenshots", "browser_screenshots")
     screenshot_path = screenshots_dir / f"browser_screenshot_{uuid_mod.uuid4().hex}.png"
     effective_task_id = _last_session_key(task_id or "default")
 
@@ -3674,8 +3674,8 @@ def browser_vision(question: str, annotate: bool = False, task_id: Optional[str]
             _lp_fallback_warning = fb_result.get("fallback_warning")
             fb_path = fb_result.get("data", {}).get("path", "")
             if fb_path and os.path.exists(fb_path):
-                from alice_constants import get_lydia_dir
-                screenshots_dir = get_lydia_dir("cache/screenshots", "browser_screenshots")
+                from alice_constants import get_alice_dir
+                screenshots_dir = get_alice_dir("cache/screenshots", "browser_screenshots")
                 screenshots_dir.mkdir(parents=True, exist_ok=True)
                 import shutil as _shutil_vision
                 persistent_path = screenshots_dir / f"browser_screenshot_{uuid_mod.uuid4().hex}.png"

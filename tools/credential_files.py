@@ -342,7 +342,7 @@ def iter_skills_files(
 # ---------------------------------------------------------------------------
 
 # The cache subdirectories that should be mirrored into remote backends.
-# Each tuple is (new_subpath, old_name) matching alice_constants.get_lydia_dir().
+# Each tuple is (new_subpath, old_name) matching alice_constants.get_alice_dir().
 _CACHE_DIRS: list[tuple[str, str]] = [
     ("cache/documents", "document_cache"),
     ("cache/images", "image_cache"),
@@ -361,13 +361,13 @@ def get_cache_directory_mounts(
 
     Used by Docker to create bind mounts.  Each entry has ``host_path`` and
     ``container_path`` keys.  The host path is resolved via
-    ``get_lydia_dir()`` for backward compatibility with old directory layouts.
+    ``get_alice_dir()`` for backward compatibility with old directory layouts.
     """
-    from alice_constants import get_lydia_dir
+    from alice_constants import get_alice_dir
 
     mounts: List[Dict[str, str]] = []
     for new_subpath, old_name in _CACHE_DIRS:
-        host_dir = get_lydia_dir(new_subpath, old_name)
+        host_dir = get_alice_dir(new_subpath, old_name)
         if host_dir.is_dir():
             # Always map to the *new* container layout regardless of host layout.
             container_path = f"{container_base.rstrip('/')}/{new_subpath}"
@@ -431,11 +431,11 @@ def iter_cache_files(
     Used by Modal to upload files individually and resync before each command.
     Skips symlinks.  The container paths use the new ``cache/<subdir>`` layout.
     """
-    from alice_constants import get_lydia_dir
+    from alice_constants import get_alice_dir
 
     result: List[Dict[str, str]] = []
     for new_subpath, old_name in _CACHE_DIRS:
-        host_dir = get_lydia_dir(new_subpath, old_name)
+        host_dir = get_alice_dir(new_subpath, old_name)
         if not host_dir.is_dir():
             continue
         container_root = f"{container_base.rstrip('/')}/{new_subpath}"

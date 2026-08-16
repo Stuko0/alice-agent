@@ -597,13 +597,13 @@ def _find_skill_in_other_profiles(name: str) -> List[Tuple[str, Path]]:
     """
     matches: List[Tuple[str, Path]] = []
     try:
-        from alice_constants import get_default_lydia_root
+        from alice_constants import get_default_alice_root
         from agent.skill_utils import is_excluded_skill_path
     except Exception:
         return matches
 
     try:
-        root = get_default_lydia_root()
+        root = get_default_alice_root()
     except Exception:
         return matches
 

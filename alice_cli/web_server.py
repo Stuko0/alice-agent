@@ -1395,9 +1395,9 @@ def _default_lydia_root_is_opt_data() -> bool:
     if not raw:
         return False
     try:
-        from alice_constants import get_default_lydia_root
+        from alice_constants import get_default_alice_root
 
-        root = get_default_lydia_root().expanduser().resolve(strict=False)
+        root = get_default_alice_root().expanduser().resolve(strict=False)
     except (OSError, RuntimeError):
         root = Path(raw).expanduser().resolve(strict=False)
     return root == _HOSTED_MANAGED_FILES_ROOT
@@ -6532,7 +6532,7 @@ def _anthropic_oauth_status() -> Dict[str, Any]:
     2. ``ANTHROPIC_API_KEY`` → ``ANTHROPIC_TOKEN`` → ``CLAUDE_CODE_OAUTH_TOKEN``
        env vars (registry order) — from ``.env``, the shell, or an external
        secret source like Bitwarden (whose keys are injected into the process
-       env during ``load_lydia_dotenv()``, so the same check covers them)
+       env during ``load_alice_dotenv()``, so the same check covers them)
 
     Claude Code's ``~/.claude/.credentials.json`` is deliberately NOT read
     here — it has its own dedicated catalog entry (``claude-code`` →
@@ -8752,14 +8752,14 @@ def _call_cron_for_profile(target_profile: Optional[str], func_name: str, *args,
     with _CRON_PROFILE_LOCK:
         from cron import jobs as cron_jobs
         from alice_constants import (
-            reset_lydia_home_override,
-            set_lydia_home_override,
+            reset_alice_home_override,
+            set_alice_home_override,
         )
 
         old_cron_dir = cron_jobs.CRON_DIR
         old_jobs_file = cron_jobs.JOBS_FILE
         old_output_dir = cron_jobs.OUTPUT_DIR
-        token = set_lydia_home_override(str(home))
+        token = set_alice_home_override(str(home))
         cron_jobs.CRON_DIR = home / "cron"
         cron_jobs.JOBS_FILE = cron_jobs.CRON_DIR / "jobs.json"
         cron_jobs.OUTPUT_DIR = cron_jobs.CRON_DIR / "output"
@@ -8769,7 +8769,7 @@ def _call_cron_for_profile(target_profile: Optional[str], func_name: str, *args,
             cron_jobs.CRON_DIR = old_cron_dir
             cron_jobs.JOBS_FILE = old_jobs_file
             cron_jobs.OUTPUT_DIR = old_output_dir
-            reset_lydia_home_override(token)
+            reset_alice_home_override(token)
 
     if isinstance(result, list):
         return [_annotate_cron_job(j, profile_name, home) for j in result]
@@ -10996,16 +10996,16 @@ def _write_profile_model(profile_dir: Path, provider: str, model: str) -> None:
     Clears any stale ``base_url`` / ``context_length`` the same way
     ``POST /api/model/set`` does, since the new model may differ.
     """
-    from alice_constants import set_lydia_home_override, reset_lydia_home_override
+    from alice_constants import set_alice_home_override, reset_alice_home_override
 
-    token = set_lydia_home_override(str(profile_dir))
+    token = set_alice_home_override(str(profile_dir))
     try:
         provider, model = _normalize_main_model_assignment(provider, model)
         cfg = load_config()
         cfg["model"] = _apply_main_model_assignment(cfg.get("model", {}), provider, model)
         save_config(cfg)
     finally:
-        reset_lydia_home_override(token)
+        reset_alice_home_override(token)
 
 
 def _write_profile_mcp_servers(profile_dir: Path, servers: List["MCPServerCreate"]) -> int:
@@ -11020,11 +11020,11 @@ def _write_profile_mcp_servers(profile_dir: Path, servers: List["MCPServerCreate
     but batched so the whole profile-create write is a single config save.
     Returns the number of servers written.
     """
-    from alice_constants import set_lydia_home_override, reset_lydia_home_override
+    from alice_constants import set_alice_home_override, reset_alice_home_override
     from alice_cli.mcp_security import validate_mcp_server_entry
 
     written = 0
-    token = set_lydia_home_override(str(profile_dir))
+    token = set_alice_home_override(str(profile_dir))
     try:
         cfg = load_config()
         mcp = cfg.setdefault("mcp_servers", {})
@@ -11061,7 +11061,7 @@ def _write_profile_mcp_servers(profile_dir: Path, servers: List["MCPServerCreate
             cfg.pop("mcp_servers", None)
             save_config(cfg)
     finally:
-        reset_lydia_home_override(token)
+        reset_alice_home_override(token)
     return written
 
 
@@ -11076,12 +11076,12 @@ def _disable_unselected_skills(profile_dir: Path, keep: List[str]) -> int:
     install.) Scoped to the profile via the ALICE_HOME override. Returns the
     number of skills newly disabled.
     """
-    from alice_constants import set_lydia_home_override, reset_lydia_home_override
+    from alice_constants import set_alice_home_override, reset_alice_home_override
     from alice_cli.skills_config import get_disabled_skills, save_disabled_skills
 
     keep_set = {s.strip() for s in keep if s and s.strip()}
     disabled_count = 0
-    token = set_lydia_home_override(str(profile_dir))
+    token = set_alice_home_override(str(profile_dir))
     try:
         installed: List[str] = []
         skills_root = profile_dir / "skills"
@@ -11097,7 +11097,7 @@ def _disable_unselected_skills(profile_dir: Path, keep: List[str]) -> int:
         if disabled_count:
             save_disabled_skills(cfg, disabled)
     finally:
-        reset_lydia_home_override(token)
+        reset_alice_home_override(token)
     return disabled_count
 
 
@@ -11475,7 +11475,7 @@ def _profile_scope(profile: Optional[str]):
     Two seams must be redirected for skills/toolsets endpoints:
 
     1. ``load_config``/``save_config`` resolve ``get_alice_home()`` at call
-       time — the context-local override from ``set_lydia_home_override``
+       time — the context-local override from ``set_alice_home_override``
        reaches them (same pattern as ``_write_profile_model``).
     2. ``tools.skills_tool`` and ``tools.skill_manager_tool`` bind
        ``SKILLS_DIR`` at import time, so the override CANNOT reach them.
@@ -11494,8 +11494,8 @@ def _profile_scope(profile: Optional[str]):
 
     from alice_constants import (
         get_alice_home,
-        set_lydia_home_override,
-        reset_lydia_home_override,
+        set_alice_home_override,
+        reset_alice_home_override,
     )
     from tools import skills_tool as _skills_tool
     from tools import skill_manager_tool as _skill_mgr
@@ -11505,7 +11505,7 @@ def _profile_scope(profile: Optional[str]):
         profile_dir = get_alice_home()
     else:
         profile_dir = _resolve_profile_dir(requested)
-        token = set_lydia_home_override(str(profile_dir))
+        token = set_alice_home_override(str(profile_dir))
 
     with _SKILLS_PROFILE_LOCK:
         old_home = _skills_tool.ALICE_HOME
@@ -11524,7 +11524,7 @@ def _profile_scope(profile: Optional[str]):
             _skill_mgr.ALICE_HOME = old_mgr_home
             _skill_mgr.SKILLS_DIR = old_mgr_skills_dir
             if token is not None:
-                reset_lydia_home_override(token)
+                reset_alice_home_override(token)
 
 
 @contextmanager
@@ -11532,7 +11532,7 @@ def _config_profile_scope(profile: Optional[str]):
     """Await-safe, config-only profile scope for handlers that ``await``.
 
     Unlike ``_profile_scope`` this touches ONLY the context-local
-    ``set_lydia_home_override`` contextvar — it does NOT swap the
+    ``set_alice_home_override`` contextvar — it does NOT swap the
     process-global ``skills_tool``/``skill_manager`` module attributes.
     Those globals are shared across all event-loop tasks, so holding them
     across an ``await`` lets a concurrent skills request restore THIS
@@ -11549,16 +11549,16 @@ def _config_profile_scope(profile: Optional[str]):
         return
 
     from alice_constants import (
-        set_lydia_home_override,
-        reset_lydia_home_override,
+        set_alice_home_override,
+        reset_alice_home_override,
     )
 
     profile_dir = _resolve_profile_dir(requested)
-    token = set_lydia_home_override(str(profile_dir))
+    token = set_alice_home_override(str(profile_dir))
     try:
         yield profile_dir
     finally:
-        reset_lydia_home_override(token)
+        reset_alice_home_override(token)
 
 
 class SkillToggle(BaseModel):

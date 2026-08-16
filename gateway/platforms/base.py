@@ -492,7 +492,7 @@ sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
 from gateway.config import Platform, PlatformConfig
 from gateway.session import SessionSource, build_session_key
-from alice_constants import get_default_lydia_root, get_lydia_dir, get_alice_home
+from alice_constants import get_default_alice_root, get_alice_dir, get_alice_home
 
 
 GATEWAY_SECRET_CAPTURE_UNSUPPORTED_MESSAGE = (
@@ -566,13 +566,13 @@ async def _ssrf_redirect_guard(response):
 
 # Import-time default. Tests monkeypatch this; the get_*_cache_dir() getters
 # re-resolve per call so the active profile override is honored.
-IMAGE_CACHE_DIR = get_lydia_dir("cache/images", "image_cache")
+IMAGE_CACHE_DIR = get_alice_dir("cache/images", "image_cache")
 
 
 def _resolve_cache_dir(constant_name: str, new_subpath: str, old_name: str) -> Path:
-    """Resolve fresh via get_lydia_dir (active profile), unless a test has
+    """Resolve fresh via get_alice_dir (active profile), unless a test has
     monkeypatched the constant away from its import-time default."""
-    fresh = get_lydia_dir(new_subpath, old_name)
+    fresh = get_alice_dir(new_subpath, old_name)
     current = globals().get(constant_name)
     default = _CACHE_DIR_IMPORT_DEFAULTS.get(constant_name)
     if current is not None and default is not None and current != default:
@@ -814,7 +814,7 @@ def cleanup_image_cache(max_age_hours: int = 24) -> int:
 # here so the STT tool (OpenAI Whisper) can transcribe them from local files.
 # ---------------------------------------------------------------------------
 
-AUDIO_CACHE_DIR = get_lydia_dir("cache/audio", "audio_cache")
+AUDIO_CACHE_DIR = get_alice_dir("cache/audio", "audio_cache")
 
 
 def get_audio_cache_dir() -> Path:
@@ -913,7 +913,7 @@ async def cache_audio_from_url(url: str, ext: str = ".ogg", retries: int = 2) ->
 # here so the agent can reference them by local file path.
 # ---------------------------------------------------------------------------
 
-VIDEO_CACHE_DIR = get_lydia_dir("cache/videos", "video_cache")
+VIDEO_CACHE_DIR = get_alice_dir("cache/videos", "video_cache")
 
 SUPPORTED_VIDEO_TYPES = {
     ".mp4": "video/mp4",
@@ -948,8 +948,8 @@ def cache_video_from_bytes(data: bytes, ext: str = ".mp4") -> str:
 # here so the agent can reference them by local file path.
 # ---------------------------------------------------------------------------
 
-DOCUMENT_CACHE_DIR = get_lydia_dir("cache/documents", "document_cache")
-SCREENSHOT_CACHE_DIR = get_lydia_dir("cache/screenshots", "browser_screenshots")
+DOCUMENT_CACHE_DIR = get_alice_dir("cache/documents", "document_cache")
+SCREENSHOT_CACHE_DIR = get_alice_dir("cache/screenshots", "browser_screenshots")
 
 # Import-time defaults; _resolve_cache_dir compares against these to tell a
 # test monkeypatch from an unmodified constant.
@@ -962,7 +962,7 @@ _CACHE_DIR_IMPORT_DEFAULTS = {
 }
 
 _LYDIA_HOME = get_alice_home()
-_LYDIA_ROOT = get_default_lydia_root()
+_LYDIA_ROOT = get_default_alice_root()
 MEDIA_DELIVERY_ALLOW_DIRS_ENV = "LYDIA_MEDIA_ALLOW_DIRS"
 MEDIA_DELIVERY_TRUST_RECENT_ENV = "LYDIA_MEDIA_TRUST_RECENT_FILES"
 MEDIA_DELIVERY_TRUST_RECENT_SECONDS_ENV = "LYDIA_MEDIA_TRUST_RECENT_SECONDS"

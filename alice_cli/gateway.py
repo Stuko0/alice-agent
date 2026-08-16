@@ -929,7 +929,7 @@ def _read_systemd_unit_environment(system: bool = False) -> dict[str, str]:
     return parsed
 
 
-def _sync_lydia_home_from_systemd_unit(system: bool) -> None:
+def _sync_alice_home_from_systemd_unit(system: bool) -> None:
     """When acting on a system-scope unit, adopt its ``ALICE_HOME``.
 
     Under ``sudo``, ``ALICE_HOME`` is stripped and ``HOME=/root``, so
@@ -1675,10 +1675,10 @@ def _profile_suffix() -> str:
     """
     import hashlib
     import re
-    from alice_constants import get_default_lydia_root
+    from alice_constants import get_default_alice_root
 
     home = get_alice_home().resolve()
-    default = get_default_lydia_root().resolve()
+    default = get_default_alice_root().resolve()
     if home == default:
         return ""
     # Detect <root>/profiles/<name> pattern → use the profile name
@@ -1701,19 +1701,19 @@ def _profile_arg(lydia_home: str | None = None, default_root: str | Path | None 
     For the default profile or hash-based custom paths, returns the empty string.
 
     Args:
-        lydia_home: Optional explicit ALICE_HOME path. Defaults to the current
+        alice_home: Optional explicit ALICE_HOME path. Defaults to the current
             ``get_alice_home()`` value. Should be passed when generating a
             service definition for a different user (e.g. system service).
         default_root: Optional Alice root to compare against. Used when
             generating a system service for another user from a sudo/root
-            process, where ``Path.home()`` and ``get_default_lydia_root()``
+            process, where ``Path.home()`` and ``get_default_alice_root()``
             refer to root but the target profile lives under the service user.
     """
     import re
-    from alice_constants import get_default_lydia_root
+    from alice_constants import get_default_alice_root
 
     home = Path(lydia_home or str(get_alice_home())).resolve()
-    default = Path(default_root).resolve() if default_root else get_default_lydia_root().resolve()
+    default = Path(default_root).resolve() if default_root else get_default_alice_root().resolve()
     if home == default:
         return ""
     profiles_root = (default / "profiles").resolve()
@@ -3177,7 +3177,7 @@ def systemd_stop(system: bool = False):
     if system:
         _require_root_for_system_service("stop")
     _require_service_installed("stop", system=system)
-    _sync_lydia_home_from_systemd_unit(system=system)
+    _sync_alice_home_from_systemd_unit(system=system)
     try:
         from gateway.status import get_running_pid, write_planned_stop_marker
 
@@ -3208,7 +3208,7 @@ def systemd_restart(system: bool = False):
         _preflight_user_systemd()
     _require_service_installed("restart", system=system)
     refresh_systemd_unit_if_needed(system=system)
-    _sync_lydia_home_from_systemd_unit(system=system)
+    _sync_alice_home_from_systemd_unit(system=system)
     from gateway.status import get_running_pid
 
     pid = get_running_pid() or _systemd_main_pid(system=system)
@@ -3309,7 +3309,7 @@ def systemd_status(deep: bool = False, system: bool = False, full: bool = False)
         print(f"  Run: {'sudo ' if system else ''}alice gateway install{scope_flag}")
         return
 
-    _sync_lydia_home_from_systemd_unit(system=system)
+    _sync_alice_home_from_systemd_unit(system=system)
 
     if has_conflicting_systemd_units():
         print_systemd_scope_conflict_warning()
@@ -4259,8 +4259,8 @@ def _guard_named_profile_under_multiplexer(force: bool = False) -> None:
         return  # default profile (or unrecognized) — this guard doesn't apply
 
     try:
-        from alice_constants import get_default_lydia_root
-        default_root = get_default_lydia_root()
+        from alice_constants import get_default_alice_root
+        default_root = get_default_alice_root()
         # (b) Is the default-profile gateway running?
         from gateway.status import get_running_pid as _default_running_pid  # noqa
     except Exception:

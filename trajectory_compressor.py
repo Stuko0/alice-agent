@@ -49,11 +49,11 @@ from alice_constants import OPENROUTER_BASE_URL, get_alice_home
 from agent.retry_utils import jittered_backoff
 
 # Load .env from ALICE_HOME first, then project root as a dev fallback.
-from alice_cli.env_loader import load_lydia_dotenv
+from alice_cli.env_loader import load_alice_dotenv
 
 _lydia_home = get_alice_home()
 _project_env = Path(__file__).parent / ".env"
-load_lydia_dotenv(lydia_home=_lydia_home, project_env=_project_env)
+load_alice_dotenv(lydia_home=_lydia_home, project_env=_project_env)
 
 
 def _effective_temperature_for_model(

@@ -254,7 +254,7 @@ COMPONENT_PREFIXES = {
 
 def setup_logging(
     *,
-    lydia_home: Optional[Path] = None,
+    alice_home: Optional[Path] = None,
     log_level: Optional[str] = None,
     max_size_mb: Optional[int] = None,
     backup_count: Optional[int] = None,

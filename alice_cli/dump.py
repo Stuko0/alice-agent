@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 from alice_cli.config import get_alice_home, get_env_path, get_project_root, load_config
-from alice_cli.env_loader import load_lydia_dotenv
+from alice_cli.env_loader import load_alice_dotenv
 from alice_constants import display_alice_home
 from agent.skill_utils import is_excluded_skill_path
 
@@ -26,7 +26,7 @@ def _get_git_commit(project_root: Path) -> str:
     The published Docker image excludes ``.git`` from the build context, so
     that lookup always fails — we fall back to the baked-in build SHA written
     to ``<project_root>/.lydia_build_sha`` by the Dockerfile's
-    ``LYDIA_GIT_SHA`` build-arg (see ``alice_cli/build_info.py``).
+    ``ALICE_GIT_SHA`` build-arg (see ``alice_cli/build_info.py``).
     The output format is identical regardless of source.
     """
     try:
@@ -246,7 +246,7 @@ def run_dump(args):
 
     # Load env from .env file so key checks work
     env_path = get_env_path()
-    load_lydia_dotenv(
+    load_alice_dotenv(
         lydia_home=env_path.parent,
         project_env=get_project_root() / ".env",
     )

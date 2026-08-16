@@ -1801,8 +1801,8 @@ def load_soul_md(context_length: Optional[int] = None) -> Optional[str]:
     ``skip_soul=True`` so SOUL.md isn't injected twice.
     """
     try:
-        from alice_cli.config import ensure_lydia_home
-        ensure_lydia_home()
+        from alice_cli.config import ensure_alice_home
+        ensure_alice_home()
     except Exception as e:
         logger.debug("Could not ensure ALICE_HOME before loading SOUL.md: %s", e)
 

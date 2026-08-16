@@ -50,23 +50,23 @@ function appendUniquePathEntries(entries, { delimiter = path.delimiter } = {}) {
 }
 
 function buildDesktopBackendPath({
-  lydiaHome,
+  aliceHome,
   venvRoot,
   currentPath = '',
   platform = process.platform,
   pathModule = pathModuleForPlatform(platform)
 } = {}) {
   const delimiter = delimiterForPlatform(platform)
-  const lydiaNodeBin = lydiaHome ? pathModule.join(lydiaHome, 'node', 'bin') : null
+  const lydiaNodeBin = aliceHome ? pathModule.join(aliceHome, 'node', 'bin') : null
   const venvBin = venvRoot ? pathModule.join(venvRoot, platform === 'win32' ? 'Scripts' : 'bin') : null
   const saneEntries = platform === 'win32' ? [] : POSIX_SANE_PATH_ENTRIES
 
   return appendUniquePathEntries([lydiaNodeBin, venvBin, currentPath, saneEntries], { delimiter })
 }
 
-function normalizeLydiaHomeRoot(lydiaHome, { pathModule = pathModuleForPlatform(process.platform) } = {}) {
-  if (!lydiaHome) return lydiaHome
-  const resolved = pathModule.resolve(String(lydiaHome))
+function normalizeAliceHomeRoot(aliceHome, { pathModule = pathModuleForPlatform(process.platform) } = {}) {
+  if (!aliceHome) return aliceHome
+  const resolved = pathModule.resolve(String(aliceHome))
   const parent = pathModule.dirname(resolved)
   if (pathModule.basename(parent).toLowerCase() === 'profiles') {
     return pathModule.dirname(parent)
@@ -75,7 +75,7 @@ function normalizeLydiaHomeRoot(lydiaHome, { pathModule = pathModuleForPlatform(
 }
 
 function buildDesktopBackendEnv({
-  lydiaHome,
+  aliceHome,
   pythonPathEntries = [],
   venvRoot,
   currentEnv = process.env,
@@ -89,7 +89,7 @@ function buildDesktopBackendEnv({
   return {
     PYTHONPATH: appendUniquePathEntries([...pythonPathEntries, currentPythonPath], { delimiter }),
     [key]: buildDesktopBackendPath({
-      lydiaHome,
+      aliceHome,
       venvRoot,
       currentPath: currentPathValue(currentEnv, platform),
       platform,
@@ -104,6 +104,6 @@ module.exports = {
   buildDesktopBackendEnv,
   buildDesktopBackendPath,
   delimiterForPlatform,
-  normalizeLydiaHomeRoot,
+  normalizeAliceHomeRoot,
   pathEnvKey
 }

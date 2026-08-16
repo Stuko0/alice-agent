@@ -100,10 +100,10 @@ def _setup_logging() -> None:
 
 def _load_env() -> None:
     """Load .env from ALICE_HOME (default ``~/.alice``)."""
-    from alice_cli.env_loader import load_lydia_dotenv
+    from alice_cli.env_loader import load_alice_dotenv
 
     lydia_home = get_alice_home()
-    loaded = load_lydia_dotenv(lydia_home=lydia_home)
+    loaded = load_alice_dotenv(lydia_home=lydia_home)
     if loaded:
         for env_file in loaded:
             logging.getLogger(__name__).info("Loaded env from %s", env_file)

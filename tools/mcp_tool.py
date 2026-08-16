@@ -3046,23 +3046,23 @@ def _wrap_with_home_override(coro: "Coroutine") -> "Coroutine":
     """
     try:
         from alice_constants import (
-            get_lydia_home_override,
-            reset_lydia_home_override,
-            set_lydia_home_override,
+            get_alice_home_override,
+            reset_alice_home_override,
+            set_alice_home_override,
         )
 
-        home_override = get_lydia_home_override()
+        home_override = get_alice_home_override()
     except Exception:
         return coro
     if not home_override:
         return coro
 
     async def _scoped():
-        token = set_lydia_home_override(home_override)
+        token = set_alice_home_override(home_override)
         try:
             return await coro
         finally:
-            reset_lydia_home_override(token)
+            reset_alice_home_override(token)
 
     return _scoped()
 
@@ -3219,8 +3219,8 @@ def _load_mcp_config() -> Dict[str, dict]:
             return {}
         # Ensure .env vars are available for interpolation
         try:
-            from alice_cli.env_loader import load_lydia_dotenv
-            load_lydia_dotenv()
+            from alice_cli.env_loader import load_alice_dotenv
+            load_alice_dotenv()
         except Exception:
             pass
         safe_servers: Dict[str, dict] = {}

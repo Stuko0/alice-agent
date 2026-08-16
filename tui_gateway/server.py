@@ -19,11 +19,11 @@ from typing import Any, Optional
 
 from alice_constants import (
     get_alice_home,
-    get_lydia_home_override,
-    reset_lydia_home_override,
-    set_lydia_home_override,
+    get_alice_home_override,
+    reset_alice_home_override,
+    set_alice_home_override,
 )
-from alice_cli.env_loader import load_lydia_dotenv
+from alice_cli.env_loader import load_alice_dotenv
 from utils import is_truthy_value
 from tools.environments.local import lydia_subprocess_env
 from agent.replay_cleanup import sanitize_replay_history
@@ -39,7 +39,7 @@ from tui_gateway.transport import (
 logger = logging.getLogger(__name__)
 
 _lydia_home = get_alice_home()
-load_lydia_dotenv(
+load_alice_dotenv(
     lydia_home=_lydia_home, project_env=Path(__file__).parent.parent / ".env"
 )
 
@@ -921,11 +921,11 @@ def _profile_scoped(handler):
         home = _profile_home(params.get("profile") if isinstance(params, dict) else None)
         if home is None:
             return handler(rid, params)
-        token = set_lydia_home_override(home)
+        token = set_alice_home_override(home)
         try:
             return handler(rid, params)
         finally:
-            reset_lydia_home_override(token)
+            reset_alice_home_override(token)
 
     return wrapper
 
@@ -1194,7 +1194,7 @@ def _start_agent_build(sid: str, session: dict) -> None:
             # agent that profile's db so turns persist to the right state.db.
             session_db = None
             if profile_home:
-                home_token = set_lydia_home_override(profile_home)
+                home_token = set_alice_home_override(profile_home)
                 try:
                     from alice_state import SessionDB
 
@@ -1301,7 +1301,7 @@ def _start_agent_build(sid: str, session: dict) -> None:
             _emit("error", sid, {"message": f"agent init failed: {e}"})
         finally:
             if home_token is not None:
-                reset_lydia_home_override(home_token)
+                reset_alice_home_override(home_token)
             # _attach_worker already closed the worker if this session was
             # reaped mid-build; only the late notify registration can still
             # leak (session.close unregistered before _build registered it).
@@ -1741,7 +1741,7 @@ def _load_cfg() -> dict:
         # remote profile loads ITS config (model, skills, prompt); otherwise the
         # launch profile's _lydia_home. Cache is keyed on the resolved path, so
         # profiles don't clobber each other.
-        override = get_lydia_home_override()
+        override = get_alice_home_override()
         home = override if isinstance(override, str) and override else _lydia_home
         p = Path(home) / "config.yaml"
         mtime = p.stat().st_mtime if p.exists() else None
@@ -5473,7 +5473,7 @@ def _(rid, params: dict) -> dict:
         return _err(rid, 4090, limit_message)
     _enable_gateway_prompts()
     home_token = (
-        set_lydia_home_override(str(profile_home)) if profile_home is not None else None
+        set_alice_home_override(str(profile_home)) if profile_home is not None else None
     )
     try:
         db.reopen_session(target)
@@ -5516,7 +5516,7 @@ def _(rid, params: dict) -> dict:
         return _err(rid, 5000, f"resume failed: {e}")
     finally:
         if home_token is not None:
-            reset_lydia_home_override(home_token)
+            reset_alice_home_override(home_token)
 
     # Double-checked locking: another concurrent resume may have created the
     # live session while we were building. Re-check under the lock; if it won,
@@ -5543,7 +5543,7 @@ def _(rid, params: dict) -> dict:
             return _ok(rid, payload)
         try:
             init_home_token = (
-                set_lydia_home_override(str(profile_home))
+                set_alice_home_override(str(profile_home))
                 if profile_home is not None
                 else None
             )
@@ -5559,7 +5559,7 @@ def _(rid, params: dict) -> dict:
                 )
             finally:
                 if init_home_token is not None:
-                    reset_lydia_home_override(init_home_token)
+                    reset_alice_home_override(init_home_token)
             if sid in _sessions:
                 if stored_runtime_overrides.get("model_override") is not None:
                     _sessions[sid]["model_override"] = stored_runtime_overrides[
@@ -8447,7 +8447,7 @@ def _run_prompt_submit(rid, sid: str, session: dict, text: Any) -> None:
             session_tokens = _set_session_context(session["session_key"])
             _profile_home_str = session.get("profile_home")
             if _profile_home_str:
-                home_token = set_lydia_home_override(_profile_home_str)
+                home_token = set_alice_home_override(_profile_home_str)
             # The sudo password callback is thread-local (tools.terminal_tool
             # _callback_tls), so wiring it on the build thread doesn't reach this
             # turn thread — terminal sudo prompts would fall through to /dev/tty
@@ -8829,7 +8829,7 @@ def _run_prompt_submit(rid, sid: str, session: dict, text: Any) -> None:
             except Exception:
                 pass
             if home_token is not None:
-                reset_lydia_home_override(home_token)
+                reset_alice_home_override(home_token)
             _clear_session_context(session_tokens)
             with session["history_lock"]:
                 session["running"] = False

@@ -41,7 +41,7 @@ from typing import Any, Awaitable, Dict, Optional
 from urllib.parse import urlparse
 import httpx
 from agent.auxiliary_client import async_call_llm, extract_content_or_reasoning
-from alice_constants import get_lydia_dir
+from alice_constants import get_alice_dir
 from tools.debug_helpers import DebugSession
 from tools.website_policy import check_website_access
 import sys
@@ -855,7 +855,7 @@ async def _vision_analyze_native(
             blocked = check_website_access(image_url)
             if blocked:
                 return tool_error(blocked["message"], success=False)
-            temp_dir = get_lydia_dir("cache/vision", "temp_vision_images")
+            temp_dir = get_alice_dir("cache/vision", "temp_vision_images")
             temp_image_path = temp_dir / f"temp_image_{uuid.uuid4()}.jpg"
             await _download_image(image_url, temp_image_path)
             should_cleanup = True
@@ -1015,7 +1015,7 @@ async def vision_analyze_tool(
             if blocked:
                 raise PermissionError(blocked["message"])
             logger.info("Downloading image from URL...")
-            temp_dir = get_lydia_dir("cache/vision", "temp_vision_images")
+            temp_dir = get_alice_dir("cache/vision", "temp_vision_images")
             temp_image_path = temp_dir / f"temp_image_{uuid.uuid4()}.jpg"
             await _download_image(image_url, temp_image_path)
             should_cleanup = True
@@ -1525,7 +1525,7 @@ async def video_analyze_tool(
             blocked = check_website_access(video_url)
             if blocked:
                 raise PermissionError(blocked["message"])
-            temp_dir = get_lydia_dir("cache/video", "temp_video_files")
+            temp_dir = get_alice_dir("cache/video", "temp_video_files")
             temp_video_path = temp_dir / f"temp_video_{uuid.uuid4()}.mp4"
             await _download_video(video_url, temp_video_path)
             should_cleanup = True

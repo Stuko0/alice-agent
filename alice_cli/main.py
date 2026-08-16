@@ -470,9 +470,9 @@ def _apply_profile_override() -> None:
     # the "Docker & Profiles & Dashboard" report.
     if profile_name is None and not os.environ.get("LYDIA_S6_SUPERVISED_CHILD"):
         try:
-            from alice_constants import get_default_lydia_root
+            from alice_constants import get_default_alice_root
 
-            active_path = get_default_lydia_root() / "active_profile"
+            active_path = get_default_alice_root() / "active_profile"
             if active_path.exists():
                 name = active_path.read_text().strip()
                 if name and name != "default":
@@ -514,9 +514,9 @@ _apply_profile_override()
 # Load .env from ~/.alice/.env first, then project root as dev fallback.
 # User-managed env files should override stale shell exports on restart.
 from alice_cli.config import get_alice_home
-from alice_cli.env_loader import load_lydia_dotenv
+from alice_cli.env_loader import load_alice_dotenv
 
-load_lydia_dotenv(project_env=PROJECT_ROOT / ".env")
+load_alice_dotenv(project_env=PROJECT_ROOT / ".env")
 
 # Bridge security.redact_secrets from config.yaml → LYDIA_REDACT_SECRETS env
 # var BEFORE alice_logging imports agent.redact (which snapshots the flag at
@@ -2432,7 +2432,7 @@ def cmd_whatsapp(args):
     """Set up WhatsApp: choose mode, configure, install bridge, pair via QR."""
     _require_tty("whatsapp")
     from alice_cli.config import get_env_value, save_env_value
-    from alice_constants import find_node_executable, with_lydia_node_path
+    from alice_constants import find_node_executable, with_alice_node_path
 
     print()
     print("✦ WhatsApp Setup")
@@ -2560,7 +2560,7 @@ def cmd_whatsapp(args):
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                env=with_lydia_node_path(),
+                env=with_alice_node_path(),
             )
         except KeyboardInterrupt:
             print("\n  ✗ Install cancelled")
@@ -2625,7 +2625,7 @@ def cmd_whatsapp(args):
                 str(session_dir),
             ],
             cwd=str(bridge_dir),
-            env=with_lydia_node_path(),
+            env=with_alice_node_path(),
         )
     except KeyboardInterrupt:
         pass
@@ -4839,7 +4839,7 @@ def _build_web_ui(web_dir: Path, *, fatal: bool = False) -> bool:
             encoding = getattr(sys.stdout, "encoding", None) or "ascii"
             print(text.encode(encoding, errors="replace").decode(encoding, errors="replace"))
 
-    from alice_constants import find_node_executable, with_lydia_node_path
+    from alice_constants import find_node_executable, with_alice_node_path
 
     npm = find_node_executable("npm")
     if not npm:
@@ -4847,7 +4847,7 @@ def _build_web_ui(web_dir: Path, *, fatal: bool = False) -> bool:
             _say("Web UI frontend not built and npm is not available.")
             _say("Install Node.js, then run:  cd web && npm install && npm run build")
         return not fatal
-    build_env = with_lydia_node_path()
+    build_env = with_alice_node_path()
     _say("→ Building web UI...")
 
     def _relay(result: "subprocess.CompletedProcess") -> None:
@@ -5280,7 +5280,7 @@ def _redownload_electron_dist(
     installer = electron_dir / "install.js"
     if not installer.is_file():
         return False
-    from alice_constants import find_node_executable, with_lydia_node_path
+    from alice_constants import find_node_executable, with_alice_node_path
 
     node = find_node_executable("node")
     if not node:
@@ -5293,7 +5293,7 @@ def _redownload_electron_dist(
     except OSError:
         pass
 
-    dl_env = with_lydia_node_path(env)
+    dl_env = with_alice_node_path(env)
     if mirror:
         dl_env["ELECTRON_MIRROR"] = mirror
     try:
@@ -5579,10 +5579,10 @@ def cmd_gui(args: argparse.Namespace):
     except Exception:
         pass
 
-    from alice_constants import find_node_executable, with_lydia_node_path
+    from alice_constants import find_node_executable, with_alice_node_path
 
-    # with_lydia_node_path() copies os.environ when called with no arg.
-    env = with_lydia_node_path()
+    # with_alice_node_path() copies os.environ when called with no arg.
+    env = with_alice_node_path()
     if getattr(args, "fake_boot", False):
         env["LYDIA_DESKTOP_BOOT_FAKE"] = "1"
     if getattr(args, "ignore_existing", False):
@@ -6876,9 +6876,9 @@ def _invalidate_update_cache():
     """
     homes = []
     # Default profile home (Docker-aware — uses /opt/data in Docker)
-    from alice_constants import get_default_lydia_root
+    from alice_constants import get_default_alice_root
 
-    default_home = get_default_lydia_root()
+    default_home = get_default_alice_root()
     homes.append(default_home)
     # Named profiles under <root>/profiles/
     profiles_root = default_home / "profiles"
@@ -8068,7 +8068,7 @@ def _ensure_uv_for_termux(pip_cmd: list[str]) -> str | None:
 
 
 def _update_node_dependencies() -> None:
-    from alice_constants import find_node_executable, with_lydia_node_path
+    from alice_constants import find_node_executable, with_alice_node_path
 
     npm = find_node_executable("npm")
     if not npm:
@@ -8087,7 +8087,7 @@ def _update_node_dependencies() -> None:
     print("→ Updating Node.js dependencies...")
     extra_args = ["--no-fund", "--no-audit", "--progress=false"]
 
-    nixos_env = with_lydia_node_path(_nixos_build_env())
+    nixos_env = with_alice_node_path(_nixos_build_env())
 
     # Step 1: root install (no workspace recursion).
     # NOTE: capture_output=False here is deliberate (#18840) — optional
@@ -11727,13 +11727,13 @@ def cmd_dashboard(args):
         # ALICE_HOME falls back to $HOME/.alice = /opt/data/.alice — an
         # empty, auto-seeded home where the dashboard sees only the default
         # profile and the install-method stamp is missing (so the Docker
-        # update-button guard also misfires).  get_default_lydia_root()
+        # update-button guard also misfires).  get_default_alice_root()
         # returns the root for both layouts: ~/.alice for a standard install
         # and /opt/data for Docker (it strips a trailing profiles/<name>).
         # See the support report for the double-mount workaround this avoids.
         try:
-            from alice_constants import get_default_lydia_root
-            env["ALICE_HOME"] = str(get_default_lydia_root())
+            from alice_constants import get_default_alice_root
+            env["ALICE_HOME"] = str(get_default_alice_root())
         except Exception:
             # Best-effort: if root resolution fails, fall back to the prior
             # behaviour (drop ALICE_HOME) rather than block the reroute.

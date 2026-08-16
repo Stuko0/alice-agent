@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from alice_constants import get_default_lydia_root, get_alice_home, display_alice_home
+from alice_constants import get_default_alice_root, get_alice_home, display_alice_home
 
 logger = logging.getLogger(__name__)
 
@@ -291,7 +291,7 @@ def _format_size(nbytes: int) -> str:
 
 def run_backup(args) -> None:
     """Create a zip backup of the Alice home directory."""
-    lydia_root = get_default_lydia_root()
+    lydia_root = get_default_alice_root()
 
     if not lydia_root.is_dir():
         print(f"Error: Alice home directory not found at {lydia_root}")
@@ -531,7 +531,7 @@ def run_import(args) -> None:
         print(f"Error: Not a valid zip file: {zip_path}")
         sys.exit(1)
 
-    lydia_root = get_default_lydia_root()
+    lydia_root = get_default_alice_root()
 
     with zipfile.ZipFile(zip_path, "r") as zf:
         # Validate
@@ -785,14 +785,14 @@ _QUICK_SNAPSHOTS_DIR = "state-snapshots"
 _QUICK_DEFAULT_KEEP = 20
 
 
-def _quick_snapshot_root(lydia_home: Optional[Path] = None) -> Path:
+def _quick_snapshot_root(alice_home: Optional[Path] = None) -> Path:
     home = lydia_home or get_alice_home()
     return home / _QUICK_SNAPSHOTS_DIR
 
 
 def create_quick_snapshot(
     label: Optional[str] = None,
-    lydia_home: Optional[Path] = None,
+    alice_home: Optional[Path] = None,
     keep: Optional[int] = None,
 ) -> Optional[str]:
     """Create a quick state snapshot of critical files.
@@ -890,7 +890,7 @@ def create_quick_snapshot(
 
 def list_quick_snapshots(
     limit: int = 20,
-    lydia_home: Optional[Path] = None,
+    alice_home: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
     """List existing quick state snapshots, most recent first."""
     root = _quick_snapshot_root(lydia_home)
@@ -916,7 +916,7 @@ def list_quick_snapshots(
 
 def restore_quick_snapshot(
     snapshot_id: str,
-    lydia_home: Optional[Path] = None,
+    alice_home: Optional[Path] = None,
 ) -> bool:
     """Restore state from a quick snapshot.
 
@@ -1024,7 +1024,7 @@ def _count_cron_jobs(path: Path) -> Optional[int]:
 
 def restore_cron_jobs_if_emptied(
     snapshot_id: str,
-    lydia_home: Optional[Path] = None,
+    alice_home: Optional[Path] = None,
 ) -> Optional[Dict[str, Any]]:
     """Safety net for silent cron-job loss across ``alice update``.
 
@@ -1122,7 +1122,7 @@ def _prune_quick_snapshots(root: Path, keep: int = _QUICK_DEFAULT_KEEP) -> int:
 
 def prune_quick_snapshots(
     keep: int = _QUICK_DEFAULT_KEEP,
-    lydia_home: Optional[Path] = None,
+    alice_home: Optional[Path] = None,
 ) -> int:
     """Manually prune quick snapshots. Returns count deleted."""
     return _prune_quick_snapshots(_quick_snapshot_root(lydia_home), keep=keep)
@@ -1145,7 +1145,7 @@ def run_quick_backup(args) -> None:
 # Shared full-zip backup helper
 # ---------------------------------------------------------------------------
 
-def _write_full_zip_backup(out_path: Path, lydia_root: Path) -> Optional[Path]:
+def _write_full_zip_backup(out_path: Path, alice_root: Path) -> Optional[Path]:
     """Write a full zip snapshot of ``lydia_root`` to ``out_path``.
 
     Uses the same exclusion rules and SQLite safe-copy as :func:`run_backup`.
@@ -1221,7 +1221,7 @@ _PRE_UPDATE_PREFIX = "pre-update-"
 _PRE_UPDATE_DEFAULT_KEEP = 5
 
 
-def _pre_update_backup_dir(lydia_home: Optional[Path] = None) -> Path:
+def _pre_update_backup_dir(alice_home: Optional[Path] = None) -> Path:
     home = lydia_home or get_alice_home()
     return home / _PRE_UPDATE_BACKUPS_DIR
 
@@ -1264,7 +1264,7 @@ def _prune_pre_update_backups(backup_dir: Path, keep: int) -> int:
 
 
 def create_pre_update_backup(
-    lydia_home: Optional[Path] = None,
+    alice_home: Optional[Path] = None,
     keep: int = _PRE_UPDATE_DEFAULT_KEEP,
 ) -> Optional[Path]:
     """Create a full zip backup of ALICE_HOME under ``backups/``.
@@ -1277,7 +1277,7 @@ def create_pre_update_backup(
     found or the backup could not be created.  Never raises — the caller
     (``alice update``) should continue even if the backup fails.
     """
-    lydia_root = lydia_home or get_default_lydia_root()
+    lydia_root = lydia_home or get_default_alice_root()
     if not lydia_root.is_dir():
         return None
 
@@ -1336,7 +1336,7 @@ def _prune_pre_migration_backups(backup_dir: Path, keep: int) -> int:
 
 
 def create_pre_migration_backup(
-    lydia_home: Optional[Path] = None,
+    alice_home: Optional[Path] = None,
     keep: int = _PRE_MIGRATION_DEFAULT_KEEP,
 ) -> Optional[Path]:
     """Create a full zip backup of ALICE_HOME under ``backups/`` before a
@@ -1352,7 +1352,7 @@ def create_pre_migration_backup(
     to back up (fresh install) or the write failed.  Never raises — the
     caller decides whether to abort or proceed.
     """
-    lydia_root = lydia_home or get_default_lydia_root()
+    lydia_root = lydia_home or get_default_alice_root()
     if not lydia_root.is_dir():
         return None
 

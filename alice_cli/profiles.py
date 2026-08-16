@@ -263,8 +263,8 @@ def _get_default_lydia_home() -> Path:
     In Docker/custom deployments where ALICE_HOME is outside ``~/.alice``
     (e.g. ``/opt/data``), returns ALICE_HOME directly.
     """
-    from alice_constants import get_default_lydia_root
-    return get_default_lydia_root()
+    from alice_constants import get_default_alice_root
+    return get_default_alice_root()
 
 
 def _get_active_profile_path() -> Path:
@@ -500,16 +500,16 @@ def _migrate_profile_config_if_outdated(profile_dir: Path) -> None:
         return
 
     try:
-        from alice_constants import reset_lydia_home_override, set_lydia_home_override
+        from alice_constants import reset_alice_home_override, set_alice_home_override
         from alice_cli.config import check_config_version, migrate_config
 
-        token = set_lydia_home_override(str(profile_dir))
+        token = set_alice_home_override(str(profile_dir))
         try:
             current_ver, latest_ver = check_config_version()
             if current_ver < latest_ver:
                 migrate_config(interactive=False, quiet=True)
         finally:
-            reset_lydia_home_override(token)
+            reset_alice_home_override(token)
     except Exception:
         # Profile creation should not fail because an old copied config could
         # not be migrated. The next `alice doctor --fix` can still surface the
@@ -945,7 +945,7 @@ def profiles_to_serve(multiplex: bool) -> List[Tuple[str, Path]]:
     :func:`list_profiles`. It runs on gateway startup and must stay cheap.
 
     The returned ``lydia_home`` is the path to pass to
-    ``set_lydia_home_override`` when scoping a turn to that profile.
+    ``set_alice_home_override`` when scoping a turn to that profile.
     """
     active = get_active_profile_name() or "default"
     if not multiplex:

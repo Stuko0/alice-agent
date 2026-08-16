@@ -374,7 +374,7 @@ def kanban_home() -> Path:
 
     1. ``LYDIA_KANBAN_HOME`` env var when set and non-empty (explicit
        override for tests and unusual deployments).
-    2. ``get_default_lydia_root()``, which already returns ``<root>``
+    2. ``get_default_alice_root()``, which already returns ``<root>``
        when ``ALICE_HOME`` is ``<root>/profiles/<name>``, and returns
        ``ALICE_HOME`` directly for Docker / custom deployments.
 
@@ -386,8 +386,8 @@ def kanban_home() -> Path:
     override = os.environ.get("LYDIA_KANBAN_HOME", "").strip()
     if override:
         return Path(override).expanduser()
-    from alice_constants import get_default_lydia_root
-    return get_default_lydia_root()
+    from alice_constants import get_default_alice_root
+    return get_default_alice_root()
 
 
 def boards_root() -> Path:
@@ -7625,7 +7625,7 @@ def _worker_terminal_timeout_env(
     return str(desired)
 
 
-def _resolve_worker_cli_toolsets(lydia_home: Optional[str]) -> Optional[list[str]]:
+def _resolve_worker_cli_toolsets(alice_home: Optional[str]) -> Optional[list[str]]:
     """Return the assigned profile's effective CLI toolsets for a worker.
 
     Dispatcher-spawned workers are launched from a long-lived gateway process,
@@ -7639,16 +7639,16 @@ def _resolve_worker_cli_toolsets(lydia_home: Optional[str]) -> Optional[list[str
     if not lydia_home:
         return None
     try:
-        from alice_constants import reset_lydia_home_override, set_lydia_home_override
+        from alice_constants import reset_alice_home_override, set_alice_home_override
         from alice_cli.config import load_config
         from alice_cli.tools_config import _get_platform_tools
 
-        token = set_lydia_home_override(lydia_home)
+        token = set_alice_home_override(lydia_home)
         try:
             cfg = load_config()
             toolsets = sorted(_get_platform_tools(cfg, "cli"))
         finally:
-            reset_lydia_home_override(token)
+            reset_alice_home_override(token)
         return toolsets or None
     except Exception as exc:
         _log.debug(
@@ -7752,7 +7752,7 @@ def _default_spawn(
     # Pin the shared board + workspaces root the dispatcher resolved, so
     # that even when the worker activates a profile (`alice -p <name>`
     # rewrites ALICE_HOME), its kanban paths still match the
-    # dispatcher's. Belt-and-braces with the `get_default_lydia_root()`
+    # dispatcher's. Belt-and-braces with the `get_default_alice_root()`
     # resolution in `kanban_home()` — symmetric resolution is the norm,
     # but unusual symlink / Docker layouts are caught here too.
     env["LYDIA_KANBAN_DB"] = str(kanban_db_path(board=board))
@@ -8551,8 +8551,8 @@ def list_profiles_on_disk() -> list[str]:
     path).
     """
     try:
-        from alice_constants import get_default_lydia_root
-        default_root = get_default_lydia_root()
+        from alice_constants import get_default_alice_root
+        default_root = get_default_alice_root()
         profiles_dir = default_root / "profiles"
     except Exception:
         return []

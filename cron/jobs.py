@@ -54,7 +54,7 @@ except ImportError:
 # profile's jobs under that same ALICE_HOME — so a job authored in profile
 # `coder` lives in `~/.alice/profiles/coder/cron/jobs.json` and executes with
 # `coder`'s `.env`, `config.yaml`, and skills. We deliberately anchor on
-# `get_alice_home()` (the active profile home), NOT `get_default_lydia_root()`
+# `get_alice_home()` (the active profile home), NOT `get_default_alice_root()`
 # (the shared root). Anchoring at the root would funnel every profile's jobs
 # into one shared `jobs.json` and run them under whatever ALICE_HOME the
 # ticker process happens to have — leaking config/credentials/skills across

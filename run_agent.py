@@ -116,7 +116,7 @@ from agent.process_bootstrap import (
 from agent.iteration_budget import IterationBudget
 
 
-from alice_cli.env_loader import load_lydia_dotenv
+from alice_cli.env_loader import load_alice_dotenv
 from alice_cli.timeouts import (
     get_provider_request_timeout,
     get_provider_stale_timeout,
@@ -124,7 +124,7 @@ from alice_cli.timeouts import (
 
 _lydia_home = get_alice_home()
 _project_env = Path(__file__).parent / '.env'
-_loaded_env_paths = load_lydia_dotenv(lydia_home=_lydia_home, project_env=_project_env)
+_loaded_env_paths = load_alice_dotenv(lydia_home=_lydia_home, project_env=_project_env)
 if _loaded_env_paths:
     for _env_path in _loaded_env_paths:
         logger.info("Loaded environment variables from %s", _env_path)

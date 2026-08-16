@@ -1,7 +1,7 @@
 /**
  * In-app update mutual-exclusion marker (#50238).
  *
- * The Tauri updater writes LYDIA_HOME/.lydia-update-in-progress for the whole
+ * The Tauri updater writes ALICE_HOME/.lydia-update-in-progress for the whole
  * duration of an `--update` run (see apps/bootstrap-installer/src-tauri/src/
  * update.rs `UpdateMarkerGuard`). The marker body is two lines: the updater's
  * pid and the unix-seconds it started.
@@ -29,8 +29,8 @@ const path = require('path')
 // recycled the pid onto an unrelated process), so the gate self-heals.
 const UPDATE_MARKER_MAX_AGE_MS = 20 * 60 * 1000
 
-function markerPath(lydiaHome) {
-  return path.join(lydiaHome, '.lydia-update-in-progress')
+function markerPath(aliceHome) {
+  return path.join(aliceHome, '.lydia-update-in-progress')
 }
 
 // True only if a host process with this pid is currently alive. Signal 0 does
@@ -59,8 +59,8 @@ function isPidAlive(pid, kill = process.kill.bind(process)) {
  * Pure-ish: file I/O against the given path, plus an injectable pid probe and
  * clock for tests.
  */
-function readLiveUpdateMarker(lydiaHome, { kill, now = Date.now, maxAgeMs = UPDATE_MARKER_MAX_AGE_MS } = {}) {
-  const file = markerPath(lydiaHome)
+function readLiveUpdateMarker(aliceHome, { kill, now = Date.now, maxAgeMs = UPDATE_MARKER_MAX_AGE_MS } = {}) {
+  const file = markerPath(aliceHome)
   let raw
   try {
     raw = fs.readFileSync(file, 'utf8')

@@ -197,13 +197,13 @@ from alice_cli.browser_connect import (
     manual_chrome_debug_command,
     try_launch_chrome_debug,
 )
-from alice_cli.env_loader import load_lydia_dotenv
+from alice_cli.env_loader import load_alice_dotenv
 from alice_constants import display_alice_home, get_alice_home
 from utils import base_url_host_matches, fast_safe_load
 
 _lydia_home = get_alice_home()
 _project_env = Path(__file__).parent / ".env"
-load_lydia_dotenv(lydia_home=_lydia_home, project_env=_project_env)
+load_alice_dotenv(lydia_home=_lydia_home, project_env=_project_env)
 
 
 _REASONING_TAGS = (

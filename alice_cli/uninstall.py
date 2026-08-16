@@ -294,7 +294,7 @@ def uninstall_gateway_service():
 # The installer (``scripts/install.ps1``) does four Windows-only things that
 # ``remove_path_from_shell_configs`` / ``remove_wrapper_script`` don't cover:
 #
-#   1. Sets User-scope env vars ``ALICE_HOME`` and ``LYDIA_GIT_BASH_PATH``
+#   1. Sets User-scope env vars ``ALICE_HOME`` and ``ALICE_GIT_BASH_PATH``
 #      via ``[Environment]::SetEnvironmentVariable(..., "User")``.  These
 #      don't live in ~/.bashrc — they're in the Windows registry at
 #      HKCU\Environment.
@@ -319,7 +319,7 @@ def uninstall_gateway_service():
 # or open a new terminal anyway).
 
 
-def _lydia_path_markers(lydia_home: Path) -> list[str]:
+def _alice_path_markers(lydia_home: Path) -> list[str]:
     """Path-entry substrings that identify Alice-owned User-PATH entries."""
     root = str(lydia_home).rstrip("\\/")
     # Match on prefix so sub-entries (git\cmd, git\bin, git\usr\bin, node, etc.)
@@ -354,7 +354,7 @@ def remove_path_from_windows_registry(lydia_home: Path) -> list[str]:
                 return []
             # Preserve REG_EXPAND_SZ vs REG_SZ so unexpanded %VARS% survive.
             entries = [e for e in path_value.split(";") if e]
-            markers = _lydia_path_markers(lydia_home)
+            markers = _alice_path_markers(lydia_home)
             kept: list[str] = []
             for entry in entries:
                 entry_norm = entry.rstrip("\\/")
@@ -372,7 +372,7 @@ def remove_path_from_windows_registry(lydia_home: Path) -> list[str]:
 
 
 def remove_lydia_env_vars_windows() -> list[str]:
-    """Delete ALICE_HOME and LYDIA_GIT_BASH_PATH from User-scope env vars."""
+    """Delete ALICE_HOME and ALICE_GIT_BASH_PATH from User-scope env vars."""
     try:
         import winreg
     except ImportError:
@@ -382,7 +382,7 @@ def remove_lydia_env_vars_windows() -> list[str]:
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0,
                             winreg.KEY_READ | winreg.KEY_WRITE) as key:
-            for name in ("ALICE_HOME", "LYDIA_GIT_BASH_PATH"):
+            for name in ("ALICE_HOME", "ALICE_GIT_BASH_PATH"):
                 try:
                     winreg.QueryValueEx(key, name)
                 except FileNotFoundError:
@@ -421,8 +421,8 @@ def _is_windows() -> bool:
 def _is_default_lydia_home(lydia_home: Path) -> bool:
     """Return True when ``lydia_home`` points at the default (non-profile) root."""
     try:
-        from alice_constants import get_default_lydia_root
-        return lydia_home.resolve() == get_default_lydia_root().resolve()
+        from alice_constants import get_default_alice_root
+        return lydia_home.resolve() == get_default_alice_root().resolve()
     except Exception:
         return False
 
@@ -752,7 +752,7 @@ def _perform_uninstall(
         else:
             log_info("No Alice-owned PATH entries in User environment")
 
-        log_info("Removing ALICE_HOME / LYDIA_GIT_BASH_PATH User env vars...")
+        log_info("Removing ALICE_HOME / ALICE_GIT_BASH_PATH User env vars...")
         removed_env = remove_lydia_env_vars_windows()
         if removed_env:
             for name in removed_env:

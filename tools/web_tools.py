@@ -374,9 +374,9 @@ def _store_full_text(url: str, content: str) -> Optional[str]:
     try:
         import hashlib
         from urllib.parse import urlparse
-        from alice_constants import get_lydia_dir
+        from alice_constants import get_alice_dir
 
-        cache_dir = get_lydia_dir("cache/web", "web_cache")
+        cache_dir = get_alice_dir("cache/web", "web_cache")
         cache_dir.mkdir(parents=True, exist_ok=True)
 
         host = (urlparse(url).hostname or "page").replace(":", "_")

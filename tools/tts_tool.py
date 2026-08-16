@@ -206,8 +206,8 @@ GEMINI_TTS_CHANNELS = 1
 GEMINI_TTS_SAMPLE_WIDTH = 2  # 16-bit PCM (L16)
 
 def _get_default_output_dir() -> str:
-    from alice_constants import get_lydia_dir
-    return str(get_lydia_dir("cache/audio", "audio_cache"))
+    from alice_constants import get_alice_dir
+    return str(get_alice_dir("cache/audio", "audio_cache"))
 
 DEFAULT_OUTPUT_DIR = _get_default_output_dir()
 
@@ -1907,8 +1907,8 @@ def _get_piper_voices_dir() -> Path:
     Resolves to ``~/.alice/cache/piper-voices/`` under the active
     ALICE_HOME so voice downloads follow profile boundaries.
     """
-    from alice_constants import get_lydia_dir
-    root = Path(get_lydia_dir("cache/piper-voices", "piper_voices_cache"))
+    from alice_constants import get_alice_dir
+    root = Path(get_alice_dir("cache/piper-voices", "piper_voices_cache"))
     root.mkdir(parents=True, exist_ok=True)
     return root
 

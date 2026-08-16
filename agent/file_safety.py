@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 
-def _lydia_home_path() -> Path:
+def _alice_home_path() -> Path:
     """Resolve the active ALICE_HOME (profile-aware) without circular imports."""
     try:
         from alice_constants import get_alice_home  # local import to avoid cycles
@@ -16,19 +16,19 @@ def _lydia_home_path() -> Path:
         return Path(os.path.expanduser("~/.alice"))
 
 
-def _lydia_root_path() -> Path:
+def _alice_root_path() -> Path:
     """Resolve the Alice root dir (always the parent of any profile, never per-profile)."""
     try:
-        from alice_constants import get_default_lydia_root  # local import to avoid cycles
-        return get_default_lydia_root()
+        from alice_constants import get_default_alice_root  # local import to avoid cycles
+        return get_default_alice_root()
     except Exception:
         return Path(os.path.expanduser("~/.alice"))
 
 
 def build_write_denied_paths(home: str) -> set[str]:
     """Return exact sensitive paths that must never be written."""
-    lydia_home = _lydia_home_path()
-    lydia_root = _lydia_root_path()
+    lydia_home = _alice_home_path()
+    lydia_root = _alice_root_path()
     return {
         os.path.realpath(p)
         for p in [
@@ -109,7 +109,7 @@ def is_write_denied(path: str) -> bool:
     mcp_tokens_dir_name = "mcp-tokens"
 
     lydia_dirs = []
-    for base in (_lydia_home_path(), _lydia_root_path()):
+    for base in (_alice_home_path(), _alice_root_path()):
         try:
             real = os.path.realpath(base)
             if real not in lydia_dirs:
@@ -211,7 +211,7 @@ def get_read_block_error(path: str) -> Optional[str]:
     # <root>/profiles/<name> in profile mode). Same shape as the write
     # deny widening (#15981, #14157).
     lydia_dirs: list[Path] = []
-    for base in (_lydia_home_path(), _lydia_root_path()):
+    for base in (_alice_home_path(), _alice_root_path()):
         try:
             real = base.resolve()
             if real not in lydia_dirs:
@@ -342,8 +342,8 @@ def _resolve_active_profile_name() -> str:
     never raises into the tool path.
     """
     try:
-        home_real = _lydia_home_path().resolve()
-        root_real = _lydia_root_path().resolve()
+        home_real = _alice_home_path().resolve()
+        root_real = _alice_root_path().resolve()
     except (OSError, RuntimeError):
         return "default"
     profiles_dir = root_real / "profiles"
@@ -376,7 +376,7 @@ def classify_cross_profile_target(path: str) -> Optional[dict]:
     """
     try:
         target = Path(os.path.expanduser(str(path))).resolve()
-        root_real = _lydia_root_path().resolve()
+        root_real = _alice_root_path().resolve()
     except (OSError, RuntimeError):
         return None
 

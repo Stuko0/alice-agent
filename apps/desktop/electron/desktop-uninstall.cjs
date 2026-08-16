@@ -2,7 +2,7 @@
  * desktop-uninstall.cjs
  *
  * Pure, electron-free helpers for the desktop Chat GUI uninstaller. These map
- * the three user-facing uninstall modes to the `lydia uninstall` CLI flags,
+ * the three user-facing uninstall modes to the `alice uninstall` CLI flags,
  * resolve the running app bundle/exe so a detached cleanup script can remove
  * it after the app quits, and build that cleanup script for each OS.
  *
@@ -12,14 +12,14 @@
  *
  * The three modes mirror the CLI's options exactly:
  *   - 'gui'  → remove ONLY the Chat GUI, keep the agent + all user data.
- *              `lydia uninstall --gui --yes`
+ *              `alice uninstall --gui --yes`
  *   - 'lite' → remove the GUI + agent code, KEEP user data (config / sessions
- *              / .env) for a future reinstall. `lydia uninstall --yes`
+ *              / .env) for a future reinstall. `alice uninstall --yes`
  *   - 'full' → remove everything: GUI + agent + all user data.
- *              `lydia uninstall --full --yes`
+ *              `alice uninstall --full --yes`
  *
  * Why a detached cleanup script: 'lite'/'full' delete the very venv the
- * `lydia` command runs from, and every mode may need to delete the running
+ * `alice` command runs from, and every mode may need to delete the running
  * app bundle (locked on macOS/Windows while the process is alive). So we hand
  * the work to a detached child that waits for this app's PID to exit, runs the
  * Python uninstall, then removes the app bundle — then the app quits. Same
@@ -58,8 +58,8 @@ function modeRemovesUserData(mode) {
  * Resolve the on-disk app bundle/dir to remove for the running desktop app,
  * given the path to the running executable (`process.execPath`) and platform.
  *
- *   macOS:   …/Lydia.app/Contents/MacOS/Lydia  → …/Lydia.app
- *   Windows: …\Lydia\Lydia.exe                 → …\Lydia  (install dir)
+ *   macOS:   …/Alice.app/Contents/MacOS/Alice  → …/Alice.app
+ *   Windows: …\\Alice\\Alice.exe                 → …\\Alice  (install dir)
  *   Linux:   AppImage → the APPIMAGE env path; unpacked → the *-unpacked dir
  *
  * Returns null when we can't confidently identify a removable bundle (e.g.
@@ -75,24 +75,24 @@ function resolveRemovableAppPath(execPath, platform, env = {}) {
   const p = platform === 'win32' ? path.win32 : path.posix
 
   if (platform === 'darwin') {
-    // …/Lydia.app/Contents/MacOS/Lydia → strip 3 segments to the .app
+    // …/Alice.app/Contents/MacOS/Alice → strip 3 segments to the .app
     const macOsDir = p.dirname(exe) // …/Contents/MacOS
     const contents = p.dirname(macOsDir) // …/Contents
-    const appBundle = p.dirname(contents) // …/Lydia.app
+    const appBundle = p.dirname(contents) // …/Alice.app
     if (appBundle.endsWith('.app')) return appBundle
     return null
   }
 
   if (platform === 'win32') {
-    // NSIS per-user installs Lydia.exe directly in the install dir.
+    // NSIS per-user installs Alice.exe directly in the install dir.
     const dir = p.dirname(exe)
-    if (/[\\/]Lydia$/i.test(dir) || /[\\/]lydia-desktop$/i.test(dir)) return dir
+    if (/[\\\\/]Alice$/i.test(dir) || /[\\\\/]alice-desktop$/i.test(dir)) return dir
     return null
   }
 
   // Linux: an AppImage exposes its own path via the APPIMAGE env var.
   if (env.APPIMAGE) return env.APPIMAGE
-  // Unpacked electron-builder tree: …/linux-unpacked/lydia
+  // Unpacked electron-builder tree: …/linux-unpacked/alice
   const dir = p.dirname(exe)
   if (/-unpacked$/.test(dir)) return dir
   return null
@@ -119,7 +119,7 @@ function shouldRemoveAppBundle(isPackaged, appPath) {
  * resolves from the agent source. `q()` single-quote-escapes for the shell
  * (closes-escapes-reopens any embedded apostrophe), defending against spaces.
  */
-function buildPosixCleanupScript({ desktopPid, pythonExe, pythonPath, agentRoot, uninstallArgs, appPath, lydiaHome }) {
+function buildPosixCleanupScript({ desktopPid, pythonExe, pythonPath, agentRoot, uninstallArgs, appPath, aliceHome }) {
   const q = s => `'${String(s).replace(/'/g, `'\\''`)}'`
   const lines = [
     '#!/bin/bash',
@@ -133,7 +133,7 @@ function buildPosixCleanupScript({ desktopPid, pythonExe, pythonPath, agentRoot,
     '    sleep 0.5',
     '  done',
     'fi',
-    `export LYDIA_HOME=${q(lydiaHome)}`
+    `export ALICE_HOME=${q(aliceHome)}`
   ]
   if (pythonPath) {
     lines.push(`export PYTHONPATH=${q(pythonPath)}\${PYTHONPATH:+:$PYTHONPATH}`)
@@ -173,17 +173,17 @@ function buildWindowsCleanupScript({
   agentRoot,
   uninstallArgs,
   appPath,
-  lydiaHome
+  aliceHome
 }) {
   const pid = Number(desktopPid) || 0
   // cmd.exe has no string escaping inside quotes; strip embedded quotes (paths
   // under %LOCALAPPDATA% never contain them). `&`/`^` in a path would still be
-  // a problem, but Lydia install paths don't use them.
+  // a problem, but Alice install paths don't use them.
   const q = s => `"${String(s).replace(/"/g, '')}"`
   const lines = [
     '@echo off',
     'setlocal enableextensions',
-    `set "LYDIA_HOME=${String(lydiaHome).replace(/"/g, '')}"`,
+    `set "ALICE_HOME=${String(aliceHome).replace(/"/g, '')}"`,
     `set "PID=${pid}"`
   ]
   if (pythonPath) {

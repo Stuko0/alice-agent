@@ -11,7 +11,7 @@ import shutil
 from pathlib import Path
 
 from alice_cli.config import get_project_root, get_alice_home, get_env_path
-from alice_cli.env_loader import load_lydia_dotenv
+from alice_cli.env_loader import load_alice_dotenv
 from alice_constants import display_alice_home
 from alice_constants import agent_browser_runnable
 
@@ -21,7 +21,7 @@ _DHH = display_alice_home()  # user-facing display path (e.g. ~/.alice or ~/.ali
 
 # Load environment variables from ~/.alice/.env so API key checks work
 _env_path = get_env_path()
-load_lydia_dotenv(lydia_home=_env_path.parent, project_env=PROJECT_ROOT / ".env")
+load_alice_dotenv(lydia_home=_env_path.parent, project_env=PROJECT_ROOT / ".env")
 
 from alice_cli.colors import Colors, color
 from alice_cli.models import _LYDIA_USER_AGENT

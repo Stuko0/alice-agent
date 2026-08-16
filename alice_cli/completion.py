@@ -240,7 +240,7 @@ _lydia() {{
     esac
 }}
 
-compdef _lydia alice
+compdef _alice alice
 """
 
 

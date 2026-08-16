@@ -165,7 +165,7 @@ def _path_is_mounted(path: Path) -> bool:
     return best_fstype not in ("overlay", "tmpfs", "aufs")
 
 
-def _container_no_volume_mount(lydia_home: Optional[Path]) -> Optional[str]:
+def _container_no_volume_mount(alice_home: Optional[Path]) -> Optional[str]:
     if not _in_container():
         return None
     home = lydia_home or Path(
@@ -221,7 +221,7 @@ def _network_listener_without_auth(config: Optional[dict]) -> list[str]:
 
 
 def run_security_audit(
-    *, lydia_home: Optional[Path] = None, config: Optional[dict] = None
+    *, alice_home: Optional[Path] = None, config: Optional[dict] = None
 ) -> list[str]:
     """Run all checks and return a list of human-readable warning strings.
 
@@ -255,7 +255,7 @@ def run_security_audit(
 
 def log_startup_security_warnings(
     *,
-    lydia_home: Optional[Path] = None,
+    alice_home: Optional[Path] = None,
     config: Optional[dict] = None,
     force: bool = False,
 ) -> list[str]:

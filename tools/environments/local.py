@@ -208,9 +208,9 @@ _ACTIVE_VENV_MARKER_VARS = ("VIRTUAL_ENV", "CONDA_PREFIX")
 def _inject_context_lydia_home(env: dict) -> None:
     """Bridge the context-local Alice home override into subprocess env."""
     try:
-        from alice_constants import get_lydia_home_override
+        from alice_constants import get_alice_home_override
 
-        value = get_lydia_home_override()
+        value = get_alice_home_override()
         if value:
             env["ALICE_HOME"] = value
     except Exception:
@@ -355,7 +355,7 @@ def _find_bash() -> str:
             or "/bin/sh"
         )
 
-    custom = os.environ.get("LYDIA_GIT_BASH_PATH")
+    custom = os.environ.get("ALICE_GIT_BASH_PATH")
     if custom and os.path.isfile(custom):
         return custom
 
@@ -393,7 +393,7 @@ def _find_bash() -> str:
     raise RuntimeError(
         "Git Bash not found. Alice Agent requires Git for Windows on Windows.\n"
         "Install it from: https://git-scm.com/download/win\n"
-        "Or set LYDIA_GIT_BASH_PATH to your bash.exe location."
+        "Or set ALICE_GIT_BASH_PATH to your bash.exe location."
     )
 
 

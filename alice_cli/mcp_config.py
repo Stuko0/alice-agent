@@ -206,8 +206,8 @@ def _resolve_mcp_server_config(config: dict) -> dict:
     from tools.mcp_tool import _interpolate_env_vars
 
     try:
-        from alice_cli.env_loader import load_lydia_dotenv
-        load_lydia_dotenv()
+        from alice_cli.env_loader import load_alice_dotenv
+        load_alice_dotenv()
     except Exception:  # pragma: no cover — defensive
         pass
     return _interpolate_env_vars(config)

@@ -1267,9 +1267,9 @@ _lydia_home = get_alice_home()
 # Load environment variables from ~/.alice/.env first.
 # User-managed env files should override stale shell exports on restart.
 from dotenv import load_dotenv  # noqa: F401  # backward-compat for tests that monkeypatch this symbol
-from alice_cli.env_loader import load_lydia_dotenv
+from alice_cli.env_loader import load_alice_dotenv
 _env_path = _lydia_home / '.env'
-load_lydia_dotenv(lydia_home=_lydia_home, project_env=Path(__file__).resolve().parents[1] / '.env')
+load_alice_dotenv(lydia_home=_lydia_home, project_env=Path(__file__).resolve().parents[1] / '.env')
 
 
 def _reload_runtime_env_preserving_config_authority() -> None:
@@ -1294,7 +1294,7 @@ def _reload_runtime_env_preserving_config_authority() -> None:
         _bridge_max_turns_from_config(_lydia_home)
         return
 
-    load_lydia_dotenv(
+    load_alice_dotenv(
         lydia_home=_lydia_home,
         project_env=Path(__file__).resolve().parents[1] / '.env',
     )
@@ -1373,7 +1373,7 @@ def _profile_runtime_scope(profile_home: "Path"):
     """Scope config/skills/memory AND credentials to a profile for one turn.
 
     Combines the two seams the multiplexer needs:
-      1. ``set_lydia_home_override`` — redirects ``get_alice_home()`` (config,
+      1. ``set_alice_home_override`` — redirects ``get_alice_home()`` (config,
          skills, memory, SOUL, sessions) to the profile's home. Contextvar, so
          it propagates into the agent worker thread via ``copy_context()``.
       2. ``set_secret_scope`` — installs the profile's ``.env`` secrets as the
@@ -1387,20 +1387,20 @@ def _profile_runtime_scope(profile_home: "Path"):
     returns an isolated dict — which is what keeps subprocesses (MCP, kanban)
     from inheriting cross-profile secrets.
     """
-    from alice_constants import set_lydia_home_override, reset_lydia_home_override
+    from alice_constants import set_alice_home_override, reset_alice_home_override
     from agent.secret_scope import (
         build_profile_secret_scope,
         set_secret_scope,
         reset_secret_scope,
     )
 
-    home_token = set_lydia_home_override(str(profile_home))
+    home_token = set_alice_home_override(str(profile_home))
     secret_token = set_secret_scope(build_profile_secret_scope(Path(profile_home)))
     try:
         yield
     finally:
         reset_secret_scope(secret_token)
-        reset_lydia_home_override(home_token)
+        reset_alice_home_override(home_token)
 
 
 _DOCKER_VOLUME_SPEC_RE = re.compile(r"^(?P<host>.+):(?P<container>/[^:]+?)(?::(?P<options>[^:]+))?$")

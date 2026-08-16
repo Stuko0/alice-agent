@@ -416,7 +416,7 @@ def run_audit(
     skip_venv: bool = False,
     skip_plugins: bool = False,
     skip_mcp: bool = False,
-    lydia_home: Optional[Path] = None,
+    alice_home: Optional[Path] = None,
 ) -> list[Finding]:
     """Discover components, query OSV, return findings sorted by severity desc."""
     home = lydia_home or Path(get_alice_home())

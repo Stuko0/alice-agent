@@ -38,7 +38,7 @@ def _scope_to_profile(profile: Optional[str]):
         return
 
     from alice_cli import profiles as profiles_mod
-    from alice_constants import reset_lydia_home_override, set_lydia_home_override
+    from alice_constants import reset_alice_home_override, set_alice_home_override
 
     try:
         profiles_mod.validate_profile_name(requested)
@@ -47,11 +47,11 @@ def _scope_to_profile(profile: Optional[str]):
     if not profiles_mod.profile_exists(requested):
         raise HTTPException(status_code=404, detail=f"Profile '{requested}' does not exist.")
 
-    token = set_lydia_home_override(str(profiles_mod.get_profile_dir(requested)))
+    token = set_alice_home_override(str(profiles_mod.get_profile_dir(requested)))
     try:
         yield
     finally:
-        reset_lydia_home_override(token)
+        reset_alice_home_override(token)
 
 
 @router.post("/{provider}/oauth/start")

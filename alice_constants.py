@@ -15,35 +15,35 @@ from pathlib import Path
 
 _profile_fallback_warned: bool = False
 _UNSET = object()
-_LYDIA_HOME_OVERRIDE: ContextVar[str | object] = ContextVar(
-    "_LYDIA_HOME_OVERRIDE", default=_UNSET
+_ALICE_HOME_OVERRIDE: ContextVar[str | object] = ContextVar(
+    "_ALICE_HOME_OVERRIDE", default=_UNSET
 )
 
 
-def set_lydia_home_override(path: str | Path | None) -> Token:
+def set_alice_home_override(path: str | Path | None) -> Token:
     """Set a context-local Alice home override and return its reset token.
 
     This is for in-process, per-task scoping.  It deliberately does not mutate
     ``os.environ`` because that is shared by every thread in the process.
     """
     value: str | object = _UNSET if path is None else str(path)
-    return _LYDIA_HOME_OVERRIDE.set(value)
+    return _ALICE_HOME_OVERRIDE.set(value)
 
 
-def reset_lydia_home_override(token: Token) -> None:
+def reset_alice_home_override(token: Token) -> None:
     """Restore the previous context-local Alice home override."""
-    _LYDIA_HOME_OVERRIDE.reset(token)
+    _ALICE_HOME_OVERRIDE.reset(token)
 
 
-def get_lydia_home_override() -> str | None:
+def get_alice_home_override() -> str | None:
     """Return the active context-local Alice home override, if any."""
-    override = _LYDIA_HOME_OVERRIDE.get()
+    override = _ALICE_HOME_OVERRIDE.get()
     if override is _UNSET or not override:
         return None
     return str(override)
 
 
-def _get_platform_default_lydia_home() -> Path:
+def _get_platform_default_alice_home() -> Path:
     """Return the platform-native default Alice home path.
 
     Prefers ``~/.alice`` (POSIX) / ``%LOCALAPPDATA%\\alice`` (Windows) for
@@ -101,7 +101,7 @@ def get_alice_home() -> Path:
     template in ``alice_cli/gateway.py`` and the kanban dispatcher in
     ``alice_cli/kanban_db.py``).  See https://10.1.200.116:3000/arquant-admin/NewLydia/issues/18594.
     """
-    override = get_lydia_home_override()
+    override = get_alice_home_override()
     if override:
         return Path(override)
 
@@ -114,7 +114,7 @@ def get_alice_home() -> Path:
     global _profile_fallback_warned
     if not _profile_fallback_warned:
         try:
-            fallback_home = _get_platform_default_lydia_home()
+            fallback_home = _get_platform_default_alice_home()
             active_path = fallback_home / "active_profile"
             active = active_path.read_text().strip() if active_path.exists() else ""
         except (UnicodeDecodeError, OSError):
@@ -140,10 +140,10 @@ def get_alice_home() -> Path:
             except Exception:
                 pass
 
-    return _get_platform_default_lydia_home()
+    return _get_platform_default_alice_home()
 
 
-def get_default_lydia_root() -> Path:
+def get_default_alice_root() -> Path:
     """Return the root Alice directory for profile-level operations.
 
     In standard deployments this is the platform-native Alice home
@@ -160,7 +160,7 @@ def get_default_lydia_root() -> Path:
 
     Import-safe — no dependencies beyond stdlib.
     """
-    native_home = _get_platform_default_lydia_home()
+    native_home = _get_platform_default_alice_home()
     env_home = os.environ.get("ALICE_HOME", "")
     if not env_home:
         return native_home
@@ -204,9 +204,9 @@ def get_optional_skills_dir(default: Path | None = None) -> Path:
     """Return the optional-skills directory, honoring package-manager wrappers.
 
     Packaged installs may ship ``optional-skills`` outside the Python package
-    tree and expose it via ``LYDIA_OPTIONAL_SKILLS``.
+    tree and expose it via ``ALICE_OPTIONAL_SKILLS``.
     """
-    override = os.getenv("LYDIA_OPTIONAL_SKILLS", "").strip()
+    override = os.getenv("ALICE_OPTIONAL_SKILLS", "").strip()
     if override:
         return Path(override)
     packaged = _get_packaged_data_dir("optional-skills")
@@ -223,9 +223,9 @@ def get_optional_mcps_dir(default: Path | None = None) -> Path:
     Mirrors :func:`get_optional_skills_dir` for the MCP catalog (Nous-approved
     Model Context Protocol servers shipped with the repo but disabled by
     default). Packaged installs may ship ``optional-mcps`` outside the Python
-    package tree and expose it via ``LYDIA_OPTIONAL_MCPS``.
+    package tree and expose it via ``ALICE_OPTIONAL_MCPS``.
     """
-    override = os.getenv("LYDIA_OPTIONAL_MCPS", "").strip()
+    override = os.getenv("ALICE_OPTIONAL_MCPS", "").strip()
     if override:
         return Path(override)
     packaged = _get_packaged_data_dir("optional-mcps")
@@ -240,12 +240,12 @@ def get_bundled_skills_dir(default: Path | None = None) -> Path:
     """Return the bundled skills directory for source and packaged installs.
 
     Resolution order:
-        1. ``LYDIA_BUNDLED_SKILLS`` env var (Nix wrapper / explicit override)
+        1. ``ALICE_BUNDLED_SKILLS`` env var (Nix wrapper / explicit override)
         2. Wheel-installed ``<sysconfig data>/skills`` (pip install path)
         3. Caller-supplied ``default`` (typically the source-checkout path)
         4. ``<ALICE_HOME>/skills`` last-resort
     """
-    override = os.getenv("LYDIA_BUNDLED_SKILLS", "").strip()
+    override = os.getenv("ALICE_BUNDLED_SKILLS", "").strip()
     if override:
         return Path(override)
     packaged = _get_packaged_data_dir("skills")
@@ -256,7 +256,7 @@ def get_bundled_skills_dir(default: Path | None = None) -> Path:
     return get_alice_home() / "skills"
 
 
-def get_lydia_dir(new_subpath: str, old_name: str) -> Path:
+def get_alice_dir(new_subpath: str, old_name: str) -> Path:
     """Resolve a Alice subdirectory with backward compatibility.
 
     New installs get the consolidated layout (e.g. ``cache/images``).
@@ -286,7 +286,7 @@ def get_lydia_dir(new_subpath: str, old_name: str) -> Path:
     return home / new_subpath
 
 
-def iter_lydia_node_dirs(home: Path | None = None) -> list[Path]:
+def iter_alice_node_dirs(home: Path | None = None) -> list[Path]:
     """Return Alice-managed Node.js directories in preferred lookup order.
 
     Windows installs from ``scripts/install.ps1`` unpack portable Node directly
@@ -297,7 +297,7 @@ def iter_lydia_node_dirs(home: Path | None = None) -> list[Path]:
     root = home or get_alice_home()
     dirs = [root / "node"]
     bin_dir = root / "node" / "bin"
-    # NOTE: keep this ordering in sync with lydiaManagedNodePathEntries() in
+    # NOTE: keep this ordering in sync with aliceManagedNodePathEntries() in
     # apps/desktop/electron/main.cjs — the Electron main process is Node and
     # cannot import this module, so the platform-ordering rule is mirrored there.
     if sys.platform == "win32":
@@ -320,7 +320,7 @@ def _candidate_node_command_names(command: str) -> list[str]:
     return [f"{base}.cmd", f"{base}.exe", base]
 
 
-_LYDIA_NODE_TARGET_MAJOR = int(os.environ.get("LYDIA_NODE_TARGET_MAJOR", "22"))
+_ALICE_NODE_TARGET_MAJOR = int(os.environ.get("ALICE_NODE_TARGET_MAJOR", "22"))
 _managed_node_heal_attempted = False
 _NODE_BOOTSTRAP_SCRIPT = Path(__file__).resolve().parent / "scripts" / "lib" / "node-bootstrap.sh"
 
@@ -331,7 +331,7 @@ def node_tool_runnable(path: str | None) -> bool:
     Alice-managed Node trees live under ``$ALICE_HOME/node`` (or a profile's
     ``ALICE_HOME``). A partial upgrade or interrupted install can leave
     ``bin/npm`` behind while ``lib/cli.js`` is missing — the wrapper exists but
-    immediately throws ``MODULE_NOT_FOUND``. ``find_lydia_node_executable``
+    immediately throws ``MODULE_NOT_FOUND``. ``find_alice_node_executable``
     used to trust file presence alone, so ``alice update`` would pick that
     broken npm and fail the Node refresh / web UI build.
 
@@ -356,7 +356,7 @@ def node_tool_runnable(path: str | None) -> bool:
             [path, "--version"],
             capture_output=True,
             timeout=10,
-            env=with_lydia_node_path(),
+            env=with_alice_node_path(),
             creationflags=windows_hide_flags(),
         )
     except (OSError, subprocess.TimeoutExpired, ValueError):
@@ -364,12 +364,12 @@ def node_tool_runnable(path: str | None) -> bool:
     return result.returncode == 0
 
 
-def lydia_managed_node_tree_present(home: Path | None = None) -> bool:
+def alice_managed_node_tree_present(home: Path | None = None) -> bool:
     """Return True when any Alice-managed node/npm/npx shim exists on disk."""
     names = set()
     for command in ("node", "npm", "npx"):
         names.update(_candidate_node_command_names(command))
-    for directory in iter_lydia_node_dirs(home):
+    for directory in iter_alice_node_dirs(home):
         for name in names:
             candidate = directory / name
             if candidate.is_file() and (
@@ -397,7 +397,7 @@ def _heal_managed_node_windows() -> bool:
         return False
 
     home = get_alice_home()
-    index_url = f"https://nodejs.org/dist/latest-v{_LYDIA_NODE_TARGET_MAJOR}.x/"
+    index_url = f"https://nodejs.org/dist/latest-v{_ALICE_NODE_TARGET_MAJOR}.x/"
     try:
         with urllib.request.urlopen(index_url, timeout=60) as response:
             index_html = response.read().decode("utf-8", errors="replace")
@@ -405,7 +405,7 @@ def _heal_managed_node_windows() -> bool:
         return False
 
     match = re.search(
-        rf"node-v{_LYDIA_NODE_TARGET_MAJOR}\.\d+\.\d+-win-{node_arch}\.zip",
+        rf"node-v{_ALICE_NODE_TARGET_MAJOR}\.\d+\.\d+-win-{node_arch}\.zip",
         index_html,
     )
     if not match:
@@ -441,7 +441,7 @@ def _heal_managed_node_windows() -> bool:
     return node_tool_runnable(str(target / "node.exe"))
 
 
-def heal_lydia_managed_node() -> bool:
+def heal_alice_managed_node() -> bool:
     """Redownload Alice-managed Node when the tree exists but is broken.
 
     Runs at most once per process. POSIX installs shell out to
@@ -451,7 +451,7 @@ def heal_lydia_managed_node() -> bool:
     global _managed_node_heal_attempted
     if _managed_node_heal_attempted:
         return False
-    if not lydia_managed_node_tree_present():
+    if not alice_managed_node_tree_present():
         return False
     _managed_node_heal_attempted = True
 
@@ -480,11 +480,11 @@ def heal_lydia_managed_node() -> bool:
     return result.returncode == 0
 
 
-def find_lydia_node_executable(command: str) -> str | None:
+def find_alice_node_executable(command: str) -> str | None:
     """Return a Alice-managed Node/npm executable path, healing broken trees."""
     names = _candidate_node_command_names(command)
     broken_present = False
-    for directory in iter_lydia_node_dirs():
+    for directory in iter_alice_node_dirs():
         for name in names:
             candidate = directory / name
             if candidate.is_file() and (
@@ -494,8 +494,8 @@ def find_lydia_node_executable(command: str) -> str | None:
                 if node_tool_runnable(resolved):
                     return resolved
                 broken_present = True
-    if broken_present and heal_lydia_managed_node():
-        for directory in iter_lydia_node_dirs():
+    if broken_present and heal_alice_managed_node():
+        for directory in iter_alice_node_dirs():
             for name in names:
                 candidate = directory / name
                 if candidate.is_file() and (
@@ -543,20 +543,20 @@ def find_node_executable(command: str) -> str | None:
     tree exists but cannot be healed, returns ``None`` instead of falling back
     to system npm on PATH.
     """
-    managed = find_lydia_node_executable(command)
+    managed = find_alice_node_executable(command)
     if managed:
         return managed
-    if lydia_managed_node_tree_present():
+    if alice_managed_node_tree_present():
         return None
     return find_node_executable_on_path(command)
 
 
-def with_lydia_node_path(env: dict[str, str] | None = None) -> dict[str, str]:
+def with_alice_node_path(env: dict[str, str] | None = None) -> dict[str, str]:
     """Return *env* with Alice-managed Node directories prepended to PATH."""
     merged = dict(os.environ if env is None else env)
     existing = merged.get("PATH", "")
     parts = [p for p in existing.split(os.pathsep) if p]
-    managed = [str(path) for path in iter_lydia_node_dirs() if path.is_dir()]
+    managed = [str(path) for path in iter_alice_node_dirs() if path.is_dir()]
     for entry in reversed(managed):
         if entry not in parts:
             parts.insert(0, entry)
@@ -604,7 +604,7 @@ def agent_browser_runnable(path: str | None) -> bool:
             [path, "--version"],
             capture_output=True,
             timeout=10,
-            env=with_lydia_node_path(),
+            env=with_alice_node_path(),
             creationflags=windows_hide_flags(),
         )
     except (OSError, subprocess.TimeoutExpired, ValueError):
@@ -714,10 +714,10 @@ def _norm_home_path(path: str | None) -> str:
 
 def _profile_home_path(env: dict[str, str] | None = None) -> str | None:
     """Return ``{ALICE_HOME}/home`` when the profile-home directory exists."""
-    lydia_home = get_lydia_home_override() or (env or {}).get("ALICE_HOME") or os.getenv("ALICE_HOME")
-    if not lydia_home:
+    alice_home = get_alice_home_override() or (env or {}).get("ALICE_HOME") or os.getenv("ALICE_HOME")
+    if not alice_home:
         return None
-    profile_home = os.path.join(lydia_home, "home")
+    profile_home = os.path.join(alice_home, "home")
     if os.path.isdir(profile_home):
         return profile_home
     return None
@@ -981,7 +981,7 @@ def apply_ipv4_preference(force: bool = False) -> None:
     import socket
 
     # Guard against double-patching
-    if getattr(socket.getaddrinfo, "_lydia_ipv4_patched", False):
+    if getattr(socket.getaddrinfo, "_alice_ipv4_patched", False):
         return
 
     _original_getaddrinfo = socket.getaddrinfo
@@ -997,7 +997,7 @@ def apply_ipv4_preference(force: bool = False) -> None:
                 return _original_getaddrinfo(host, port, family, type, proto, flags)
         return _original_getaddrinfo(host, port, family, type, proto, flags)
 
-    _ipv4_getaddrinfo._lydia_ipv4_patched = True  # type: ignore[attr-defined]
+    _ipv4_getaddrinfo._alice_ipv4_patched = True  # type: ignore[attr-defined]
     socket.getaddrinfo = _ipv4_getaddrinfo  # type: ignore[assignment]
 
 

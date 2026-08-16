@@ -67,7 +67,7 @@ _BWS_CHECKSUM_NAME = f"bws-sha256-checksums-{_BWS_VERSION}.txt"
 _BWS_DOWNLOAD_TIMEOUT = 60
 _BWS_RUN_TIMEOUT = 30
 
-# In-process cache so repeated load_lydia_dotenv() calls (CLI startup,
+# In-process cache so repeated load_alice_dotenv() calls (CLI startup,
 # gateway hot-reload, test suites) don't re-fetch from BSM.
 _CacheKey = Tuple[str, str, str]  # (access_token_fingerprint, project_id, server_url)
 _CACHE: Dict[_CacheKey, "_CachedFetch"] = {}
@@ -88,7 +88,7 @@ _DISK_CACHE_BASENAME = "bws_cache.json"
 def _disk_cache_path(home_path: Optional[Path] = None) -> Path:
     """Return the disk cache path under lydia_home/cache/.
 
-    `home_path` is what `load_lydia_dotenv()` already resolved; falling back
+    `home_path` is what `load_alice_dotenv()` already resolved; falling back
     to `$ALICE_HOME` / `~/.alice` keeps direct callers working too.
     """
     if home_path is None:
@@ -601,7 +601,7 @@ def apply_bitwarden_secrets(
 ) -> FetchResult:
     """Pull secrets from BSM and set them on ``os.environ``.
 
-    This is the function ``load_lydia_dotenv()`` calls after the .env
+    This is the function ``load_alice_dotenv()`` calls after the .env
     files have loaded.  It is intentionally defensive — any failure
     returns a :class:`FetchResult` with ``error`` set; it never raises.
 

@@ -42,7 +42,7 @@ const { waitForDashboardPortAnnouncement } = require('./backend-ready.cjs')
 const { dashboardFallbackArgs, sourceDeclaresServe } = require('./backend-command.cjs')
 const { serializeJsonBody, setJsonRequestHeaders } = require('./oauth-net-request.cjs')
 const { fetchMarketplaceThemes, searchMarketplaceThemes } = require('./vscode-marketplace.cjs')
-const { buildDesktopBackendEnv, normalizeLydiaHomeRoot } = require('./backend-env.cjs')
+const { buildDesktopBackendEnv, normalizeAliceHomeRoot } = require('./backend-env.cjs')
 const { readWindowsUserEnvVar } = require('./windows-user-env.cjs')
 const { readWslWindowsClipboardImage } = require('./wsl-clipboard-image.cjs')
 const { nativeOverlayWidth: computeNativeOverlayWidth } = require('./titlebar-overlay-width.cjs')
@@ -148,7 +148,7 @@ try {
   }
 }
 
-const USER_DATA_OVERRIDE = process.env.LYDIA_DESKTOP_USER_DATA_DIR
+const USER_DATA_OVERRIDE = process.env.ALICE_DESKTOP_USER_DATA_DIR
 if (USER_DATA_OVERRIDE) {
   const resolvedUserData = path.resolve(USER_DATA_OVERRIDE)
   fs.mkdirSync(resolvedUserData, { recursive: true })
@@ -279,8 +279,8 @@ if (INSTALL_STAMP) {
   )
 }
 
-// LYDIA_HOME — the user-facing root for everything Lydia-related. Mirrors
-// scripts/install.ps1's $LydiaHome and scripts/install.sh's $LYDIA_HOME.
+// ALICE_HOME — the user-facing root for everything Lydia-related. Mirrors
+// scripts/install.ps1's $LydiaHome and scripts/install.sh's $ALICE_HOME.
 // Alice (the rebrand) uses ~/.alice / %LOCALAPPDATA%\alice.
 //
 // Defaults:
@@ -292,12 +292,12 @@ if (INSTALL_STAMP) {
 // prefer the legacy path so we don't orphan their existing config / sessions
 // / .env. New installs go to ~/.alice / %LOCALAPPDATA%\alice.
 //
-// LYDIA_DESKTOP_USER_DATA_DIR (used by test:desktop:fresh) puts the sandbox
-// LYDIA_HOME beneath the throwaway userData dir so a fresh-install run never
+// ALICE_DESKTOP_USER_DATA_DIR (used by test:desktop:fresh) puts the sandbox
+// ALICE_HOME beneath the throwaway userData dir so a fresh-install run never
 // touches the user's real ~/.alice / %LOCALAPPDATA%\alice.
 function resolveLydiaHome() {
   // The canonical Alice home is ~/.alice (POSIX) / %LOCALAPPDATA%\alice (Windows).
-  // A legacy LYDIA_HOME env var or registry value (from the old Lydia install)
+  // A legacy ALICE_HOME env var or registry value (from the old Lydia install)
   // is honoured ONLY when no Alice home directory exists yet — once ~/.alice or
   // %LOCALAPPDATA%\alice has content, it wins regardless of env/registry.
   // This prevents the old Lydia env var from hijacking Alice's data after the
@@ -312,17 +312,17 @@ function resolveLydiaHome() {
   }
 
   // If the canonical Alice home already exists (has content), always use it
-  // — ignore any stale LYDIA_HOME env var or registry value.
+  // — ignore any stale ALICE_HOME env var or registry value.
   if (aliceCandidate && directoryExists(aliceCandidate)) {
     return aliceCandidate
   }
 
   // No Alice home yet — honour legacy paths for transparent migration.
-  if (USER_DATA_OVERRIDE) return path.join(path.resolve(USER_DATA_OVERRIDE), 'lydia-home')
-  if (process.env.LYDIA_HOME) return normalizeLydiaHomeRoot(process.env.LYDIA_HOME)
+  if (USER_DATA_OVERRIDE) return path.join(path.resolve(USER_DATA_OVERRIDE), 'alice-home')
+  if (process.env.ALICE_HOME) return normalizeAliceHomeRoot(process.env.ALICE_HOME)
   if (IS_WINDOWS) {
-    const fromRegistry = readWindowsUserEnvVar('LYDIA_HOME')
-    if (fromRegistry) return normalizeLydiaHomeRoot(fromRegistry)
+    const fromRegistry = readWindowsUserEnvVar('ALICE_HOME')
+    if (fromRegistry) return normalizeAliceHomeRoot(fromRegistry)
   }
   if (IS_WINDOWS && process.env.LOCALAPPDATA) {
     const legacy = path.join(app.getPath('home'), '.lydia')
@@ -334,18 +334,18 @@ function resolveLydiaHome() {
   return path.join(app.getPath('home'), '.alice')
 }
 
-const LYDIA_HOME = resolveLydiaHome()
+const ALICE_HOME = resolveLydiaHome()
 
 // ---------------------------------------------------------------------------
 // SSH askpass — route SSH key passphrase prompts through the desktop modal
 // instead of the spawning terminal.  Points to the same Python askpass shim
-// the Python backend writes at ~/.lydia/lydia-git-askpass.py.  Git's own
+// the Python backend writes at ~/.lydia/alice-git-askpass.py.  Git's own
 // credential prompts (HTTPS username/password) go through GIT_ASKPASS via
 // the backend's web_git module; SSH passphrases need a separate env var.
 // SSH_ASKPASS_REQUIRE=force tells ssh to use the program even when DISPLAY
 // is unset or a terminal is available — otherwise it reads /dev/tty directly.
 // ---------------------------------------------------------------------------
-const ASKPASS_SHIM = path.join(LYDIA_HOME, 'lydia-git-askpass.py')
+const ASKPASS_SHIM = path.join(ALICE_HOME, 'alice-git-askpass.py')
 if (!process.env.SSH_ASKPASS) {
   process.env.SSH_ASKPASS = ASKPASS_SHIM
 }
@@ -353,26 +353,26 @@ if (!process.env.SSH_ASKPASS_REQUIRE) {
   process.env.SSH_ASKPASS_REQUIRE = 'force'
 }
 
-function lydiaManagedNodePathEntries() {
+function aliceManagedNodePathEntries() {
   // NOTE: keep this ordering in sync with iter_lydia_node_dirs() in
   // lydia_constants.py — this Node main process cannot import the Python
   // module, so the platform-ordering rule is mirrored here.
-  const root = path.join(LYDIA_HOME, 'node')
+  const root = path.join(ALICE_HOME, 'node')
   const bin = path.join(root, 'bin')
   const entries = IS_WINDOWS ? [root, bin] : [bin, root]
   return entries.filter(directoryExists)
 }
 
 function pathWithLydiaManagedNode(...entries) {
-  return [...lydiaManagedNodePathEntries(), ...entries, process.env.PATH].filter(Boolean).join(path.delimiter)
+  return [...aliceManagedNodePathEntries(), ...entries, process.env.PATH].filter(Boolean).join(path.delimiter)
 }
 
-// ACTIVE_LYDIA_ROOT — the canonical mutable Lydia install. Same path
+// ACTIVE_ALICE_ROOT — the canonical mutable Lydia install. Same path
 // install.ps1 / install.sh use, so a desktop-only user and a CLI-only user end
 // up with identical layouts and can share one install.
-const ACTIVE_LYDIA_ROOT = path.join(LYDIA_HOME, 'lydia-agent')
+const ACTIVE_ALICE_ROOT = path.join(ALICE_HOME, 'alice-agent')
 // VENV_ROOT — venv lives inside the repo, exactly like install.ps1 does it.
-const VENV_ROOT = path.join(ACTIVE_LYDIA_ROOT, 'venv')
+const VENV_ROOT = path.join(ACTIVE_ALICE_ROOT, 'venv')
 // BOOTSTRAP_COMPLETE_MARKER — written by the first-launch bootstrap runner
 // (Phase 1D) after install.ps1 has completed all stages and the user has
 // finished initial configuration. Presence of this marker means the install
@@ -381,10 +381,10 @@ const VENV_ROOT = path.join(ACTIVE_LYDIA_ROOT, 'venv')
 // means we re-run the bootstrap; install.ps1's stages are idempotent so a
 // re-run on an already-good install just discovers everything in place.
 //
-// We deliberately put the marker INSIDE ACTIVE_LYDIA_ROOT (not alongside)
+// We deliberately put the marker INSIDE ACTIVE_ALICE_ROOT (not alongside)
 // so that deleting the checkout to start fresh also deletes the marker --
 // avoids the confusing "marker exists but checkout is gone" state.
-const BOOTSTRAP_COMPLETE_MARKER = path.join(ACTIVE_LYDIA_ROOT, '.lydia-bootstrap-complete')
+const BOOTSTRAP_COMPLETE_MARKER = path.join(ACTIVE_ALICE_ROOT, '.alice-bootstrap-complete')
 const BOOTSTRAP_MARKER_SCHEMA_VERSION = 1
 
 const DESKTOP_CONNECTION_CONFIG_PATH = path.join(app.getPath('userData'), 'connection.json')
@@ -392,7 +392,7 @@ const DESKTOP_UPDATE_CONFIG_PATH = path.join(app.getPath('userData'), 'updates.j
 const DESKTOP_WINDOW_STATE_PATH = path.join(app.getPath('userData'), 'window-state.json')
 // active-profile.json records which Lydia profile the desktop launches its
 // local backend as. When set, startLydia() passes `lydia --profile <name>
-// dashboard …`, which deterministically pins LYDIA_HOME (see
+// dashboard …`, which deterministically pins ALICE_HOME (see
 // _apply_profile_override in alice_cli/main.py) and bypasses the sticky
 // ~/.lydia/active_profile file. Unset (null) preserves the legacy behavior:
 // no --profile flag, so the backend honors active_profile / default.
@@ -404,10 +404,10 @@ const PROFILE_NAME_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/
 // tracks main. User can also override at runtime via
 // lydiaDesktop.updates.setBranch().
 const DEFAULT_UPDATE_BRANCH = 'main'
-// desktop.log lives under LYDIA_HOME/logs/ so it sits next to agent.log,
+// desktop.log lives under ALICE_HOME/logs/ so it sits next to agent.log,
 // errors.log, gateway.log produced by lydia_logging.setup_logging — one log
 // directory per user, regardless of which UI surface produced the line.
-const DESKTOP_LOG_PATH = path.join(LYDIA_HOME, 'logs', 'desktop.log')
+const DESKTOP_LOG_PATH = path.join(ALICE_HOME, 'logs', 'desktop.log')
 const DESKTOP_LOG_FLUSH_MS = 120
 const DESKTOP_LOG_BUFFER_MAX_CHARS = 64 * 1024
 // Bound desktop.log on disk. It is an append-only forensic log, so a boot loop
@@ -435,7 +435,7 @@ const BOOT_FAKE_STEP_MS = (() => {
   if (!Number.isFinite(raw) || raw <= 0) return 650
   return Math.max(120, raw)
 })()
-const APP_NAME = 'Lydia'
+const APP_NAME = 'Alice'
 const TITLEBAR_HEIGHT = 34
 const MACOS_TRAFFIC_LIGHTS_HEIGHT = 14
 const WINDOW_BUTTON_POSITION = {
@@ -718,7 +718,7 @@ app.setName(APP_NAME)
 // need this, so gate it on Windows. (Fixes: desktop approval/turn notifications
 // never firing on Windows.)
 if (IS_WINDOWS) {
-  app.setAppUserModelId('com.nousresearch.lydia')
+  app.setAppUserModelId('com.nousresearch.alice')
 }
 // Seed the native About panel with the live Lydia version. This is refreshed
 // on every open via the explicit "About" menu handler (refreshAboutPanel), so
@@ -825,7 +825,7 @@ let rendererReloadTimes = []
 // the renderer's "Reload and retry" path or by quitting the app.
 let bootstrapFailure = null
 // Latched non-bootstrap backend spawn failure — stops getConnection() from
-// respawning lydia serve backend children in a tight loop while boot is broken.
+// respawning alice serve backend children in a tight loop while boot is broken.
 let backendStartFailure = null
 // Active first-launch install, so the renderer's Cancel button (and app quit)
 // can abort the in-flight install.sh/ps1 instead of leaving it running.
@@ -1251,7 +1251,7 @@ function directoryExists(filePath) {
 }
 
 // --- in-app update mutual exclusion (#50238) -------------------------------
-// The Tauri updater writes LYDIA_HOME/.lydia-update-in-progress for the whole
+// The Tauri updater writes ALICE_HOME/.lydia-update-in-progress for the whole
 // duration of an `--update` run (see update.rs UpdateMarkerGuard). If the user
 // relaunches the desktop mid-update — because the window vanished with no
 // progress and looks crashed — a fresh instance must NOT spawn its own local
@@ -1281,7 +1281,7 @@ const UPDATE_HANDOFF_DWELL_MS = 2500
 // Emits a boot-progress phase so the renderer shows "Update in progress…"
 // rather than a frozen splash. Returns true if it parked at all.
 async function waitForUpdateToFinish() {
-  let marker = readLiveUpdateMarker(LYDIA_HOME)
+  let marker = readLiveUpdateMarker(ALICE_HOME)
   if (!marker) return false
 
   rememberLog(`[updates] update in progress (pid=${marker.pid}); deferring backend start until it finishes`)
@@ -1293,7 +1293,7 @@ async function waitForUpdateToFinish() {
       12
     )
     await new Promise(r => setTimeout(r, UPDATE_WAIT_POLL_MS))
-    marker = readLiveUpdateMarker(LYDIA_HOME)
+    marker = readLiveUpdateMarker(ALICE_HOME)
   }
   if (marker) {
     rememberLog('[updates] update still in progress after wait timeout; starting backend anyway')
@@ -1363,7 +1363,7 @@ function unwrapWindowsVenvLydiaCommand(command, backendArgs) {
     args: ['-m', 'alice_cli.main', ...backendArgs],
     bootstrap: false,
     env: buildDesktopBackendEnv({
-      lydiaHome: LYDIA_HOME,
+      aliceHome: ALICE_HOME,
       pythonPathEntries: [...(directoryExists(root) ? [root] : []), ...getVenvSitePackagesEntries(venvRoot)],
       venvRoot
     }),
@@ -1376,7 +1376,7 @@ function unwrapWindowsVenvLydiaCommand(command, backendArgs) {
 }
 
 // Does the resolved runtime understand the `serve` subcommand? The desktop
-// spawns `lydia serve`; runtimes older than serve only have `dashboard`. We
+// spawns `alice serve`; runtimes older than serve only have `dashboard`. We
 // detect support so getBackendArgsForRuntime() can route old runtimes through
 // the legacy `dashboard --no-open` form instead of crashing on an unknown
 // subcommand (would brick every user mid-upgrade — #54568 follow-up).
@@ -1409,7 +1409,7 @@ function backendSupportsServe(backend) {
       const prefix = backend.args && backend.args[0] === '-m' ? backend.args.slice(0, 2) : []
       execFileSync(backend.command, [...prefix, 'serve', '--help'], {
         cwd: backend.root || undefined,
-        env: { ...process.env, LYDIA_HOME, ...(backend.env || {}) },
+        env: { ...process.env, ALICE_HOME, ...(backend.env || {}) },
         timeout: 15000,
         stdio: 'ignore',
         windowsHide: true
@@ -1820,16 +1820,16 @@ function persistWindowState() {
 const schedulePersistWindowState = debounce(persistWindowState, 250)
 
 // Match the backend's source resolution but bias toward a real git checkout.
-// Dev → SOURCE_REPO_ROOT. Packaged/CLI install → ACTIVE_LYDIA_ROOT.
-// LYDIA_DESKTOP_LYDIA_ROOT always wins so devs can pin a worktree.
+// Dev → SOURCE_REPO_ROOT. Packaged/CLI install → ACTIVE_ALICE_ROOT.
+// ALICE_DESKTOP_ROOT always wins so devs can pin a worktree.
 function resolveUpdateRoot() {
   const candidates = [
-    process.env.LYDIA_DESKTOP_LYDIA_ROOT && path.resolve(process.env.LYDIA_DESKTOP_LYDIA_ROOT),
+    process.env.ALICE_DESKTOP_ROOT && path.resolve(process.env.ALICE_DESKTOP_ROOT),
     !IS_PACKAGED && isLydiaSourceRoot(SOURCE_REPO_ROOT) ? SOURCE_REPO_ROOT : null,
-    isLydiaSourceRoot(ACTIVE_LYDIA_ROOT) ? ACTIVE_LYDIA_ROOT : null
+    isLydiaSourceRoot(ACTIVE_ALICE_ROOT) ? ACTIVE_ALICE_ROOT : null
   ].filter(Boolean)
 
-  return candidates.find(c => directoryExists(path.join(c, '.git'))) || candidates[0] || ACTIVE_LYDIA_ROOT
+  return candidates.find(c => directoryExists(path.join(c, '.git'))) || candidates[0] || ACTIVE_ALICE_ROOT
 }
 
 function runGit(args, options = {}) {
@@ -2039,15 +2039,15 @@ let updateInFlight = false
 let isQuittingForHandoff = false
 
 // Resolve the staged updater binary. The Tauri installer copies itself to
-// LYDIA_HOME/lydia-setup.exe on a successful install (see
+// ALICE_HOME/alice-setup.exe on a successful install (see
 // apps/bootstrap-installer paths::copy_self_to_lydia_home). That binary owns
 // ALL repo mutation — running `lydia update` + rebuilding the desktop — so
 // the desktop never touches its own bits while running. Returns null when the
 // updater isn't staged (e.g. a dev/source run that never went through the
 // installer); callers degrade gracefully.
 function resolveUpdaterBinary() {
-  const name = IS_WINDOWS ? 'lydia-setup.exe' : 'lydia-setup'
-  const candidate = path.join(LYDIA_HOME, name)
+  const name = IS_WINDOWS ? 'alice-setup.exe' : 'lydia-setup'
+  const candidate = path.join(ALICE_HOME, name)
   return fileExists(candidate) ? candidate : null
 }
 
@@ -2223,7 +2223,7 @@ async function applyUpdates(opts = {}) {
     if (!updater) {
       // No staged updater binary — this is a CLI-installed user (they ran
       // `lydia desktop`, never the Tauri installer that self-copies
-      // lydia-setup.exe into LYDIA_HOME). They DO have a working `lydia`
+      // alice-setup.exe into ALICE_HOME). They DO have a working `lydia`
       // on PATH / in the venv, so the correct path is the one-liner in their
       // native medium. We show the EXACT command, branch-pinned to the
       // checkout they're on — bare `lydia update` defaults to main and would
@@ -2274,10 +2274,10 @@ async function applyUpdates(opts = {}) {
     // Detached so the updater outlives this process — it needs us GONE before
     // `lydia update` will run (the venv shim is locked while we live).
     const child = spawn(updater, updaterArgs, {
-      cwd: LYDIA_HOME,
+      cwd: ALICE_HOME,
       env: {
         ...process.env,
-        LYDIA_HOME,
+        ALICE_HOME,
         PATH: pathWithLydiaManagedNode(venvBin)
       },
       detached: true,
@@ -2327,16 +2327,16 @@ async function handOffWindowsBootstrapRecovery(reason) {
   const haveRealInstall =
     fileExists(venvPython) ||
     fileExists(venvLydia) ||
-    fileExists(path.join(updateRoot, '.lydia-bootstrap-complete'))
+    fileExists(path.join(updateRoot, '.alice-bootstrap-complete'))
   const updaterArgs = haveRealInstall ? ['--update', '--branch', branch] : ['--repair', '--branch', branch]
 
   await releaseBackendLockForUpdate(updateRoot)
 
   const child = spawn(updater, updaterArgs, {
-    cwd: LYDIA_HOME,
+    cwd: ALICE_HOME,
     env: {
       ...process.env,
-      LYDIA_HOME,
+      ALICE_HOME,
       PATH: pathWithLydiaManagedNode(venvBin)
     },
     detached: true,
@@ -2427,11 +2427,11 @@ async function applyUpdatesPosixInApp() {
   // npm build can find them on a machine with no system Node. Windows portable
   // Node lives directly under %LOCALAPPDATA%\lydia\node, not node\bin.
   const env = {
-    LYDIA_HOME,
+    ALICE_HOME,
     PATH: pathWithLydiaManagedNode(path.join(updateRoot, 'venv', 'bin'))
   }
 
-  // `lydia update` reaps stale `lydia serve` backends (a code update
+  // `lydia update` reaps stale `alice serve` backends (a code update
   // leaves the running process serving old Python against the freshly-updated
   // JS bundle). But OUR backend is one of those processes, and killing it
   // mid-update produces the boot→kill→crash loop in #37532 — the desktop
@@ -2696,7 +2696,7 @@ function readBootstrapMarker() {
   return readJson(BOOTSTRAP_COMPLETE_MARKER)
 }
 
-// Marker-independent: is the canonical install at ACTIVE_LYDIA_ROOT actually
+// Marker-independent: is the canonical install at ACTIVE_ALICE_ROOT actually
 // runnable right now? A complete CLI install (`install.sh --include-desktop`)
 // or a DMG launch over a prior CLI install satisfies this WITHOUT the desktop
 // ever having written the bootstrap marker -- so we must be able to recognise
@@ -2704,11 +2704,11 @@ function readBootstrapMarker() {
 function isActiveRuntimeUsable() {
   const venvPython = getVenvPython(VENV_ROOT)
   return (
-    isLydiaSourceRoot(ACTIVE_LYDIA_ROOT) &&
+    isLydiaSourceRoot(ACTIVE_ALICE_ROOT) &&
     fileExists(venvPython) &&
     canImportLydiaCli(venvPython, {
       env: {
-        PYTHONPATH: [ACTIVE_LYDIA_ROOT, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter)
+        PYTHONPATH: [ACTIVE_ALICE_ROOT, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter)
       }
     })
   )
@@ -2903,7 +2903,7 @@ function createPythonBackend(root, label, backendArgs, options = {}) {
     command,
     args: ['-m', 'alice_cli.main', ...backendArgs],
     env: buildDesktopBackendEnv({
-      lydiaHome: LYDIA_HOME,
+      aliceHome: ALICE_HOME,
       pythonPathEntries: [root, ...getVenvSitePackagesEntries(venvRoot)],
       venvRoot
     }),
@@ -2913,7 +2913,7 @@ function createPythonBackend(root, label, backendArgs, options = {}) {
   }
 }
 
-// createActiveBackend — build a backend pointing at ACTIVE_LYDIA_ROOT, the
+// createActiveBackend — build a backend pointing at ACTIVE_ALICE_ROOT, the
 // canonical install location shared with the CLI installer. The venv at
 // VENV_ROOT may not exist yet on first run; bootstrap=true tells
 // ensureRuntime() to create / refresh it before launch.
@@ -2923,15 +2923,15 @@ function createActiveBackend(backendArgs) {
 
   return {
     kind: 'python',
-    label: `Lydia at ${ACTIVE_LYDIA_ROOT}`,
+    label: `Lydia at ${ACTIVE_ALICE_ROOT}`,
     command,
     args: ['-m', 'alice_cli.main', ...backendArgs],
     env: buildDesktopBackendEnv({
-      lydiaHome: LYDIA_HOME,
-      pythonPathEntries: [ACTIVE_LYDIA_ROOT, ...getVenvSitePackagesEntries(VENV_ROOT)],
+      aliceHome: ALICE_HOME,
+      pythonPathEntries: [ACTIVE_ALICE_ROOT, ...getVenvSitePackagesEntries(VENV_ROOT)],
       venvRoot: VENV_ROOT
     }),
-    root: ACTIVE_LYDIA_ROOT,
+    root: ACTIVE_ALICE_ROOT,
     bootstrap: true,
     shell: false
   }
@@ -2962,7 +2962,7 @@ function resolveLydiaBackend(backendArgs) {
           command: bundledPython,
           args: [bundledScript, ...backendArgs],
           bootstrap: false,
-          env: buildDesktopBackendEnv({ lydiaHome: LYDIA_HOME }),
+          env: buildDesktopBackendEnv({ aliceHome: ALICE_HOME }),
           shell: false
         }
       }
@@ -2970,9 +2970,9 @@ function resolveLydiaBackend(backendArgs) {
     }
   }
 
-  // 1. Explicit override -- LYDIA_DESKTOP_LYDIA_ROOT points at a developer
+  // 1. Explicit override -- ALICE_DESKTOP_ROOT points at a developer
   //    checkout. Honour it as-is (no bootstrap; the user is driving).
-  const overrideRoot = process.env.LYDIA_DESKTOP_LYDIA_ROOT && path.resolve(process.env.LYDIA_DESKTOP_LYDIA_ROOT)
+  const overrideRoot = process.env.ALICE_DESKTOP_ROOT && path.resolve(process.env.ALICE_DESKTOP_ROOT)
   if (overrideRoot && isLydiaSourceRoot(overrideRoot)) {
     const backend = createPythonBackend(overrideRoot, `Lydia source at ${overrideRoot}`, backendArgs)
     if (backend) return backend
@@ -2987,8 +2987,8 @@ function resolveLydiaBackend(backendArgs) {
     if (backend) return backend
   }
 
-  // 3. Bootstrap-complete ACTIVE_LYDIA_ROOT -- the canonical install at
-  //    %LOCALAPPDATA%\lydia\lydia-agent (Windows) or ~/.lydia/lydia-agent.
+  // 3. Bootstrap-complete ACTIVE_ALICE_ROOT -- the canonical install at
+  //    %LOCALAPPDATA%\lydia\alice-agent (Windows) or ~/.lydia/alice-agent.
   //    The bootstrap marker means install.ps1 stages finished and the user
   //    completed initial configuration; we trust the install and go straight
   //    to spawning lydia. Updates flow through the in-app update path
@@ -3001,8 +3001,8 @@ function resolveLydiaBackend(backendArgs) {
   //    a previous tool-only setup, or pip-installed system-wide. Use it but
   //    do NOT write a bootstrap marker; the user did this themselves and we
   //    don't want to take ownership of an install we didn't perform.
-  //    LYDIA_DESKTOP_IGNORE_EXISTING=1 forces the bootstrap path for testing.
-  if (process.env.LYDIA_DESKTOP_IGNORE_EXISTING !== '1') {
+  //    ALICE_DESKTOP_IGNORE_EXISTING=1 forces the bootstrap path for testing.
+  if (process.env.ALICE_DESKTOP_IGNORE_EXISTING !== '1') {
     let lydiaCommand = null
     const lydiaOverride = process.env.LYDIA_DESKTOP_LYDIA
 
@@ -3071,7 +3071,7 @@ function resolveLydiaBackend(backendArgs) {
     // backend hands the spawn step a guaranteed ModuleNotFoundError.
     // Verify the import works before trusting the candidate; on
     // failure, fall through to step 6 so the bootstrap runner pulls
-    // a uv-managed 3.11 into %LOCALAPPDATA%\lydia\lydia-agent\venv.
+    // a uv-managed 3.11 into %LOCALAPPDATA%\lydia\alice-agent\venv.
     if (canImportLydiaCli(python)) {
       return {
         kind: 'python',
@@ -3105,7 +3105,7 @@ function resolveLydiaBackend(backendArgs) {
     env: {},
     shell: false,
     // Hints for the bootstrap runner / UI layer:
-    activeRoot: ACTIVE_LYDIA_ROOT,
+    activeRoot: ACTIVE_ALICE_ROOT,
     installStamp: INSTALL_STAMP, // may be null in dev
     isPackaged: IS_PACKAGED,
     platform: process.platform
@@ -3162,8 +3162,8 @@ async function ensureRuntime(backend) {
       installStamp: backend.installStamp,
       activeRoot: backend.activeRoot,
       sourceRepoRoot: SOURCE_REPO_ROOT,
-      lydiaHome: LYDIA_HOME,
-      logRoot: path.join(LYDIA_HOME, 'logs'),
+      aliceHome: ALICE_HOME,
+      logRoot: path.join(ALICE_HOME, 'logs'),
       abortSignal: bootstrapAbortController.signal,
       onEvent: ev => {
         // Tee every bootstrap event to (a) the desktop log for forensics
@@ -3198,7 +3198,7 @@ async function ensureRuntime(backend) {
       const bootstrapError = new Error(
         `Lydia bootstrap failed${bootstrapResult.failedStage ? ` at stage '${bootstrapResult.failedStage}'` : ''}: ` +
           `${bootstrapResult.error || 'unknown error'}. ` +
-          `Check ${path.join(LYDIA_HOME, 'logs', 'desktop.log')} for the full transcript.`
+          `Check ${path.join(ALICE_HOME, 'logs', 'desktop.log')} for the full transcript.`
       )
       bootstrapError.isBootstrapFailure = true
       bootstrapError.failedStage = bootstrapResult.failedStage || null
@@ -3221,9 +3221,9 @@ async function ensureRuntime(backend) {
   // sync flow exited through, minus all the factory/pip/marker machinery
   // (install.ps1 owns those concerns now and the bootstrap-complete marker
   // attests they ran successfully).
-  if (!isLydiaSourceRoot(ACTIVE_LYDIA_ROOT)) {
+  if (!isLydiaSourceRoot(ACTIVE_ALICE_ROOT)) {
     throw new Error(
-      `Lydia install at ${ACTIVE_LYDIA_ROOT} is missing or incomplete. ` +
+      `Lydia install at ${ACTIVE_ALICE_ROOT} is missing or incomplete. ` +
         'Reinstall via the desktop installer or scripts/install.ps1.'
     )
   }
@@ -3258,7 +3258,7 @@ async function ensureRuntime(backend) {
   }
 
   backend.command = getVenvPython(VENV_ROOT)
-  backend.label = `Lydia at ${ACTIVE_LYDIA_ROOT} (venv: ${VENV_ROOT})`
+  backend.label = `Lydia at ${ACTIVE_ALICE_ROOT} (venv: ${VENV_ROOT})`
   updateBootProgress({
     phase: 'runtime.ready',
     message: 'Lydia runtime is ready',
@@ -4772,7 +4772,7 @@ function writeDesktopConnectionConfig(config) {
 }
 
 // Returns the desktop's chosen profile name, or null when unset. "default" is
-// a valid stored value (pins the root LYDIA_HOME explicitly); null means "no
+// a valid stored value (pins the root ALICE_HOME explicitly); null means "no
 // preference" and preserves the legacy launch (no --profile flag).
 function readActiveDesktopProfile() {
   try {
@@ -5341,7 +5341,7 @@ async function spawnPoolBackend(profile, entry) {
   }
 
   const token = crypto.randomBytes(32).toString('base64url')
-  // --profile wins over the inherited LYDIA_HOME env (see _apply_profile_override
+  // --profile wins over the inherited ALICE_HOME env (see _apply_profile_override
   // step 3 in alice_cli/main.py), so the child re-homes to this profile.
   // --port 0: the OS assigns an ephemeral port; the child announces it on stdout.
   const backendArgs = ['--profile', profile, 'serve', '--host', '127.0.0.1', '--port', '0']
@@ -5361,7 +5361,7 @@ async function spawnPoolBackend(profile, entry) {
       cwd: lydiaCwd,
       env: {
         ...process.env,
-        LYDIA_HOME,
+        ALICE_HOME,
         ...backend.env,
         // Pin the gateway's tool/terminal cwd to the same directory we chose for
         // the child process. Inherited TERMINAL_CWD (or a stale config bridge)
@@ -5554,7 +5554,7 @@ async function startLydia() {
     const backendArgs = ['serve', '--host', '127.0.0.1', '--port', '0']
     // Pin the desktop's chosen profile via the global --profile flag. This is
     // deterministic (it wins over the sticky ~/.lydia/active_profile file) and
-    // resolves LYDIA_HOME the same way `lydia -p <name>` does on the CLI. An
+    // resolves ALICE_HOME the same way `lydia -p <name>` does on the CLI. An
     // unset preference keeps the legacy launch so existing installs are
     // unaffected.
     const activeProfile = readActiveDesktopProfile()
@@ -5579,15 +5579,15 @@ async function startLydia() {
         cwd: lydiaCwd,
         env: {
           ...process.env,
-          // Explicitly pin LYDIA_HOME for the child so Python's get_lydia_home()
+          // Explicitly pin ALICE_HOME for the child so Python's get_lydia_home()
           // resolves to the SAME location our resolveLydiaHome() picked. Without
           // this pin, Python falls back to ~/.lydia on every platform — fine on
           // mac/linux (where our default matches), but on Windows our default is
           // %LOCALAPPDATA%\lydia, which differs from C:\Users\<u>\.lydia.
           // Mismatch would split config / sessions / .env / logs across two
-          // directories. install.ps1 sets LYDIA_HOME via setx; the desktop
+          // directories. install.ps1 sets ALICE_HOME via setx; the desktop
           // can't reliably do that, so we set it inline for every spawn.
-          LYDIA_HOME,
+          ALICE_HOME,
           ...backend.env,
           TERMINAL_CWD: lydiaCwd,
           LYDIA_DASHBOARD_SESSION_TOKEN: token,
@@ -6369,7 +6369,7 @@ ipcMain.handle('lydia:profile:set', async (_event, name) => {
   const next = writeActiveDesktopProfile(name)
 
   // Switching profiles is a backend re-home: relaunch the dashboard under the
-  // new LYDIA_HOME. Pool backends keep their own homes, so only the primary
+  // new ALICE_HOME. Pool backends keep their own homes, so only the primary
   // is torn down.
   await teardownPrimaryBackendAndWait()
   mainWindow?.reload()
@@ -7300,11 +7300,11 @@ function uninstallVenvPython() {
 
 async function getUninstallSummary() {
   const py = uninstallVenvPython()
-  const agentRoot = ACTIVE_LYDIA_ROOT
+  const agentRoot = ACTIVE_ALICE_ROOT
   // Fast JS-side fallback used when the agent venv is gone (lite client) or the
   // probe fails — the renderer still needs *something* to render options from.
   const fallback = () => ({
-    lydia_home: LYDIA_HOME,
+    lydia_home: ALICE_HOME,
     agent_installed: isLydiaSourceRoot(agentRoot) && fileExists(py),
     gui_installed: true,
     source_built_artifacts: [],
@@ -7333,7 +7333,7 @@ async function getUninstallSummary() {
         ['-m', 'alice_cli.main', 'uninstall', '--gui-summary'],
         hiddenWindowsChildOptions({
           cwd: agentRoot,
-          env: { ...process.env, LYDIA_HOME, NO_COLOR: '1' },
+          env: { ...process.env, ALICE_HOME, NO_COLOR: '1' },
           stdio: ['ignore', 'pipe', 'ignore']
         })
       )
@@ -7393,7 +7393,7 @@ async function runDesktopUninstall(mode) {
     const sysPy = findSystemPython()
     if (sysPy) {
       py = sysPy
-      pythonPath = ACTIVE_LYDIA_ROOT
+      pythonPath = ACTIVE_ALICE_ROOT
     } else if (IS_WINDOWS) {
       rememberLog(
         '[uninstall] no system Python found for lite/full on Windows; falling back ' +
@@ -7413,7 +7413,7 @@ async function runDesktopUninstall(mode) {
   // lock would make the script's rmdir half-fail (#37532 for the update path).
   // Reuses the incident-hardened update teardown; no-op on macOS/Linux.
   try {
-    await releaseBackendLock(ACTIVE_LYDIA_ROOT, 'uninstall')
+    await releaseBackendLock(ACTIVE_ALICE_ROOT, 'uninstall')
   } catch (error) {
     rememberLog(`[uninstall] backend teardown errored (continuing): ${error.message}`)
   }
@@ -7422,10 +7422,10 @@ async function runDesktopUninstall(mode) {
     desktopPid: process.pid,
     pythonExe: py,
     pythonPath,
-    agentRoot: ACTIVE_LYDIA_ROOT,
+    agentRoot: ACTIVE_ALICE_ROOT,
     uninstallArgs,
     appPath: removeBundle,
-    lydiaHome: LYDIA_HOME
+    aliceHome: ALICE_HOME
   }
 
   let scriptPath

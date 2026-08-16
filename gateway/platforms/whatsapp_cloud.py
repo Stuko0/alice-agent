@@ -80,7 +80,7 @@ from gateway.platforms.base import (
 )
 from gateway.platforms.whatsapp_common import WhatsAppBehaviorMixin
 from gateway import rich_sent_store
-from alice_constants import get_lydia_dir
+from alice_constants import get_alice_dir
 
 logger = logging.getLogger(__name__)
 
@@ -163,7 +163,7 @@ def _ext_for_mime(mime: str) -> Optional[str]:
 
 # Inbound media cache lives under the user's alice dir so it survives
 # restarts and gateway reloads — same convention the Baileys bridge uses.
-_INBOUND_MEDIA_CACHE = Path(get_lydia_dir("platforms/whatsapp_cloud/media", "whatsapp_cloud/media"))
+_INBOUND_MEDIA_CACHE = Path(get_alice_dir("platforms/whatsapp_cloud/media", "whatsapp_cloud/media"))
 
 
 def check_whatsapp_cloud_requirements() -> bool:

@@ -11,10 +11,10 @@
  *   const { runBootstrap } = require('./bootstrap-runner.cjs')
  *   const result = await runBootstrap({
  *     installStamp,        // INSTALL_STAMP from main.cjs (may be null in dev)
- *     activeRoot,          // ACTIVE_LYDIA_ROOT
+ *     activeRoot,          // ACTIVE_ALICE_ROOT
  *     sourceRepoRoot,      // SOURCE_REPO_ROOT (for dev install.ps1 lookup)
- *     lydiaHome,          // LYDIA_HOME
- *     logRoot,             // LYDIA_HOME/logs
+ *     aliceHome,          // ALICE_HOME
+ *     logRoot,             // ALICE_HOME/logs
  *     emit: ev => {...}    // event sink (sender.send or similar)
  *   })
  *
@@ -81,17 +81,17 @@ function resolveLocalInstallScript(sourceRepoRoot) {
   }
 }
 
-function bootstrapCacheDir(lydiaHome) {
-  return path.join(lydiaHome, 'bootstrap-cache')
+function bootstrapCacheDir(aliceHome) {
+  return path.join(aliceHome, 'bootstrap-cache')
 }
 
 // The install.sh / install.ps1 that ships inside the already-installed agent
-// checkout under ~/.lydia/lydia-agent. Used as a last-resort fallback when
+// checkout under ~/.lydia/alice-agent. Used as a last-resort fallback when
 // the pinned commit can't be fetched from GitHub (e.g. a locally-built desktop
 // app stamped to an unpushed HEAD).
-function installedAgentInstallScript(lydiaHome) {
-  if (!lydiaHome) return null
-  const candidate = path.join(lydiaHome, 'lydia-agent', 'scripts', installScriptName())
+function installedAgentInstallScript(aliceHome) {
+  if (!aliceHome) return null
+  const candidate = path.join(aliceHome, 'alice-agent', 'scripts', installScriptName())
   try {
     fs.accessSync(candidate, fs.constants.R_OK)
     return candidate
@@ -100,8 +100,8 @@ function installedAgentInstallScript(lydiaHome) {
   }
 }
 
-function cachedScriptPath(lydiaHome, commit) {
-  return path.join(bootstrapCacheDir(lydiaHome), `install-${commit}.${process.platform === 'win32' ? 'ps1' : 'sh'}`)
+function cachedScriptPath(aliceHome, commit) {
+  return path.join(bootstrapCacheDir(aliceHome), `install-${commit}.${process.platform === 'win32' ? 'ps1' : 'sh'}`)
 }
 
 function downloadInstallScript(commit, destPath) {
@@ -109,7 +109,7 @@ function downloadInstallScript(commit, destPath) {
   // is immutable (unlike a branch ref), so we don't need integrity
   // verification beyond "did the file we wrote pass a syntax probe."
   const scriptName = installScriptName()
-  const url = `https://raw.githubusercontent.com/NousResearch/lydia-agent/${commit}/scripts/${scriptName}`
+  const url = `https://raw.githubusercontent.com/NousResearch/alice-agent/${commit}/scripts/${scriptName}`
   return new Promise((resolve, reject) => {
     fs.mkdirSync(path.dirname(destPath), { recursive: true })
     const tmpPath = destPath + '.tmp'
@@ -182,7 +182,7 @@ function downloadInstallScript(commit, destPath) {
 async function resolveInstallScript({
   installStamp,
   sourceRepoRoot,
-  lydiaHome,
+  aliceHome,
   emit,
   _download = downloadInstallScript
 }) {
@@ -203,7 +203,7 @@ async function resolveInstallScript({
     )
   }
 
-  const cached = cachedScriptPath(lydiaHome, installStamp.commit)
+  const cached = cachedScriptPath(aliceHome, installStamp.commit)
   try {
     await fsp.access(cached, fs.constants.R_OK)
     emit({
@@ -229,7 +229,7 @@ async function resolveInstallScript({
     // write-build-stamp.cjs fromLocalGit). Fall back to the installer that
     // ships inside the already-installed agent checkout so dev/self-builds can
     // still bootstrap instead of dying with a fatal 404.
-    const installed = installedAgentInstallScript(lydiaHome)
+    const installed = installedAgentInstallScript(aliceHome)
     if (installed) {
       emit({
         type: 'log',
@@ -294,7 +294,7 @@ function resolveWindowsPowerShell() {
   return 'powershell.exe'
 }
 
-function spawnPowerShell(scriptPath, args, { emit, stageName, abortSignal, lydiaHome } = {}) {
+function spawnPowerShell(scriptPath, args, { emit, stageName, abortSignal, aliceHome } = {}) {
   return new Promise((resolve, reject) => {
     const ps = process.platform === 'win32' ? resolveWindowsPowerShell() : 'pwsh'
     const fullArgs = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, ...args]
@@ -306,9 +306,9 @@ function spawnPowerShell(scriptPath, args, { emit, stageName, abortSignal, lydia
         stdio: ['ignore', 'pipe', 'pipe'],
         env: {
           ...process.env,
-          // Pass LYDIA_HOME through so install.ps1 respects the caller's
+          // Pass ALICE_HOME through so install.ps1 respects the caller's
           // choice rather than re-computing the default.
-          LYDIA_HOME: lydiaHome || process.env.LYDIA_HOME || ''
+          ALICE_HOME: aliceHome || process.env.ALICE_HOME || ''
         }
       })
     )
@@ -376,13 +376,13 @@ function spawnPowerShell(scriptPath, args, { emit, stageName, abortSignal, lydia
   })
 }
 
-function spawnBash(scriptPath, args, { emit, stageName, abortSignal, lydiaHome } = {}) {
+function spawnBash(scriptPath, args, { emit, stageName, abortSignal, aliceHome } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn('bash', [scriptPath, ...args], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {
         ...process.env,
-        LYDIA_HOME: lydiaHome || process.env.LYDIA_HOME || ''
+        ALICE_HOME: aliceHome || process.env.ALICE_HOME || ''
       }
     })
 
@@ -465,8 +465,8 @@ function buildPinArgs(installStamp) {
   return args
 }
 
-function buildPosixPinArgs({ installStamp, activeRoot, lydiaHome }) {
-  const args = ['--dir', activeRoot, '--lydia-home', lydiaHome]
+function buildPosixPinArgs({ installStamp, activeRoot, aliceHome }) {
+  const args = ['--dir', activeRoot, '--alice-home', aliceHome]
   if (installStamp && installStamp.branch) {
     args.push('--branch', installStamp.branch)
   }
@@ -476,15 +476,15 @@ function buildPosixPinArgs({ installStamp, activeRoot, lydiaHome }) {
   return args
 }
 
-async function fetchManifest({ scriptPath, installerKind, emit, lydiaHome, activeRoot, installStamp }) {
+async function fetchManifest({ scriptPath, installerKind, emit, aliceHome, activeRoot, installStamp }) {
   const isPosix = installerKind === 'posix'
   const args = isPosix
-    ? ['--manifest', ...buildPosixPinArgs({ installStamp, activeRoot, lydiaHome })]
+    ? ['--manifest', ...buildPosixPinArgs({ installStamp, activeRoot, aliceHome })]
     : ['-Manifest', ...buildPinArgs(installStamp)]
   const result = await (isPosix ? spawnBash : spawnPowerShell)(scriptPath, args, {
     emit,
     stageName: '__manifest__',
-    lydiaHome
+    aliceHome
   })
   if (result.code !== 0) {
     throw new Error(
@@ -528,7 +528,7 @@ function parseStageResult(stdout) {
   return null
 }
 
-async function runStage({ scriptPath, installerKind, stage, emit, lydiaHome, activeRoot, abortSignal, installStamp }) {
+async function runStage({ scriptPath, installerKind, stage, emit, aliceHome, activeRoot, abortSignal, installStamp }) {
   const startedAt = Date.now()
   emit({ type: 'stage', name: stage.name, state: 'running' })
 
@@ -539,14 +539,14 @@ async function runStage({ scriptPath, installerKind, stage, emit, lydiaHome, act
         stage.name,
         '--non-interactive',
         '--json',
-        ...buildPosixPinArgs({ installStamp, activeRoot, lydiaHome })
+        ...buildPosixPinArgs({ installStamp, activeRoot, aliceHome })
       ]
     : ['-Stage', stage.name, '-NonInteractive', '-Json', ...buildPinArgs(installStamp)]
   const result = await (isPosix ? spawnBash : spawnPowerShell)(scriptPath, args, {
     emit,
     stageName: stage.name,
     abortSignal,
-    lydiaHome
+    aliceHome
   })
 
   const durationMs = Date.now() - startedAt
@@ -615,7 +615,7 @@ async function runBootstrap(opts) {
     installStamp,
     activeRoot,
     sourceRepoRoot,
-    lydiaHome,
+    aliceHome,
     logRoot,
     onEvent,
     abortSignal,
@@ -636,7 +636,7 @@ async function runBootstrap(opts) {
     return { ok: false, cancelled: true }
   }
 
-  const runLog = openRunLog(logRoot || path.join(lydiaHome, 'logs'))
+  const runLog = openRunLog(logRoot || path.join(aliceHome, 'logs'))
 
   // Tee every event to the runLog AND the caller's onEvent. This gives us a
   // forensic trail per bootstrap run AND lets the renderer subscribe live.
@@ -665,7 +665,7 @@ async function runBootstrap(opts) {
 
   try {
     // 1. Resolve the platform installer.
-    const scriptInfo = await resolveInstallScript({ installStamp, sourceRepoRoot, lydiaHome, emit })
+    const scriptInfo = await resolveInstallScript({ installStamp, sourceRepoRoot, aliceHome, emit })
     const installerKind = scriptInfo.kind || 'powershell'
 
     // 2. Fetch manifest
@@ -673,7 +673,7 @@ async function runBootstrap(opts) {
       scriptPath: scriptInfo.path,
       installerKind,
       emit,
-      lydiaHome,
+      aliceHome,
       activeRoot,
       installStamp
     })
@@ -697,7 +697,7 @@ async function runBootstrap(opts) {
         installerKind,
         stage,
         emit,
-        lydiaHome,
+        aliceHome,
         activeRoot,
         abortSignal,
         installStamp

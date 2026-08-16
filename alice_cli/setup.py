@@ -140,7 +140,7 @@ from alice_cli.config import (
     save_env_value,
     remove_env_value,
     get_env_value,
-    ensure_lydia_home,
+    ensure_alice_home,
 )
 # display_alice_home imported lazily at call sites (stale-module safety during alice update)
 
@@ -1702,14 +1702,14 @@ def _setup_telegram_auto_result():
 
     profile_name: str | None = None
     try:
-        profile_name = _profile_name_from_lydia_home(Path(get_alice_home()))
+        profile_name = _profile_name_from_alice_home(Path(get_alice_home()))
     except Exception:
         pass
 
     return auto_setup_telegram_bot_result(profile_name=profile_name)
 
 
-def _profile_name_from_lydia_home(lydia_home) -> str | None:
+def _profile_name_from_alice_home(lydia_home) -> str | None:
     """Return the active profile name when ALICE_HOME is a profile dir."""
     if lydia_home.parent.name == "profiles":
         return lydia_home.name
@@ -2805,7 +2805,7 @@ def run_setup_wizard(args):
     if is_managed():
         managed_error("run setup wizard")
         return
-    ensure_lydia_home()
+    ensure_alice_home()
 
     reset_requested = bool(getattr(args, "reset", False))
     if reset_requested:

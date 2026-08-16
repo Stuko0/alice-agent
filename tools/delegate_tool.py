@@ -1568,10 +1568,10 @@ def _spill_summary_to_file(task_index: int, summary: str) -> Optional[str]:
     the trimmed head+tail is still returned to the parent regardless).
     """
     try:
-        from alice_constants import get_lydia_dir
+        from alice_constants import get_alice_dir
         import datetime as _dt
 
-        cache_dir = get_lydia_dir("cache/delegation", "delegation_cache")
+        cache_dir = get_alice_dir("cache/delegation", "delegation_cache")
         cache_dir.mkdir(parents=True, exist_ok=True)
         ts = _dt.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         path = cache_dir / f"subagent-summary-{task_index}-{ts}.txt"

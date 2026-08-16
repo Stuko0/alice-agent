@@ -53,7 +53,7 @@ NO_BUNDLED_SKILLS_MARKER = ".no-bundled-skills"
 def _get_bundled_dir() -> Path:
     """Locate the bundled skills/ directory.
 
-    Checks LYDIA_BUNDLED_SKILLS env var first (set by Nix wrapper),
+    Checks ALICE_BUNDLED_SKILLS env var first (set by Nix wrapper),
     then a wheel-installed data dir, then falls back to the relative
     path from this source file.
     """

@@ -902,8 +902,8 @@ def _global_auth_file_path() -> Optional[Path]:
     See issue #18594 follow-up (credential_pool shadowing).
     """
     try:
-        from alice_constants import get_default_lydia_root
-        global_root = get_default_lydia_root()
+        from alice_constants import get_default_alice_root
+        global_root = get_default_alice_root()
     except Exception:
         return None
     profile_home = get_alice_home()
@@ -931,7 +931,7 @@ def _load_global_auth_store() -> Dict[str, Any]:
     Seat belt: under pytest, refuses to read the real user's
     ``~/.alice/auth.json`` even when ALICE_HOME is set to a profile
     path. The hermetic conftest does not redirect ``HOME``, so
-    ``get_default_lydia_root()`` for a profile-shaped ALICE_HOME can
+    ``get_default_alice_root()`` for a profile-shaped ALICE_HOME can
     still resolve to the real user's home on a dev machine. That would
     leak real credentials into tests. This guard uses the unmodified
     ``HOME`` env var (what ``os.path.expanduser('~')`` would resolve to),
@@ -4736,7 +4736,7 @@ def _poll_for_token(
 #
 # File lives at ${LYDIA_SHARED_AUTH_DIR}/nous_auth.json, defaulting to
 # ``<alice-root>/shared/nous_auth.json`` where ``<alice-root>`` is what
-# ``get_default_lydia_root()`` returns — ``~/.alice`` on Linux/macOS,
+# ``get_default_alice_root()`` returns — ``~/.alice`` on Linux/macOS,
 # ``%LOCALAPPDATA%\alice`` on native Windows, or the Docker/custom root.
 # It is OUTSIDE any named profile's ALICE_HOME so named profiles (which
 # typically live under ``<alice-root>/profiles/<name>/``) all see the
@@ -4758,7 +4758,7 @@ def _nous_shared_auth_dir() -> Path:
     Honors ``LYDIA_SHARED_AUTH_DIR`` so tests can redirect it to a tmp
     path without touching the real user's home. Defaults to
     ``<alice-root>/shared/``, where ``<alice-root>`` is what
-    :func:`alice_constants.get_default_lydia_root` returns — so
+    :func:`alice_constants.get_default_alice_root` returns — so
     Linux/macOS classic installs land at ``~/.alice/shared/``, native
     Windows installs at ``%LOCALAPPDATA%\\alice\\shared\\``, and
     Docker / custom ``ALICE_HOME`` deployments at
@@ -4768,8 +4768,8 @@ def _nous_shared_auth_dir() -> Path:
     override = os.getenv("LYDIA_SHARED_AUTH_DIR", "").strip()
     if override:
         return Path(override).expanduser()
-    from alice_constants import get_default_lydia_root
-    return get_default_lydia_root() / "shared"
+    from alice_constants import get_default_alice_root
+    return get_default_alice_root() / "shared"
 
 
 def _nous_shared_store_path() -> Path:
@@ -4781,9 +4781,9 @@ def _nous_shared_store_path() -> Path:
     # so forgetting to set it fails loudly instead of writing to the real
     # shared store).
     if os.environ.get("PYTEST_CURRENT_TEST"):
-        from alice_constants import get_default_lydia_root
+        from alice_constants import get_default_alice_root
         real_home_shared = (
-            get_default_lydia_root() / "shared" / NOUS_SHARED_STORE_FILENAME
+            get_default_alice_root() / "shared" / NOUS_SHARED_STORE_FILENAME
         ).resolve(strict=False)
         try:
             resolved = path.resolve(strict=False)

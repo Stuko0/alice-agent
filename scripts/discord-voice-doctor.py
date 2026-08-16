@@ -176,9 +176,9 @@ def check_env_vars():
 
     # Load .env
     try:
-        from alice_cli.env_loader import load_lydia_dotenv
+        from alice_cli.env_loader import load_alice_dotenv
 
-        load_lydia_dotenv(
+        load_alice_dotenv(
             lydia_home=ENV_FILE.parent,
             project_env=PROJECT_ROOT / ".env",
         )

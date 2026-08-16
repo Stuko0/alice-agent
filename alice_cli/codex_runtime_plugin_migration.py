@@ -554,7 +554,7 @@ def _looks_like_test_tempdir(path: str) -> bool:
     return any(needle in normalized for needle in needles)
 
 
-def _build_lydia_tools_mcp_entry() -> dict:
+def _build_alice_tools_mcp_entry() -> dict:
     """Build the codex stdio-transport entry that launches Alice' own
     tool surface as an MCP server. Codex's subprocess will call back into
     this for browser/web/delegate_task/vision/memory/skills tools.
@@ -694,7 +694,7 @@ def migrate(
     # The server itself is agent/transports/lydia_tools_mcp_server.py
     # and is launched on demand by codex (stdio MCP).
     if expose_lydia_tools:
-        translated["alice-tools"] = _build_lydia_tools_mcp_entry()
+        translated["alice-tools"] = _build_alice_tools_mcp_entry()
         if "alice-tools" not in report.migrated:
             report.migrated.append("alice-tools")
 
