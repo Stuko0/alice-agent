@@ -296,33 +296,42 @@ if (INSTALL_STAMP) {
 // LYDIA_HOME beneath the throwaway userData dir so a fresh-install run never
 // touches the user's real ~/.alice / %LOCALAPPDATA%\alice.
 function resolveLydiaHome() {
-  if (process.env.LYDIA_HOME) return normalizeLydiaHomeRoot(process.env.LYDIA_HOME)
+  // The canonical Alice home is ~/.alice (POSIX) / %LOCALAPPDATA%\alice (Windows).
+  // A legacy LYDIA_HOME env var or registry value (from the old Lydia install)
+  // is honoured ONLY when no Alice home directory exists yet — once ~/.alice or
+  // %LOCALAPPDATA%\alice has content, it wins regardless of env/registry.
+  // This prevents the old Lydia env var from hijacking Alice's data after the
+  // user has already migrated or installed Alice.
+
+  // Compute the candidate canonical Alice home paths.
+  let aliceCandidate = null
+  if (IS_WINDOWS && process.env.LOCALAPPDATA) {
+    aliceCandidate = path.join(process.env.LOCALAPPDATA, 'alice')
+  } else if (!IS_WINDOWS || !process.env.LOCALAPPDATA) {
+    aliceCandidate = path.join(app.getPath('home'), '.alice')
+  }
+
+  // If the canonical Alice home already exists (has content), always use it
+  // — ignore any stale LYDIA_HOME env var or registry value.
+  if (aliceCandidate && directoryExists(aliceCandidate)) {
+    return aliceCandidate
+  }
+
+  // No Alice home yet — honour legacy paths for transparent migration.
   if (USER_DATA_OVERRIDE) return path.join(path.resolve(USER_DATA_OVERRIDE), 'lydia-home')
+  if (process.env.LYDIA_HOME) return normalizeLydiaHomeRoot(process.env.LYDIA_HOME)
   if (IS_WINDOWS) {
-    // A GUI app launched from Explorer inherits the environment block captured
-    // at login, so a LYDIA_HOME set via `setx` AFTER login is invisible in
-    // process.env even though the CLI (a fresh shell) sees it. Without this the
-    // backend silently falls back to %LOCALAPPDATA%\alice and reports "No
-    // inference provider configured" despite a valid configured home (#45471).
-    // Consult the live User-scoped registry value before the default below.
     const fromRegistry = readWindowsUserEnvVar('LYDIA_HOME')
     if (fromRegistry) return normalizeLydiaHomeRoot(fromRegistry)
   }
   if (IS_WINDOWS && process.env.LOCALAPPDATA) {
-    const localappdata = path.join(process.env.LOCALAPPDATA, 'alice')
     const legacy = path.join(app.getPath('home'), '.lydia')
-    // Migrate transparently to LOCALAPPDATA, but honour an existing legacy
-    // ~/.lydia setup (no LOCALAPPDATA install yet) so users don't lose state.
-    if (!directoryExists(localappdata) && directoryExists(legacy)) return legacy
-    return localappdata
+    if (directoryExists(legacy)) return legacy
+    return path.join(process.env.LOCALAPPDATA, 'alice')
   }
-  const alice = path.join(app.getPath('home'), '.alice')
   const legacy = path.join(app.getPath('home'), '.lydia')
-  // Transparent migration: a legacy ~/.lydia with no ~/.alice yet keeps
-  // working; once ~/.alice exists (first Alice install, or migrated data)
-  // it becomes the canonical home.
-  if (!directoryExists(alice) && directoryExists(legacy)) return legacy
-  return alice
+  if (directoryExists(legacy)) return legacy
+  return path.join(app.getPath('home'), '.alice')
 }
 
 const LYDIA_HOME = resolveLydiaHome()
