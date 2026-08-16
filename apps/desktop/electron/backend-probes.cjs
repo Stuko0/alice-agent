@@ -94,7 +94,7 @@ function canImportLydiaCli(pythonPath, opts = {}) {
 }
 
 /**
- * Return true iff `<lydiaCommand> --version` exits 0.
+ * Return true iff `<aliceCommand> --version` exits 0.
  *
  * Used to gate the "existing `alice` on PATH" rung. Without this, a
  * stale alice.cmd shim left behind by an uninstalled pip install (or
@@ -105,7 +105,7 @@ function canImportLydiaCli(pythonPath, opts = {}) {
  * here -- `--version` is the cheapest "is this binary alive" smoke
  * test that every alice_cli entry-point has supported since 0.1.
  *
- * @param {string} lydiaCommand - Resolved absolute path to a lydia
+ * @param {string} aliceCommand - Resolved absolute path to a lydia
  *   executable (or an interpreter+script wrapper).
  * @param {object} [opts]
  * @param {boolean} [opts.shell] - Whether to run through a shell. For
@@ -114,10 +114,10 @@ function canImportLydiaCli(pythonPath, opts = {}) {
  *   in resolveLydiaBackend.
  * @returns {boolean}
  */
-function verifyLydiaCli(lydiaCommand, opts = {}) {
-  if (!lydiaCommand) return false
+function verifyAliceCli(aliceCommand, opts = {}) {
+  if (!aliceCommand) return false
   try {
-    execFileSync(lydiaCommand, ['--version'], {
+    execFileSync(aliceCommand, ['--version'], {
       stdio: 'ignore',
       timeout: PROBE_TIMEOUT_MS,
       shell: Boolean(opts.shell),
@@ -132,6 +132,6 @@ function verifyLydiaCli(lydiaCommand, opts = {}) {
 module.exports = {
   canImportLydiaCli,
   aliceRuntimeImportProbe,
-  verifyLydiaCli,
+  verifyAliceCli,
   PROBE_TIMEOUT_MS
 }
