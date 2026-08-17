@@ -199,7 +199,7 @@ if (IS_WSL && !REMOTE_DISPLAY_REASON && fs.existsSync('/dev/dxg')) {
   console.log('[lydia] WSL GPU passthrough (/dev/dxg) detected; enabling GPU acceleration')
 }
 
-ipcMain.handle('lydia:get-remote-display-reason', () => REMOTE_DISPLAY_REASON)
+ipcMain.handle('alice:get-remote-display-reason', () => REMOTE_DISPLAY_REASON)
 
 // Keep the renderer running at full speed while the window is in the background
 // or occluded. The chat transcript streams to screen through a
@@ -295,7 +295,7 @@ if (INSTALL_STAMP) {
 // ALICE_DESKTOP_USER_DATA_DIR (used by test:desktop:fresh) puts the sandbox
 // ALICE_HOME beneath the throwaway userData dir so a fresh-install run never
 // touches the user's real ~/.alice / %LOCALAPPDATA%\alice.
-function resolveLydiaHome() {
+function resolveAliceHome() {
   // The canonical Alice home is ~/.alice (POSIX) / %LOCALAPPDATA%\alice (Windows).
   // A legacy ALICE_HOME env var or registry value (from the old Lydia install)
   // is honoured ONLY when no Alice home directory exists yet — once ~/.alice or
@@ -334,7 +334,7 @@ function resolveLydiaHome() {
   return path.join(app.getPath('home'), '.alice')
 }
 
-const ALICE_HOME = resolveLydiaHome()
+const ALICE_HOME = resolveAliceHome()
 
 // ---------------------------------------------------------------------------
 // SSH askpass — route SSH key passphrase prompts through the desktop modal
@@ -2988,7 +2988,7 @@ function resolveAliceBackend(backendArgs) {
   }
 
   // 3. Bootstrap-complete ACTIVE_ALICE_ROOT -- the canonical install at
-  //    %LOCALAPPDATA%\lydia\alice-agent (Windows) or ~/.lydia/alice-agent.
+  //    %LOCALAPPDATA%\lydia\alice-agent (Windows) or ~/.alice/alice-agent.
   //    The bootstrap marker means install.ps1 stages finished and the user
   //    completed initial configuration; we trust the install and go straight
   //    to spawning lydia. Updates flow through the in-app update path
@@ -5580,7 +5580,7 @@ async function startAlice() {
         env: {
           ...process.env,
           // Explicitly pin ALICE_HOME for the child so Python's get_lydia_home()
-          // resolves to the SAME location our resolveLydiaHome() picked. Without
+          // resolves to the SAME location our resolveAliceHome() picked. Without
           // this pin, Python falls back to ~/.lydia on every platform — fine on
           // mac/linux (where our default matches), but on Windows our default is
           // %LOCALAPPDATA%\lydia, which differs from C:\Users\<u>\.lydia.

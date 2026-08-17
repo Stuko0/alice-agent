@@ -86,7 +86,7 @@ function bootstrapCacheDir(aliceHome) {
 }
 
 // The install.sh / install.ps1 that ships inside the already-installed agent
-// checkout under ~/.lydia/alice-agent. Used as a last-resort fallback when
+// checkout under ~/.alice/alice-agent. Used as a last-resort fallback when
 // the pinned commit can't be fetched from GitHub (e.g. a locally-built desktop
 // app stamped to an unpushed HEAD).
 function installedAgentInstallScript(aliceHome) {

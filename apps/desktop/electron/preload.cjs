@@ -195,7 +195,7 @@ contextBridge.exposeInMainWorld('lydiaDesktop', {
     return () => ipcRenderer.removeListener('lydia:bootstrap:event', listener)
   },
   getVersion: () => ipcRenderer.invoke('lydia:version'),
-  getRemoteDisplayReason: () => ipcRenderer.invoke('lydia:get-remote-display-reason'),
+  getRemoteDisplayReason: () => ipcRenderer.invoke('alice:get-remote-display-reason'),
   uninstall: {
     summary: () => ipcRenderer.invoke('lydia:uninstall:summary'),
     run: mode => ipcRenderer.invoke('lydia:uninstall:run', { mode })

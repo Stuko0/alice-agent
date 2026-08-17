@@ -181,9 +181,9 @@ async function ensureGitRepo(gitBin, dir) {
       gitBin,
       [
         '-c',
-        'user.email=lydia@localhost',
+        'user.email=alice@localhost',
         '-c',
-        'user.name=Lydia',
+        'user.name=Alice',
         'commit',
         '--allow-empty',
         '-m',
@@ -247,7 +247,7 @@ async function addWorktree(repoPath, options, gitBin) {
   }
 
   const slug = slugify(opts.name || `work-${Date.now().toString(36)}`)
-  const branch = sanitizeBranch(opts.branch) || `lydia/${slug}`
+  const branch = sanitizeBranch(opts.branch) || `alice/${slug}`
   const dir = uniqueDir(path.join(root, '.worktrees', slug))
 
   const args = ['worktree', 'add', '-b', branch, dir]
