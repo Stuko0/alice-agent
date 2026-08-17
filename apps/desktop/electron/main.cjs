@@ -5367,12 +5367,12 @@ async function spawnPoolBackend(profile, entry) {
         // the child process. Inherited TERMINAL_CWD (or a stale config bridge)
         // can still point at the install dir even when spawn cwd is home.
         TERMINAL_CWD: aliceCwd,
-        LYDIA_DASHBOARD_SESSION_TOKEN: token,
+        ALICE_DASHBOARD_SESSION_TOKEN: token,
         // Marks this dashboard backend as desktop-spawned so it runs the cron
         // scheduler tick loop (the gateway isn't running under the app).
-        LYDIA_DESKTOP: '1',
-        LYDIA_WEB_DIST: webDist,
-        ...(readyFile ? { LYDIA_DESKTOP_READY_FILE: readyFile } : {})
+        ALICE_DESKTOP: '1',
+        ALICE_WEB_DIST: webDist,
+        ...(readyFile ? { ALICE_DESKTOP_READY_FILE: readyFile } : {})
       },
       shell: backend.shell,
       stdio: ['ignore', 'pipe', 'pipe']
@@ -5590,12 +5590,12 @@ async function startAlice() {
           ALICE_HOME,
           ...backend.env,
           TERMINAL_CWD: aliceCwd,
-          LYDIA_DASHBOARD_SESSION_TOKEN: token,
+          ALICE_DASHBOARD_SESSION_TOKEN: token,
           // Marks this dashboard backend as desktop-spawned so it runs the cron
           // scheduler tick loop (the gateway isn't running under the app).
-          LYDIA_DESKTOP: '1',
-          LYDIA_WEB_DIST: webDist,
-          ...(readyFile ? { LYDIA_DESKTOP_READY_FILE: readyFile } : {})
+          ALICE_DESKTOP: '1',
+          ALICE_WEB_DIST: webDist,
+          ...(readyFile ? { ALICE_DESKTOP_READY_FILE: readyFile } : {})
         },
         shell: backend.shell,
         stdio: ['ignore', 'pipe', 'pipe']
