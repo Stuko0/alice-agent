@@ -39,7 +39,7 @@ function encryptDesktopSecret(value, safeStorageApi) {
 
   if (!encryptionAvailable) {
     throw new Error(
-      'Secure token storage is unavailable, so Lydia Desktop cannot save remote gateway tokens. ' +
+      'Secure token storage is unavailable, so Alice Desktop cannot save remote gateway tokens. ' +
         'Set LYDIA_DESKTOP_REMOTE_URL and LYDIA_DESKTOP_REMOTE_TOKEN in your environment, or enable OS keychain access and try again.'
     )
   }

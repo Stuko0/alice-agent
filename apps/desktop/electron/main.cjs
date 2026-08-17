@@ -185,7 +185,7 @@ if (REMOTE_DISPLAY_REASON) {
   // with only --disable-gpu: force compositing onto the CPU too.
   app.commandLine.appendSwitch('disable-gpu-compositing')
   console.log(
-    `[lydia] remote display detected (${REMOTE_DISPLAY_REASON}); disabling GPU hardware acceleration to prevent flicker`
+    `[alice] remote display detected (${REMOTE_DISPLAY_REASON}); disabling GPU hardware acceleration to prevent flicker`
   )
 }
 
@@ -196,7 +196,7 @@ if (IS_WSL && !REMOTE_DISPLAY_REASON && fs.existsSync('/dev/dxg')) {
   app.commandLine.appendSwitch('ignore-gpu-blocklist')
   app.commandLine.appendSwitch('enable-gpu-rasterization')
   app.commandLine.appendSwitch('enable-zero-copy')
-  console.log('[lydia] WSL GPU passthrough (/dev/dxg) detected; enabling GPU acceleration')
+  console.log('[alice] WSL GPU passthrough (/dev/dxg) detected; enabling GPU acceleration')
 }
 
 ipcMain.handle('alice:get-remote-display-reason', () => REMOTE_DISPLAY_REASON)
@@ -246,7 +246,7 @@ function loadInstallStamp() {
       if (parsed && typeof parsed === 'object' && typeof parsed.commit === 'string' && parsed.commit.length >= 7) {
         if (parsed.schemaVersion !== INSTALL_STAMP_SCHEMA_VERSION) {
           console.warn(
-            `[lydia] install-stamp.json schemaVersion ${parsed.schemaVersion} != expected ${INSTALL_STAMP_SCHEMA_VERSION}; ignoring`
+            `[alice] install-stamp.json schemaVersion ${parsed.schemaVersion} != expected ${INSTALL_STAMP_SCHEMA_VERSION}; ignoring`
           )
           continue
         }
@@ -269,18 +269,18 @@ function loadInstallStamp() {
 const INSTALL_STAMP = loadInstallStamp()
 if (INSTALL_STAMP) {
   console.log(
-    `[lydia] install stamp: ${INSTALL_STAMP.commit.slice(0, 12)}${INSTALL_STAMP.branch ? ` (${INSTALL_STAMP.branch})` : ''}${INSTALL_STAMP.dirty ? ' [DIRTY]' : ''} from ${INSTALL_STAMP.source || 'unknown'}`
+    `[alice] install stamp: ${INSTALL_STAMP.commit.slice(0, 12)}${INSTALL_STAMP.branch ? ` (${INSTALL_STAMP.branch})` : ''}${INSTALL_STAMP.dirty ? ' [DIRTY]' : ''} from ${INSTALL_STAMP.source || 'unknown'}`
   )
 } else if (IS_PACKAGED) {
   // Dev builds without a stamp are normal; packaged builds without one
   // mean the bootstrap won't know what to clone. Surface clearly.
   console.error(
-    '[lydia] WARNING: no install-stamp.json found in packaged build. First-launch bootstrap will not have a pinned ref to install.'
+    '[alice] WARNING: no install-stamp.json found in packaged build. First-launch bootstrap will not have a pinned ref to install.'
   )
 }
 
-// ALICE_HOME — the user-facing root for everything Lydia-related. Mirrors
-// scripts/install.ps1's $LydiaHome and scripts/install.sh's $ALICE_HOME.
+// ALICE_HOME — the user-facing root for everything Alice-related. Mirrors
+// scripts/install.ps1's $AliceHome and scripts/install.sh's $ALICE_HOME.
 // Alice (the rebrand) uses ~/.alice / %LOCALAPPDATA%\alice.
 //
 // Defaults:
@@ -297,7 +297,7 @@ if (INSTALL_STAMP) {
 // touches the user's real ~/.alice / %LOCALAPPDATA%\alice.
 function resolveAliceHome() {
   // The canonical Alice home is ~/.alice (POSIX) / %LOCALAPPDATA%\alice (Windows).
-  // A legacy ALICE_HOME env var or registry value (from the old Lydia install)
+  // A legacy ALICE_HOME env var or registry value (from the old Alice install)
   // is honoured ONLY when no Alice home directory exists yet — once ~/.alice or
   // %LOCALAPPDATA%\alice has content, it wins regardless of env/registry.
   // This prevents the old Lydia env var from hijacking Alice's data after the
@@ -363,7 +363,7 @@ function aliceManagedNodePathEntries() {
   return entries.filter(directoryExists)
 }
 
-function pathWithLydiaManagedNode(...entries) {
+function pathWithAliceManagedNode(...entries) {
   return [...aliceManagedNodePathEntries(), ...entries, process.env.PATH].filter(Boolean).join(path.delimiter)
 }
 
@@ -945,7 +945,7 @@ function scheduleDesktopLogFlush() {
 function rememberLog(chunk) {
   const text = String(chunk || '').trim()
   if (!text) return
-  const lines = text.split(/\r?\n/).map(line => `[lydia] ${line}`)
+  const lines = text.split(/\r?\n/).map(line => `[alice] ${line}`)
   lydiaLog.push(...lines)
   if (lydiaLog.length > 300) {
     lydiaLog.splice(0, lydiaLog.length - 300)
@@ -2278,7 +2278,7 @@ async function applyUpdates(opts = {}) {
       env: {
         ...process.env,
         ALICE_HOME,
-        PATH: pathWithLydiaManagedNode(venvBin)
+        PATH: pathWithAliceManagedNode(venvBin)
       },
       detached: true,
       stdio: 'ignore',
@@ -2337,7 +2337,7 @@ async function handOffWindowsBootstrapRecovery(reason) {
     env: {
       ...process.env,
       ALICE_HOME,
-      PATH: pathWithLydiaManagedNode(venvBin)
+      PATH: pathWithAliceManagedNode(venvBin)
     },
     detached: true,
     stdio: 'ignore',
@@ -2428,7 +2428,7 @@ async function applyUpdatesPosixInApp() {
   // Node lives directly under %LOCALAPPDATA%\lydia\node, not node\bin.
   const env = {
     ALICE_HOME,
-    PATH: pathWithLydiaManagedNode(path.join(updateRoot, 'venv', 'bin'))
+    PATH: pathWithAliceManagedNode(path.join(updateRoot, 'venv', 'bin'))
   }
 
   // `lydia update` reaps stale `alice serve` backends (a code update
@@ -4360,7 +4360,7 @@ function installMediaPermissions() {
 // ---------------------------------------------------------------------------
 // OAuth remote-gateway auth.
 //
-// Hosted Lydia gateways gate the dashboard behind an OAuth provider (e.g.
+// Hosted Alice gateways gate the dashboard behind an OAuth provider (e.g.
 // Nous Research) instead of a static session token. The auth model is
 // fundamentally different from the token path:
 //
@@ -4501,7 +4501,7 @@ function openOauthLoginWindow(baseUrl) {
       win = new BrowserWindow({
         width: 520,
         height: 720,
-        title: 'Sign in to Lydia gateway',
+        title: 'Sign in to Alice gateway',
         autoHideMenuBar: true,
         webPreferences: {
           contextIsolation: true,
@@ -4914,7 +4914,7 @@ async function buildRemoteConnection(rawUrl, authMode, token, source) {
     // the authoritative liveness check.
     if (!(await hasLiveOauthSession(baseUrl))) {
       const err = new Error(
-        'Remote Lydia gateway uses OAuth, but you are not signed in. ' +
+        'Remote Alice gateway uses OAuth, but you are not signed in. ' +
           'Open Settings → Gateway and click "Sign in", or switch back to Local.'
       )
       err.needsOauthLogin = true
@@ -4946,7 +4946,7 @@ async function buildRemoteConnection(rawUrl, authMode, token, source) {
 
   if (!token) {
     throw new Error(
-      'Remote Lydia gateway is selected, but no session token is saved. ' +
+      'Remote Alice gateway is selected, but no session token is saved. ' +
         'Open Settings → Gateway and save a token, or switch back to Local.'
     )
   }
@@ -5137,7 +5137,7 @@ async function testDesktopConnectionConfig(input = {}) {
   // connects — a separate transport with separate server-side guards (Host/
   // Origin, ws-ticket/token auth). Validating only the HTTP side produced a
   // false-positive "reachable" while the real boot still failed with "Could not
-  // connect to Lydia gateway". Mirror the renderer's connect here so the test
+  // connect to Alice gateway". Mirror the renderer's connect here so the test
   // reflects the full path the app actually uses.
   const wsUrl = await resolveTestWsUrl(baseUrl, authMode, token, { mintTicket: mintGatewayWsTicket })
   // Skip the WS leg only when the runtime genuinely lacks a WebSocket (so an

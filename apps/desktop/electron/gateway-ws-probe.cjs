@@ -16,7 +16,7 @@
  * sees (Host/Origin checks, ws-ticket/token auth, peer-IP checks). So a gateway
  * can pass the HTTP status check yet reject the WebSocket — which surfaces to
  * the user as a green "Test remote" followed by an opaque "Could not connect to
- * Lydia gateway" on the boot overlay.
+ * Alice gateway" on the boot overlay.
  *
  * This module performs the second half of the check: it actually opens the WS
  * URL and confirms the upgrade is accepted (and isn't immediately torn down by
