@@ -5358,7 +5358,7 @@ async function spawnPoolBackend(profile, entry) {
     backend.command,
     backend.args,
     hiddenWindowsChildOptions({
-      cwd: lydiaCwd,
+      cwd: aliceCwd,
       env: {
         ...process.env,
         ALICE_HOME,
@@ -5366,7 +5366,7 @@ async function spawnPoolBackend(profile, entry) {
         // Pin the gateway's tool/terminal cwd to the same directory we chose for
         // the child process. Inherited TERMINAL_CWD (or a stale config bridge)
         // can still point at the install dir even when spawn cwd is home.
-        TERMINAL_CWD: lydiaCwd,
+        TERMINAL_CWD: aliceCwd,
         LYDIA_DASHBOARD_SESSION_TOKEN: token,
         // Marks this dashboard backend as desktop-spawned so it runs the cron
         // scheduler tick loop (the gateway isn't running under the app).
@@ -5576,7 +5576,7 @@ async function startAlice() {
       backend.command,
       backend.args,
       hiddenWindowsChildOptions({
-        cwd: lydiaCwd,
+        cwd: aliceCwd,
         env: {
           ...process.env,
           // Explicitly pin ALICE_HOME for the child so Python's get_lydia_home()
@@ -5589,7 +5589,7 @@ async function startAlice() {
           // can't reliably do that, so we set it inline for every spawn.
           ALICE_HOME,
           ...backend.env,
-          TERMINAL_CWD: lydiaCwd,
+          TERMINAL_CWD: aliceCwd,
           LYDIA_DASHBOARD_SESSION_TOKEN: token,
           // Marks this dashboard backend as desktop-spawned so it runs the cron
           // scheduler tick loop (the gateway isn't running under the app).
