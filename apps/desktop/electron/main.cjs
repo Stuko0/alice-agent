@@ -722,7 +722,7 @@ if (IS_WINDOWS) {
 }
 // Seed the native About panel with the live Lydia version. This is refreshed
 // on every open via the explicit "About" menu handler (refreshAboutPanel), so
-// an in-place `lydia update` mid-session is reflected without an app restart;
+// an in-place `alice update` mid-session is reflected without an app restart;
 // the seed here just covers the first open and any non-menu invocation path.
 app.setAboutPanelOptions({
   applicationName: APP_NAME,
@@ -736,9 +736,9 @@ app.setAboutPanelOptions({
 // so any non-trivial video silently refused to load. Streaming via a protocol
 // handler removes the size cap and gives the <video> element seekable,
 // range-aware playback. Must be registered before the app is ready.
-const MEDIA_PROTOCOL = 'lydia-media'
+const MEDIA_PROTOCOL = 'alice-media'
 // Only audio/video may be streamed. Without this the handler would read any
-// non-blocklisted local file (no size cap) for any `fetch(lydia-media://…)`.
+// non-blocklisted local file (no size cap) for any `fetch(alice-media://…)`.
 const STREAMABLE_MEDIA_EXTS = new Set([
   '.avi',
   '.flac',
@@ -791,10 +791,10 @@ function registerMediaProtocol() {
 }
 
 let mainWindow = null
-let lydiaProcess = null
+let aliceProcess = null
 let connectionPromise = null
 // Additional per-profile backends, keyed by profile name. The PRIMARY backend
-// (the desktop's launch profile) stays managed by lydiaProcess +
+// (the desktop's launch profile) stays managed by aliceProcess +
 // connectionPromise + startAlice(); this pool only holds EXTRA profile
 // backends spawned lazily when a session belongs to a different profile. A user
 // with no named profiles never populates this map, so their experience is
@@ -832,7 +832,7 @@ let backendStartFailure = null
 let bootstrapAbortController = null
 let connectionConfigCache = null
 let connectionConfigCacheMtime = null
-const lydiaLog = []
+const aliceLog = []
 const previewWatchers = new Map()
 let previewShortcutActive = false
 let desktopLogBuffer = ''
@@ -946,9 +946,9 @@ function rememberLog(chunk) {
   const text = String(chunk || '').trim()
   if (!text) return
   const lines = text.split(/\r?\n/).map(line => `[alice] ${line}`)
-  lydiaLog.push(...lines)
-  if (lydiaLog.length > 300) {
-    lydiaLog.splice(0, lydiaLog.length - 300)
+  aliceLog.push(...lines)
+  if (aliceLog.length > 300) {
+    aliceLog.splice(0, aliceLog.length - 300)
   }
 
   desktopLogBuffer += `${lines.join('\n')}\n`
@@ -1078,7 +1078,7 @@ function ensureWslWindowsFonts() {
 
   try {
     const confDir = path.join(app.getPath('home'), '.config', 'fontconfig', 'conf.d')
-    const confPath = path.join(confDir, '99-lydia-wsl-windows-fonts.conf')
+    const confPath = path.join(confDir, '99-alice-wsl-windows-fonts.conf')
     let existing = ''
     try {
       existing = fs.readFileSync(confPath, 'utf8')
@@ -1256,7 +1256,7 @@ function directoryExists(filePath) {
 // relaunches the desktop mid-update — because the window vanished with no
 // progress and looks crashed — a fresh instance must NOT spawn its own local
 // backend: that backend re-locks the venv shim, the updater's straggler cleanup
-// (`force_kill_other_lydia`, taskkill /IM lydia.exe) kills it, the launch
+// (`force_kill_other_lydia`, taskkill /IM alice.exe) kills it, the launch
 // fails with the 45s "backend didn't come up" error, and the relaunch/kill
 // cycle loops. Instead the fresh instance parks until the update finishes, then
 // brings the backend up itself (it is the surviving instance — the updater's
@@ -1322,7 +1322,7 @@ function findOnPath(command) {
   // On Windows, try PATHEXT extensions BEFORE the bare (empty-extension) name.
   // A real command must resolve via its .exe/.cmd (Windows command-resolution
   // semantics consult PATHEXT); an extensionless file — e.g. a Git-Bash
-  // shell-script shim named `lydia` — must not shadow `lydia.cmd`/`lydia.exe`.
+  // shell-script shim named `lydia` — must not shadow `lydia.cmd`/`alice.exe`.
   // The empty entry is kept LAST so callers that already include the extension
   // (py.exe, pwsh.exe, powershell.exe) still resolve.
   const extensions = IS_WINDOWS
@@ -1761,7 +1761,7 @@ function resolveGhBinary() {
 }
 
 function recentAliceLog() {
-  return lydiaLog.slice(-20).join('\n')
+  return aliceLog.slice(-20).join('\n')
 }
 
 // ─── Self-update (git-pull against the running backend's lydia root) ──────
@@ -2041,12 +2041,12 @@ let isQuittingForHandoff = false
 // Resolve the staged updater binary. The Tauri installer copies itself to
 // ALICE_HOME/alice-setup.exe on a successful install (see
 // apps/bootstrap-installer paths::copy_self_to_lydia_home). That binary owns
-// ALL repo mutation — running `lydia update` + rebuilding the desktop — so
+// ALL repo mutation — running `alice update` + rebuilding the desktop — so
 // the desktop never touches its own bits while running. Returns null when the
 // updater isn't staged (e.g. a dev/source run that never went through the
 // installer); callers degrade gracefully.
 function resolveUpdaterBinary() {
-  const name = IS_WINDOWS ? 'alice-setup.exe' : 'lydia-setup'
+  const name = IS_WINDOWS ? 'alice-setup.exe' : 'alice-setup'
   const candidate = path.join(ALICE_HOME, name)
   return fileExists(candidate) ? candidate : null
 }
@@ -2076,12 +2076,12 @@ function repairMacUpdaterHelper(updater) {
   }
 }
 
-// Path to the venv shim whose lock decides whether `lydia update` can write
+// Path to the venv shim whose lock decides whether `alice update` can write
 // fresh entry points. On Windows this is the file the running backend
-// `lydia.exe` holds open; on POSIX it's never mandatory-locked.
-function venvLydiaShimPath(updateRoot) {
+// `alice.exe` holds open; on POSIX it's never mandatory-locked.
+function venvAliceShimPath(updateRoot) {
   return IS_WINDOWS
-    ? path.join(updateRoot, 'venv', 'Scripts', 'lydia.exe')
+    ? path.join(updateRoot, 'venv', 'Scripts', 'alice.exe')
     : path.join(updateRoot, 'venv', 'bin', 'lydia')
 }
 
@@ -2111,7 +2111,7 @@ function isShimLocked(shimPath) {
 }
 
 // Force-kill the entire process TREE rooted at each PID. Node's child.kill()
-// only signals the direct child, so on Windows a backend `lydia.exe` that
+// only signals the direct child, so on Windows a backend `alice.exe` that
 // spawned its own grandchildren (a `lydia` REPL, a pty terminal session, the
 // gateway) would survive and keep the venv shim locked. taskkill /T /F reaps
 // the whole tree synchronously. Windows-only: this is called solely from the
@@ -2131,9 +2131,9 @@ function forceKillProcessTree(pid) {
 
 // Before handing off the update on Windows, the desktop MUST stop every backend
 // it spawned and WAIT for the venv shim to actually unlock. The old code did
-// `lydiaProcess.kill('SIGTERM')` + `app.quit()` fire-and-forget: SIGTERM on
+// `aliceProcess.kill('SIGTERM')` + `app.quit()` fire-and-forget: SIGTERM on
 // Windows doesn't reap the backend's grandchildren, and quit didn't wait for
-// teardown, so the updater raced a still-locked `lydia.exe`, the quarantine
+// teardown, so the updater raced a still-locked `alice.exe`, the quarantine
 // rename failed, uv's `pip install` hit "Access is denied", and the git path
 // bailed into a full ZIP re-download that ALSO couldn't write the locked shim —
 // a half-applied install (ryanc's update.log). Here we tree-kill the primary +
@@ -2152,7 +2152,7 @@ async function releaseBackendLockForUpdate(updateRoot) {
 // Shared backend teardown + venv-shim unlock wait. Used by BOTH the self-update
 // hand-off and the desktop uninstaller — they have the identical Windows
 // problem: the desktop's backend (and the grandchildren IT spawned — a lydia
-// REPL, a pty terminal, the gateway) keep `lydia.exe` and other files in the
+// REPL, a pty terminal, the gateway) keep `alice.exe` and other files in the
 // venv mandatory-locked, so any in-place replace/delete of the install tree
 // races a live handle and half-fails (#37532). We tree-kill every backend PID
 // the desktop owns, then poll the shim until it's genuinely writable.
@@ -2164,15 +2164,15 @@ async function releaseBackendLock(updateRoot, tag) {
 
   // Collect every backend PID the desktop owns: primary window backend + pool.
   const pids = []
-  if (lydiaProcess && Number.isInteger(lydiaProcess.pid)) pids.push(lydiaProcess.pid)
+  if (aliceProcess && Number.isInteger(aliceProcess.pid)) pids.push(aliceProcess.pid)
   for (const entry of backendPool.values()) {
     if (entry.process && Number.isInteger(entry.process.pid)) pids.push(entry.process.pid)
   }
 
   // Graceful first (lets Python flush), then tree-kill to catch grandchildren.
-  if (lydiaProcess && !lydiaProcess.killed) {
+  if (aliceProcess && !aliceProcess.killed) {
     try {
-      lydiaProcess.kill('SIGTERM')
+      aliceProcess.kill('SIGTERM')
     } catch {
       void 0
     }
@@ -2180,7 +2180,7 @@ async function releaseBackendLock(updateRoot, tag) {
   stopAllPoolBackends()
   for (const pid of pids) forceKillProcessTree(pid)
 
-  const shim = venvLydiaShimPath(updateRoot)
+  const shim = venvAliceShimPath(updateRoot)
   const deadlineMs = Date.now() + 15000
   while (Date.now() < deadlineMs) {
     if (!isShimLocked(shim)) {
@@ -2197,8 +2197,8 @@ async function releaseBackendLock(updateRoot, tag) {
 //
 // The desktop is a pure consumer: it does NOT git pull / pip install / rebuild
 // itself (the old open-coded git dance lived here and drifted from
-// `lydia update`). Instead we spawn the staged Lydia-Setup binary with
-// --update and quit, so it can run `lydia update` (which refuses while we
+// `alice update`). Instead we spawn the staged Lydia-Setup binary with
+// --update and quit, so it can run `alice update` (which refuses while we
 // hold the venv shim) and rebuild the desktop with our exe already gone.
 //
 // Detection (checkUpdates / commit changelog / "N behind") stays in the UI;
@@ -2215,7 +2215,7 @@ async function applyUpdates(opts = {}) {
       // macOS/Linux drag-install: no staged Tauri lydia-setup. Unlike Windows
       // (where a venv-shim file lock forces the quit→hand-off→rebuild dance),
       // there's no mandatory file locking here, so the desktop can drive the
-      // whole update itself: `lydia update` (backend) + `lydia desktop
+      // whole update itself: `alice update` (backend) + `lydia desktop
       // --build-only` (OS-aware GUI rebuild), then swap the running .app bundle
       // with the freshly built one and relaunch.
       return await applyUpdatesPosixInApp(opts)
@@ -2226,21 +2226,21 @@ async function applyUpdates(opts = {}) {
       // alice-setup.exe into ALICE_HOME). They DO have a working `lydia`
       // on PATH / in the venv, so the correct path is the one-liner in their
       // native medium. We show the EXACT command, branch-pinned to the
-      // checkout they're on — bare `lydia update` defaults to main and would
+      // checkout they're on — bare `alice update` defaults to main and would
       // silently switch a bb/gui (or any non-main) install off-branch. Mirror
       // the GUI button's contract: append --branch <current> for non-main
       // checkouts, keep it bare for main so the card stays clean.
       const updateRoot = resolveUpdateRoot()
-      let command = 'lydia update'
+      let command = 'alice update'
       try {
         const head = await runGit(['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: updateRoot })
         const current = (head.stdout || '').trim()
         if (head.code === 0 && current && current !== 'HEAD') {
           const branch = await resolveHealedBranch(updateRoot, current)
-          if (branch !== 'main') command = `lydia update --branch ${branch}`
+          if (branch !== 'main') command = `alice update --branch ${branch}`
         }
       } catch {
-        // Best-effort: fall back to bare `lydia update` if branch detection fails.
+        // Best-effort: fall back to bare `alice update` if branch detection fails.
       }
       rememberLog(`[updates] no staged updater; surfacing manual \`${command}\` for CLI install at ${updateRoot}`)
       emitUpdateProgress({ stage: 'manual', message: command, percent: null })
@@ -2267,12 +2267,12 @@ async function applyUpdates(opts = {}) {
 
     // Stop our own backend(s) and wait for the venv shim to unlock BEFORE we
     // spawn the updater. Without this the updater races a still-locked
-    // lydia.exe (held by the backend child / its grandchildren) and the update
+    // alice.exe (held by the backend child / its grandchildren) and the update
     // bricks. See releaseBackendLockForUpdate for the full failure analysis.
     await releaseBackendLockForUpdate(updateRoot)
 
     // Detached so the updater outlives this process — it needs us GONE before
-    // `lydia update` will run (the venv shim is locked while we live).
+    // `alice update` will run (the venv shim is locked while we live).
     const child = spawn(updater, updaterArgs, {
       cwd: ALICE_HOME,
       env: {
@@ -2316,17 +2316,17 @@ async function handOffWindowsBootstrapRecovery(reason) {
     ? await resolveHealedBranch(updateRoot, configuredBranch || DEFAULT_UPDATE_BRANCH)
     : configuredBranch || DEFAULT_UPDATE_BRANCH
   const venvBin = path.join(updateRoot, 'venv', IS_WINDOWS ? 'Scripts' : 'bin')
-  const venvLydia = path.join(venvBin, IS_WINDOWS ? 'lydia.exe' : 'lydia')
+  const venvAlice = path.join(venvBin, IS_WINDOWS ? 'alice.exe' : 'lydia')
   const venvPython = path.join(venvBin, IS_WINDOWS ? 'python.exe' : 'python')
   // Choose the gentle in-place --update when ANY real-install signal is present,
-  // not just the `lydia.exe` console-script shim. That shim is generated at the
+  // not just the `alice.exe` console-script shim. That shim is generated at the
   // END of venv setup and is absent in exactly the interrupted/quarantined states
   // this recovery exists to heal — gating on it alone forced the destructive
   // --repair (full venv recreate) and drove reinstall loops. The venv interpreter
   // and the bootstrap-complete marker are present earlier and are better signals.
   const haveRealInstall =
     fileExists(venvPython) ||
-    fileExists(venvLydia) ||
+    fileExists(venvAlice) ||
     fileExists(path.join(updateRoot, '.alice-bootstrap-complete'))
   const updaterArgs = haveRealInstall ? ['--update', '--branch', branch] : ['--repair', '--branch', branch]
 
@@ -2362,8 +2362,8 @@ async function handOffWindowsBootstrapRecovery(reason) {
 // Resolve the lydia CLI to drive an in-app update: prefer the venv shim in
 // the install we're updating, fall back to `lydia` on PATH.
 function resolveLydiaCliBinary(updateRoot) {
-  const venvLydia = path.join(updateRoot, 'venv', 'bin', 'lydia')
-  if (fileExists(venvLydia)) return venvLydia
+  const venvAlice = path.join(updateRoot, 'venv', 'bin', 'lydia')
+  if (fileExists(venvAlice)) return venvAlice
   return findOnPath('lydia') || null
 }
 
@@ -2411,7 +2411,7 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'\\''`)}'`
 }
 
-// macOS/Linux in-app update: backend (`lydia update`) + OS-aware GUI rebuild
+// macOS/Linux in-app update: backend (`alice update`) + OS-aware GUI rebuild
 // (`lydia desktop --build-only`), then atomically swap the running .app bundle
 // with the freshly built one and relaunch. Degrades to "backend updated,
 // restart to load the new GUI" if the swap can't be performed.
@@ -2419,8 +2419,8 @@ async function applyUpdatesPosixInApp() {
   const updateRoot = resolveUpdateRoot()
   const lydia = resolveLydiaCliBinary(updateRoot)
   if (!lydia) {
-    emitUpdateProgress({ stage: 'manual', message: 'lydia update', percent: null })
-    return { ok: true, manual: true, command: 'lydia update', lydiaRoot: updateRoot }
+    emitUpdateProgress({ stage: 'manual', message: 'alice update', percent: null })
+    return { ok: true, manual: true, command: 'alice update', lydiaRoot: updateRoot }
   }
 
   // Put the Lydia-managed Node and the venv on PATH so `lydia desktop`'s
@@ -2431,7 +2431,7 @@ async function applyUpdatesPosixInApp() {
     PATH: pathWithAliceManagedNode(path.join(updateRoot, 'venv', 'bin'))
   }
 
-  // `lydia update` reaps stale `alice serve` backends (a code update
+  // `alice update` reaps stale `alice serve` backends (a code update
   // leaves the running process serving old Python against the freshly-updated
   // JS bundle). But OUR backend is one of those processes, and killing it
   // mid-update produces the boot→kill→crash loop in #37532 — the desktop
@@ -2443,8 +2443,8 @@ async function applyUpdatesPosixInApp() {
   // the update reaper. _kill_stale_dashboard_processes accepts a comma-separated
   // list (a single int still parses for back-compat).
   const desktopChildPids = []
-  if (lydiaProcess && Number.isInteger(lydiaProcess.pid)) {
-    desktopChildPids.push(lydiaProcess.pid)
+  if (aliceProcess && Number.isInteger(aliceProcess.pid)) {
+    desktopChildPids.push(aliceProcess.pid)
   }
   for (const entry of backendPool.values()) {
     if (entry.process && Number.isInteger(entry.process.pid)) {
@@ -2475,8 +2475,8 @@ async function applyUpdatesPosixInApp() {
     stage: 'update'
   })
   if (updated.code !== 0) {
-    emitUpdateProgress({ stage: 'error', message: 'lydia update failed.', error: updated.error || 'update-failed' })
-    return { ok: false, error: 'lydia update failed' }
+    emitUpdateProgress({ stage: 'error', message: 'alice update failed.', error: updated.error || 'update-failed' })
+    return { ok: false, error: 'alice update failed' }
   }
 
   emitUpdateProgress({ stage: 'rebuild', message: 'Rebuilding the desktop app…', percent: 60 })
@@ -2992,7 +2992,7 @@ function resolveAliceBackend(backendArgs) {
   //    The bootstrap marker means install.ps1 stages finished and the user
   //    completed initial configuration; we trust the install and go straight
   //    to spawning lydia. Updates flow through the in-app update path
-  //    (applyUpdates -> git pull) or `lydia update` from the CLI.
+  //    (applyUpdates -> git pull) or `alice update` from the CLI.
   if (isBootstrapComplete()) {
     return createActiveBackend(backendArgs)
   }
@@ -5190,9 +5190,9 @@ function resetLydiaConnection() {
   connectionPromise = null
   backendStartFailure = null
 
-  stopBackendChild(lydiaProcess)
+  stopBackendChild(aliceProcess)
 
-  lydiaProcess = null
+  aliceProcess = null
   resetBootProgressForReconnect()
 }
 
@@ -5201,8 +5201,8 @@ function resetLydiaConnection() {
 // startAlice() spawns fresh instead of racing the dying one. Shared by the
 // connection-config and profile switch flows.
 async function teardownPrimaryBackendAndWait() {
-  // Capture the reference before resetLydiaConnection() nulls lydiaProcess.
-  const dying = lydiaProcess && !lydiaProcess.killed ? lydiaProcess : null
+  // Capture the reference before resetLydiaConnection() nulls aliceProcess.
+  const dying = aliceProcess && !aliceProcess.killed ? aliceProcess : null
   resetLydiaConnection()
 
   await waitForBackendExit(dying)
@@ -5335,7 +5335,7 @@ async function spawnPoolBackend(profile, entry) {
     return {
       ...remote,
       profile,
-      logs: lydiaLog.slice(-80),
+      logs: aliceLog.slice(-80),
       ...getWindowState()
     }
   }
@@ -5429,7 +5429,7 @@ async function spawnPoolBackend(profile, entry) {
     token: authToken,
     profile,
     wsUrl: `ws://127.0.0.1:${port}/api/ws?token=${encodeURIComponent(authToken)}`,
-    logs: lydiaLog.slice(-80),
+    logs: aliceLog.slice(-80),
     ...getWindowState()
   }
 }
@@ -5536,7 +5536,7 @@ async function startAlice() {
         authMode: remote.authMode || 'token',
         token: remote.token,
         wsUrl: remote.wsUrl,
-        logs: lydiaLog.slice(-80),
+        logs: aliceLog.slice(-80),
         ...getWindowState()
       }
     }
@@ -5572,7 +5572,7 @@ async function startAlice() {
     await advanceBootProgress('backend.spawn', `Starting Alice backend via ${backend.label}`, 84)
     rememberLog(`Starting Alice backend via ${backend.label}`)
 
-    lydiaProcess = spawn(
+    aliceProcess = spawn(
       backend.command,
       backend.args,
       hiddenWindowsChildOptions({
@@ -5602,14 +5602,14 @@ async function startAlice() {
       })
     )
 
-    lydiaProcess.stdout.on('data', rememberLog)
-    lydiaProcess.stderr.on('data', rememberLog)
+    aliceProcess.stdout.on('data', rememberLog)
+    aliceProcess.stderr.on('data', rememberLog)
     let backendReady = false
     let rejectBackendStart = null
     const backendStartFailed = new Promise((_resolve, reject) => {
       rejectBackendStart = reject
     })
-    lydiaProcess.once('error', error => {
+    aliceProcess.once('error', error => {
       rememberLog(`Alice backend failed to start: ${error.message}`)
       updateBootProgress(
         {
@@ -5620,14 +5620,14 @@ async function startAlice() {
         },
         { allowDecrease: true }
       )
-      lydiaProcess = null
+      aliceProcess = null
       connectionPromise = null
       sendBackendExit({ code: null, signal: null, error: error.message })
       rejectBackendStart?.(error)
     })
-    lydiaProcess.once('exit', (code, signal) => {
+    aliceProcess.once('exit', (code, signal) => {
       rememberLog(`Alice backend exited (${signal || code})`)
-      lydiaProcess = null
+      aliceProcess = null
       connectionPromise = null
       sendBackendExit({ code, signal })
       if (!backendReady) {
@@ -5652,7 +5652,7 @@ async function startAlice() {
     await advanceBootProgress('backend.port', 'Waiting for Alice backend to launch', 86)
     // Discover the ephemeral port the child bound to
     const port = await Promise.race([
-      waitForDashboardPortAnnouncement(lydiaProcess, { readyFile }),
+      waitForDashboardPortAnnouncement(aliceProcess, { readyFile }),
       backendStartFailed
     ])
     if (readyFile) {
@@ -5665,8 +5665,8 @@ async function startAlice() {
     backendReady = true
     backendStartFailure = null
     const authToken = await adoptServedDashboardToken(baseUrl, token, {
-      // The exit/error handlers null lydiaProcess when the child dies.
-      childAlive: () => lydiaProcess !== null && lydiaProcess.exitCode === null && !lydiaProcess.killed,
+      // The exit/error handlers null aliceProcess when the child dies.
+      childAlive: () => aliceProcess !== null && aliceProcess.exitCode === null && !aliceProcess.killed,
       rememberLog
     })
     updateBootProgress({
@@ -5684,7 +5684,7 @@ async function startAlice() {
       authMode: 'token',
       token: authToken,
       wsUrl: `ws://127.0.0.1:${port}/api/ws?token=${encodeURIComponent(authToken)}`,
-      logs: lydiaLog.slice(-80),
+      logs: aliceLog.slice(-80),
       ...getWindowState()
     }
   })().catch(error => {
@@ -6799,7 +6799,7 @@ ipcMain.handle('lydia:logs:reveal', async () => {
   }
 })
 
-ipcMain.handle('lydia:logs:recent', async () => ({ path: DESKTOP_LOG_PATH, lines: lydiaLog.slice(-200) }))
+ipcMain.handle('lydia:logs:recent', async () => ({ path: DESKTOP_LOG_PATH, lines: aliceLog.slice(-200) }))
 
 function isExecutableFile(filePath) {
   if (!filePath || !path.isAbsolute(filePath)) {
@@ -7259,7 +7259,7 @@ function resolveLydiaVersion() {
 }
 
 // Re-resolve the live Lydia version and push it into the native About panel
-// just before showing it, so an in-place `lydia update` is reflected without
+// just before showing it, so an in-place `alice update` is reflected without
 // an app restart. macOS only — `showAboutPanel()` is a no-op elsewhere, and the
 // other platforms don't use this menu item.
 function showAboutPanelFresh() {
@@ -7664,7 +7664,7 @@ app.on('before-quit', () => {
     disposeTerminalSession(id)
   }
 
-  stopBackendChild(lydiaProcess)
+  stopBackendChild(aliceProcess)
   stopAllPoolBackends()
 })
 
