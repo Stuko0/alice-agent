@@ -461,7 +461,7 @@ const terminalSessions = new Map()
 // tracks the window's effective appearance and ignores `backgroundColor` —
 // so a dark-themed app on a light-mode Mac flashes a white material on every
 // new window until the renderer covers it. The renderer reports its mode via
-// 'lydia:native-theme' ('dark' | 'light' | 'system'); we pin
+// 'alice:native-theme' ('dark' | 'light' | 'system'); we pin
 // nativeTheme.themeSource to it and persist the value so cold launches paint
 // correctly before the renderer has even loaded.
 const NATIVE_THEME_CONFIG_PATH = path.join(app.getPath('userData'), 'native-theme.json')
@@ -1116,7 +1116,7 @@ function broadcastBootProgress() {
   if (!mainWindow || mainWindow.isDestroyed()) return
   const { webContents } = mainWindow
   if (!webContents || webContents.isDestroyed()) return
-  webContents.send('lydia:boot-progress', bootProgressState)
+  webContents.send('alice:boot-progress', bootProgressState)
 }
 
 // Bootstrap-event broadcast channel + state. The bootstrap runner emits a
@@ -1192,7 +1192,7 @@ function broadcastBootstrapEvent(ev) {
   if (!mainWindow || mainWindow.isDestroyed()) return
   const { webContents } = mainWindow
   if (!webContents || webContents.isDestroyed()) return
-  webContents.send('lydia:bootstrap:event', ev)
+  webContents.send('alice:bootstrap:event', ev)
 }
 
 function getBootstrapState() {
@@ -1872,7 +1872,7 @@ function emitUpdateProgress(payload) {
   const merged = { stage: 'idle', message: '', percent: null, error: null, ...payload, at: Date.now() }
   rememberLog(`[updates] ${merged.stage}: ${merged.message || merged.error || ''}`)
   for (const window of BrowserWindow.getAllWindows()) {
-    window.webContents.send('lydia:updates:progress', merged)
+    window.webContents.send('alice:updates:progress', merged)
   }
 }
 
@@ -3560,7 +3560,7 @@ function fetchHtmlTitleWithCurl(rawUrl) {
 
 function getLinkTitleSession() {
   if (linkTitleSession || !app.isReady()) return linkTitleSession
-  linkTitleSession = session.fromPartition('lydia:link-titles', { cache: false })
+  linkTitleSession = session.fromPartition('alice:link-titles', { cache: false })
   linkTitleSession.webRequest.onBeforeRequest((details, callback) => {
     callback({ cancel: RENDER_TITLE_BLOCKED_RESOURCES.has(details.resourceType) })
   })
@@ -3851,7 +3851,7 @@ function sendPreviewFileChanged(payload) {
   if (!mainWindow || mainWindow.isDestroyed()) return
   const { webContents } = mainWindow
   if (!webContents || webContents.isDestroyed()) return
-  webContents.send('lydia:preview-file-changed', payload)
+  webContents.send('alice:preview-file-changed', payload)
 }
 
 async function watchPreviewFile(rawUrl) {
@@ -3942,14 +3942,14 @@ function sendBackendExit(payload) {
   if (!mainWindow || mainWindow.isDestroyed()) return
   const { webContents } = mainWindow
   if (!webContents || webContents.isDestroyed()) return
-  webContents.send('lydia:backend-exit', payload)
+  webContents.send('alice:backend-exit', payload)
 }
 
 function sendClosePreviewRequested() {
   if (!mainWindow || mainWindow.isDestroyed()) return
   const { webContents } = mainWindow
   if (!webContents || webContents.isDestroyed()) return
-  webContents.send('lydia:close-preview-requested')
+  webContents.send('alice:close-preview-requested')
 }
 
 // Tell the renderer the machine just woke. Sleep silently drops the
@@ -3959,7 +3959,7 @@ function sendPowerResume() {
   if (!mainWindow || mainWindow.isDestroyed()) return
   const { webContents } = mainWindow
   if (!webContents || webContents.isDestroyed()) return
-  webContents.send('lydia:power-resume')
+  webContents.send('alice:power-resume')
 }
 
 let powerResumeRegistered = false
@@ -3986,7 +3986,7 @@ function sendOpenUpdatesRequested() {
   if (!mainWindow || mainWindow.isDestroyed()) return
   const { webContents } = mainWindow
   if (!webContents || webContents.isDestroyed()) return
-  webContents.send('lydia:open-updates')
+  webContents.send('alice:open-updates')
   if (!mainWindow.isVisible()) mainWindow.show()
   mainWindow.focus()
 }
@@ -4001,7 +4001,7 @@ function sendWindowStateChanged(nextIsFullscreen) {
     state.isFullscreen = nextIsFullscreen
   }
 
-  webContents.send('lydia:window-state-changed', state)
+  webContents.send('alice:window-state-changed', state)
 }
 
 function buildApplicationMenu() {
@@ -5908,7 +5908,7 @@ function spawnPetOverlayWindow(bounds) {
     // pop the pet back in so it doesn't stay hidden. Harmless echo when we're
     // the ones who closed it (popInPet already cleared the active flag).
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('lydia:pet-overlay:control', { type: 'pop-in' })
+      mainWindow.webContents.send('alice:pet-overlay:control', { type: 'pop-in' })
     }
   })
 
@@ -6079,7 +6079,7 @@ function createWindow() {
   })
 }
 
-ipcMain.handle('lydia:connection', async (_event, profile) => ensureBackend(profile))
+ipcMain.handle('alice:connection', async (_event, profile) => ensureBackend(profile))
 // Reconnect-after-wake recovery. A REMOTE primary backend has no child process,
 // so the 'exit'/'error' handlers that would clear a dead connectionPromise never
 // fire — once the remote becomes unreachable across a sleep/wake the renderer
@@ -6088,7 +6088,7 @@ ipcMain.handle('lydia:connection', async (_event, profile) => ensureBackend(prof
 // to confirm the cached PRIMARY backend is still reachable; if a remote one is
 // not, we drop the cache so the next getConnection() rebuilds it. Local backends
 // self-heal via their child 'exit' handler, so we never touch them here.
-ipcMain.handle('lydia:connection:revalidate', async () => {
+ipcMain.handle('alice:connection:revalidate', async () => {
   if (!connectionPromise) {
     return { ok: true, rebuilt: false }
   }
@@ -6119,12 +6119,12 @@ ipcMain.handle('lydia:connection:revalidate', async () => {
     return { ok: true, rebuilt: true }
   }
 })
-ipcMain.handle('lydia:backend:touch', async (_event, profile) => {
+ipcMain.handle('alice:backend:touch', async (_event, profile) => {
   touchPoolBackend(profile)
   return { ok: true }
 })
-ipcMain.handle('lydia:gateway:ws-url', async (_event, profile) => freshGatewayWsUrl(profile))
-ipcMain.handle('lydia:window:openSession', async (_event, sessionId, opts) => {
+ipcMain.handle('alice:gateway:ws-url', async (_event, profile) => freshGatewayWsUrl(profile))
+ipcMain.handle('alice:window:openSession', async (_event, sessionId, opts) => {
   if (typeof sessionId !== 'string' || !sessionId.trim()) {
     return { ok: false, error: 'invalid-session-id' }
   }
@@ -6133,7 +6133,7 @@ ipcMain.handle('lydia:window:openSession', async (_event, sessionId, opts) => {
 
   return { ok: true }
 })
-ipcMain.handle('lydia:window:openNewSession', async () => {
+ipcMain.handle('alice:window:openNewSession', async () => {
   createNewSessionWindow()
 
   return { ok: true }
@@ -6145,7 +6145,7 @@ ipcMain.handle('lydia:window:openNewSession', async () => {
 // content origin so the pet lands where it sat in-window. A remembered/dragged
 // spot passes screen-space bounds (screen=true) and is used as-is. We return the
 // resolved screen bounds so the renderer can persist exactly where it opened.
-ipcMain.handle('lydia:pet-overlay:open', async (_event, request) => {
+ipcMain.handle('alice:pet-overlay:open', async (_event, request) => {
   const bounds = request && request.bounds ? request.bounds : request
   const isScreen = Boolean(request && request.screen)
   let screenBounds = bounds
@@ -6168,7 +6168,7 @@ ipcMain.handle('lydia:pet-overlay:open', async (_event, request) => {
 
   return { ok: true, bounds: screenBounds }
 })
-ipcMain.handle('lydia:pet-overlay:close', async () => {
+ipcMain.handle('alice:pet-overlay:close', async () => {
   closePetOverlay()
 
   return { ok: true }
@@ -6179,7 +6179,7 @@ ipcMain.handle('lydia:pet-overlay:close', async () => {
 // The window is created non-resizable (no stray edge-drag on the transparent
 // frameless panel), which on Windows/Linux also blocks programmatic setBounds
 // sizing — so briefly flip resizable on whenever the size actually changes.
-ipcMain.on('lydia:pet-overlay:set-bounds', (_event, bounds) => {
+ipcMain.on('alice:pet-overlay:set-bounds', (_event, bounds) => {
   if (!petOverlayWindow || petOverlayWindow.isDestroyed() || !bounds) {
     return
   }
@@ -6203,7 +6203,7 @@ ipcMain.on('lydia:pet-overlay:set-bounds', (_event, bounds) => {
 // Click-through: the overlay window is a full rectangle but only the pet pixels
 // should be interactive. The renderer toggles this as the cursor enters/leaves
 // the sprite so transparent margins pass clicks to whatever is behind.
-ipcMain.on('lydia:pet-overlay:ignore-mouse', (_event, ignore) => {
+ipcMain.on('alice:pet-overlay:ignore-mouse', (_event, ignore) => {
   if (petOverlayWindow && !petOverlayWindow.isDestroyed()) {
     petOverlayWindow.setIgnoreMouseEvents(Boolean(ignore), { forward: true })
   }
@@ -6212,7 +6212,7 @@ ipcMain.on('lydia:pet-overlay:ignore-mouse', (_event, ignore) => {
 // the app's cmd/alt-tab anchor from the main window. But the pop-up composer
 // needs the keyboard, so the renderer asks us to flip it focusable + focus it
 // while the composer is open, then back to non-activating when it closes.
-ipcMain.on('lydia:pet-overlay:set-focusable', (_event, focusable) => {
+ipcMain.on('alice:pet-overlay:set-focusable', (_event, focusable) => {
   if (!petOverlayWindow || petOverlayWindow.isDestroyed()) {
     return
   }
@@ -6223,13 +6223,13 @@ ipcMain.on('lydia:pet-overlay:set-focusable', (_event, focusable) => {
   }
 })
 // Main renderer → overlay: forward the latest pet state for the overlay to render.
-ipcMain.on('lydia:pet-overlay:state', (_event, payload) => {
+ipcMain.on('alice:pet-overlay:state', (_event, payload) => {
   if (petOverlayWindow && !petOverlayWindow.isDestroyed()) {
-    petOverlayWindow.webContents.send('lydia:pet-overlay:state', payload)
+    petOverlayWindow.webContents.send('alice:pet-overlay:state', payload)
   }
 })
 // Overlay → main renderer: control messages (pop back in, composer submit).
-ipcMain.on('lydia:pet-overlay:control', (_event, payload) => {
+ipcMain.on('alice:pet-overlay:control', (_event, payload) => {
   if (!mainWindow || mainWindow.isDestroyed()) {
     return
   }
@@ -6259,9 +6259,9 @@ ipcMain.on('lydia:pet-overlay:control', (_event, payload) => {
     mainWindow.focus()
   }
 
-  mainWindow.webContents.send('lydia:pet-overlay:control', payload)
+  mainWindow.webContents.send('alice:pet-overlay:control', payload)
 })
-ipcMain.handle('lydia:bootstrap:reset', async () => {
+ipcMain.handle('alice:bootstrap:reset', async () => {
   // Renderer's "Reload and retry" path. Clear the latched failure and
   // reset connection state so the next startAlice() call restarts the
   // full backend flow (including a fresh runBootstrap pass).
@@ -6281,7 +6281,7 @@ ipcMain.handle('lydia:bootstrap:reset', async () => {
   }
   return { ok: true }
 })
-ipcMain.handle('lydia:bootstrap:repair', async () => {
+ipcMain.handle('alice:bootstrap:repair', async () => {
   // Forceful repair: drop the bootstrap-complete marker so the next
   // startAlice() re-runs the full installer (refreshing a broken/partial
   // venv), and clear any latched failure + live connection. The renderer
@@ -6299,7 +6299,7 @@ ipcMain.handle('lydia:bootstrap:repair', async () => {
   resetLydiaConnection()
   return { ok: true }
 })
-ipcMain.handle('lydia:bootstrap:cancel', async () => {
+ipcMain.handle('alice:bootstrap:cancel', async () => {
   // Renderer's Cancel button during first-launch install. Abort the running
   // install script (SIGTERM via the runner's abortSignal). runBootstrap
   // resolves with { cancelled: true }, which surfaces the recovery overlay.
@@ -6313,14 +6313,14 @@ ipcMain.handle('lydia:bootstrap:cancel', async () => {
   }
   return { ok: false, cancelled: false }
 })
-ipcMain.handle('lydia:boot-progress:get', async () => bootProgressState)
-ipcMain.handle('lydia:bootstrap:get', async () => getBootstrapState())
-ipcMain.handle('lydia:connection-config:get', async (_event, profile) =>
+ipcMain.handle('alice:boot-progress:get', async () => bootProgressState)
+ipcMain.handle('alice:bootstrap:get', async () => getBootstrapState())
+ipcMain.handle('alice:connection-config:get', async (_event, profile) =>
   sanitizeDesktopConnectionConfig(readDesktopConnectionConfig(), profile)
 )
-ipcMain.handle('lydia:connection-config:test', async (_event, payload) => testDesktopConnectionConfig(payload))
-ipcMain.handle('lydia:connection-config:probe', async (_event, rawUrl) => probeRemoteAuthMode(rawUrl))
-ipcMain.handle('lydia:connection-config:oauth-login', async (_event, rawUrl) => {
+ipcMain.handle('alice:connection-config:test', async (_event, payload) => testDesktopConnectionConfig(payload))
+ipcMain.handle('alice:connection-config:probe', async (_event, rawUrl) => probeRemoteAuthMode(rawUrl))
+ipcMain.handle('alice:connection-config:oauth-login', async (_event, rawUrl) => {
   // Open the gateway's OAuth login window and wait for the session cookie to
   // land in the OAuth partition. The caller (settings UI) typically saves the
   // remote config with authMode='oauth' first, then calls this. We normalize
@@ -6329,7 +6329,7 @@ ipcMain.handle('lydia:connection-config:oauth-login', async (_event, rawUrl) => 
   await openOauthLoginWindow(baseUrl)
   return { ok: true, baseUrl, connected: await hasOauthSessionCookie(baseUrl) }
 })
-ipcMain.handle('lydia:connection-config:oauth-logout', async (_event, rawUrl) => {
+ipcMain.handle('alice:connection-config:oauth-logout', async (_event, rawUrl) => {
   const baseUrl = rawUrl ? normalizeRemoteBaseUrl(rawUrl) : ''
   await clearOauthSession(baseUrl || undefined)
   // Report against the SAME liveness notion the Settings indicator uses
@@ -6337,13 +6337,13 @@ ipcMain.handle('lydia:connection-config:oauth-logout', async (_event, rawUrl) =>
   // as still-connected rather than silently signed-out.
   return { ok: true, connected: baseUrl ? await hasLiveOauthSession(baseUrl) : false }
 })
-ipcMain.handle('lydia:connection-config:save', async (_event, payload) => {
+ipcMain.handle('alice:connection-config:save', async (_event, payload) => {
   const config = coerceDesktopConnectionConfig(payload)
   writeDesktopConnectionConfig(config)
 
   return sanitizeDesktopConnectionConfig(config, payload?.profile)
 })
-ipcMain.handle('lydia:connection-config:apply', async (_event, payload) => {
+ipcMain.handle('alice:connection-config:apply', async (_event, payload) => {
   const config = coerceDesktopConnectionConfig(payload)
   writeDesktopConnectionConfig(config)
 
@@ -6364,8 +6364,8 @@ ipcMain.handle('lydia:connection-config:apply', async (_event, payload) => {
   return sanitizeDesktopConnectionConfig(config, payload?.profile)
 })
 
-ipcMain.handle('lydia:profile:get', async () => ({ profile: readActiveDesktopProfile() }))
-ipcMain.handle('lydia:profile:set', async (_event, name) => {
+ipcMain.handle('alice:profile:get', async () => ({ profile: readActiveDesktopProfile() }))
+ipcMain.handle('alice:profile:set', async (_event, name) => {
   const next = writeActiveDesktopProfile(name)
 
   // Switching profiles is a backend re-home: relaunch the dashboard under the
@@ -6377,11 +6377,11 @@ ipcMain.handle('lydia:profile:set', async (_event, name) => {
   return { profile: next }
 })
 
-ipcMain.on('lydia:previewShortcutActive', (_event, active) => {
+ipcMain.on('alice:previewShortcutActive', (_event, active) => {
   previewShortcutActive = Boolean(active)
 })
 
-ipcMain.handle('lydia:requestMicrophoneAccess', async () => {
+ipcMain.handle('alice:requestMicrophoneAccess', async () => {
   if (!IS_MAC || typeof systemPreferences.askForMediaAccess !== 'function') {
     return true
   }
@@ -6520,7 +6520,7 @@ async function mergeRemoteProfileSessions(searchParams, remoteProfiles) {
   return { ...base, sessions: merged.slice(offset, offset + limit), total, profile_totals: profileTotals }
 }
 
-ipcMain.handle('lydia:api', async (_event, request) => {
+ipcMain.handle('alice:api', async (_event, request) => {
   // Remote-profile session requests would otherwise hit the local primary off
   // each profile's on-disk state.db — fine for local profiles, but a remote
   // profile's sessions live on its remote host, so the UI's IDs 404 (or mutations
@@ -6558,7 +6558,7 @@ ipcMain.handle('lydia:api', async (_event, request) => {
   })
 })
 
-ipcMain.handle('lydia:notify', (_event, payload) => {
+ipcMain.handle('alice:notify', (_event, payload) => {
   if (!Notification.isSupported()) return false
   // Action buttons render only on signed macOS builds; elsewhere they're dropped
   // and the body click still works.
@@ -6573,21 +6573,21 @@ ipcMain.handle('lydia:notify', (_event, payload) => {
     if (!mainWindow || mainWindow.isDestroyed()) return
     focusWindow(mainWindow)
     if (payload?.sessionId) {
-      mainWindow.webContents.send('lydia:focus-session', payload.sessionId)
+      mainWindow.webContents.send('alice:focus-session', payload.sessionId)
     }
   })
   notification.on('action', (_actionEvent, index) => {
     if (!mainWindow || mainWindow.isDestroyed()) return
     const action = actions[index]
     if (action?.id) {
-      mainWindow.webContents.send('lydia:notification-action', { sessionId: payload?.sessionId, actionId: action.id })
+      mainWindow.webContents.send('alice:notification-action', { sessionId: payload?.sessionId, actionId: action.id })
     }
   })
   notification.show()
   return true
 })
 
-ipcMain.handle('lydia:readFileDataUrl', async (_event, filePath) => {
+ipcMain.handle('alice:readFileDataUrl', async (_event, filePath) => {
   const { resolvedPath } = await resolveReadableFileForIpc(filePath, {
     maxBytes: DATA_URL_READ_MAX_BYTES,
     purpose: 'File preview'
@@ -6596,7 +6596,7 @@ ipcMain.handle('lydia:readFileDataUrl', async (_event, filePath) => {
   return `data:${mimeTypeForPath(resolvedPath)};base64,${data.toString('base64')}`
 })
 
-ipcMain.handle('lydia:readFileText', async (_event, filePath) => {
+ipcMain.handle('alice:readFileText', async (_event, filePath) => {
   const { resolvedPath, stat } = await resolveReadableFileForIpc(filePath, {
     maxBytes: TEXT_PREVIEW_SOURCE_MAX_BYTES,
     purpose: 'Text preview'
@@ -6623,7 +6623,7 @@ ipcMain.handle('lydia:readFileText', async (_event, filePath) => {
   }
 })
 
-ipcMain.handle('lydia:selectPaths', async (_event, options = {}) => {
+ipcMain.handle('alice:selectPaths', async (_event, options = {}) => {
   const properties = options?.directories ? ['openDirectory'] : ['openFile']
   if (options?.multiple !== false) properties.push('multiSelections')
 
@@ -6647,14 +6647,14 @@ ipcMain.handle('lydia:selectPaths', async (_event, options = {}) => {
   return result.filePaths
 })
 
-ipcMain.handle('lydia:writeClipboard', (_event, text) => {
+ipcMain.handle('alice:writeClipboard', (_event, text) => {
   clipboard.writeText(String(text || ''))
   return true
 })
 
-ipcMain.handle('lydia:saveImageFromUrl', (_event, url) => saveImageFromUrl(String(url || '')))
+ipcMain.handle('alice:saveImageFromUrl', (_event, url) => saveImageFromUrl(String(url || '')))
 
-ipcMain.handle('lydia:saveImageBuffer', async (_event, payload) => {
+ipcMain.handle('alice:saveImageBuffer', async (_event, payload) => {
   const data = payload?.data
   if (!data) throw new Error('saveImageBuffer: missing data')
 
@@ -6662,7 +6662,7 @@ ipcMain.handle('lydia:saveImageBuffer', async (_event, payload) => {
   return writeComposerImage(buffer, payload?.ext || '.png')
 })
 
-ipcMain.handle('lydia:saveClipboardImage', async () => {
+ipcMain.handle('alice:saveClipboardImage', async () => {
   const image = clipboard.readImage()
   if (image && !image.isEmpty()) {
     return writeComposerImage(image.toPNG(), '.png')
@@ -6681,15 +6681,15 @@ ipcMain.handle('lydia:saveClipboardImage', async () => {
   return ''
 })
 
-ipcMain.handle('lydia:normalizePreviewTarget', (_event, target, baseDir) =>
+ipcMain.handle('alice:normalizePreviewTarget', (_event, target, baseDir) =>
   normalizePreviewTarget(String(target || ''), baseDir ? String(baseDir) : '')
 )
 
-ipcMain.handle('lydia:watchPreviewFile', (_event, url) => watchPreviewFile(String(url || '')))
+ipcMain.handle('alice:watchPreviewFile', (_event, url) => watchPreviewFile(String(url || '')))
 
-ipcMain.handle('lydia:stopPreviewFileWatch', (_event, id) => stopPreviewFileWatch(String(id || '')))
+ipcMain.handle('alice:stopPreviewFileWatch', (_event, id) => stopPreviewFileWatch(String(id || '')))
 
-ipcMain.on('lydia:titlebar-theme', (_event, payload) => {
+ipcMain.on('alice:titlebar-theme', (_event, payload) => {
   if (!payload || !isHexColor(payload.background) || !isHexColor(payload.foreground)) {
     return
   }
@@ -6702,7 +6702,7 @@ ipcMain.on('lydia:titlebar-theme', (_event, payload) => {
 })
 
 // Pin the native appearance to the app theme (see NATIVE_THEME_CONFIG_PATH).
-ipcMain.on('lydia:native-theme', (_event, mode) => {
+ipcMain.on('alice:native-theme', (_event, mode) => {
   if (!THEME_SOURCES.has(mode)) {
     return
   }
@@ -6715,7 +6715,7 @@ ipcMain.on('lydia:native-theme', (_event, mode) => {
 
 // See-through window translucency. Persist + re-apply opacity to every open
 // window at runtime (no recreation, so caching/sessions are untouched).
-ipcMain.on('lydia:translucency', (_event, payload) => {
+ipcMain.on('alice:translucency', (_event, payload) => {
   const next = clampIntensity(payload && payload.intensity)
 
   if (next === translucencyIntensity) {
@@ -6730,13 +6730,13 @@ ipcMain.on('lydia:translucency', (_event, payload) => {
   }
 })
 
-ipcMain.handle('lydia:openExternal', (_event, url) => {
+ipcMain.handle('alice:openExternal', (_event, url) => {
   if (!openExternalUrl(url)) {
     throw new Error('Invalid external URL')
   }
 })
 
-ipcMain.handle('lydia:openPreviewInBrowser', async (_event, url) => {
+ipcMain.handle('alice:openPreviewInBrowser', async (_event, url) => {
   if (!(await openPreviewInBrowser(url))) {
     throw new Error('Invalid preview URL')
   }
@@ -6746,15 +6746,15 @@ ipcMain.handle('lydia:openPreviewInBrowser', async (_event, url) => {
 // settings mount and seeds the value into the picker; writing back persists
 // it via writeDefaultProjectDir so resolveAliceCwd picks it up on the next
 // session spawn (no app restart needed).
-ipcMain.handle('lydia:setting:defaultProjectDir:get', async () => ({
+ipcMain.handle('alice:setting:defaultProjectDir:get', async () => ({
   dir: readDefaultProjectDir(),
   defaultLabel: app.getPath('home'),
   resolvedCwd: resolveAliceCwd()
 }))
 
-ipcMain.handle('lydia:workspace:sanitize', async (_event, cwd) => sanitizeWorkspaceCwd(cwd))
+ipcMain.handle('alice:workspace:sanitize', async (_event, cwd) => sanitizeWorkspaceCwd(cwd))
 
-ipcMain.handle('lydia:setting:defaultProjectDir:set', async (_event, dir) => {
+ipcMain.handle('alice:setting:defaultProjectDir:set', async (_event, dir) => {
   const next = typeof dir === 'string' && dir.trim() ? dir.trim() : null
 
   if (next) {
@@ -6770,7 +6770,7 @@ ipcMain.handle('lydia:setting:defaultProjectDir:set', async (_event, dir) => {
   return { dir: next }
 })
 
-ipcMain.handle('lydia:setting:defaultProjectDir:pick', async () => {
+ipcMain.handle('alice:setting:defaultProjectDir:pick', async () => {
   const result = await dialog.showOpenDialog({
     title: 'Choose default project directory',
     properties: ['openDirectory', 'createDirectory'],
@@ -6784,9 +6784,9 @@ ipcMain.handle('lydia:setting:defaultProjectDir:pick', async () => {
   return { canceled: false, dir: result.filePaths[0] }
 })
 
-ipcMain.handle('lydia:fetchLinkTitle', (_event, url) => fetchLinkTitle(url))
+ipcMain.handle('alice:fetchLinkTitle', (_event, url) => fetchLinkTitle(url))
 
-ipcMain.handle('lydia:logs:reveal', async () => {
+ipcMain.handle('alice:logs:reveal', async () => {
   try {
     await fs.promises.mkdir(path.dirname(DESKTOP_LOG_PATH), { recursive: true })
     if (!fileExists(DESKTOP_LOG_PATH)) {
@@ -6799,7 +6799,7 @@ ipcMain.handle('lydia:logs:reveal', async () => {
   }
 })
 
-ipcMain.handle('lydia:logs:recent', async () => ({ path: DESKTOP_LOG_PATH, lines: aliceLog.slice(-200) }))
+ipcMain.handle('alice:logs:recent', async () => ({ path: DESKTOP_LOG_PATH, lines: aliceLog.slice(-200) }))
 
 function isExecutableFile(filePath) {
   if (!filePath || !path.isAbsolute(filePath)) {
@@ -6983,12 +6983,12 @@ function disposeTerminalSession(id) {
   return true
 }
 
-ipcMain.handle('lydia:fs:readDir', async (_event, dirPath) => readDirForIpc(dirPath))
+ipcMain.handle('alice:fs:readDir', async (_event, dirPath) => readDirForIpc(dirPath))
 
-ipcMain.handle('lydia:fs:gitRoot', async (_event, startPath) => gitRootForIpc(startPath))
+ipcMain.handle('alice:fs:gitRoot', async (_event, startPath) => gitRootForIpc(startPath))
 
 // Reveal a path in the OS file manager (Finder / Explorer / Files).
-ipcMain.handle('lydia:fs:reveal', async (_event, targetPath) => {
+ipcMain.handle('alice:fs:reveal', async (_event, targetPath) => {
   const target = String(targetPath || '').trim()
 
   if (!target) {
@@ -7007,7 +7007,7 @@ ipcMain.handle('lydia:fs:reveal', async (_event, targetPath) => {
 // Rename a file/folder in place. The renderer passes the existing path + a new
 // base name; the destination is resolved in the SAME parent dir so a rename can
 // never move the item elsewhere or traverse out. Rejects on a name collision.
-ipcMain.handle('lydia:fs:rename', async (_event, targetPath, newName) => {
+ipcMain.handle('alice:fs:rename', async (_event, targetPath, newName) => {
   const src = String(targetPath || '').trim()
   const name = String(newName || '').trim()
 
@@ -7034,7 +7034,7 @@ ipcMain.handle('lydia:fs:rename', async (_event, targetPath, newName) => {
 // is hardened (resolveRequestedPathForIpc) and the parent must already exist —
 // this never creates directory trees or escapes the allowed roots, and content
 // is size-capped so it can't be abused as a bulk-write primitive.
-ipcMain.handle('lydia:fs:writeText', async (_event, filePath, content) => {
+ipcMain.handle('alice:fs:writeText', async (_event, filePath, content) => {
   const raw = String(filePath || '').trim()
 
   if (!raw) {
@@ -7060,7 +7060,7 @@ ipcMain.handle('lydia:fs:writeText', async (_event, filePath, content) => {
 
 // Move a file/folder to the OS trash (recoverable) — the VS Code "Delete"
 // default. `shell.trashItem` routes to Finder/Explorer/Files trash per platform.
-ipcMain.handle('lydia:fs:trash', async (_event, targetPath) => {
+ipcMain.handle('alice:fs:trash', async (_event, targetPath) => {
   const target = String(targetPath || '').trim()
 
   if (!target) {
@@ -7074,67 +7074,67 @@ ipcMain.handle('lydia:fs:trash', async (_event, targetPath) => {
 
 // Git-driven worktree management ("Start work" flow). Errors surface to the
 // renderer as rejected promises so it can toast a friendly message.
-ipcMain.handle('lydia:git:worktreeList', async (_event, repoPath) => listWorktrees(repoPath, resolveGitBinary()))
+ipcMain.handle('alice:git:worktreeList', async (_event, repoPath) => listWorktrees(repoPath, resolveGitBinary()))
 
-ipcMain.handle('lydia:git:worktreeAdd', async (_event, repoPath, options) =>
+ipcMain.handle('alice:git:worktreeAdd', async (_event, repoPath, options) =>
   addWorktree(repoPath, options || {}, resolveGitBinary())
 )
 
-ipcMain.handle('lydia:git:worktreeRemove', async (_event, repoPath, worktreePath, options) =>
+ipcMain.handle('alice:git:worktreeRemove', async (_event, repoPath, worktreePath, options) =>
   removeWorktree(repoPath, worktreePath, options || {}, resolveGitBinary())
 )
 
-ipcMain.handle('lydia:git:branchSwitch', async (_event, repoPath, branch) =>
+ipcMain.handle('alice:git:branchSwitch', async (_event, repoPath, branch) =>
   switchBranch(repoPath, branch, resolveGitBinary())
 )
 
-ipcMain.handle('lydia:git:branchList', async (_event, repoPath) => listBranches(repoPath, resolveGitBinary()))
+ipcMain.handle('alice:git:branchList', async (_event, repoPath) => listBranches(repoPath, resolveGitBinary()))
 
 // Compact repo status (branch, ahead/behind, change counts + files) for the
 // composer coding rail. Returns null on a non-repo / remote backend so the rail
 // hides cleanly rather than erroring.
-ipcMain.handle('lydia:git:repoStatus', async (_event, repoPath) => repoStatus(repoPath, resolveGitBinary()))
+ipcMain.handle('alice:git:repoStatus', async (_event, repoPath) => repoStatus(repoPath, resolveGitBinary()))
 
 // Codex-style review pane: list changed files for a scope, fetch one file's
 // unified diff, and stage / unstage / revert. Reads return empty on failure;
 // mutations reject so the renderer can toast.
-ipcMain.handle('lydia:git:review:list', async (_event, repoPath, scope, baseRef) =>
+ipcMain.handle('alice:git:review:list', async (_event, repoPath, scope, baseRef) =>
   reviewList(repoPath, scope, baseRef, resolveGitBinary())
 )
-ipcMain.handle('lydia:git:review:diff', async (_event, repoPath, filePath, scope, baseRef, staged) =>
+ipcMain.handle('alice:git:review:diff', async (_event, repoPath, filePath, scope, baseRef, staged) =>
   reviewDiff(repoPath, filePath, scope, baseRef, staged, resolveGitBinary())
 )
 // Working-tree-vs-HEAD diff for one file (the preview's "show the diff" view).
-ipcMain.handle('lydia:git:fileDiff', async (_event, repoPath, filePath) =>
+ipcMain.handle('alice:git:fileDiff', async (_event, repoPath, filePath) =>
   fileDiffVsHead(repoPath, filePath, resolveGitBinary())
 )
-ipcMain.handle('lydia:git:review:stage', async (_event, repoPath, filePath) =>
+ipcMain.handle('alice:git:review:stage', async (_event, repoPath, filePath) =>
   reviewStage(repoPath, filePath ?? null, resolveGitBinary())
 )
-ipcMain.handle('lydia:git:review:unstage', async (_event, repoPath, filePath) =>
+ipcMain.handle('alice:git:review:unstage', async (_event, repoPath, filePath) =>
   reviewUnstage(repoPath, filePath ?? null, resolveGitBinary())
 )
-ipcMain.handle('lydia:git:review:revert', async (_event, repoPath, filePath) =>
+ipcMain.handle('alice:git:review:revert', async (_event, repoPath, filePath) =>
   reviewRevert(repoPath, filePath ?? null, resolveGitBinary())
 )
-ipcMain.handle('lydia:git:review:revParse', async (_event, repoPath, ref) =>
+ipcMain.handle('alice:git:review:revParse', async (_event, repoPath, ref) =>
   reviewRevParse(repoPath, ref, resolveGitBinary())
 )
-ipcMain.handle('lydia:git:review:commit', async (_event, repoPath, message, push) =>
+ipcMain.handle('alice:git:review:commit', async (_event, repoPath, message, push) =>
   reviewCommit(repoPath, message, Boolean(push), resolveGitBinary())
 )
-ipcMain.handle('lydia:git:review:commitContext', async (_event, repoPath) =>
+ipcMain.handle('alice:git:review:commitContext', async (_event, repoPath) =>
   reviewCommitContext(repoPath, resolveGitBinary())
 )
-ipcMain.handle('lydia:git:review:push', async (_event, repoPath) => reviewPush(repoPath, resolveGitBinary()))
-ipcMain.handle('lydia:git:review:shipInfo', async (_event, repoPath) => reviewShipInfo(repoPath, resolveGhBinary()))
-ipcMain.handle('lydia:git:review:createPr', async (_event, repoPath) =>
+ipcMain.handle('alice:git:review:push', async (_event, repoPath) => reviewPush(repoPath, resolveGitBinary()))
+ipcMain.handle('alice:git:review:shipInfo', async (_event, repoPath) => reviewShipInfo(repoPath, resolveGhBinary()))
+ipcMain.handle('alice:git:review:createPr', async (_event, repoPath) =>
   reviewCreatePr(repoPath, resolveGitBinary(), resolveGhBinary())
 )
 
 // Repo-first project discovery: scan bounded roots for git repos (pure fs walk,
 // no native addon). Never throws to the renderer — failures yield an empty list.
-ipcMain.handle('lydia:git:scanRepos', async (_event, roots, options) => {
+ipcMain.handle('alice:git:scanRepos', async (_event, roots, options) => {
   try {
     return await scanGitRepos(roots || [], options || {})
   } catch {
@@ -7210,7 +7210,7 @@ ipcMain.handle('alice:terminal:resize', (_event, id, size = {}) => {
 })
 ipcMain.handle('alice:terminal:dispose', (_event, id) => disposeTerminalSession(String(id || '')))
 
-ipcMain.handle('lydia:updates:check', async () =>
+ipcMain.handle('alice:updates:check', async () =>
   checkUpdates().catch(error => ({
     supported: true,
     branch: readDesktopUpdateConfig().branch,
@@ -7220,7 +7220,7 @@ ipcMain.handle('lydia:updates:check', async () =>
   }))
 )
 
-ipcMain.handle('lydia:updates:apply', async (_event, payload) =>
+ipcMain.handle('alice:updates:apply', async (_event, payload) =>
   applyUpdates(payload || {}).catch(error => ({
     ok: false,
     error: 'apply-failed',
@@ -7228,9 +7228,9 @@ ipcMain.handle('lydia:updates:apply', async (_event, payload) =>
   }))
 )
 
-ipcMain.handle('lydia:updates:branch:get', async () => readDesktopUpdateConfig())
+ipcMain.handle('alice:updates:branch:get', async () => readDesktopUpdateConfig())
 
-ipcMain.handle('lydia:updates:branch:set', async (_event, name) => {
+ipcMain.handle('alice:updates:branch:set', async (_event, name) => {
   const branch = typeof name === 'string' && name.trim() ? name.trim() : DEFAULT_UPDATE_BRANCH
   writeDesktopUpdateConfig({ branch })
   return { branch }
@@ -7271,7 +7271,7 @@ function showAboutPanelFresh() {
   app.showAboutPanel()
 }
 
-ipcMain.handle('lydia:version', async () => ({
+ipcMain.handle('alice:version', async () => ({
   appVersion: resolveLydiaVersion(),
   electronVersion: process.versions.electron,
   nodeVersion: process.versions.node,
@@ -7470,18 +7470,18 @@ async function runDesktopUninstall(mode) {
   return { ok: true, mode, willRemoveAppBundle: Boolean(removeBundle), scriptPath }
 }
 
-ipcMain.handle('lydia:uninstall:summary', async () => getUninstallSummary())
-ipcMain.handle('lydia:uninstall:run', async (_event, payload) => {
+ipcMain.handle('alice:uninstall:summary', async () => getUninstallSummary())
+ipcMain.handle('alice:uninstall:run', async (_event, payload) => {
   const mode = payload && typeof payload === 'object' ? payload.mode : payload
   return runDesktopUninstall(String(mode || ''))
 })
 
 // Download a VS Code Marketplace extension and return the raw color-theme JSON
 // it contributes. No theme code is executed — we only read JSON from the .vsix.
-ipcMain.handle('lydia:vscode-theme:fetch', async (_event, id) => fetchMarketplaceThemes(String(id || '')))
+ipcMain.handle('alice:vscode-theme:fetch', async (_event, id) => fetchMarketplaceThemes(String(id || '')))
 
 // Search the Marketplace for color-theme extensions (empty query = top installs).
-ipcMain.handle('lydia:vscode-theme:search', async (_event, query) => searchMarketplaceThemes(String(query || ''), 20))
+ipcMain.handle('alice:vscode-theme:search', async (_event, query) => searchMarketplaceThemes(String(query || ''), 20))
 
 // ---------------------------------------------------------------------------
 // lydia:// deep links (e.g. lydia://blueprint/morning-brief?time=08:00).
@@ -7523,7 +7523,7 @@ function handleDeepLink(url) {
   try {
     if (mainWindow.isMinimized()) mainWindow.restore()
     mainWindow.focus()
-    mainWindow.webContents.send('lydia:deep-link', payload)
+    mainWindow.webContents.send('alice:deep-link', payload)
     rememberLog(`[deeplink] delivered ${kind}/${name}`)
   } catch (err) {
     rememberLog(`[deeplink] delivery failed: ${err.message}`)
@@ -7532,7 +7532,7 @@ function handleDeepLink(url) {
 
 // Renderer calls this (via IPC) once it has mounted its deep-link listener, so
 // a link that arrived during boot/install is flushed exactly once.
-ipcMain.handle('lydia:deep-link-ready', () => {
+ipcMain.handle('alice:deep-link-ready', () => {
   _rendererReadyForDeepLink = true
   if (_pendingDeepLink) {
     const queued = _pendingDeepLink
@@ -7560,7 +7560,7 @@ function registerDeepLinkProtocol() {
 }
 
 // Single-instance lock: deep links on a running app (Win/Linux) arrive as a
-// second-instance argv. Without the lock a second `lydia://` launch spawns a
+// second-instance argv. Without the lock a second `alice://` launch spawns a
 // whole new app instead of routing into the running one.
 const _gotSingleInstanceLock = app.requestSingleInstanceLock()
 if (!_gotSingleInstanceLock) {
