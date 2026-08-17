@@ -112,18 +112,18 @@ contextBridge.exposeInMainWorld('lydiaDesktop', {
     }
   },
   terminal: {
-    dispose: id => ipcRenderer.invoke('lydia:terminal:dispose', id),
-    resize: (id, size) => ipcRenderer.invoke('lydia:terminal:resize', id, size),
-    start: options => ipcRenderer.invoke('lydia:terminal:start', options),
-    write: (id, data) => ipcRenderer.invoke('lydia:terminal:write', id, data),
+    dispose: id => ipcRenderer.invoke('alice:terminal:dispose', id),
+    resize: (id, size) => ipcRenderer.invoke('alice:terminal:resize', id, size),
+    start: options => ipcRenderer.invoke('alice:terminal:start', options),
+    write: (id, data) => ipcRenderer.invoke('alice:terminal:write', id, data),
     onData: (id, callback) => {
-      const channel = `lydia:terminal:${id}:data`
+      const channel = `alice:terminal:${id}:data`
       const listener = (_event, payload) => callback(payload)
       ipcRenderer.on(channel, listener)
       return () => ipcRenderer.removeListener(channel, listener)
     },
     onExit: (id, callback) => {
-      const channel = `lydia:terminal:${id}:exit`
+      const channel = `alice:terminal:${id}:exit`
       const listener = (_event, payload) => callback(payload)
       ipcRenderer.on(channel, listener)
       return () => ipcRenderer.removeListener(channel, listener)

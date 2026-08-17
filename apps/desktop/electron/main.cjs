@@ -1343,7 +1343,7 @@ function isCommandScript(command) {
   return IS_WINDOWS && /\.(cmd|bat)$/i.test(command || '')
 }
 
-function unwrapWindowsVenvLydiaCommand(command, backendArgs) {
+function unwrapWindowsVenvAliceCommand(command, backendArgs) {
   if (!IS_WINDOWS || !command || isCommandScript(command)) return null
 
   const resolved = path.resolve(String(command))
@@ -2417,7 +2417,7 @@ function shellQuote(value) {
 // restart to load the new GUI" if the swap can't be performed.
 async function applyUpdatesPosixInApp() {
   const updateRoot = resolveUpdateRoot()
-  const lydia = resolveLydiaCliBinary(updateRoot)
+  const alice = resolveLydiaCliBinary(updateRoot)
   if (!lydia) {
     emitUpdateProgress({ stage: 'manual', message: 'alice update', percent: null })
     return { ok: true, manual: true, command: 'alice update', lydiaRoot: updateRoot }
@@ -2469,7 +2469,7 @@ async function applyUpdatesPosixInApp() {
   }
 
   emitUpdateProgress({ stage: 'update', message: 'Updating Alice (git + dependencies)…', percent: 10 })
-  const updated = await runStreamedUpdate(lydia, ['update', '--yes', ...branchArgs], {
+  const updated = await runStreamedUpdate(alice, ['update', '--yes', ...branchArgs], {
     cwd: updateRoot,
     env,
     stage: 'update'
@@ -2487,7 +2487,7 @@ async function applyUpdatesPosixInApp() {
     if (attempt > 0) {
       emitUpdateProgress({ stage: 'rebuild', message: 'Retrying the desktop rebuild…', percent: 60 })
     }
-    return runStreamedUpdate(lydia, ['desktop', '--build-only'], { cwd: updateRoot, env, stage: 'rebuild' })
+    return runStreamedUpdate(alice, ['desktop', '--build-only'], { cwd: updateRoot, env, stage: 'rebuild' })
   })
   if (rebuilt.code !== 0) {
     emitUpdateProgress({
@@ -2550,7 +2550,7 @@ async function applyUpdatesPosixInApp() {
         env: relaunchEnv,
         cwd: process.cwd()
       })
-      const scriptPath = path.join(app.getPath('temp'), `lydia-desktop-update-${Date.now()}.sh`)
+      const scriptPath = path.join(app.getPath('temp'), `alice-desktop-update-${Date.now()}.sh`)
       try {
         fs.writeFileSync(scriptPath, relaunchScript, { mode: 0o755 })
         const child = spawn('/bin/bash', [scriptPath], { detached: true, stdio: 'ignore' })
@@ -2648,7 +2648,7 @@ fi
 /usr/bin/xattr -dr com.apple.quarantine "$DST" 2>/dev/null || true
 /usr/bin/open "$DST"
 `
-  const scriptPath = path.join(app.getPath('temp'), `lydia-desktop-update-${Date.now()}.sh`)
+  const scriptPath = path.join(app.getPath('temp'), `alice-desktop-update-${Date.now()}.sh`)
   try {
     fs.writeFileSync(scriptPath, swapScript, { mode: 0o755 })
   } catch (err) {
@@ -2796,7 +2796,7 @@ function isPackagedInstallPath(dir) {
   })
 }
 
-function resolveLydiaCwd() {
+function resolveAliceCwd() {
   // In a packaged build, `process.cwd()` resolves to the install root (e.g.
   // `…/win-unpacked` on Windows or `/Applications/Lydia.app/Contents/...`
   // on macOS). Sessions spawned there leave files inside the app bundle
@@ -2831,7 +2831,7 @@ function sanitizeWorkspaceCwd(cwd) {
   const trimmed = typeof cwd === 'string' ? cwd.trim() : ''
 
   if (!trimmed || isPackagedInstallPath(trimmed)) {
-    return { cwd: resolveLydiaCwd(), sanitized: Boolean(trimmed) }
+    return { cwd: resolveAliceCwd(), sanitized: Boolean(trimmed) }
   }
 
   try {
@@ -2844,7 +2844,7 @@ function sanitizeWorkspaceCwd(cwd) {
     // Fall through to the resolved default.
   }
 
-  return { cwd: resolveLydiaCwd(), sanitized: Boolean(trimmed) }
+  return { cwd: resolveAliceCwd(), sanitized: Boolean(trimmed) }
 }
 
 // Persisted "Default project directory" — surfaced as a setting in the
@@ -3003,17 +3003,17 @@ function resolveAliceBackend(backendArgs) {
   //    don't want to take ownership of an install we didn't perform.
   //    ALICE_DESKTOP_IGNORE_EXISTING=1 forces the bootstrap path for testing.
   if (process.env.ALICE_DESKTOP_IGNORE_EXISTING !== '1') {
-    let lydiaCommand = null
-    const lydiaOverride = process.env.LYDIA_DESKTOP_LYDIA
+    let aliceCommand = null
+    const aliceOverride = process.env.ALICE_DESKTOP_LYDIA
 
-    if (lydiaOverride) {
-      const resolvedOverride = findOnPath(lydiaOverride)
+    if (aliceOverride) {
+      const resolvedOverride = findOnPath(aliceOverride)
       if (resolvedOverride) {
         lydiaCommand = resolvedOverride
-      } else if (!isWindowsBinaryPathInWsl(lydiaOverride, { isWsl: IS_WSL })) {
-        lydiaCommand = lydiaOverride
+      } else if (!isWindowsBinaryPathInWsl(aliceOverride, { isWsl: IS_WSL })) {
+        lydiaCommand = aliceOverride
       } else {
-        rememberLog(`Ignoring Windows Lydia override under WSL: ${lydiaOverride}`)
+        rememberLog(`Ignoring Windows Lydia override under WSL: ${aliceOverride}`)
       }
     } else {
       lydiaCommand = findOnPath('lydia')
@@ -3027,7 +3027,7 @@ function resolveAliceBackend(backendArgs) {
     }
 
     if (lydiaCommand) {
-      const unwrapped = unwrapWindowsVenvLydiaCommand(lydiaCommand, backendArgs)
+      const unwrapped = unwrapWindowsVenvAliceCommand(lydiaCommand, backendArgs)
       if (unwrapped) {
         return unwrapped
       }
@@ -3039,10 +3039,10 @@ function resolveAliceBackend(backendArgs) {
       // dead backend instead of the first-launch installer. The cheap
       // `--version` probe (see backend-probes.cjs) catches that case
       // and lets the resolver fall through to step 6 / bootstrap.
-      const shellForProbe = isCommandScript(lydiaCommand)
+      const shellForProbe = isCommandScript(aliceCommand)
       if (verifyAliceCli(lydiaCommand, { shell: shellForProbe })) {
         return (
-          unwrapWindowsVenvLydiaCommand(lydiaCommand, backendArgs) || {
+          unwrapWindowsVenvAliceCommand(lydiaCommand, backendArgs) || {
             label: `existing Lydia CLI at ${lydiaCommand}`,
             command: lydiaCommand,
             args: backendArgs,
@@ -3762,7 +3762,7 @@ function expandUserPath(filePath) {
 
 async function previewFileTarget(rawTarget, baseDir) {
   const raw = String(rawTarget || '').trim()
-  const base = baseDir ? path.resolve(expandUserPath(baseDir)) : resolveLydiaCwd()
+  const base = baseDir ? path.resolve(expandUserPath(baseDir)) : resolveAliceCwd()
   let resolved = resolveRequestedPathForIpc(/^file:/i.test(raw) ? raw : expandUserPath(raw), {
     baseDir: base,
     purpose: 'Preview target'
@@ -4153,7 +4153,7 @@ function installPreviewShortcut(window) {
 // survives reloads/restarts) rather than a main-process JSON file. The main
 // process owns setZoomLevel, so we mirror each change into localStorage and
 // read it back on did-finish-load to re-apply after reloads or crash recovery.
-const ZOOM_STORAGE_KEY = 'lydia:desktop:zoomLevel'
+const ZOOM_STORAGE_KEY = 'alice:desktop:zoomLevel'
 
 function clampZoomLevel(value) {
   if (!Number.isFinite(value)) return 0
@@ -4386,7 +4386,7 @@ function installMediaPermissions() {
 //     "is the user signed in at all?" gate / display signal.
 // ---------------------------------------------------------------------------
 
-const OAUTH_SESSION_PARTITION = 'persist:lydia-remote-oauth'
+const OAUTH_SESSION_PARTITION = 'persist:alice-remote-oauth'
 
 function getOauthSession() {
   if (oauthSession || !app.isReady()) return oauthSession
@@ -5348,7 +5348,7 @@ async function spawnPoolBackend(profile, entry) {
   const backend = await ensureRuntime(resolveAliceBackend(backendArgs))
   // Route old runtimes (no `serve`) through the legacy `dashboard --no-open`.
   backend.args = getBackendArgsForRuntime(backend)
-  const lydiaCwd = resolveLydiaCwd()
+  const lydiaCwd = resolveAliceCwd()
   const webDist = resolveWebDist()
   const readyFile = backend.readyFile ? makeDashboardReadyFile() : null
 
@@ -5565,7 +5565,7 @@ async function startAlice() {
     const backend = await ensureRuntime(resolveAliceBackend(backendArgs))
     // Route old runtimes (no `serve`) through the legacy `dashboard --no-open`.
     backend.args = getBackendArgsForRuntime(backend)
-    const lydiaCwd = resolveLydiaCwd()
+    const lydiaCwd = resolveAliceCwd()
     const webDist = resolveWebDist()
     const readyFile = backend.readyFile ? makeDashboardReadyFile() : null
 
@@ -6744,12 +6744,12 @@ ipcMain.handle('lydia:openPreviewInBrowser', async (_event, url) => {
 
 // User-configurable default project directory. The renderer reads this on
 // settings mount and seeds the value into the picker; writing back persists
-// it via writeDefaultProjectDir so resolveLydiaCwd picks it up on the next
+// it via writeDefaultProjectDir so resolveAliceCwd picks it up on the next
 // session spawn (no app restart needed).
 ipcMain.handle('lydia:setting:defaultProjectDir:get', async () => ({
   dir: readDefaultProjectDir(),
   defaultLabel: app.getPath('home'),
-  resolvedCwd: resolveLydiaCwd()
+  resolvedCwd: resolveAliceCwd()
 }))
 
 ipcMain.handle('lydia:workspace:sanitize', async (_event, cwd) => sanitizeWorkspaceCwd(cwd))
@@ -6962,7 +6962,7 @@ function terminalShellEnv() {
 }
 
 function terminalChannel(id, suffix) {
-  return `lydia:terminal:${id}:${suffix}`
+  return `alice:terminal:${id}:${suffix}`
 }
 
 function disposeTerminalSession(id) {
@@ -7142,7 +7142,7 @@ ipcMain.handle('lydia:git:scanRepos', async (_event, roots, options) => {
   }
 })
 
-ipcMain.handle('lydia:terminal:start', async (event, payload = {}) => {
+ipcMain.handle('alice:terminal:start', async (event, payload = {}) => {
   if (!nodePty) {
     throw new Error('PTY support is unavailable. Reinstall desktop dependencies and restart Lydia.')
   }
@@ -7182,7 +7182,7 @@ ipcMain.handle('lydia:terminal:start', async (event, payload = {}) => {
   return { cwd, id, shell: name }
 })
 
-ipcMain.handle('lydia:terminal:write', (_event, id, data) => {
+ipcMain.handle('alice:terminal:write', (_event, id, data) => {
   const sessionInfo = terminalSessions.get(String(id || ''))
 
   if (!sessionInfo) {
@@ -7194,7 +7194,7 @@ ipcMain.handle('lydia:terminal:write', (_event, id, data) => {
   return true
 })
 
-ipcMain.handle('lydia:terminal:resize', (_event, id, size = {}) => {
+ipcMain.handle('alice:terminal:resize', (_event, id, size = {}) => {
   const sessionInfo = terminalSessions.get(String(id || ''))
 
   if (!sessionInfo) {
@@ -7208,7 +7208,7 @@ ipcMain.handle('lydia:terminal:resize', (_event, id, size = {}) => {
 
   return true
 })
-ipcMain.handle('lydia:terminal:dispose', (_event, id) => disposeTerminalSession(String(id || '')))
+ipcMain.handle('alice:terminal:dispose', (_event, id) => disposeTerminalSession(String(id || '')))
 
 ipcMain.handle('lydia:updates:check', async () =>
   checkUpdates().catch(error => ({
@@ -7489,13 +7489,13 @@ ipcMain.handle('lydia:vscode-theme:search', async (_event, query) => searchMarke
 // running app's chat composer. Three delivery paths: macOS 'open-url',
 // Win/Linux running-app 'second-instance' (argv), Win/Linux cold-start argv.
 // ---------------------------------------------------------------------------
-const LYDIA_PROTOCOL = 'lydia'
+const ALICE_PROTOCOL = "alice"
 let _pendingDeepLink = null
 let _rendererReadyForDeepLink = false
 
 function _extractDeepLink(argv) {
   if (!Array.isArray(argv)) return null
-  return argv.find(a => typeof a === 'string' && a.startsWith(`${LYDIA_PROTOCOL}://`)) || null
+  return argv.find(a => typeof a === 'string' && a.startsWith(`${ALICE_PROTOCOL}://`)) || null
 }
 
 function handleDeepLink(url) {
@@ -7538,7 +7538,7 @@ ipcMain.handle('lydia:deep-link-ready', () => {
     const queued = _pendingDeepLink
     _pendingDeepLink = null
     handleDeepLink(
-      `${LYDIA_PROTOCOL}://${queued.kind}/${encodeURIComponent(queued.name)}` +
+      `${ALICE_PROTOCOL}://${queued.kind}/${encodeURIComponent(queued.name)}` +
         (Object.keys(queued.params).length ? '?' + new URLSearchParams(queued.params).toString() : '')
     )
   }
@@ -7550,9 +7550,9 @@ function registerDeepLinkProtocol() {
     if (process.defaultApp && process.argv.length >= 2) {
       // Dev: register with the electron exec path + entry script so the OS can
       // relaunch us with the URL.
-      app.setAsDefaultProtocolClient(LYDIA_PROTOCOL, process.execPath, [path.resolve(process.argv[1])])
+      app.setAsDefaultProtocolClient(ALICE_PROTOCOL, process.execPath, [path.resolve(process.argv[1])])
     } else {
-      app.setAsDefaultProtocolClient(LYDIA_PROTOCOL)
+      app.setAsDefaultProtocolClient(ALICE_PROTOCOL)
     }
   } catch (err) {
     rememberLog(`[deeplink] protocol registration failed: ${err.message}`)
