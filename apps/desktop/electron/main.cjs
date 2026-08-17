@@ -390,7 +390,7 @@ const BOOTSTRAP_MARKER_SCHEMA_VERSION = 1
 const DESKTOP_CONNECTION_CONFIG_PATH = path.join(app.getPath('userData'), 'connection.json')
 const DESKTOP_UPDATE_CONFIG_PATH = path.join(app.getPath('userData'), 'updates.json')
 const DESKTOP_WINDOW_STATE_PATH = path.join(app.getPath('userData'), 'window-state.json')
-// active-profile.json records which Lydia profile the desktop launches its
+// active-profile.json records which Alice profile the desktop launches its
 // local backend as. When set, startAlice() passes `lydia --profile <name>
 // dashboard …`, which deterministically pins ALICE_HOME (see
 // _apply_profile_override in alice_cli/main.py) and bypasses the sticky
@@ -3098,7 +3098,7 @@ function resolveAliceBackend(backendArgs) {
   //    is a recoverable state the GUI can drive through.
   return {
     kind: 'bootstrap-needed',
-    label: 'Lydia Agent not installed yet; bootstrap required',
+    label: 'Alice Agent not installed yet; bootstrap required',
     command: null,
     args: backendArgs,
     bootstrap: true,
@@ -3277,7 +3277,7 @@ function fetchJson(url, token, options = {}) {
     const timeoutMs = resolveTimeoutMs(options.timeoutMs, DEFAULT_FETCH_TIMEOUT_MS)
 
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      reject(new Error(`Unsupported Lydia backend URL protocol: ${parsed.protocol}`))
+      reject(new Error(`Unsupported Alice backend URL protocol: ${parsed.protocol}`))
       return
     }
 
@@ -3287,7 +3287,7 @@ function fetchJson(url, token, options = {}) {
         method: options.method || 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-Lydia-Session-Token': token,
+          'X-Alice-Session-Token': token,
           ...(body ? { 'Content-Length': String(body.length) } : {})
         }
       },
@@ -3315,7 +3315,7 @@ function fetchJson(url, token, options = {}) {
             reject(
               new Error(
                 `Expected JSON from ${url} but got HTML (status ${res.statusCode}). ` +
-                  'The endpoint is likely missing on the Lydia backend.'
+                  'The endpoint is likely missing on the Alice backend.'
               )
             )
             return
@@ -3331,7 +3331,7 @@ function fetchJson(url, token, options = {}) {
 
     req.on('error', reject)
     req.setTimeout(timeoutMs, () => {
-      req.destroy(new Error(`Timed out connecting to Lydia backend after ${timeoutMs}ms`))
+      req.destroy(new Error(`Timed out connecting to Alice backend after ${timeoutMs}ms`))
     })
     if (body) req.write(body)
     req.end()
@@ -3341,7 +3341,7 @@ function fetchJson(url, token, options = {}) {
 function fetchPublicJson(url, options = {}) {
   // Credential-free JSON GET/POST for public gateway endpoints
   // (``/api/status``, ``/api/auth/providers``). Unlike ``fetchJson`` it sends
-  // NO ``X-Lydia-Session-Token`` header — used by the auth-mode probe before
+  // NO ``X-Alice-Session-Token`` header — used by the auth-mode probe before
   // any credentials exist, and any time we must not leak a token to an
   // endpoint that doesn't need one.
   return new Promise((resolve, reject) => {
@@ -3357,7 +3357,7 @@ function fetchPublicJson(url, options = {}) {
     const timeoutMs = resolveTimeoutMs(options.timeoutMs, DEFAULT_FETCH_TIMEOUT_MS)
 
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      reject(new Error(`Unsupported Lydia backend URL protocol: ${parsed.protocol}`))
+      reject(new Error(`Unsupported Alice backend URL protocol: ${parsed.protocol}`))
       return
     }
 
@@ -3389,7 +3389,7 @@ function fetchPublicJson(url, options = {}) {
             reject(
               new Error(
                 `Expected JSON from ${url} but got HTML (status ${res.statusCode}). ` +
-                  'The endpoint is likely missing on the Lydia backend.'
+                  'The endpoint is likely missing on the Alice backend.'
               )
             )
             return
@@ -3405,7 +3405,7 @@ function fetchPublicJson(url, options = {}) {
 
     req.on('error', reject)
     req.setTimeout(timeoutMs, () => {
-      req.destroy(new Error(`Timed out connecting to Lydia backend after ${timeoutMs}ms`))
+      req.destroy(new Error(`Timed out connecting to Alice backend after ${timeoutMs}ms`))
     })
     if (body) req.write(body)
     req.end()
@@ -3918,7 +3918,7 @@ async function waitForLydia(baseUrl, token) {
     }
   }
 
-  throw new Error(`Lydia backend did not become ready: ${lastError?.message || 'timeout'}`)
+  throw new Error(`Alice backend did not become ready: ${lastError?.message || 'timeout'}`)
 }
 
 function getWindowButtonPosition() {
@@ -4556,7 +4556,7 @@ function fetchJsonViaOauthSession(url, options = {}) {
       return
     }
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      reject(new Error(`Unsupported Lydia backend URL protocol: ${parsed.protocol}`))
+      reject(new Error(`Unsupported Alice backend URL protocol: ${parsed.protocol}`))
       return
     }
     const body = serializeJsonBody(options.body)
@@ -4579,7 +4579,7 @@ function fetchJsonViaOauthSession(url, options = {}) {
       } catch {
         // already finished
       }
-      reject(new Error(`Timed out connecting to Lydia backend after ${timeoutMs}ms`))
+      reject(new Error(`Timed out connecting to Alice backend after ${timeoutMs}ms`))
     }, timeoutMs)
 
     request.on('response', res => {
@@ -4987,7 +4987,7 @@ async function resolveRemoteBackend(profile) {
     if (!rawEnvToken) {
       throw new Error(
         'LYDIA_DESKTOP_REMOTE_URL is set but LYDIA_DESKTOP_REMOTE_TOKEN is not. ' +
-          'Both must be provided to connect to a remote Lydia backend.'
+          'Both must be provided to connect to a remote Alice backend.'
       )
     }
     return buildRemoteConnection(rawEnvUrl, 'token', rawEnvToken, 'env')
@@ -5352,7 +5352,7 @@ async function spawnPoolBackend(profile, entry) {
   const webDist = resolveWebDist()
   const readyFile = backend.readyFile ? makeDashboardReadyFile() : null
 
-  rememberLog(`Starting Lydia backend for profile "${profile}" via ${backend.label}`)
+  rememberLog(`Starting Alice backend for profile "${profile}" via ${backend.label}`)
 
   const child = spawn(
     backend.command,
@@ -5390,16 +5390,16 @@ async function spawnPoolBackend(profile, entry) {
     rejectStart = reject
   })
   child.once('error', error => {
-    rememberLog(`Lydia backend for profile "${profile}" failed to start: ${error.message}`)
+    rememberLog(`Alice backend for profile "${profile}" failed to start: ${error.message}`)
     backendPool.delete(profile)
     rejectStart?.(error)
   })
   child.once('exit', (code, signal) => {
-    rememberLog(`Lydia backend for profile "${profile}" exited (${signal || code})`)
+    rememberLog(`Alice backend for profile "${profile}" exited (${signal || code})`)
     backendPool.delete(profile)
     if (!ready) {
       rejectStart?.(
-        new Error(`Lydia backend for profile "${profile}" exited before it became ready (${signal || code}).`)
+        new Error(`Alice backend for profile "${profile}" exited before it became ready (${signal || code}).`)
       )
     }
   })
@@ -5416,7 +5416,7 @@ async function spawnPoolBackend(profile, entry) {
   ready = true
   const authToken = await adoptServedDashboardToken(baseUrl, token, {
     childAlive: () => child.exitCode === null && !child.killed,
-    label: `Lydia backend for profile "${profile}"`,
+    label: `Alice backend for profile "${profile}"`,
     rememberLog
   })
   entry.token = authToken
@@ -5515,16 +5515,16 @@ async function startAlice() {
   if (connectionPromise) return connectionPromise
 
   connectionPromise = (async () => {
-    await advanceBootProgress('backend.resolve', 'Resolving Lydia backend', 8)
+    await advanceBootProgress('backend.resolve', 'Resolving Alice backend', 8)
     // Resolve for the desktop's primary profile so a per-profile remote
     // override on the active profile is honored (falls back to env / global).
     const remote = await resolveRemoteBackend(primaryProfileKey())
     if (remote) {
-      await advanceBootProgress('backend.remote', `Connecting to remote Lydia backend at ${remote.baseUrl}`, 24)
+      await advanceBootProgress('backend.remote', `Connecting to remote Alice backend at ${remote.baseUrl}`, 24)
       await waitForLydia(remote.baseUrl, remote.token)
       updateBootProgress({
         phase: 'backend.ready',
-        message: 'Remote Lydia backend is ready',
+        message: 'Remote Alice backend is ready',
         progress: 94,
         running: true,
         error: null
@@ -5569,8 +5569,8 @@ async function startAlice() {
     const webDist = resolveWebDist()
     const readyFile = backend.readyFile ? makeDashboardReadyFile() : null
 
-    await advanceBootProgress('backend.spawn', `Starting Lydia backend via ${backend.label}`, 84)
-    rememberLog(`Starting Lydia backend via ${backend.label}`)
+    await advanceBootProgress('backend.spawn', `Starting Alice backend via ${backend.label}`, 84)
+    rememberLog(`Starting Alice backend via ${backend.label}`)
 
     lydiaProcess = spawn(
       backend.command,
@@ -5610,11 +5610,11 @@ async function startAlice() {
       rejectBackendStart = reject
     })
     lydiaProcess.once('error', error => {
-      rememberLog(`Lydia backend failed to start: ${error.message}`)
+      rememberLog(`Alice backend failed to start: ${error.message}`)
       updateBootProgress(
         {
           error: error.message,
-          message: `Lydia backend failed to start: ${error.message}`,
+          message: `Alice backend failed to start: ${error.message}`,
           phase: 'backend.error',
           running: false
         },
@@ -5626,12 +5626,12 @@ async function startAlice() {
       rejectBackendStart?.(error)
     })
     lydiaProcess.once('exit', (code, signal) => {
-      rememberLog(`Lydia backend exited (${signal || code})`)
+      rememberLog(`Alice backend exited (${signal || code})`)
       lydiaProcess = null
       connectionPromise = null
       sendBackendExit({ code, signal })
       if (!backendReady) {
-        const message = `Lydia backend exited before it became ready (${signal || code}).`
+        const message = `Alice backend exited before it became ready (${signal || code}).`
         updateBootProgress(
           {
             error: message,
@@ -5643,13 +5643,13 @@ async function startAlice() {
         )
         rejectBackendStart?.(
           new Error(
-            `Lydia backend exited before it became ready (${signal || code}). Log: ${DESKTOP_LOG_PATH}\n${recentAliceLog()}`
+            `Alice backend exited before it became ready (${signal || code}). Log: ${DESKTOP_LOG_PATH}\n${recentAliceLog()}`
           )
         )
       }
     })
 
-    await advanceBootProgress('backend.port', 'Waiting for Lydia backend to launch', 86)
+    await advanceBootProgress('backend.port', 'Waiting for Alice backend to launch', 86)
     // Discover the ephemeral port the child bound to
     const port = await Promise.race([
       waitForDashboardPortAnnouncement(lydiaProcess, { readyFile }),
@@ -5660,7 +5660,7 @@ async function startAlice() {
     }
 
     const baseUrl = `http://127.0.0.1:${port}`
-    await advanceBootProgress('backend.wait', 'Waiting for Lydia backend to become ready', 90)
+    await advanceBootProgress('backend.wait', 'Waiting for Alice backend to become ready', 90)
     await Promise.race([waitForLydia(baseUrl, token), backendStartFailed])
     backendReady = true
     backendStartFailure = null
@@ -5671,7 +5671,7 @@ async function startAlice() {
     })
     updateBootProgress({
       phase: 'backend.ready',
-      message: 'Lydia backend is ready. Finalizing desktop startup',
+      message: 'Alice backend is ready. Finalizing desktop startup',
       progress: 94,
       running: true,
       error: null
@@ -6114,7 +6114,7 @@ ipcMain.handle('lydia:connection:revalidate', async () => {
     // Unreachable remote: drop the stale cache so the renderer's next reconnect
     // tick rebuilds a fresh, reachable descriptor. resetLydiaConnection only
     // nulls connectionPromise for a remote (no child to SIGTERM).
-    rememberLog('Cached remote Lydia backend failed liveness probe; dropping stale connection.')
+    rememberLog('Cached remote Alice backend failed liveness probe; dropping stale connection.')
     resetLydiaConnection()
     return { ok: true, rebuilt: true }
   }
@@ -7375,7 +7375,7 @@ async function runDesktopUninstall(mode) {
     return {
       ok: false,
       error: 'agent-missing',
-      message: `Can't run the uninstaller: no Lydia Agent venv at ${VENV_ROOT}.`
+      message: `Can't run the uninstaller: no Alice Agent venv at ${VENV_ROOT}.`
     }
   }
 

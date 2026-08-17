@@ -87,7 +87,7 @@ test('resolveServedDashboardToken propagates fetch errors so callers can fall ba
 })
 
 test('fetchPublicText rejects unsupported protocols', async () => {
-  await assert.rejects(() => fetchPublicText('file:///tmp/index.html'), /Unsupported Lydia backend URL protocol/)
+  await assert.rejects(() => fetchPublicText('file:///tmp/index.html'), /Unsupported Alice backend URL protocol/)
 })
 
 test('isForeignBackendToken only flags a mismatched token from a dead child', () => {
@@ -120,7 +120,7 @@ test('adoptServedDashboardToken refuses a foreign token when our child is dead',
       adoptServedDashboardToken('http://127.0.0.1:9120', 'spawn-token', {
         childAlive: () => false,
         fetchText: async () => '<script>window.__LYDIA_SESSION_TOKEN__="squatter-token";</script>',
-        label: 'Lydia backend for profile "work"'
+        label: 'Alice backend for profile "work"'
       }),
     /profile "work".*process we did not spawn/
   )
@@ -138,5 +138,5 @@ test('adoptServedDashboardToken falls back to the spawn token when the fetch fai
 
   assert.equal(token, 'spawn-token')
   assert.equal(logs.length, 1)
-  assert.match(logs[0], /could not read served dashboard token \(Lydia backend\): boom/)
+  assert.match(logs[0], /could not read served dashboard token \(Alice backend\): boom/)
 })

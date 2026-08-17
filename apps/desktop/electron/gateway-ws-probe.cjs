@@ -5,7 +5,7 @@
  *
  *   1. The MAIN process hits ``GET /api/status`` over HTTP (token in a header)
  *      to confirm the backend is up. This is what "Test remote" historically
- *      checked, and what the boot logs print as "Remote Lydia backend is
+ *      checked, and what the boot logs print as "Remote Alice backend is
  *      ready".
  *   2. The RENDERER then opens a live WebSocket to ``/api/ws`` (credential in a
  *      query param) via ``gateway.connect()``. The chat surface only works once

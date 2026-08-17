@@ -77,7 +77,7 @@ function waitForDashboardPort(child, timeoutMs = resolvePortAnnounceTimeoutMs())
 
     function onExit(code, signal) {
       cleanup()
-      reject(new Error(`Lydia backend: exited before port announcement (${signal || code})`))
+      reject(new Error(`Alice backend: exited before port announcement (${signal || code})`))
     }
 
     function onError(err) {
@@ -87,7 +87,7 @@ function waitForDashboardPort(child, timeoutMs = resolvePortAnnounceTimeoutMs())
 
     const timer = setTimeout(() => {
       cleanup()
-      reject(new Error(`Timed out waiting for Lydia backend port announcement (${timeoutMs}ms)`))
+      reject(new Error(`Timed out waiting for Alice backend port announcement (${timeoutMs}ms)`))
     }, timeoutMs)
 
     child.stdout.on('data', onData)
@@ -131,7 +131,7 @@ function waitForDashboardReadyFile(readyFile, child, timeoutMs = resolvePortAnno
 
     function onExit(code, signal) {
       cleanup()
-      reject(new Error(`Lydia backend: exited before port announcement (${signal || code})`))
+      reject(new Error(`Alice backend: exited before port announcement (${signal || code})`))
     }
 
     function onError(err) {
@@ -141,7 +141,7 @@ function waitForDashboardReadyFile(readyFile, child, timeoutMs = resolvePortAnno
 
     const timer = setTimeout(() => {
       cleanup()
-      reject(new Error(`Timed out waiting for Lydia backend port announcement (${timeoutMs}ms)`))
+      reject(new Error(`Timed out waiting for Alice backend port announcement (${timeoutMs}ms)`))
     }, timeoutMs)
 
     child.on('exit', onExit)

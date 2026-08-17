@@ -112,7 +112,7 @@ test('rejects with the timeout message after the deadline', async () => {
   const child = makeFakeChild()
   await assert.rejects(
     waitForDashboardPort(child, 20),
-    /Timed out waiting for Lydia backend port announcement \(20ms\)/
+    /Timed out waiting for Alice backend port announcement \(20ms\)/
   )
 })
 

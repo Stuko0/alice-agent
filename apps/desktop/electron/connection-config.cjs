@@ -11,7 +11,7 @@
  *
  * Background on the two auth models a remote gateway can use:
  *   - 'token': legacy static dashboard session token. REST uses an
- *     `X-Lydia-Session-Token` header; WS uses `?token=`.
+ *     `X-Alice-Session-Token` header; WS uses `?token=`.
  *   - 'oauth': hosted gateways gate behind an OAuth provider. REST is authed
  *     by an HttpOnly session cookie; WS upgrades require a single-use
  *     `?ticket=` minted at POST /api/auth/ws-ticket. The gateway advertises
@@ -185,7 +185,7 @@ function pathWithGlobalRemoteProfile(path, profile, opts = {}) {
 
   let parsed
   try {
-    parsed = new URL(rawPath, 'http://lydia.local')
+    parsed = new URL(rawPath, 'http://alice.local')
   } catch {
     return path
   }
@@ -231,7 +231,7 @@ function resolveAuthMode(inputAuthMode, existingAuthMode) {
 }
 
 /**
- * True if any cookie in `cookies` is a lydia session ACCESS-token cookie
+ * True if any cookie in `cookies` is a alice session ACCESS-token cookie
  * with a non-empty value. `cookies` is an array of {name, value} (the shape
  * Electron's session.cookies.get returns).
  *
