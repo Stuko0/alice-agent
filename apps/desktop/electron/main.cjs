@@ -726,7 +726,7 @@ if (IS_WINDOWS) {
 // the seed here just covers the first open and any non-menu invocation path.
 app.setAboutPanelOptions({
   applicationName: APP_NAME,
-  applicationVersion: resolveLydiaVersion(),
+  applicationVersion: resolveAliceVersion(),
   copyright: 'Copyright © 2026 Nous Research'
 })
 
@@ -1289,7 +1289,7 @@ async function waitForUpdateToFinish() {
   while (marker && Date.now() < deadline) {
     await advanceBootProgress(
       'backend.update-wait',
-      'An update is finishing — Lydia will start automatically when it completes…',
+      'An update is finishing — Alice will start automatically when it completes…',
       12
     )
     await new Promise(r => setTimeout(r, UPDATE_WAIT_POLL_MS))
@@ -1469,7 +1469,7 @@ function looksLikeDesktopAppBinary(commandPath) {
   )
 }
 
-function isLydiaSourceRoot(root) {
+function isAliceSourceRoot(root) {
   return directoryExists(root) && fileExists(path.join(root, 'alice_cli', 'main.py'))
 }
 
@@ -1825,8 +1825,8 @@ const schedulePersistWindowState = debounce(persistWindowState, 250)
 function resolveUpdateRoot() {
   const candidates = [
     process.env.ALICE_DESKTOP_ROOT && path.resolve(process.env.ALICE_DESKTOP_ROOT),
-    !IS_PACKAGED && isLydiaSourceRoot(SOURCE_REPO_ROOT) ? SOURCE_REPO_ROOT : null,
-    isLydiaSourceRoot(ACTIVE_ALICE_ROOT) ? ACTIVE_ALICE_ROOT : null
+    !IS_PACKAGED && isAliceSourceRoot(SOURCE_REPO_ROOT) ? SOURCE_REPO_ROOT : null,
+    isAliceSourceRoot(ACTIVE_ALICE_ROOT) ? ACTIVE_ALICE_ROOT : null
   ].filter(Boolean)
 
   return candidates.find(c => directoryExists(path.join(c, '.git'))) || candidates[0] || ACTIVE_ALICE_ROOT
@@ -2250,7 +2250,7 @@ async function applyUpdates(opts = {}) {
     emitUpdateProgress({
       stage: 'restart',
       message:
-        'Updating Alice — this window will close and the updater will open. Don’t reopen Lydia yourself; it restarts automatically when the update finishes.',
+        'Updating Alice — this window will close and the updater will open. Don’t reopen Alice yourself; it restarts automatically when the update finishes.',
       percent: 100
     })
     repairMacUpdaterHelper(updater)
@@ -2361,7 +2361,7 @@ async function handOffWindowsBootstrapRecovery(reason) {
 
 // Resolve the lydia CLI to drive an in-app update: prefer the venv shim in
 // the install we're updating, fall back to `lydia` on PATH.
-function resolveLydiaCliBinary(updateRoot) {
+function resolveAliceCliBinary(updateRoot) {
   const venvAlice = path.join(updateRoot, 'venv', 'bin', 'alice')
   if (fileExists(venvAlice)) return venvAlice
   return findOnPath('alice') || null
@@ -2417,7 +2417,7 @@ function shellQuote(value) {
 // restart to load the new GUI" if the swap can't be performed.
 async function applyUpdatesPosixInApp() {
   const updateRoot = resolveUpdateRoot()
-  const alice = resolveLydiaCliBinary(updateRoot)
+  const alice = resolveAliceCliBinary(updateRoot)
   if (!lydia) {
     emitUpdateProgress({ stage: 'manual', message: 'alice update', percent: null })
     return { ok: true, manual: true, command: 'alice update', lydiaRoot: updateRoot }
@@ -2569,7 +2569,7 @@ async function applyUpdatesPosixInApp() {
           backendUpdated: true,
           guiUpdated: false,
           manualRestart: true,
-          message: 'Backend updated. Quit and reopen Lydia to load the new version.'
+          message: 'Backend updated. Quit and reopen Alice to load the new version.'
         }
       }
     }
@@ -2579,7 +2579,7 @@ async function applyUpdatesPosixInApp() {
         stage: 'guiSkew',
         message:
           'Backend updated, but the desktop app package was not changed. ' +
-          'Update or reinstall the Lydia desktop app to match.',
+          'Update or reinstall the Alice desktop app to match.',
         percent: 100
       })
       rememberLog(
@@ -2603,13 +2603,13 @@ async function applyUpdatesPosixInApp() {
       sandboxBlocked: true,
       message:
         'Backend updated. The rebuilt app can’t relaunch automatically ' +
-        '(sandbox helper needs root). Quit and reopen Lydia to finish.'
+        '(sandbox helper needs root). Quit and reopen Alice to finish.'
     }
   }
 
   const rebuiltApp = [
-    path.join(updateRoot, 'apps', 'desktop', 'release', 'mac-arm64', 'Lydia.app'),
-    path.join(updateRoot, 'apps', 'desktop', 'release', 'mac', 'Lydia.app')
+    path.join(updateRoot, 'apps', 'desktop', 'release', 'mac-arm64', 'Alice.app'),
+    path.join(updateRoot, 'apps', 'desktop', 'release', 'mac', 'Alice.app')
   ].find(directoryExists)
   const targetApp = runningAppBundle()
 
@@ -2704,7 +2704,7 @@ function readBootstrapMarker() {
 function isActiveRuntimeUsable() {
   const venvPython = getVenvPython(VENV_ROOT)
   return (
-    isLydiaSourceRoot(ACTIVE_ALICE_ROOT) &&
+    isAliceSourceRoot(ACTIVE_ALICE_ROOT) &&
     fileExists(venvPython) &&
     canImportAliceCli(venvPython, {
       env: {
@@ -2798,7 +2798,7 @@ function isPackagedInstallPath(dir) {
 
 function resolveAliceCwd() {
   // In a packaged build, `process.cwd()` resolves to the install root (e.g.
-  // `…/win-unpacked` on Windows or `/Applications/Lydia.app/Contents/...`
+  // `…/win-unpacked` on Windows or `/Applications/Alice.app/Contents/...`
   // on macOS). Sessions spawned there leave files inside the app bundle
   // and bewilder users when "where did my files go?" is the install dir.
   // The user-configurable default project directory wins over everything,
@@ -2973,7 +2973,7 @@ function resolveAliceBackend(backendArgs) {
   // 1. Explicit override -- ALICE_DESKTOP_ROOT points at a developer
   //    checkout. Honour it as-is (no bootstrap; the user is driving).
   const overrideRoot = process.env.ALICE_DESKTOP_ROOT && path.resolve(process.env.ALICE_DESKTOP_ROOT)
-  if (overrideRoot && isLydiaSourceRoot(overrideRoot)) {
+  if (overrideRoot && isAliceSourceRoot(overrideRoot)) {
     const backend = createPythonBackend(overrideRoot, `Alice source at ${overrideRoot}`, backendArgs)
     if (backend) return backend
   }
@@ -2981,8 +2981,8 @@ function resolveAliceBackend(backendArgs) {
   // 2. Development source -- when running `npm run dev` from a checkout, the
   //    cloned repo at SOURCE_REPO_ROOT takes precedence over ACTIVE and any
   //    installed `lydia` on PATH so local Python edits are actually exercised.
-  //    (In dev with no checkout, SOURCE_REPO_ROOT won't pass isLydiaSourceRoot.)
-  if (!IS_PACKAGED && isLydiaSourceRoot(SOURCE_REPO_ROOT)) {
+  //    (In dev with no checkout, SOURCE_REPO_ROOT won't pass isAliceSourceRoot.)
+  if (!IS_PACKAGED && isAliceSourceRoot(SOURCE_REPO_ROOT)) {
     const backend = createPythonBackend(SOURCE_REPO_ROOT, `Alice source at ${SOURCE_REPO_ROOT}`, backendArgs)
     if (backend) return backend
   }
@@ -3013,7 +3013,7 @@ function resolveAliceBackend(backendArgs) {
       } else if (!isWindowsBinaryPathInWsl(aliceOverride, { isWsl: IS_WSL })) {
         aliceCommand = aliceOverride
       } else {
-        rememberLog(`Ignoring Windows Lydia override under WSL: ${aliceOverride}`)
+        rememberLog(`Ignoring Windows Alice override under WSL: ${aliceOverride}`)
       }
     } else {
       aliceCommand = findOnPath('alice')
@@ -3128,7 +3128,7 @@ async function ensureRuntime(backend) {
   // will rewire startup to spawn the window first and route bootstrap events
   // to a renderer-side install overlay.
   if (backend.kind === 'bootstrap-needed') {
-    rememberLog('[bootstrap] no Lydia install found; starting first-launch bootstrap')
+    rememberLog('[bootstrap] no Alice install found; starting first-launch bootstrap')
 
     if (await handOffWindowsBootstrapRecovery('bootstrap-needed')) {
       const handoffError = new Error(
@@ -3196,7 +3196,7 @@ async function ensureRuntime(backend) {
 
     if (!bootstrapResult.ok) {
       const bootstrapError = new Error(
-        `Lydia bootstrap failed${bootstrapResult.failedStage ? ` at stage '${bootstrapResult.failedStage}'` : ''}: ` +
+        `Alice bootstrap failed${bootstrapResult.failedStage ? ` at stage '${bootstrapResult.failedStage}'` : ''}: ` +
           `${bootstrapResult.error || 'unknown error'}. ` +
           `Check ${path.join(ALICE_HOME, 'logs', 'desktop.log')} for the full transcript.`
       )
@@ -3221,7 +3221,7 @@ async function ensureRuntime(backend) {
   // sync flow exited through, minus all the factory/pip/marker machinery
   // (install.ps1 owns those concerns now and the bootstrap-complete marker
   // attests they ran successfully).
-  if (!isLydiaSourceRoot(ACTIVE_ALICE_ROOT)) {
+  if (!isAliceSourceRoot(ACTIVE_ALICE_ROOT)) {
     throw new Error(
       `Lydia install at ${ACTIVE_ALICE_ROOT} is missing or incomplete. ` +
         'Reinstall via the desktop installer or scripts/install.ps1.'
@@ -3249,7 +3249,7 @@ async function ensureRuntime(backend) {
     // means we have a half-installed checkout: .git exists, source files
     // exist, but venv is missing or broken. This shouldn't happen in
     // normal flow because isBootstrapComplete() requires
-    // isLydiaSourceRoot() and the bootstrap writes the marker only after
+    // isAliceSourceRoot() and the bootstrap writes the marker only after
     // install.ps1 succeeds. If we hit this, the user (or a deleted venv)
     // broke the invariant; tell them to re-run the install.
     throw new Error(
@@ -5844,7 +5844,7 @@ function spawnPetOverlayWindow(bounds) {
     // taskbar/alt-tab entry. On macOS, cmd-tab is app-level and this can make
     // the whole app look like it vanished when the only newly-created visible
     // window is a frameless overlay. Use NSPanel + Mission Control hiding below
-    // instead, leaving the main Lydia app as the Dock/cmd-tab anchor.
+    // instead, leaving the main Alice.app as the Dock/cmd-tab anchor.
     skipTaskbar: !IS_MAC,
     hasShadow: false,
     alwaysOnTop: true,
@@ -7241,7 +7241,7 @@ ipcMain.handle('alice:updates:branch:set', async (_event, name) => {
 // real Lydia version instead of the Electron app's own package.json version,
 // which historically drifted (stuck at 0.0.2). Falls back to app.getVersion()
 // when the source tree can't be read (e.g. a packaged build without the repo).
-function resolveLydiaVersion() {
+function resolveAliceVersion() {
   try {
     const root = resolveUpdateRoot()
     const initPath = path.join(root, 'alice_cli', '__init__.py')
@@ -7265,14 +7265,14 @@ function resolveLydiaVersion() {
 function showAboutPanelFresh() {
   app.setAboutPanelOptions({
     applicationName: APP_NAME,
-    applicationVersion: resolveLydiaVersion(),
+    applicationVersion: resolveAliceVersion(),
     copyright: 'Copyright © 2026 Nous Research'
   })
   app.showAboutPanel()
 }
 
 ipcMain.handle('alice:version', async () => ({
-  appVersion: resolveLydiaVersion(),
+  appVersion: resolveAliceVersion(),
   electronVersion: process.versions.electron,
   nodeVersion: process.versions.node,
   platform: process.platform,
@@ -7305,7 +7305,7 @@ async function getUninstallSummary() {
   // probe fails — the renderer still needs *something* to render options from.
   const fallback = () => ({
     lydia_home: ALICE_HOME,
-    agent_installed: isLydiaSourceRoot(agentRoot) && fileExists(py),
+    agent_installed: isAliceSourceRoot(agentRoot) && fileExists(py),
     gui_installed: true,
     source_built_artifacts: [],
     packaged_app_paths: [],
