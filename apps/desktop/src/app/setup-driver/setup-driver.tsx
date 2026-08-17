@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { fetchSetupStatus, finishSetup, submitProvider, submitTerminalBackend } from './actions'
-import { $setup, resetSetupDriver } from './store'
+import { $setup, dismissSetupDriver, resetSetupDriver } from './store'
 
 const PROVIDERS: Array<{ id: string; label: string; desc: string }> = [
   { id: 'omniroute', label: 'OmniRoute', desc: 'Free — no account, no CLI needed' },
@@ -36,14 +36,14 @@ export function SetupDriver() {
 
   const handleOverlayClick = useCallback(
     (e: React.MouseEvent) => {
-      if (e.target === overlayRef.current) resetSetupDriver()
+      if (e.target === overlayRef.current) dismissSetupDriver()
     },
     []
   )
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') resetSetupDriver()
+      if (e.key === 'Escape') dismissSetupDriver()
     },
     []
   )
@@ -62,7 +62,7 @@ export function SetupDriver() {
       <div className="relative w-[min(520px,calc(100vw-2rem))] rounded-md border border-border bg-background p-6">
         <button
           type="button"
-          onClick={resetSetupDriver}
+          onClick={dismissSetupDriver}
           className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
           aria-label="Close setup"
         >

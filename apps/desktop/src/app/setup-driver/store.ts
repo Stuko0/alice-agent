@@ -40,6 +40,12 @@ export function chooseTerminalBackend(backend: string) {
   $setup.set({ ...$setup.get(), selectedBackend: backend, step: 'review' })
 }
 
+/** Dismiss the wizard entirely (close button / click-outside / Escape). */
+export function dismissSetupDriver() {
+  $setup.set({ ...$setup.get(), step: 'done', busy: false, error: null })
+}
+
+/** Reset wizard back to step 1 (used by the "Back" button on review step). */
 export function resetSetupDriver() {
   $setup.set({
     step: 'provider',
