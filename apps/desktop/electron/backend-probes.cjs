@@ -2,7 +2,7 @@
  * backend-probes.cjs
  *
  * Cheap "does this candidate backend actually work" checks used by
- * resolveLydiaBackend (main.cjs). The resolver walks a ladder of
+ * resolveAliceBackend (main.cjs). The resolver walks a ladder of
  * candidates -- bootstrap marker, `alice` on PATH, system Python with
  * alice_cli installed -- and historically returned the first candidate
  * whose binary existed on disk. That assumption breaks when a user has
@@ -23,7 +23,7 @@
  *   - 5s timeout (a hung interpreter beats forever, but we still give
  *     slow disks / cold caches room to breathe)
  *   - stdio ignored (we only care about exit code; stdout/stderr are
- *     not surfaced to the user, just to recentLydiaLog for forensics
+ *     not surfaced to the user, just to recentAliceLog for forensics
  *     via the caller's catch block if it chooses)
  *   - any throw -> false (never propagate -- resolver wants a boolean)
  *
@@ -51,7 +51,7 @@ function aliceRuntimeImportProbe() {
  * Return true iff the Lydia runtime import probe exits 0.
  *
  * Used to gate the "fallback to system Python with alice_cli installed"
- * rung of resolveLydiaBackend, and the "bundled Python" rung (when a
+ * rung of resolveAliceBackend, and the "bundled Python" rung (when a
  * `script` path is provided — the probe passes the script itself with
  * `--probe`, trusting the entry point to set up sys.path for the bundled
  * site-packages).
@@ -74,7 +74,7 @@ function aliceRuntimeImportProbe() {
  *   for a bundled site-packages directory.
  * @returns {boolean}
  */
-function canImportLydiaCli(pythonPath, opts = {}) {
+function canImportAliceCli(pythonPath, opts = {}) {
   if (!pythonPath) return false
   const { script } = opts
   try {
@@ -111,7 +111,7 @@ function canImportLydiaCli(pythonPath, opts = {}) {
  * @param {boolean} [opts.shell] - Whether to run through a shell. For
  *   .cmd/.bat shims on Windows execFileSync needs shell:true to find
  *   the cmd interpreter; mirrors the same flag isCommandScript() drives
- *   in resolveLydiaBackend.
+ *   in resolveAliceBackend.
  * @returns {boolean}
  */
 function verifyAliceCli(aliceCommand, opts = {}) {
@@ -130,7 +130,7 @@ function verifyAliceCli(aliceCommand, opts = {}) {
 }
 
 module.exports = {
-  canImportLydiaCli,
+  canImportAliceCli,
   aliceRuntimeImportProbe,
   verifyAliceCli,
   PROBE_TIMEOUT_MS

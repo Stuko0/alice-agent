@@ -34,7 +34,7 @@ const {
   SESSION_WINDOW_MIN_HEIGHT,
   SESSION_WINDOW_MIN_WIDTH
 } = require('./session-windows.cjs')
-const { canImportLydiaCli, verifyAliceCli } = require('./backend-probes.cjs')
+const { canImportAliceCli, verifyAliceCli } = require('./backend-probes.cjs')
 const { createLinkTitleWindow } = require('./link-title-window.cjs')
 const { probeGatewayWebSocket } = require('./gateway-ws-probe.cjs')
 const { adoptServedDashboardToken } = require('./dashboard-token.cjs')
@@ -377,7 +377,7 @@ const VENV_ROOT = path.join(ACTIVE_ALICE_ROOT, 'venv')
 // (Phase 1D) after install.ps1 has completed all stages and the user has
 // finished initial configuration. Presence of this marker means the install
 // is in a known-good state and we can skip the bootstrap flow on subsequent
-// boots, going straight to `resolveLydiaBackend()`. Missing or stale marker
+// boots, going straight to `resolveAliceBackend()`. Missing or stale marker
 // means we re-run the bootstrap; install.ps1's stages are idempotent so a
 // re-run on an already-good install just discovers everything in place.
 //
@@ -1760,7 +1760,7 @@ function resolveGhBinary() {
   return _ghBinaryCache
 }
 
-function recentLydiaLog() {
+function recentAliceLog() {
   return lydiaLog.slice(-20).join('\n')
 }
 
@@ -2706,7 +2706,7 @@ function isActiveRuntimeUsable() {
   return (
     isLydiaSourceRoot(ACTIVE_ALICE_ROOT) &&
     fileExists(venvPython) &&
-    canImportLydiaCli(venvPython, {
+    canImportAliceCli(venvPython, {
       env: {
         PYTHONPATH: [ACTIVE_ALICE_ROOT, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter)
       }
@@ -2937,7 +2937,7 @@ function createActiveBackend(backendArgs) {
   }
 }
 
-function resolveLydiaBackend(backendArgs) {
+function resolveAliceBackend(backendArgs) {
   // 0. Bundled Python (standalone Windows desktop install).
   //    When running from a packaged Windows build, python-embed and the
   //    bundled site-packages live under resources/python/.  This rung takes
@@ -2954,7 +2954,7 @@ function resolveLydiaBackend(backendArgs) {
       rememberLog(`[backend] found bundled Python at ${bundledPython}`)
       // Probe with the entry script's --probe mode, which sets up sys.path
       // for the bundled site-packages before importing alice_cli.
-      if (canImportLydiaCli(bundledPython, { script: bundledScript })) {
+      if (canImportAliceCli(bundledPython, { script: bundledScript })) {
         rememberLog('[backend] bundled Python probe passed — using bundled backend')
         return {
           kind: 'bundled',
@@ -3072,7 +3072,7 @@ function resolveLydiaBackend(backendArgs) {
     // Verify the import works before trusting the candidate; on
     // failure, fall through to step 6 so the bootstrap runner pulls
     // a uv-managed 3.11 into %LOCALAPPDATA%\lydia\alice-agent\venv.
-    if (canImportLydiaCli(python)) {
+    if (canImportAliceCli(python)) {
       return {
         kind: 'python',
         label: `installed alice_cli module via ${python}`,
@@ -3093,7 +3093,7 @@ function resolveLydiaBackend(backendArgs) {
   //    explaining what's missing.
   //
   //    We deliberately do NOT throw here -- throwing inside
-  //    resolveLydiaBackend was the old "no payload" path and forced the
+  //    resolveAliceBackend was the old "no payload" path and forced the
   //    user into a dead end. With the bootstrap protocol, "no install yet"
   //    is a recoverable state the GUI can drive through.
   return {
@@ -3118,7 +3118,7 @@ async function ensureRuntime(backend) {
     return backend
   }
 
-  // backend.kind === 'bootstrap-needed' means resolveLydiaBackend couldn't
+  // backend.kind === 'bootstrap-needed' means resolveAliceBackend couldn't
   // find anything to spawn. Hand off to the bootstrap runner which drives the
   // platform installer, writes the bootstrap-complete marker on success, then
   // we re-resolve to get the now-installed backend.
@@ -3212,7 +3212,7 @@ async function ensureRuntime(backend) {
     rememberLog('[bootstrap] bootstrap complete; marker written. Re-resolving backend.')
     // Re-resolve now that the install exists. The new resolution lands in
     // step 3 (bootstrap-complete marker) and we recurse to wire venvPython.
-    return ensureRuntime(resolveLydiaBackend(backend.args))
+    return ensureRuntime(resolveAliceBackend(backend.args))
   }
 
   // bootstrap=true with a real backend (createActiveBackend path) means we
@@ -5345,7 +5345,7 @@ async function spawnPoolBackend(profile, entry) {
   // step 3 in alice_cli/main.py), so the child re-homes to this profile.
   // --port 0: the OS assigns an ephemeral port; the child announces it on stdout.
   const backendArgs = ['--profile', profile, 'serve', '--host', '127.0.0.1', '--port', '0']
-  const backend = await ensureRuntime(resolveLydiaBackend(backendArgs))
+  const backend = await ensureRuntime(resolveAliceBackend(backendArgs))
   // Route old runtimes (no `serve`) through the legacy `dashboard --no-open`.
   backend.args = getBackendArgsForRuntime(backend)
   const lydiaCwd = resolveLydiaCwd()
@@ -5562,7 +5562,7 @@ async function startAlice() {
       backendArgs.unshift('--profile', activeProfile)
     }
     await advanceBootProgress('backend.runtime', 'Resolving Lydia runtime', 28)
-    const backend = await ensureRuntime(resolveLydiaBackend(backendArgs))
+    const backend = await ensureRuntime(resolveAliceBackend(backendArgs))
     // Route old runtimes (no `serve`) through the legacy `dashboard --no-open`.
     backend.args = getBackendArgsForRuntime(backend)
     const lydiaCwd = resolveLydiaCwd()
@@ -5643,7 +5643,7 @@ async function startAlice() {
         )
         rejectBackendStart?.(
           new Error(
-            `Lydia backend exited before it became ready (${signal || code}). Log: ${DESKTOP_LOG_PATH}\n${recentLydiaLog()}`
+            `Lydia backend exited before it became ready (${signal || code}). Log: ${DESKTOP_LOG_PATH}\n${recentAliceLog()}`
           )
         )
       }
