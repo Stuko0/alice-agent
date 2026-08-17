@@ -2316,7 +2316,7 @@ async function handOffWindowsBootstrapRecovery(reason) {
     ? await resolveHealedBranch(updateRoot, configuredBranch || DEFAULT_UPDATE_BRANCH)
     : configuredBranch || DEFAULT_UPDATE_BRANCH
   const venvBin = path.join(updateRoot, 'venv', IS_WINDOWS ? 'Scripts' : 'bin')
-  const venvAlice = path.join(venvBin, IS_WINDOWS ? 'alice.exe' : 'lydia')
+  const venvAlice = path.join(venvBin, IS_WINDOWS ? 'alice.exe' : 'alice')
   const venvPython = path.join(venvBin, IS_WINDOWS ? 'python.exe' : 'python')
   // Choose the gentle in-place --update when ANY real-install signal is present,
   // not just the `alice.exe` console-script shim. That shim is generated at the
