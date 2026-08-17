@@ -15,7 +15,22 @@ export interface SetupStatus {
   terminal_backend: string
 }
 
+/** Wait until the backend connection is established (max ~30s). */
+async function waitForBackend(maxMs = 30_000): Promise<boolean> {
+  const start = Date.now()
+  while (Date.now() - start < maxMs) {
+    try {
+      const conn = await window.lydiaDesktop.getConnection()
+      if (conn?.baseUrl) return true
+    } catch { /* not ready yet */ }
+    await new Promise(r => setTimeout(r, 500))
+  }
+  return false
+}
+
 export async function fetchSetupStatus(): Promise<SetupStatus | null> {
+  const ready = await waitForBackend()
+  if (!ready) return null
   try {
     return await window.lydiaDesktop.api<SetupStatus>({ path: '/api/setup/status' })
   } catch {
@@ -30,7 +45,7 @@ async function _post<T>(path: string, body: unknown): Promise<T | null> {
       method: 'POST',
       body: JSON.stringify(body),
     })
-  } catch (e) {
+  } catch {
     return null
   }
 }
@@ -40,8 +55,6 @@ export async function submitProvider(providerId: string): Promise<void> {
   setSetupError(null)
   try {
     if (providerId === 'omniroute') {
-      // Bring the gateway up; backend auto-provisions a bundled Node+OmniRoute
-      // into ~/.alice/omniroute/ when no system runtime exists.
       const r = await _post<{ base_url: string; configured: boolean }>('/api/setup/omniroute/start', {})
       if (r === null || !r.configured) {
         setSetupError('OmniRoute failed to start — check ~/.alice/logs/agent.log')

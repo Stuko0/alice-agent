@@ -3101,6 +3101,50 @@ async def api_setup_terminal_backend(request: Request):
     return {"terminal": term}
 
 
+@app.post("/api/setup/provider")
+async def api_setup_provider(request: Request):
+    """Configure the AI provider during first-run wizard.
+
+    Sets ``model.provider`` and ``model.model`` in config.yaml so the
+    backend is ready for inference. OAuth providers (copilot-acp, xai-oauth,
+    openai-codex) are stored as-is; the user completes the OAuth flow later
+    via Settings → Providers.
+    """
+    _require_token(request)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    provider_id = str((body or {}).get("provider", "")).strip()
+    if not provider_id:
+        raise HTTPException(status_code=400, detail="provider is required")
+
+    cfg = load_config()
+    model_cfg = cfg.setdefault("model", {})
+
+    # Map wizard IDs to config provider values
+    PROVIDER_MAP = {
+        "omniroute": "custom",
+        "copilot-acp": "copilot",
+        "xai-oauth": "xai",
+        "openai-codex": "openai",
+    }
+    config_provider = PROVIDER_MAP.get(provider_id, provider_id)
+
+    model_cfg["provider"] = config_provider
+    # Set a sensible default model if not already set
+    if not model_cfg.get("model"):
+        DEFAULT_MODELS = {
+            "custom": "default",
+            "copilot": "gpt-4o",
+            "xai": "grok-3",
+            "openai": "gpt-4o",
+        }
+        model_cfg["model"] = DEFAULT_MODELS.get(config_provider, "")
+    save_config(cfg)
+    return {"provider": config_provider, "model": model_cfg.get("model", "")}
+
+
 @app.post("/api/setup/omniroute/start")
 async def setup_omniroute_start() -> dict:
     """Bring OmniRoute up; provision Node + the gateway when nothing else can.

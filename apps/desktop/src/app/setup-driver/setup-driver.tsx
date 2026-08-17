@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { fetchSetupStatus, finishSetup, submitProvider, submitTerminalBackend } from './actions'
@@ -22,6 +22,7 @@ const BACKENDS: Array<{ id: string; label: string }> = [
 export function SetupDriver() {
   const s = useStore($setup)
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let alive = true
@@ -33,11 +34,41 @@ export function SetupDriver() {
     }
   }, [s.step])
 
+  const handleOverlayClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target === overlayRef.current) resetSetupDriver()
+    },
+    []
+  )
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') resetSetupDriver()
+    },
+    []
+  )
+
   if (needsSetup !== true || s.step === 'done') return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur">
-      <div className="w-[min(520px,calc(100vw-2rem))] rounded-md border border-border bg-background p-6">
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur"
+      onClick={handleOverlayClick}
+      onKeyDown={handleKeyDown}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="relative w-[min(520px,calc(100vw-2rem))] rounded-md border border-border bg-background p-6">
+        <button
+          type="button"
+          onClick={resetSetupDriver}
+          className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
+          aria-label="Close setup"
+        >
+          ✕
+        </button>
+
         <h2 className="mb-1 text-lg font-semibold">Welcome to Alice</h2>
         <p className="mb-4 text-sm text-muted-foreground">Two quick steps and you're chatting.</p>
 
