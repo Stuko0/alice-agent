@@ -5,7 +5,7 @@
 // The desktop app launches its own headless backend via `alice serve` — it
 // must NEVER depend on or launch the browser `dashboard`. But `serve` is a
 // newer subcommand: a runtime that predates it (an older managed install the
-// app hasn't updated yet, or an older `lydia` resolved from PATH) only knows
+// app hasn't updated yet, or an older `alice` resolved from PATH) only knows
 // `dashboard --no-open`. To avoid bricking those users mid-upgrade we detect
 // whether the resolved runtime understands `serve` and, only when it does not,
 // fall back to the legacy `dashboard --no-open` invocation. Both produce the
@@ -15,7 +15,7 @@
 
 /**
  * Build the canonical headless backend argv (always `serve`).
- * @param {string} [profile] optional Lydia profile to pin via `--profile`.
+ * @param {string} [profile] optional Alice profile to pin via `--profile`.
  */
 function serveBackendArgs(profile) {
   const head = profile ? ['--profile', profile] : []

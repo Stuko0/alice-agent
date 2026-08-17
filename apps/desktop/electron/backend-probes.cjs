@@ -37,7 +37,7 @@ const { execFileSync } = require('node:child_process')
 const PROBE_TIMEOUT_MS = 5000
 
 /**
- * Return the Python snippet used to verify Lydia can import far enough to
+ * Return the Python snippet used to verify Alice can import far enough to
  * launch the CLI. Kept exported for tests so dependency regressions are
  * caught without needing a real broken venv fixture.
  *
@@ -48,7 +48,7 @@ function aliceRuntimeImportProbe() {
 }
 
 /**
- * Return true iff the Lydia runtime import probe exits 0.
+ * Return true iff the Alice runtime import probe exits 0.
  *
  * Used to gate the "fallback to system Python with alice_cli installed"
  * rung of resolveAliceBackend, and the "bundled Python" rung (when a
