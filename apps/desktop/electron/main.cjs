@@ -34,7 +34,7 @@ const {
   SESSION_WINDOW_MIN_HEIGHT,
   SESSION_WINDOW_MIN_WIDTH
 } = require('./session-windows.cjs')
-const { canImportLydiaCli, verifyLydiaCli } = require('./backend-probes.cjs')
+const { canImportLydiaCli, verifyAliceCli } = require('./backend-probes.cjs')
 const { createLinkTitleWindow } = require('./link-title-window.cjs')
 const { probeGatewayWebSocket } = require('./gateway-ws-probe.cjs')
 const { adoptServedDashboardToken } = require('./dashboard-token.cjs')
@@ -391,7 +391,7 @@ const DESKTOP_CONNECTION_CONFIG_PATH = path.join(app.getPath('userData'), 'conne
 const DESKTOP_UPDATE_CONFIG_PATH = path.join(app.getPath('userData'), 'updates.json')
 const DESKTOP_WINDOW_STATE_PATH = path.join(app.getPath('userData'), 'window-state.json')
 // active-profile.json records which Lydia profile the desktop launches its
-// local backend as. When set, startLydia() passes `lydia --profile <name>
+// local backend as. When set, startAlice() passes `lydia --profile <name>
 // dashboard …`, which deterministically pins ALICE_HOME (see
 // _apply_profile_override in alice_cli/main.py) and bypasses the sticky
 // ~/.lydia/active_profile file. Unset (null) preserves the legacy behavior:
@@ -795,7 +795,7 @@ let lydiaProcess = null
 let connectionPromise = null
 // Additional per-profile backends, keyed by profile name. The PRIMARY backend
 // (the desktop's launch profile) stays managed by lydiaProcess +
-// connectionPromise + startLydia(); this pool only holds EXTRA profile
+// connectionPromise + startAlice(); this pool only holds EXTRA profile
 // backends spawned lazily when a session belongs to a different profile. A user
 // with no named profiles never populates this map, so their experience is
 // byte-for-byte the single-backend behavior.
@@ -819,7 +819,7 @@ const RENDERER_RELOAD_WINDOW_MS = 60_000
 const RENDERER_RELOAD_MAX = 3
 let rendererReloadTimes = []
 // Latched bootstrap failure: when the first-launch install fails, we hold
-// onto the error so subsequent startLydia() calls (e.g. the renderer's
+// onto the error so subsequent startAlice() calls (e.g. the renderer's
 // ensureGatewayOpen retrying after the WS won't open) return the same error
 // instead of re-running install.ps1 in a hot loop. Cleared explicitly by
 // the renderer's "Reload and retry" path or by quitting the app.
@@ -842,7 +842,7 @@ let nativeThemeListenerInstalled = false
 let bootProgressState = {
   error: null,
   fakeMode: BOOT_FAKE_MODE,
-  message: 'Waiting to start Lydia backend',
+  message: 'Waiting to start Alice backend',
   phase: 'idle',
   progress: 0,
   running: false,
@@ -1358,7 +1358,7 @@ function unwrapWindowsVenvLydiaCommand(command, backendArgs) {
 
   const root = path.dirname(venvRoot)
   return {
-    label: `existing Lydia Python at ${python}`,
+    label: `existing Alice Python at ${python}`,
     command: python,
     args: ['-m', 'alice_cli.main', ...backendArgs],
     bootstrap: false,
@@ -2250,7 +2250,7 @@ async function applyUpdates(opts = {}) {
     emitUpdateProgress({
       stage: 'restart',
       message:
-        'Updating Lydia — this window will close and the updater will open. Don’t reopen Lydia yourself; it restarts automatically when the update finishes.',
+        'Updating Alice — this window will close and the updater will open. Don’t reopen Lydia yourself; it restarts automatically when the update finishes.',
       percent: 100
     })
     repairMacUpdaterHelper(updater)
@@ -2468,7 +2468,7 @@ async function applyUpdatesPosixInApp() {
     // best effort
   }
 
-  emitUpdateProgress({ stage: 'update', message: 'Updating Lydia (git + dependencies)…', percent: 10 })
+  emitUpdateProgress({ stage: 'update', message: 'Updating Alice (git + dependencies)…', percent: 10 })
   const updated = await runStreamedUpdate(lydia, ['update', '--yes', ...branchArgs], {
     cwd: updateRoot,
     env,
@@ -2492,7 +2492,7 @@ async function applyUpdatesPosixInApp() {
   if (rebuilt.code !== 0) {
     emitUpdateProgress({
       stage: 'error',
-      message: 'Backend updated, but the desktop rebuild failed. Restart Lydia to retry.',
+      message: 'Backend updated, but the desktop rebuild failed. Restart Alice to retry.',
       error: rebuilt.error || 'rebuild-failed'
     })
     return { ok: false, backendUpdated: true, error: 'desktop rebuild failed' }
@@ -2536,7 +2536,7 @@ async function applyUpdatesPosixInApp() {
     const outcome = decideRelaunchOutcome({ underUnpacked, sandboxOk })
 
     if (outcome === 'relaunch') {
-      emitUpdateProgress({ stage: 'restart', message: 'Restarting Lydia…', percent: 100 })
+      emitUpdateProgress({ stage: 'restart', message: 'Restarting Alice…', percent: 100 })
       // Preserve launch context across the re-exec: replay the original args
       // (filtered of Electron internals) and the env/cwd that define which
       // backend/profile/root this instance talks to. Without this the
@@ -2618,7 +2618,7 @@ async function applyUpdatesPosixInApp() {
   if (!rebuiltApp || !targetApp) {
     emitUpdateProgress({
       stage: 'done',
-      message: 'Backend updated. Restart Lydia to load the new version.',
+      message: 'Backend updated. Restart Alice to load the new version.',
       percent: 100
     })
     return { ok: true, backendUpdated: true, rebuiltApp: rebuiltApp || null }
@@ -2654,7 +2654,7 @@ fi
   } catch (err) {
     emitUpdateProgress({
       stage: 'done',
-      message: 'Backend + app updated. Restart Lydia to load the new version.',
+      message: 'Backend + app updated. Restart Alice to load the new version.',
       percent: 100
     })
     rememberLog(`[updates] could not write swap script: ${err.message}; rebuilt app at ${rebuiltApp}`)
@@ -3040,7 +3040,7 @@ function resolveLydiaBackend(backendArgs) {
       // `--version` probe (see backend-probes.cjs) catches that case
       // and lets the resolver fall through to step 6 / bootstrap.
       const shellForProbe = isCommandScript(lydiaCommand)
-      if (verifyLydiaCli(lydiaCommand, { shell: shellForProbe })) {
+      if (verifyAliceCli(lydiaCommand, { shell: shellForProbe })) {
         return (
           unwrapWindowsVenvLydiaCommand(lydiaCommand, backendArgs) || {
             label: `existing Lydia CLI at ${lydiaCommand}`,
@@ -3202,7 +3202,7 @@ async function ensureRuntime(backend) {
       )
       bootstrapError.isBootstrapFailure = true
       bootstrapError.failedStage = bootstrapResult.failedStage || null
-      // Latch the failure so subsequent startLydia() calls return this
+      // Latch the failure so subsequent startAlice() calls return this
       // same error without re-running install.ps1.  Cleared by the
       // lydia:bootstrap:reset IPC (renderer's "Reload and retry").
       bootstrapFailure = bootstrapError
@@ -5125,7 +5125,7 @@ async function testDesktopConnectionConfig(input = {}) {
       token = decryptDesktopSecret(block.token)
     }
   } else {
-    const remote = (await resolveRemoteBackend(key)) || (await startLydia())
+    const remote = (await resolveRemoteBackend(key)) || (await startAlice())
     baseUrl = remote.baseUrl
     token = remote.token
     authMode = normAuthMode(remote.authMode)
@@ -5198,7 +5198,7 @@ function resetLydiaConnection() {
 
 // Re-home the primary backend: reset connection state, then wait for the live
 // dashboard process to actually exit (SIGKILL after 5s) so the next
-// startLydia() spawns fresh instead of racing the dying one. Shared by the
+// startAlice() spawns fresh instead of racing the dying one. Shared by the
 // connection-config and profile switch flows.
 async function teardownPrimaryBackendAndWait() {
   // Capture the reference before resetLydiaConnection() nulls lydiaProcess.
@@ -5244,14 +5244,14 @@ function primaryProfileKey() {
 }
 
 // Resolve a backend connection for the given profile. Routes the primary
-// profile to startLydia() (the window backend: boot UI, bootstrap, remote
+// profile to startAlice() (the window backend: boot UI, bootstrap, remote
 // mode), and any OTHER profile to a lazily-spawned pool backend. An empty /
 // unknown profile resolves to the primary, so all legacy callers are unchanged.
 async function ensureBackend(profile) {
   const key = profile && String(profile).trim() ? String(profile).trim() : primaryProfileKey()
 
   if (key === primaryProfileKey()) {
-    return startLydia()
+    return startAlice()
   }
 
   const existing = backendPool.get(key)
@@ -5320,7 +5320,7 @@ function startPoolIdleReaper() {
 }
 
 // Spawn an additional dashboard backend pinned to a named profile. Mirrors the
-// local-spawn portion of startLydia() but without the boot-progress UI,
+// local-spawn portion of startAlice() but without the boot-progress UI,
 // bootstrap, or remote handling (those belong to the primary backend only).
 async function spawnPoolBackend(profile, entry) {
   // A profile may point at its OWN remote backend (connection.json
@@ -5499,9 +5499,9 @@ async function prepareProfileDeleteRequest(request) {
   await teardownPoolBackendAndWait(profile)
 }
 
-async function startLydia() {
+async function startAlice() {
   // Latched-failure short-circuit: once bootstrap has failed in this
-  // process, every subsequent startLydia() call re-throws the same error
+  // process, every subsequent startAlice() call re-throws the same error
   // without re-running install.ps1. This prevents the renderer's
   // ensureGatewayOpen retries (and any other getConnection callers) from
   // restarting a 5-10 minute install loop while the user is still reading
@@ -6075,7 +6075,7 @@ function createWindow() {
     restorePersistedZoomLevel(mainWindow)
     broadcastBootProgress()
     sendWindowStateChanged()
-    startLydia().catch(error => rememberLog(error.stack || error.message))
+    startAlice().catch(error => rememberLog(error.stack || error.message))
   })
 }
 
@@ -6263,7 +6263,7 @@ ipcMain.on('lydia:pet-overlay:control', (_event, payload) => {
 })
 ipcMain.handle('lydia:bootstrap:reset', async () => {
   // Renderer's "Reload and retry" path. Clear the latched failure and
-  // reset connection state so the next startLydia() call restarts the
+  // reset connection state so the next startAlice() call restarts the
   // full backend flow (including a fresh runBootstrap pass).
   rememberLog('[bootstrap] reset requested by renderer; clearing latched failure')
   await teardownPrimaryBackendAndWait()
@@ -6283,7 +6283,7 @@ ipcMain.handle('lydia:bootstrap:reset', async () => {
 })
 ipcMain.handle('lydia:bootstrap:repair', async () => {
   // Forceful repair: drop the bootstrap-complete marker so the next
-  // startLydia() re-runs the full installer (refreshing a broken/partial
+  // startAlice() re-runs the full installer (refreshing a broken/partial
   // venv), and clear any latched failure + live connection. The renderer
   // reloads afterwards to re-drive the boot flow from scratch.
   rememberLog('[bootstrap] repair requested by renderer; clearing marker + latched failure')
