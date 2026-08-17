@@ -2082,7 +2082,7 @@ function repairMacUpdaterHelper(updater) {
 function venvAliceShimPath(updateRoot) {
   return IS_WINDOWS
     ? path.join(updateRoot, 'venv', 'Scripts', 'alice.exe')
-    : path.join(updateRoot, 'venv', 'bin', 'lydia')
+    : path.join(updateRoot, 'venv', 'bin', 'alice')
 }
 
 // Best-effort lock probe mirroring the Rust updater's is_locked(): a running
@@ -2362,7 +2362,7 @@ async function handOffWindowsBootstrapRecovery(reason) {
 // Resolve the lydia CLI to drive an in-app update: prefer the venv shim in
 // the install we're updating, fall back to `lydia` on PATH.
 function resolveLydiaCliBinary(updateRoot) {
-  const venvAlice = path.join(updateRoot, 'venv', 'bin', 'lydia')
+  const venvAlice = path.join(updateRoot, 'venv', 'bin', 'alice')
   if (fileExists(venvAlice)) return venvAlice
   return findOnPath('lydia') || null
 }
@@ -3027,7 +3027,7 @@ function resolveAliceBackend(backendArgs) {
     }
 
     if (lydiaCommand) {
-      const unwrapped = unwrapWindowsVenvAliceCommand(lydiaCommand, backendArgs)
+      const unwrapped = unwrapWindowsVenvAliceCommand(aliceCommand, backendArgs)
       if (unwrapped) {
         return unwrapped
       }
@@ -3042,7 +3042,7 @@ function resolveAliceBackend(backendArgs) {
       const shellForProbe = isCommandScript(aliceCommand)
       if (verifyAliceCli(lydiaCommand, { shell: shellForProbe })) {
         return (
-          unwrapWindowsVenvAliceCommand(lydiaCommand, backendArgs) || {
+          unwrapWindowsVenvAliceCommand(aliceCommand, backendArgs) || {
             label: `existing Lydia CLI at ${lydiaCommand}`,
             command: lydiaCommand,
             args: backendArgs,
@@ -5348,7 +5348,7 @@ async function spawnPoolBackend(profile, entry) {
   const backend = await ensureRuntime(resolveAliceBackend(backendArgs))
   // Route old runtimes (no `serve`) through the legacy `dashboard --no-open`.
   backend.args = getBackendArgsForRuntime(backend)
-  const lydiaCwd = resolveAliceCwd()
+  const aliceCwd = resolveAliceCwd()
   const webDist = resolveWebDist()
   const readyFile = backend.readyFile ? makeDashboardReadyFile() : null
 
@@ -5565,7 +5565,7 @@ async function startAlice() {
     const backend = await ensureRuntime(resolveAliceBackend(backendArgs))
     // Route old runtimes (no `serve`) through the legacy `dashboard --no-open`.
     backend.args = getBackendArgsForRuntime(backend)
-    const lydiaCwd = resolveAliceCwd()
+    const aliceCwd = resolveAliceCwd()
     const webDist = resolveWebDist()
     const readyFile = backend.readyFile ? makeDashboardReadyFile() : null
 
