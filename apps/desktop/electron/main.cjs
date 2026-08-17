@@ -2364,7 +2364,7 @@ async function handOffWindowsBootstrapRecovery(reason) {
 function resolveLydiaCliBinary(updateRoot) {
   const venvAlice = path.join(updateRoot, 'venv', 'bin', 'alice')
   if (fileExists(venvAlice)) return venvAlice
-  return findOnPath('lydia') || null
+  return findOnPath('alice') || null
 }
 
 // Spawn a command and stream each output line to the update progress channel.
@@ -2958,7 +2958,7 @@ function resolveAliceBackend(backendArgs) {
         rememberLog('[backend] bundled Python probe passed — using bundled backend')
         return {
           kind: 'bundled',
-          label: 'Bundled Lydia for Windows',
+          label: 'Bundled Alice for Windows',
           command: bundledPython,
           args: [bundledScript, ...backendArgs],
           bootstrap: false,
@@ -2974,7 +2974,7 @@ function resolveAliceBackend(backendArgs) {
   //    checkout. Honour it as-is (no bootstrap; the user is driving).
   const overrideRoot = process.env.ALICE_DESKTOP_ROOT && path.resolve(process.env.ALICE_DESKTOP_ROOT)
   if (overrideRoot && isLydiaSourceRoot(overrideRoot)) {
-    const backend = createPythonBackend(overrideRoot, `Lydia source at ${overrideRoot}`, backendArgs)
+    const backend = createPythonBackend(overrideRoot, `Alice source at ${overrideRoot}`, backendArgs)
     if (backend) return backend
   }
 
@@ -2983,7 +2983,7 @@ function resolveAliceBackend(backendArgs) {
   //    installed `lydia` on PATH so local Python edits are actually exercised.
   //    (In dev with no checkout, SOURCE_REPO_ROOT won't pass isLydiaSourceRoot.)
   if (!IS_PACKAGED && isLydiaSourceRoot(SOURCE_REPO_ROOT)) {
-    const backend = createPythonBackend(SOURCE_REPO_ROOT, `Lydia source at ${SOURCE_REPO_ROOT}`, backendArgs)
+    const backend = createPythonBackend(SOURCE_REPO_ROOT, `Alice source at ${SOURCE_REPO_ROOT}`, backendArgs)
     if (backend) return backend
   }
 
@@ -3009,24 +3009,24 @@ function resolveAliceBackend(backendArgs) {
     if (aliceOverride) {
       const resolvedOverride = findOnPath(aliceOverride)
       if (resolvedOverride) {
-        lydiaCommand = resolvedOverride
+        aliceCommand = resolvedOverride
       } else if (!isWindowsBinaryPathInWsl(aliceOverride, { isWsl: IS_WSL })) {
-        lydiaCommand = aliceOverride
+        aliceCommand = aliceOverride
       } else {
         rememberLog(`Ignoring Windows Lydia override under WSL: ${aliceOverride}`)
       }
     } else {
-      lydiaCommand = findOnPath('lydia')
+      aliceCommand = findOnPath('alice')
     }
 
-    if (lydiaCommand) {
-      if (looksLikeDesktopAppBinary(lydiaCommand)) {
-        rememberLog(`Ignoring desktop app executable on PATH while resolving Lydia CLI: ${lydiaCommand}`)
-        lydiaCommand = null
+    if (aliceCommand) {
+      if (looksLikeDesktopAppBinary(aliceCommand)) {
+        rememberLog(`Ignoring desktop app executable on PATH while resolving Lydia CLI: ${aliceCommand}`)
+        aliceCommand = null
       }
     }
 
-    if (lydiaCommand) {
+    if (aliceCommand) {
       const unwrapped = unwrapWindowsVenvAliceCommand(aliceCommand, backendArgs)
       if (unwrapped) {
         return unwrapped
@@ -3040,11 +3040,11 @@ function resolveAliceBackend(backendArgs) {
       // `--version` probe (see backend-probes.cjs) catches that case
       // and lets the resolver fall through to step 6 / bootstrap.
       const shellForProbe = isCommandScript(aliceCommand)
-      if (verifyAliceCli(lydiaCommand, { shell: shellForProbe })) {
+      if (verifyAliceCli(aliceCommand, { shell: shellForProbe })) {
         return (
           unwrapWindowsVenvAliceCommand(aliceCommand, backendArgs) || {
-            label: `existing Lydia CLI at ${lydiaCommand}`,
-            command: lydiaCommand,
+            label: `existing Alice CLI at ${aliceCommand}`,
+            command: aliceCommand,
             args: backendArgs,
             bootstrap: false,
             env: {},
@@ -3054,7 +3054,7 @@ function resolveAliceBackend(backendArgs) {
         )
       }
       rememberLog(
-        `Ignoring existing Lydia CLI at ${lydiaCommand}: --version probe failed; falling through to bootstrap.`
+        `Ignoring existing Alice CLI at ${aliceCommand}: --version probe failed; falling through to bootstrap.`
       )
     }
   }
