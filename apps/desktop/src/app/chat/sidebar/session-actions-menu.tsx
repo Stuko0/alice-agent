@@ -17,6 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from '@/components/ui/input'
 import { renameSession } from '@/alice'
 import { useI18n } from '@/i18n'
+import { desktopSupports } from '@/lib/desktop-capabilities'
 import { triggerHaptic } from '@/lib/haptics'
 import { exportSession } from '@/lib/session-export'
 import { activeGateway } from '@/store/gateway'
@@ -118,7 +119,7 @@ function useSessionActions({
   }
 
   const items: ItemSpec[] = [
-    ...(canOpenSessionWindow()
+    ...(canOpenSessionWindow() && desktopSupports('multiWindow')
       ? [
           {
             disabled: !sessionId,

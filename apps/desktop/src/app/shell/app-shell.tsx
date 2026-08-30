@@ -1,12 +1,12 @@
 import { useStore } from '@nanostores/react'
-import type { CSSProperties, ReactNode } from 'react'
+import { lazy, Suspense, type CSSProperties, type ReactNode } from 'react'
 import { useSyncExternalStore } from 'react'
 
 import { NotificationStack } from '@/components/notifications'
 import { PaneShell } from '@/components/pane-shell'
-import { FloatingPet } from '@/components/pet/floating-pet'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { desktopSupports } from '@/lib/desktop-capabilities'
 import {
   $fileBrowserOpen,
   $panesFlipped,
@@ -26,6 +26,14 @@ import { KeybindPanel } from './keybind-panel'
 import { StatusbarControls, type StatusbarItem } from './statusbar-controls'
 import { TITLEBAR_HEIGHT, titlebarControlsPosition } from './titlebar'
 import { TitlebarControls, type TitlebarTool } from './titlebar-controls'
+
+// FloatingPet is only mounted in shells with overlay support (Electron). Load
+// it lazily so the Wails bundle never even downloads the pet chunk — a static
+// import would pull the pet zoom-gesture + spritesheet modules into every boot
+// and surface spurious React concurrent-render errors in the error log.
+const FloatingPet = desktopSupports('petOverlay')
+  ? lazy(() => import('@/components/pet/floating-pet').then(m => ({ default: m.FloatingPet })))
+  : null
 
 interface AppShellProps {
   children: ReactNode
@@ -230,8 +238,13 @@ export function AppShell({
       <NotificationStack />
 
       {/* Petdex floating mascot — in-window, always-on-top, reactive to agent
-          activity. Renders nothing unless a pet is installed + enabled. */}
-      <FloatingPet />
+          activity. Renders nothing unless a pet is installed + enabled.
+          Lazily loaded and only mounted in shells with overlay support. */}
+      {FloatingPet && (
+        <Suspense fallback={null}>
+          <FloatingPet />
+        </Suspense>
+      )}
     </SidebarProvider>
   )
 }

@@ -153,12 +153,18 @@ export function useSessionListActions({ profileScope }: UseSessionListActionsArg
   }, [])
 
   const refreshSessions = useCallback(async () => {
+    const log = (msg: string) => {
+      console.log(msg)
+      try { window['go']?.main?.App?.WriteFrontendLog?.(msg) } catch {}
+    }
+    log('[RefreshSessions] START')
     const requestId = refreshSessionsRequestRef.current + 1
     refreshSessionsRequestRef.current = requestId
     setSessionsLoading(true)
 
     try {
       const limit = $sessionsLimit.get()
+      log('[RefreshSessions] limit: ' + limit)
 
       // Require at least one message so abandoned/empty "Untitled" drafts (one
       // was created per TUI/desktop launch before the lazy-create fix) don't
@@ -172,15 +178,19 @@ export function useSessionListActions({ profileScope }: UseSessionListActionsArg
       // with few recent sessions isn't windowed out of the cross-profile
       // recency page — the empty-history-on-profile-switch bug.
       const sessionProfile = profileScope === ALL_PROFILES ? 'all' : profileScope
+      log('[RefreshSessions] calling listAllProfileSessions, profile: ' + sessionProfile)
 
       const result = await listAllProfileSessions(limit, 1, 'exclude', 'recent', sessionProfile, {
         excludeSources: SIDEBAR_EXCLUDED_SOURCES
       })
+      log('[RefreshSessions] listAllProfileSessions OK, sessions: ' + result.sessions?.length)
 
       if (refreshSessionsRequestRef.current === requestId) {
+        log('[RefreshSessions] merging sessions...')
         setSessions(prev => mergeSessionPage(prev, result.sessions, sessionsToKeep()))
         setSessionsTotal(typeof result.total === 'number' ? result.total : result.sessions.length)
         setSessionProfileTotals(result.profile_totals ?? {})
+        log('[RefreshSessions] merge OK')
       }
     } finally {
       if (refreshSessionsRequestRef.current === requestId) {
@@ -188,9 +198,13 @@ export function useSessionListActions({ profileScope }: UseSessionListActionsArg
       }
     }
 
+    log('[RefreshSessions] refreshing cron sessions...')
     void refreshCronSessions()
+    log('[RefreshSessions] refreshing cron jobs...')
     void refreshCronJobs()
+    log('[RefreshSessions] refreshing messaging sessions...')
     void refreshMessagingSessions()
+    log('[RefreshSessions] END')
   }, [profileScope, refreshCronSessions, refreshCronJobs, refreshMessagingSessions])
 
   const loadMoreSessions = useCallback(async () => {

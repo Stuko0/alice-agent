@@ -4,7 +4,7 @@ import { getStatus } from '@/alice'
 import { evaluateRuntimeReadiness, type RuntimeReadinessResult } from '@/lib/runtime-readiness'
 import type { StatusResponse } from '@/types/alice'
 
-const REFRESH_MS = 15_000
+const REFRESH_MS = 30_000
 
 type GatewayRequester = <T = unknown>(method: string, params?: Record<string, unknown>) => Promise<T>
 

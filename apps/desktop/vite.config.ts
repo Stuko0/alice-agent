@@ -51,7 +51,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 25000,
     rolldownOptions: {
       output: {
-        codeSplitting: false
+        codeSplitting: true
       }
     }
   },

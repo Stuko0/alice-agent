@@ -21,7 +21,7 @@ interface GatewayMenuPanelProps {
 
 const LOG_TAIL = 120
 const LOG_VISIBLE = 40
-const LOG_POLL_MS = 3_000
+const LOG_POLL_MS = 10_000
 
 // Per-connection WebSocket churn (accept/close/heartbeat) drowns out anything
 // useful — strip it so the tail reads as real gateway activity at a glance.

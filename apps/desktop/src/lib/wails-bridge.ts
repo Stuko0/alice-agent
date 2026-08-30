@@ -19,6 +19,16 @@ export function isWailsEnvironment(): boolean {
   return typeof window !== 'undefined' && typeof (window as any).wails?.Call?.ByName === 'function'
 }
 
+// Wails v2 platform capabilities. True = the Go shell genuinely supports it.
+// Everything false is stubbed in this bridge and MUST be hidden in the UI.
+export const wailsCapabilities = {
+  multiWindow: false,      // v2 has no multi-window: session pop-out windows
+  petOverlay: false,       // no transparent always-on-top overlay window
+  vscodeThemes: false,     // no marketplace install (VSIX download+extract)
+  selfUpdate: true,        // implemented in Go (git + alice update + relaunch)
+  remoteGateway: true,     // implemented via persisted connection.json
+} as const
+
 export function initWailsBridge(): void {
   if (typeof window === 'undefined' || window.aliceDesktop) {
     return

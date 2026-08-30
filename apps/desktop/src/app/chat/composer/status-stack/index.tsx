@@ -28,7 +28,7 @@ import { StatusItemRow } from './status-row'
 
 // Slow safety-net poll for silent exits (processes without notify_on_complete
 // emit no event when they die). Only armed while a running row is on screen.
-const BACKGROUND_POLL_MS = 5_000
+const BACKGROUND_POLL_MS = 30_000
 
 // A localhost/loopback preview is only meaningful while its dev server is up, so
 // we tie it to a live background process rather than persisting dismissals or

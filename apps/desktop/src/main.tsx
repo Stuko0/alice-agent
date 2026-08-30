@@ -12,9 +12,12 @@ import { ErrorBoundary } from './components/error-boundary'
 import { HapticsProvider } from './components/haptics-provider'
 import { I18nProvider } from './i18n'
 import { installClipboardShim } from './lib/clipboard'
+import { isWailsShell } from './lib/desktop-capabilities'
 import { queryClient } from './lib/query-client'
+import { initWailsBridge } from './lib/wails-bridge'
 import { ThemeProvider } from './themes/context'
 
+initWailsBridge()
 installClipboardShim()
 
 // Dev-only: install __PERF_DRIVE__ + __PERF_PROBE__ on window so the
@@ -26,10 +29,12 @@ if (import.meta.env.MODE !== 'production') {
   import('./app/chat/perf-probe')
 }
 
-// The pet overlay rides this same bundle (`?win=overlay`) but mounts a tiny,
+// The pet overlay rides this same bundle (`?win=overlay` or `/#/?win=overlay`) but mounts a tiny,
 // transparent, gateway-less surface instead of the full app. Branch before any
 // app-shell work so the overlay window stays cheap.
-if (new URLSearchParams(window.location.search).get('win') === 'overlay') {
+// The overlay window only exists in Electron. In Wails the bundle mounts the
+// full app — never route to the overlay root from the Wails shell.
+if (!isWailsShell() && (new URLSearchParams(window.location.search).get('win') === 'overlay' || window.location.href.includes('win=overlay'))) {
   void import('./app/pet-overlay/overlay-root').then(({ mountPetOverlay }) => mountPetOverlay())
 } else {
   createRoot(document.getElementById('root')!).render(

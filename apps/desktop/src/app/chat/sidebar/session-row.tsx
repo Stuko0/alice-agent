@@ -9,6 +9,7 @@ import { Tip } from '@/components/ui/tooltip'
 import type { SessionInfo } from '@/alice'
 import { type Translations, useI18n } from '@/i18n'
 import { sessionTitle } from '@/lib/chat-runtime'
+import { desktopSupports } from '@/lib/desktop-capabilities'
 import { triggerHaptic } from '@/lib/haptics'
 import { handoffOriginSource, sessionSourceLabel } from '@/lib/session-source'
 import { cn } from '@/lib/utils'
@@ -175,7 +176,7 @@ export function SidebarSessionRow({
             // window — the universal "open in a new window" gesture. Archive
             // lives in the row's ⋯ and right-click menus. Falls through to a
             // normal resume when standalone windows aren't available (web embed).
-            if ((event.metaKey || event.ctrlKey) && canOpenSessionWindow()) {
+            if ((event.metaKey || event.ctrlKey) && canOpenSessionWindow() && desktopSupports('multiWindow')) {
               event.preventDefault()
               event.stopPropagation()
               triggerHaptic('selection')
