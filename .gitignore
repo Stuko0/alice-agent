@@ -14,13 +14,13 @@ __pycache__/
 .env.production.local
 .env.development
 .env.test
-.lydia-docker/
+.alice-docker/
 .notebooklm-home/
 .notebooklm-cli-venv/
 .notebooklm-playwright/
 .pip-cache/
 .uv-cache/
-compose.lydia.local.yml
+compose.alice.local.yml
 export*
 __pycache__/model_tools.cpython-310.pyc
 __pycache__/web_tools.cpython-310.pyc
@@ -31,7 +31,7 @@ test_durations.json
 .pytest-cache/
 tmp/
 temp_vision_images/
-lydia-*/*
+alice-*/*
 examples/
 tests/quick_test_dataset.jsonl
 tests/sample_dataset.jsonl
@@ -50,25 +50,30 @@ agent-browser/
 privvy*
 images/
 __pycache__/
-lydia_agent.egg-info/
+alice_agent.egg-info/
 wandb/
 testlogs
 
 # CLI config (may contain sensitive SSH paths)
 cli-config.yaml
 
-# Skills Hub state (lives in ~/.lydia/skills/.hub/ at runtime, but just in case)
+# Skills Hub state (lives in ~/.alice/skills/.hub/ at runtime, but just in case)
 skills/.hub/
 ignored/
 .worktrees/
 environments/benchmarks/evals/
 
 # Web UI build output
-lydia_cli/web_dist/
+alice_cli/web_dist/
 apps/desktop/build/
 apps/desktop/dist/
 apps/desktop/release/
 apps/desktop/*.tsbuildinfo
+
+# Wails desktop build output (Go binary + copied renderer assets)
+apps/desktop-wails/build/
+apps/desktop-wails/frontend/dist/
+apps/desktop-wails/bin/
 
 # Web UI assets — synced from @nous-research/ui at build time via
 # `npm run sync-assets` (see web/package.json).
@@ -104,22 +109,22 @@ models-dev-upstream/
 opencode.json
 config/mcporter.json
 
-lydia_cli/tui_dist/*
-lydia_cli/scripts/
+alice_cli/tui_dist/*
+alice_cli/scripts/
 docs/superpowers/*
-# Working directory for the Lydia Agent's session state (~/.lydia/ at runtime;
+# Working directory for the Alice Agent's session state (~/.alice/ at runtime;
 # also created in-repo when an agent operates in this checkout). Plans, audit
 # logs, and per-session caches are never artifacts of the codebase.
-.lydia/
+.alice/
 
 # Desktop/bootstrap install marker written into the managed checkout root by the
-# bootstrap installer. It is Lydia-managed runtime state, never a code change —
-# ignore it so `lydia update`'s `git stash push --include-untracked` does not
+# bootstrap installer. It is Alice-managed runtime state, never a code change —
+# ignore it so `alice update`'s `git stash push --include-untracked` does not
 # treat it as a local edit and autostash it on every run (#38529).
-.lydia-bootstrap-complete
+.alice-bootstrap-complete
 
 # Interrupted-update breadcrumb + recovery lock written next to the shared venv
-# by `lydia update` / launch-time self-heal. Runtime state, never a code change
+# by `alice update` / launch-time self-heal. Runtime state, never a code change
 # — ignore so `git status` stays clean and update's autostash skips them.
 .update-incomplete
 .update-incomplete.lock
@@ -131,16 +136,16 @@ scripts/out/
 # Per-release changelog drafts. These exist only transiently during a release
 # cut (passed to `gh release create --notes-file`); the GitHub Release itself
 # stores the published notes. They are not a build artifact and must never be
-# committed to the repo root. See the lydia-release skill.
+# committed to the repo root. See the alice-release skill.
 RELEASE_v*.md
 
-# Desktop demo-run scratch output (lydia writes demo/*.txt during recorded
+# Desktop demo-run scratch output (alice writes demo/*.txt during recorded
 # walkthroughs). Throwaway artifacts, never part of the app.
 apps/desktop/demo/
 
 # PR infographics are rendered locally and embedded in PR descriptions via the
 # image-provider (fal.media) URL — they are NEVER committed to the repo. The
-# PR body is the archive. See the lydia-agent-dev skill's
+# PR body is the archive. See the alice-agent-dev skill's
 # pr-infographic-workflow reference (storage rule + lapse #8 / #COMMIT-1).
 infographic/
 

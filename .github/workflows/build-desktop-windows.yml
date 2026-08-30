@@ -136,6 +136,93 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # Builds the standalone Wails desktop binary (alice-desktop.exe) that the
+  # Tauri bootstrap installer downloads and launches. Independent of the
+  # electron-builder artifacts above; runs on the same triggers.
+  wails-build:
+    name: Build Wails desktop binary
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v5  # v5.0.0
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            apps/desktop/package-lock.json
+
+      - name: Set up Go
+        uses: actions/setup-go@v5  # v5.3.0
+        with:
+          go-version: '1.25.x'
+          cache-dependency-path: apps/desktop-wails/go.sum
+
+      - name: Install mingw-w64 GCC (Wails v2 links CGO on Windows)
+        uses: egor-tensin/setup-mingw@v2  # v2.2.0
+        with:
+          platform: x64
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
+        shell: pwsh
+
+      - name: Install npm dependencies (desktop)
+        run: |
+          cd apps/desktop
+          npm ci
+        shell: pwsh
+
+      - name: Build Wails desktop binary
+        run: |
+          cd apps/desktop-wails
+          ./build.ps1
+        shell: pwsh
+
+      - name: Verify binary exists
+        run: |
+          $bin = 'apps/desktop-wails/build/bin/alice-desktop.exe'
+          if (-not (Test-Path $bin)) { throw "Wails binary not found at $bin" }
+          Write-Host "✅ Wails binary: $((Resolve-Path $bin).Path) ($('{0:N0}' -f (Get-Item $bin).Length) bytes)"
+        shell: pwsh
+
+      - name: Write SHA-256 checksum
+        # The Tauri bootstrap installer verifies this before installing the
+        # binary (scripts/install.ps1 → Install-DesktopWailsPrebuilt).
+        run: |
+          $bin = 'apps/desktop-wails/build/bin/alice-desktop.exe'
+          $hash = (Get-FileHash $bin -Algorithm SHA256).Hash.ToLower()
+          "$hash  alice-desktop.exe" | Out-File -FilePath "$bin.sha256" -Encoding ascii
+        shell: pwsh
+
+      - name: Upload Wails binary artifact
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: alice-desktop-wails-windows-${{ github.ref_name }}
+          path: |
+            apps/desktop-wails/build/bin/alice-desktop.exe
+            apps/desktop-wails/build/bin/alice-desktop.exe.sha256
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload to release (on tag push only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2  # v2.2.1
+        with:
+          files: |
+            apps/desktop-wails/build/bin/alice-desktop.exe
+            apps/desktop-wails/build/bin/alice-desktop.exe.sha256
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # Optional: install + smoke-test on a clean Windows VM
   smoke-test:
     name: Smoke test installer

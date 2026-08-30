@@ -5019,6 +5019,22 @@ def _compute_desktop_content_hash(project_root: Path) -> str:
             if not spec.match_file(rel):
                 _hash_file(fp)
 
+    # Walk apps/desktop-wails/ too — the Go shell is part of the desktop build
+    # surface, so its sources must invalidate the stamp. Build artifacts
+    # (build/, frontend/dist/, bin/) are gitignored and never flip the hash.
+    wails_dir = project_root / "apps" / "desktop-wails"
+    for dirpath, dirnames, filenames in os.walk(wails_dir, topdown=True):
+        dirnames[:] = [
+            d for d in dirnames
+            if not spec.match_file(str((Path(dirpath) / d).relative_to(project_root)))
+        ]
+
+        for fn in sorted(filenames):
+            fp = Path(dirpath) / fn
+            rel = str(fp.relative_to(project_root))
+            if not spec.match_file(rel):
+                _hash_file(fp)
+
     return h.hexdigest()
 
 
@@ -5567,7 +5583,7 @@ def _desktop_launch_options() -> tuple[list[str], str]:
 
 
 def cmd_gui(args: argparse.Namespace):
-    """Build and launch the native Electron desktop GUI."""
+    """Build and launch the native desktop GUI (Wails by default, Electron legacy)."""
     desktop_dir = PROJECT_ROOT / "apps" / "desktop"
     if not (desktop_dir / "package.json").exists():
         print(f"Desktop GUI source not found at: {desktop_dir}")
@@ -5579,6 +5595,135 @@ def cmd_gui(args: argparse.Namespace):
     except Exception:
         pass
 
+    use_wails = getattr(args, "wails", False) or not getattr(args, "electron", False)
+    if use_wails:
+        return _cmd_gui_wails(args, desktop_dir)
+    return _cmd_gui_electron(args, desktop_dir)
+
+
+def _wails_bin_path(wails_dir: Path) -> Path:
+    """Return the current platform's Wails desktop binary path."""
+    exe_name = "alice-desktop.exe" if sys.platform == "win32" else "alice-desktop"
+    return wails_dir / "build" / "bin" / exe_name
+
+
+def _wails_build_needed(wails_dir: Path, desktop_dir: Path, project_root: Path) -> bool:
+    """Return True when the Wails binary is stale or missing (stamp-aware).
+
+    Mirrors ``_desktop_build_needed`` but gates the artifact check on the
+    Wails binary instead of the Electron packaged app. The stamp file is
+    shared, so alternating ``alice desktop`` (Wails) and
+    ``alice desktop --electron`` never skips a genuinely needed rebuild: the
+    content hash covers both ``apps/desktop/`` and ``apps/desktop-wails/``.
+    """
+    if not _wails_bin_path(wails_dir).exists():
+        return True
+    stamp_file = _desktop_stamp_path()
+    if not stamp_file.is_file():
+        return True
+    try:
+        stamp_data = json.loads(stamp_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, KeyError):
+        return True
+    if stamp_data.get("sourceMode") is not False:
+        return True
+    saved_hash = stamp_data.get("contentHash")
+    if not saved_hash:
+        return True
+    return _compute_desktop_content_hash(project_root) != saved_hash
+
+
+def _build_wails_desktop(npm: str, desktop_dir: Path, wails_dir: Path) -> None:
+    """Build the shared React frontend, copy it into the Wails tree, then build the Go shell."""
+    print("→ Building frontend...")
+    res = subprocess.run([npm, "run", "build"], cwd=desktop_dir)
+    if res.returncode != 0:
+        print("✗ Frontend build failed")
+        sys.exit(res.returncode)
+
+    # Copy built assets to the Wails frontend (Vite does not include the
+    # generated wailsjs bindings; the app serves from frontend/dist as root).
+    dist_src = desktop_dir / "dist"
+    dist_dst = wails_dir / "frontend" / "dist"
+    print("→ Copying assets to Wails...")
+    if dist_dst.exists():
+        shutil.rmtree(dist_dst)
+    shutil.copytree(dist_src, dist_dst)
+
+    print("→ Building Wails binary...")
+    res = subprocess.run(["wails", "build"], cwd=wails_dir)
+    if res.returncode != 0:
+        print("✗ Wails build failed")
+        sys.exit(res.returncode)
+
+
+def _cmd_gui_wails(args: argparse.Namespace, desktop_dir: Path) -> None:
+    """Build and launch the Wails desktop shell (the default desktop runtime)."""
+    wails_dir = PROJECT_ROOT / "apps" / "desktop-wails"
+    if not wails_dir.exists():
+        print(f"Wails desktop GUI source not found at: {wails_dir}")
+        sys.exit(1)
+
+    from alice_constants import find_node_executable
+
+    npm = find_node_executable("npm")
+    if not npm:
+        print("Wails desktop mode requires Node.js/npm.")
+        sys.exit(1)
+
+    bin_path = _wails_bin_path(wails_dir)
+
+    # Build-only mode: produce the artifact but do NOT launch. The installer's
+    # --update flow drives the rebuild headlessly and then launches the desktop
+    # itself (detached, after the old exe has exited), so the launch must NOT
+    # happen here. Verify the expected artifact exists so a silent "built
+    # nothing" can't slip past, then return success.
+    if getattr(args, "build_only", False):
+        print("→ Building Wails desktop application...")
+        _build_wails_desktop(npm, desktop_dir, wails_dir)
+        if not bin_path.exists():
+            print(f"✗ Wails build completed but no binary found at: {bin_path}")
+            sys.exit(1)
+        print(f"✓ Production Wails desktop binary built: {bin_path}")
+        sys.exit(0)
+
+    # Launch a pre-built binary directly when --skip-build is specified.
+    if getattr(args, "skip_build", False):
+        if not bin_path.exists():
+            print(f"Prebuilt binary not found at: {bin_path}. Build it first with: alice desktop --build-only")
+            sys.exit(1)
+        print(f"→ Launching prebuilt Wails desktop binary ({bin_path})...")
+        res = subprocess.run([str(bin_path)], cwd=wails_dir)
+        sys.exit(res.returncode)
+
+    # Default: skip the build when the content stamp matches and the binary
+    # exists, making repeated launches fast (same contract as the Electron
+    # path). --force-build overrides the stamp and always rebuilds.
+    build_needed = getattr(args, "force_build", False) or _wails_build_needed(
+        wails_dir, desktop_dir, PROJECT_ROOT
+    )
+    if not build_needed:
+        print("✓ Desktop Wails build is up to date (content stamp matches)")
+    else:
+        print("→ Installing desktop workspace dependencies...")
+        install_result = _run_npm_install_deterministic(npm, PROJECT_ROOT, capture_output=False, env=None)
+        if install_result.returncode != 0:
+            print("✗ Desktop dependency install failed")
+            print(f"  Run manually:  cd {PROJECT_ROOT} && npm ci")
+            sys.exit(install_result.returncode or 1)
+        _build_wails_desktop(npm, desktop_dir, wails_dir)
+        if not bin_path.exists():
+            print(f"✗ Wails build produced no binary at: {bin_path}")
+            sys.exit(1)
+        _write_desktop_build_stamp(PROJECT_ROOT, source_mode=False)
+
+    print("→ Launching Alice Desktop (Wails)...")
+    res = subprocess.run([str(bin_path)], cwd=wails_dir)
+    sys.exit(res.returncode)
+
+
+def _cmd_gui_electron(args: argparse.Namespace, desktop_dir: Path) -> None:
+    """Build and launch the legacy Electron desktop shell (--electron)."""
     from alice_constants import find_node_executable, with_alice_node_path
 
     # with_alice_node_path() copies os.environ when called with no arg.
@@ -5942,7 +6087,7 @@ def _print_curator_first_run_notice() -> None:
     print("  Preview now:  alice curator run --dry-run")
     print("  Pause it:     alice curator pause")
     print(
-        "  Docs:         https://alice-agent.nousresearch.com/docs/user-guide/features/curator"
+        "  Docs:         https://alice-agent.stuko.dev/docs/user-guide/features/curator"
     )
 
 
@@ -6223,7 +6368,7 @@ def _update_via_zip(args):
         )
         sys.exit(1)
     zip_url = (
-        f"https://10.1.200.116:3000/arquant-admin/NewLydia/archive/refs/heads/{branch}.zip"
+        f"https://10.1.200.116:3000/arquant-admin/NewAlice/archive/refs/heads/{branch}.zip"
     )
 
     print("→ Downloading latest version...")
@@ -6631,12 +6776,12 @@ def _discard_stashed_changes(
 # =========================================================================
 
 OFFICIAL_REPO_URLS = {
-    "https://10.1.200.116:3000/arquant-admin/NewLydia.git",
-    "git@github.com:arquant-admin/NewLydia.git",
-    "https://10.1.200.116:3000/arquant-admin/NewLydia",
-    "git@github.com:arquant-admin/NewLydia",
+    "https://10.1.200.116:3000/arquant-admin/NewAlice.git",
+    "git@github.com:arquant-admin/NewAlice.git",
+    "https://10.1.200.116:3000/arquant-admin/NewAlice",
+    "git@github.com:arquant-admin/NewAlice",
 }
-OFFICIAL_REPO_URL = "https://10.1.200.116:3000/arquant-admin/NewLydia.git"
+OFFICIAL_REPO_URL = "https://10.1.200.116:3000/arquant-admin/NewAlice.git"
 SKIP_UPSTREAM_PROMPT_FILE = ".skip_upstream_prompt"
 
 
@@ -6770,7 +6915,7 @@ def _sync_with_upstream_if_needed(git_cmd: list[str], cwd: Path) -> None:
         # Ask user if they want to add upstream
         print()
         print("ℹ Your fork is not tracking the official Alice repository.")
-        print("  This means you may miss updates from arquant-admin/NewLydia.")
+        print("  This means you may miss updates from arquant-admin/NewAlice.")
         print()
         try:
             response = (
@@ -6784,7 +6929,7 @@ def _sync_with_upstream_if_needed(git_cmd: list[str], cwd: Path) -> None:
             print("→ Adding upstream remote...")
             if _add_upstream_remote(git_cmd, cwd):
                 print(
-                    "  ✓ Added upstream: https://10.1.200.116:3000/arquant-admin/NewLydia.git"
+                    "  ✓ Added upstream: https://10.1.200.116:3000/arquant-admin/NewAlice.git"
                 )
                 has_upstream = True
             else:
@@ -6792,7 +6937,7 @@ def _sync_with_upstream_if_needed(git_cmd: list[str], cwd: Path) -> None:
                 return
         else:
             print(
-                "  Skipped. Run 'git remote add upstream https://10.1.200.116:3000/arquant-admin/NewLydia.git' to add later."
+                "  Skipped. Run 'git remote add upstream https://10.1.200.116:3000/arquant-admin/NewAlice.git' to add later."
             )
             _mark_skip_upstream_prompt()
             return
@@ -9066,20 +9211,6 @@ def cmd_update(args):
     runs the update, then restores stdio on the way out (even on
     ``sys.exit`` or unhandled exceptions).
     """
-    # Offline fork: no remote → no updates to pull
-    _has_origin = (
-        subprocess.run(
-            ["git", "remote", "get-url", "origin"],
-            cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=5,
-        ).returncode
-        == 0
-    )
-    if not _has_origin:
-        print("✦ Offline mode: Alice is installed from a local fork with no git remote.")
-        print("  Updates are handled internally — run 'git pull <your-mirror>' manually")
-        print("  or use the internal package distribution mechanism.")
-        sys.exit(0)
-
     from alice_cli.config import (
         detect_install_method,
         format_docker_update_message,
@@ -9100,6 +9231,21 @@ def cmd_update(args):
     if detect_install_method(PROJECT_ROOT) == "docker":
         print(format_docker_update_message())
         sys.exit(1)
+
+    if detect_install_method(PROJECT_ROOT) == "git":
+        # Offline fork: no remote → no updates to pull
+        _has_origin = (
+            subprocess.run(
+                ["git", "remote", "get-url", "origin"],
+                cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=5,
+            ).returncode
+            == 0
+        )
+        if not _has_origin:
+            print("✦ Offline mode: Alice is installed from a local fork with no git remote.")
+            print("  Updates are handled internally — run 'git pull <your-mirror>' manually")
+            print("  or use the internal package distribution mechanism.")
+            sys.exit(0)
 
     if getattr(args, "check", False):
         # --check honors --branch so the "any new commits?" answer matches
@@ -9185,7 +9331,7 @@ def _cmd_update_pip(args):
 
 
 def _cmd_update_impl(args, gateway_mode: bool):
-    """Body of ``cmd_update`` — kept separate so the wrapper can always
+    """Body of ``cmd_update`` -- kept separate so the wrapper can always
     restore stdio even on ``sys.exit``."""
     # In gateway mode, use file-based IPC for prompts instead of stdin
     gw_input_fn = (
@@ -9263,7 +9409,7 @@ def _cmd_update_impl(args, gateway_mode: bool):
                 return
             print("✗ Not a git repository. Please reinstall:")
             print(
-                "  curl -fsSL https://alice-agent.nousresearch.com/install.sh | bash"
+                "  curl -fsSL https://alice-agent.stuko.dev/install.sh | bash"
             )
             sys.exit(1)
 
@@ -9670,17 +9816,26 @@ def _cmd_update_impl(args, gateway_mode: bool):
         # build.  ``alice desktop --build-only`` uses the content-hash stamp
         # internally, so this is effectively a no-op when nothing changed.
         # Only bother if the user has a desktop app installed (indicated by
-        # an existing packaged executable or desktop dist); people who have
-        # never run ``alice desktop`` shouldn't be forced into a full
-        # Electron build by ``alice update``.
+        # an existing packaged executable, desktop dist, or a built Wails
+        # binary); people who have never run ``alice desktop`` shouldn't be
+        # forced into a full desktop build by ``alice update``.
         desktop_dir = PROJECT_ROOT / "apps" / "desktop"
-        has_desktop_app = _desktop_packaged_executable(desktop_dir) is not None or _desktop_dist_exists(desktop_dir)
+        wails_dir = PROJECT_ROOT / "apps" / "desktop-wails"
+        wails_bin = (
+            (wails_dir / "build" / "bin" / "alice-desktop").exists()
+            or (wails_dir / "build" / "bin" / "alice-desktop.exe").exists()
+        )
+        has_desktop_app = (
+            _desktop_packaged_executable(desktop_dir) is not None
+            or _desktop_dist_exists(desktop_dir)
+            or wails_bin
+        )
         from alice_constants import find_node_executable
 
         if (desktop_dir / "package.json").exists() and find_node_executable("npm") and has_desktop_app:
             print("→ Checking if desktop app needs rebuilding...")
             _desktop_build_cmd = [sys.executable, "-m", "alice_cli.main", "desktop", "--build-only"]
-            # Capture the (very loud) Electron/vite build output into
+            # Capture the (very loud) desktop build output into
             # update.log instead of streaming it to the terminal. On the rare
             # nonzero exit, retry once after waiting again for the venv — this
             # covers a still-settling rebuild window the first wait didn't fully
@@ -11570,7 +11725,7 @@ def _maybe_setup_dashboard_auth_interactively(args) -> None:
             "    alice dashboard register\n"
             "  It provisions a Nous Portal OAuth client and writes "
             "ALICE_DASHBOARD_OAUTH_CLIENT_ID into ~/.alice/.env for you.\n"
-            "  Docs: https://alice-agent.nousresearch.com/docs/"
+            "  Docs: https://alice-agent.stuko.dev/docs/"
             "user-guide/features/web-dashboard#authentication-gated-mode"
         )
         sys.exit(0)
@@ -12505,7 +12660,7 @@ def main():
             "Manage the fallback provider chain.  Fallback providers are tried "
             "in order when the primary model fails with rate-limit, overload, or "
             "connection errors.  See: "
-            "https://alice-agent.nousresearch.com/docs/user-guide/features/fallback-providers"
+            "https://alice-agent.stuko.dev/docs/user-guide/features/fallback-providers"
         ),
     )
     fallback_subparsers = fallback_parser.add_subparsers(dest="fallback_command")
@@ -12539,7 +12694,7 @@ def main():
             "Pull API keys from an external secret manager at process startup "
             "instead of storing them in ~/.alice/.env.  Currently supports "
             "Bitwarden Secrets Manager.  See: "
-            "https://alice-agent.nousresearch.com/docs/user-guide/secrets/bitwarden"
+            "https://alice-agent.stuko.dev/docs/user-guide/secrets/bitwarden"
         ),
     )
     secrets_subparsers = secrets_parser.add_subparsers(dest="secrets_command")

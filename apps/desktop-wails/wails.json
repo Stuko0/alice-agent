@@ -1,0 +1,25 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "alice-desktop",
+  "outputfilename": "alice-desktop",
+  "devtools": true,
+  "frontend:dir": "./frontend",
+  "frontend:install": "echo 'using pre-built assets'",
+  "frontend:build": "echo 'using pre-built assets'",
+  "frontend:dev:watcher": "echo 'using pre-built assets'",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Stuko",
+    "email": "avplaying@gmail.com"
+  },
+  "info": {
+    "companyName": "Stuko",
+    "productName": "Alice Agent Desktop",
+    "productVersion": "0.17.0",
+    "copyright": "Copyright © 2026 Stuko",
+    "comments": "Native Wails v2 Desktop Shell for Alice Agent"
+  },
+  "windows": {
+    "icon": "../desktop/assets/icon.ico"
+  }
+}

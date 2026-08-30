@@ -155,7 +155,7 @@ if (USER_DATA_OVERRIDE) {
   app.setPath('userData', resolvedUserData)
 }
 
-const DEV_SERVER = process.env.LYDIA_DESKTOP_DEV_SERVER
+const DEV_SERVER = process.env.ALICE_DESKTOP_DEV_SERVER
 const IS_PACKAGED = app.isPackaged
 const IS_MAC = process.platform === 'darwin'
 const IS_WINDOWS = process.platform === 'win32'
@@ -176,7 +176,7 @@ function hiddenWindowsChildOptions(options = {}) {
 // GPU and never see it. Fall back to software rendering when a remote display
 // is detected; it's rock-steady over the wire and the CPU cost is negligible
 // next to the connection's latency. Must run before app `ready` — these
-// switches only apply pre-launch. Override with LYDIA_DESKTOP_DISABLE_GPU
+// switches only apply pre-launch. Override with ALICE_DESKTOP_DISABLE_GPU
 // (1/true → always disable, 0/false → keep GPU on).
 const REMOTE_DISPLAY_REASON = detectRemoteDisplay()
 if (REMOTE_DISPLAY_REASON) {
@@ -287,7 +287,7 @@ if (INSTALL_STAMP) {
 //   Windows: %LOCALAPPDATA%\alice (matches install.ps1)
 //   macOS / Linux: ~/.alice (matches install.sh)
 //
-// Special case: if a legacy ~/.lydia directory exists (e.g., from a prior
+// Special case: if a legacy ~/.alice directory exists (e.g., from a prior
 // pip install or a manual setup) AND the new Alice home does not exist yet,
 // prefer the legacy path so we don't orphan their existing config / sessions
 // / .env. New installs go to ~/.alice / %LOCALAPPDATA%\alice.
@@ -300,7 +300,7 @@ function resolveAliceHome() {
   // A legacy ALICE_HOME env var or registry value (from the old Alice install)
   // is honoured ONLY when no Alice home directory exists yet — once ~/.alice or
   // %LOCALAPPDATA%\alice has content, it wins regardless of env/registry.
-  // This prevents the old Lydia env var from hijacking Alice's data after the
+  // This prevents the old Alice env var from hijacking Alice's data after the
   // user has already migrated or installed Alice.
 
   // Compute the candidate canonical Alice home paths.
@@ -325,11 +325,11 @@ function resolveAliceHome() {
     if (fromRegistry) return normalizeAliceHomeRoot(fromRegistry)
   }
   if (IS_WINDOWS && process.env.LOCALAPPDATA) {
-    const legacy = path.join(app.getPath('home'), '.lydia')
+    const legacy = path.join(app.getPath('home'), '.alice')
     if (directoryExists(legacy)) return legacy
     return path.join(process.env.LOCALAPPDATA, 'alice')
   }
-  const legacy = path.join(app.getPath('home'), '.lydia')
+  const legacy = path.join(app.getPath('home'), '.alice')
   if (directoryExists(legacy)) return legacy
   return path.join(app.getPath('home'), '.alice')
 }
@@ -339,7 +339,7 @@ const ALICE_HOME = resolveAliceHome()
 // ---------------------------------------------------------------------------
 // SSH askpass — route SSH key passphrase prompts through the desktop modal
 // instead of the spawning terminal.  Points to the same Python askpass shim
-// the Python backend writes at ~/.lydia/alice-git-askpass.py.  Git's own
+// the Python backend writes at ~/.alice/alice-git-askpass.py.  Git's own
 // credential prompts (HTTPS username/password) go through GIT_ASKPASS via
 // the backend's web_git module; SSH passphrases need a separate env var.
 // SSH_ASKPASS_REQUIRE=force tells ssh to use the program even when DISPLAY
@@ -354,8 +354,8 @@ if (!process.env.SSH_ASKPASS_REQUIRE) {
 }
 
 function aliceManagedNodePathEntries() {
-  // NOTE: keep this ordering in sync with iter_lydia_node_dirs() in
-  // lydia_constants.py — this Node main process cannot import the Python
+  // NOTE: keep this ordering in sync with iter_alice_node_dirs() in
+  // alice_constants.py — this Node main process cannot import the Python
   // module, so the platform-ordering rule is mirrored here.
   const root = path.join(ALICE_HOME, 'node')
   const bin = path.join(root, 'bin')
@@ -367,7 +367,7 @@ function pathWithAliceManagedNode(...entries) {
   return [...aliceManagedNodePathEntries(), ...entries, process.env.PATH].filter(Boolean).join(path.delimiter)
 }
 
-// ACTIVE_ALICE_ROOT — the canonical mutable Lydia install. Same path
+// ACTIVE_ALICE_ROOT — the canonical mutable Alice install. Same path
 // install.ps1 / install.sh use, so a desktop-only user and a CLI-only user end
 // up with identical layouts and can share one install.
 const ACTIVE_ALICE_ROOT = path.join(ALICE_HOME, 'alice-agent')
@@ -391,10 +391,10 @@ const DESKTOP_CONNECTION_CONFIG_PATH = path.join(app.getPath('userData'), 'conne
 const DESKTOP_UPDATE_CONFIG_PATH = path.join(app.getPath('userData'), 'updates.json')
 const DESKTOP_WINDOW_STATE_PATH = path.join(app.getPath('userData'), 'window-state.json')
 // active-profile.json records which Alice profile the desktop launches its
-// local backend as. When set, startAlice() passes `lydia --profile <name>
+// local backend as. When set, startAlice() passes `alice --profile <name>
 // dashboard …`, which deterministically pins ALICE_HOME (see
 // _apply_profile_override in alice_cli/main.py) and bypasses the sticky
-// ~/.lydia/active_profile file. Unset (null) preserves the legacy behavior:
+// ~/.alice/active_profile file. Unset (null) preserves the legacy behavior:
 // no --profile flag, so the backend honors active_profile / default.
 const DESKTOP_PROFILE_CONFIG_PATH = path.join(app.getPath('userData'), 'active-profile.json')
 // Mirrors alice_cli.profiles._PROFILE_ID_RE so we never hand the backend a
@@ -402,10 +402,10 @@ const DESKTOP_PROFILE_CONFIG_PATH = path.join(app.getPath('userData'), 'active-p
 const PROFILE_NAME_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/
 // Branch we track for self-update. The GUI work has merged to main, so this
 // tracks main. User can also override at runtime via
-// lydiaDesktop.updates.setBranch().
+// aliceDesktop.updates.setBranch().
 const DEFAULT_UPDATE_BRANCH = 'main'
 // desktop.log lives under ALICE_HOME/logs/ so it sits next to agent.log,
-// errors.log, gateway.log produced by lydia_logging.setup_logging — one log
+// errors.log, gateway.log produced by alice_logging.setup_logging — one log
 // directory per user, regardless of which UI surface produced the line.
 const DESKTOP_LOG_PATH = path.join(ALICE_HOME, 'logs', 'desktop.log')
 const DESKTOP_LOG_FLUSH_MS = 120
@@ -416,7 +416,7 @@ const DESKTOP_LOG_BUFFER_MAX_CHARS = 64 * 1024
 // bound — we have seen it reach ~326 GB and exhaust the disk, which then breaks
 // update/install (no room for git/venv/npm temp files).
 //
-// Mirror the Python logs (lydia_logging.py RotatingFileHandler, maxBytes x
+// Mirror the Python logs (alice_logging.py RotatingFileHandler, maxBytes x
 // backupCount): cascade live -> .1 -> .2 -> .3, drop the oldest. Steady-state
 // stays bounded at ~(backupCount + 1) x cap however hard the app loops.
 //
@@ -429,9 +429,9 @@ const DESKTOP_LOG_MAX_BYTES = 10 * 1024 * 1024
 const DESKTOP_LOG_BACKUP_COUNT = 3
 const DESKTOP_LOG_DISCARD_BYTES = DESKTOP_LOG_MAX_BYTES * 4
 const desktopLogBackupPath = n => `${DESKTOP_LOG_PATH}.${n}`
-const BOOT_FAKE_MODE = process.env.LYDIA_DESKTOP_BOOT_FAKE === '1'
+const BOOT_FAKE_MODE = process.env.ALICE_DESKTOP_BOOT_FAKE === '1'
 const BOOT_FAKE_STEP_MS = (() => {
-  const raw = Number.parseInt(String(process.env.LYDIA_DESKTOP_BOOT_FAKE_STEP_MS || ''), 10)
+  const raw = Number.parseInt(String(process.env.ALICE_DESKTOP_BOOT_FAKE_STEP_MS || ''), 10)
   if (!Number.isFinite(raw) || raw <= 0) return 650
   return Math.max(120, raw)
 })()
@@ -713,21 +713,21 @@ app.setName(APP_NAME)
 // Windows toast notifications silently no-op unless an AppUserModelID is set:
 // `new Notification().show()` returns without error and nothing appears. The
 // AUMID must match the installed Start Menu shortcut's AUMID, which
-// electron-builder derives from the build `appId` (com.nousresearch.lydia) —
+// electron-builder derives from the build `appId` (com.nousresearch.alice) —
 // keep this string in sync with package.json `build.appId`. macOS/Linux don't
 // need this, so gate it on Windows. (Fixes: desktop approval/turn notifications
 // never firing on Windows.)
 if (IS_WINDOWS) {
   app.setAppUserModelId('com.nousresearch.alice')
 }
-// Seed the native About panel with the live Lydia version. This is refreshed
+// Seed the native About panel with the live Alice version. This is refreshed
 // on every open via the explicit "About" menu handler (refreshAboutPanel), so
 // an in-place `alice update` mid-session is reflected without an app restart;
 // the seed here just covers the first open and any non-menu invocation path.
 app.setAboutPanelOptions({
   applicationName: APP_NAME,
   applicationVersion: resolveAliceVersion(),
-  copyright: 'Copyright © 2026 Nous Research'
+  copyright: 'Copyright © 2026 Stuko'
 })
 
 // Custom scheme for streaming local media (video/audio) into the renderer.
@@ -803,8 +803,8 @@ const backendPool = new Map() // profile -> { process, port, token, connectionPr
 // Keep the pool light: cap concurrent profile backends (LRU eviction) and reap
 // idle ones. A user idles at exactly the primary backend; pool backends only
 // exist while a non-primary profile is actively being chatted through.
-const POOL_MAX_BACKENDS = Math.max(1, Number(process.env.LYDIA_DESKTOP_POOL_MAX) || 3)
-const POOL_IDLE_MS = Math.max(60_000, Number(process.env.LYDIA_DESKTOP_POOL_IDLE_MS) || 10 * 60_000)
+const POOL_MAX_BACKENDS = Math.max(1, Number(process.env.ALICE_DESKTOP_POOL_MAX) || 3)
+const POOL_IDLE_MS = Math.max(60_000, Number(process.env.ALICE_DESKTOP_POOL_IDLE_MS) || 10 * 60_000)
 // A backend touched within this window has a live renderer socket (the keepalive
 // pings every 60s for every open profile). LRU eviction must spare these — a
 // concurrent multi-profile session keeps several backends "fresh" at once, and
@@ -1130,7 +1130,7 @@ function broadcastBootProgress() {
 //   - log:      bounded ring buffer of the last 200 log lines for the
 //               "Show details" affordance in the overlay
 //
-// The snapshot is queryable via the lydia:bootstrap:get IPC handler so a
+// The snapshot is queryable via the alice:bootstrap:get IPC handler so a
 // reloaded renderer (e.g. devtools reload during dev) recovers state.
 // Bootstrap log ring: bounded buffer so a long install (npm + playwright
 // downloads can emit thousands of lines) doesn't grow unbounded in memory
@@ -1251,12 +1251,12 @@ function directoryExists(filePath) {
 }
 
 // --- in-app update mutual exclusion (#50238) -------------------------------
-// The Tauri updater writes ALICE_HOME/.lydia-update-in-progress for the whole
+// The Tauri updater writes ALICE_HOME/.alice-update-in-progress for the whole
 // duration of an `--update` run (see update.rs UpdateMarkerGuard). If the user
 // relaunches the desktop mid-update — because the window vanished with no
 // progress and looks crashed — a fresh instance must NOT spawn its own local
 // backend: that backend re-locks the venv shim, the updater's straggler cleanup
-// (`force_kill_other_lydia`, taskkill /IM alice.exe) kills it, the launch
+// (`force_kill_other_alice`, taskkill /IM alice.exe) kills it, the launch
 // fails with the 45s "backend didn't come up" error, and the relaunch/kill
 // cycle loops. Instead the fresh instance parks until the update finishes, then
 // brings the backend up itself (it is the surviving instance — the updater's
@@ -1322,7 +1322,7 @@ function findOnPath(command) {
   // On Windows, try PATHEXT extensions BEFORE the bare (empty-extension) name.
   // A real command must resolve via its .exe/.cmd (Windows command-resolution
   // semantics consult PATHEXT); an extensionless file — e.g. a Git-Bash
-  // shell-script shim named `lydia` — must not shadow `lydia.cmd`/`alice.exe`.
+  // shell-script shim named `alice` — must not shadow `alice.cmd`/`alice.exe`.
   // The empty entry is kept LAST so callers that already include the extension
   // (py.exe, pwsh.exe, powershell.exe) still resolve.
   const extensions = IS_WINDOWS
@@ -1347,7 +1347,7 @@ function unwrapWindowsVenvAliceCommand(command, backendArgs) {
   if (!IS_WINDOWS || !command || isCommandScript(command)) return null
 
   const resolved = path.resolve(String(command))
-  if (!/^lydia(?:\.exe)?$/i.test(path.basename(resolved))) return null
+  if (!/^alice(?:\.exe)?$/i.test(path.basename(resolved))) return null
 
   const scriptsDir = path.dirname(resolved)
   if (path.basename(scriptsDir).toLowerCase() !== 'scripts') return null
@@ -1383,7 +1383,7 @@ function unwrapWindowsVenvAliceCommand(command, backendArgs) {
 //
 // Fast path: read the runtime's own dashboard.py (instant, covers managed
 // installs, dev checkouts, and the Windows venv). Fallback: probe the CLI once
-// (covers a bare `lydia` resolved from PATH with no known source root). Result
+// (covers a bare `alice` resolved from PATH with no known source root). Result
 // is cached per resolved runtime so we probe at most once per backend.
 const _serveSupportCache = new Map()
 function backendSupportsServe(backend) {
@@ -1474,7 +1474,7 @@ function isAliceSourceRoot(root) {
 }
 
 function findPythonForRoot(root) {
-  const override = process.env.LYDIA_DESKTOP_PYTHON
+  const override = process.env.ALICE_DESKTOP_PYTHON
   if (override && fileExists(override)) return override
 
   const relativePaths = IS_WINDOWS
@@ -1512,7 +1512,7 @@ function findSystemPython() {
   //      miss real Python 3.13 installs (user-reported case).
   //
   // We also restrict ourselves to Python 3.11–3.13. 3.14 is the latest
-  // CPython but several Lydia deps (notably pywinpty's Rust-built
+  // CPython but several Alice deps (notably pywinpty's Rust-built
   // windows_x86_64_msvc crate) don't yet publish 3.14 wheels, and
   // `pip install -e .` falls back to source-build, which fails without
   // a Rust toolchain. install.ps1 sidesteps this by pinning to 3.11
@@ -1610,7 +1610,7 @@ function findSystemPython() {
   return null
 }
 
-// findGitBash — locate bash.exe on Windows. Lydia' terminal tool requires
+// findGitBash — locate bash.exe on Windows. Alice' terminal tool requires
 // bash (POSIX shell), and on Windows that's almost always Git for Windows'
 // bundled Git Bash. We check the same set of locations tools/environments/
 // local.py:_find_bash() checks at runtime, so a positive result here means
@@ -1623,14 +1623,14 @@ function findGitBash() {
     return findOnPath('bash')
   }
 
-  // install.ps1 drops PortableGit at %LOCALAPPDATA%\lydia\git\... — checked
+  // install.ps1 drops PortableGit at %LOCALAPPDATA%\alice\git\... — checked
   // first so users who installed via install.ps1 are detected before we
   // start probing system-wide locations.
   const localAppData = process.env.LOCALAPPDATA || ''
   const candidates = []
   if (localAppData) {
-    candidates.push(path.join(localAppData, 'lydia', 'git', 'bin', 'bash.exe'))
-    candidates.push(path.join(localAppData, 'lydia', 'git', 'usr', 'bin', 'bash.exe'))
+    candidates.push(path.join(localAppData, 'alice', 'git', 'bin', 'bash.exe'))
+    candidates.push(path.join(localAppData, 'alice', 'git', 'usr', 'bin', 'bash.exe'))
   }
 
   // Standard Git for Windows install locations.
@@ -1672,7 +1672,7 @@ function getVenvPython(venvRoot) {
 // This makes "no flashing windows" a property of the one backend launch rather
 // than a flag that has to be remembered at every descendant spawn site. Restoring
 // console python also restores stdout, so the backend announces its port on the
-// normal LYDIA_DASHBOARD_READY stdout line and no ready-file side channel is
+// normal ALICE_DASHBOARD_READY stdout line and no ready-file side channel is
 // needed.
 
 function getVenvSitePackagesEntries(venvRoot) {
@@ -1708,7 +1708,7 @@ function makeDashboardReadyFile() {
 }
 
 // resolveGitBinary — locate git.exe on Windows. A fresh installer-driven
-// install only has PortableGit under %LOCALAPPDATA%\lydia\git (never on
+// install only has PortableGit under %LOCALAPPDATA%\alice\git (never on
 // PATH), so a bare spawn('git') ENOENTs and self-update checks fail with
 // "Couldn't check for updates". Mirror findGitBash: PortableGit first, then
 // standard Git-for-Windows locations, then PATH. Cached after first probe.
@@ -1723,8 +1723,8 @@ function resolveGitBinary() {
   const localAppData = process.env.LOCALAPPDATA || ''
   const candidates = []
   if (localAppData) {
-    candidates.push(path.join(localAppData, 'lydia', 'git', 'cmd', 'git.exe'))
-    candidates.push(path.join(localAppData, 'lydia', 'git', 'bin', 'git.exe'))
+    candidates.push(path.join(localAppData, 'alice', 'git', 'cmd', 'git.exe'))
+    candidates.push(path.join(localAppData, 'alice', 'git', 'bin', 'git.exe'))
   }
   candidates.push(path.join(process.env['ProgramFiles'] || 'C:\\Program Files', 'Git', 'cmd', 'git.exe'))
   candidates.push(path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Git', 'cmd', 'git.exe'))
@@ -1764,7 +1764,7 @@ function recentAliceLog() {
   return aliceLog.slice(-20).join('\n')
 }
 
-// ─── Self-update (git-pull against the running backend's lydia root) ──────
+// ─── Self-update (git-pull against the running backend's alice root) ──────
 
 function readDesktopUpdateConfig() {
   try {
@@ -1911,7 +1911,7 @@ async function checkUpdates() {
       supported: false,
       reason: 'not-a-git-checkout',
       message: `${updateRoot} isn't a git checkout — desktop self-update only runs against a source install.`,
-      lydiaRoot: updateRoot,
+      aliceRoot: updateRoot,
       branch
     }
   }
@@ -1933,7 +1933,7 @@ async function checkUpdates() {
         branch,
         error: 'fetch-failed',
         message: firstLine(target.stderr) || 'git ls-remote failed.',
-        lydiaRoot: updateRoot,
+        aliceRoot: updateRoot,
         fetchedAt: Date.now()
       }
     }
@@ -1946,7 +1946,7 @@ async function checkUpdates() {
       targetSha,
       commits: [],
       dirty: dirtyStr.length > 0,
-      lydiaRoot: updateRoot,
+      aliceRoot: updateRoot,
       fetchedAt: Date.now()
     }
   }
@@ -1958,7 +1958,7 @@ async function checkUpdates() {
       branch,
       error: 'fetch-failed',
       message: firstLine(fetched.stderr) || 'git fetch failed.',
-      lydiaRoot: updateRoot,
+      aliceRoot: updateRoot,
       fetchedAt: Date.now()
     }
   }
@@ -2003,7 +2003,7 @@ async function checkUpdates() {
     targetSha,
     commits,
     dirty: dirtyStr.length > 0,
-    lydiaRoot: updateRoot,
+    aliceRoot: updateRoot,
     fetchedAt: Date.now()
   }
 }
@@ -2040,7 +2040,7 @@ let isQuittingForHandoff = false
 
 // Resolve the staged updater binary. The Tauri installer copies itself to
 // ALICE_HOME/alice-setup.exe on a successful install (see
-// apps/bootstrap-installer paths::copy_self_to_lydia_home). That binary owns
+// apps/bootstrap-installer paths::copy_self_to_alice_home). That binary owns
 // ALL repo mutation — running `alice update` + rebuilding the desktop — so
 // the desktop never touches its own bits while running. Returns null when the
 // updater isn't staged (e.g. a dev/source run that never went through the
@@ -2112,7 +2112,7 @@ function isShimLocked(shimPath) {
 
 // Force-kill the entire process TREE rooted at each PID. Node's child.kill()
 // only signals the direct child, so on Windows a backend `alice.exe` that
-// spawned its own grandchildren (a `lydia` REPL, a pty terminal session, the
+// spawned its own grandchildren (a `alice` REPL, a pty terminal session, the
 // gateway) would survive and keep the venv shim locked. taskkill /T /F reaps
 // the whole tree synchronously. Windows-only: this is called solely from the
 // Windows shim-unlock path, and the backend is NOT spawned detached (so it's
@@ -2151,7 +2151,7 @@ async function releaseBackendLockForUpdate(updateRoot) {
 
 // Shared backend teardown + venv-shim unlock wait. Used by BOTH the self-update
 // hand-off and the desktop uninstaller — they have the identical Windows
-// problem: the desktop's backend (and the grandchildren IT spawned — a lydia
+// problem: the desktop's backend (and the grandchildren IT spawned — a alice
 // REPL, a pty terminal, the gateway) keep `alice.exe` and other files in the
 // venv mandatory-locked, so any in-place replace/delete of the install tree
 // races a live handle and half-fails (#37532). We tree-kill every backend PID
@@ -2197,7 +2197,7 @@ async function releaseBackendLock(updateRoot, tag) {
 //
 // The desktop is a pure consumer: it does NOT git pull / pip install / rebuild
 // itself (the old open-coded git dance lived here and drifted from
-// `alice update`). Instead we spawn the staged Lydia-Setup binary with
+// `alice update`). Instead we spawn the staged Alice-Setup binary with
 // --update and quit, so it can run `alice update` (which refuses while we
 // hold the venv shim) and rebuild the desktop with our exe already gone.
 //
@@ -2212,18 +2212,18 @@ async function applyUpdates(opts = {}) {
   try {
     const updater = resolveUpdaterBinary()
     if (!updater && !IS_WINDOWS) {
-      // macOS/Linux drag-install: no staged Tauri lydia-setup. Unlike Windows
+      // macOS/Linux drag-install: no staged Tauri alice-setup. Unlike Windows
       // (where a venv-shim file lock forces the quit→hand-off→rebuild dance),
       // there's no mandatory file locking here, so the desktop can drive the
-      // whole update itself: `alice update` (backend) + `lydia desktop
+      // whole update itself: `alice update` (backend) + `alice desktop
       // --build-only` (OS-aware GUI rebuild), then swap the running .app bundle
       // with the freshly built one and relaunch.
       return await applyUpdatesPosixInApp(opts)
     }
     if (!updater) {
       // No staged updater binary — this is a CLI-installed user (they ran
-      // `lydia desktop`, never the Tauri installer that self-copies
-      // alice-setup.exe into ALICE_HOME). They DO have a working `lydia`
+      // `alice desktop`, never the Tauri installer that self-copies
+      // alice-setup.exe into ALICE_HOME). They DO have a working `alice`
       // on PATH / in the venv, so the correct path is the one-liner in their
       // native medium. We show the EXACT command, branch-pinned to the
       // checkout they're on — bare `alice update` defaults to main and would
@@ -2244,7 +2244,7 @@ async function applyUpdates(opts = {}) {
       }
       rememberLog(`[updates] no staged updater; surfacing manual \`${command}\` for CLI install at ${updateRoot}`)
       emitUpdateProgress({ stage: 'manual', message: command, percent: null })
-      return { ok: true, manual: true, command, lydiaRoot: updateRoot }
+      return { ok: true, manual: true, command, aliceRoot: updateRoot }
     }
 
     emitUpdateProgress({
@@ -2359,8 +2359,8 @@ async function handOffWindowsBootstrapRecovery(reason) {
   return true
 }
 
-// Resolve the lydia CLI to drive an in-app update: prefer the venv shim in
-// the install we're updating, fall back to `lydia` on PATH.
+// Resolve the alice CLI to drive an in-app update: prefer the venv shim in
+// the install we're updating, fall back to `alice` on PATH.
 function resolveAliceCliBinary(updateRoot) {
   const venvAlice = path.join(updateRoot, 'venv', 'bin', 'alice')
   if (fileExists(venvAlice)) return venvAlice
@@ -2412,20 +2412,20 @@ function shellQuote(value) {
 }
 
 // macOS/Linux in-app update: backend (`alice update`) + OS-aware GUI rebuild
-// (`lydia desktop --build-only`), then atomically swap the running .app bundle
+// (`alice desktop --build-only`), then atomically swap the running .app bundle
 // with the freshly built one and relaunch. Degrades to "backend updated,
 // restart to load the new GUI" if the swap can't be performed.
 async function applyUpdatesPosixInApp() {
   const updateRoot = resolveUpdateRoot()
   const alice = resolveAliceCliBinary(updateRoot)
-  if (!lydia) {
+  if (!alice) {
     emitUpdateProgress({ stage: 'manual', message: 'alice update', percent: null })
-    return { ok: true, manual: true, command: 'alice update', lydiaRoot: updateRoot }
+    return { ok: true, manual: true, command: 'alice update', aliceRoot: updateRoot }
   }
 
-  // Put the Lydia-managed Node and the venv on PATH so `lydia desktop`'s
+  // Put the Alice-managed Node and the venv on PATH so `alice desktop`'s
   // npm build can find them on a machine with no system Node. Windows portable
-  // Node lives directly under %LOCALAPPDATA%\lydia\node, not node\bin.
+  // Node lives directly under %LOCALAPPDATA%\alice\node, not node\bin.
   const env = {
     ALICE_HOME,
     PATH: pathWithAliceManagedNode(path.join(updateRoot, 'venv', 'bin'))
@@ -2437,7 +2437,7 @@ async function applyUpdatesPosixInApp() {
   // mid-update produces the boot→kill→crash loop in #37532 — the desktop
   // already restarts its own backend via the rebuild+relaunch below, so the
   // reap must spare it. Hand the live backend's PID to the update process;
-  // _kill_stale_dashboard_processes reads LYDIA_DESKTOP_CHILD_PID and excludes
+  // _kill_stale_dashboard_processes reads ALICE_DESKTOP_CHILD_PID and excludes
   // it while still reaping any genuinely-orphaned backends. (#37532)
   // Exclude every desktop-managed backend (primary + all pool profiles) from
   // the update reaper. _kill_stale_dashboard_processes accepts a comma-separated
@@ -2452,7 +2452,7 @@ async function applyUpdatesPosixInApp() {
     }
   }
   if (desktopChildPids.length) {
-    env.LYDIA_DESKTOP_CHILD_PID = desktopChildPids.join(',')
+    env.ALICE_DESKTOP_CHILD_PID = desktopChildPids.join(',')
   }
 
   // Branch-pin so a non-main checkout doesn't get switched to main (and self-heal
@@ -2487,7 +2487,11 @@ async function applyUpdatesPosixInApp() {
     if (attempt > 0) {
       emitUpdateProgress({ stage: 'rebuild', message: 'Retrying the desktop rebuild…', percent: 60 })
     }
-    return runStreamedUpdate(alice, ['desktop', '--build-only'], { cwd: updateRoot, env, stage: 'rebuild' })
+    // `--electron` is pinned so this in-place rebuild keeps producing the
+    // Electron shell the running app is (the CLI default is now Wails; without
+    // the flag the rebuild would produce a Wails binary and the swap+relaunch
+    // below would point at a stale Electron bundle).
+    return runStreamedUpdate(alice, ['desktop', '--electron', '--build-only'], { cwd: updateRoot, env, stage: 'rebuild' })
   })
   if (rebuilt.code !== 0) {
     emitUpdateProgress({
@@ -2498,7 +2502,7 @@ async function applyUpdatesPosixInApp() {
     return { ok: false, backendUpdated: true, error: 'desktop rebuild failed' }
   }
 
-  // Linux in-app update terminal state (#45205). `lydia desktop --build-only`
+  // Linux in-app update terminal state (#45205). `alice desktop --build-only`
   // rebuilds the unpacked app in place under apps/desktop/release/<plat>-unpacked.
   // We can only HONESTLY relaunch into the new GUI when the *running* binary IS
   // that rebuilt one — i.e. execPath lives under release/<plat>-unpacked. The
@@ -2638,11 +2642,11 @@ for _ in $(seq 1 240); do
   sleep 0.5
 done
 if [ "$SRC" != "$DST" ]; then
-  if /usr/bin/ditto "$SRC" "$DST.lydia-update-new"; then
-    rm -rf "$DST.lydia-update-old" 2>/dev/null || true
-    mv "$DST" "$DST.lydia-update-old" 2>/dev/null || rm -rf "$DST"
-    mv "$DST.lydia-update-new" "$DST"
-    rm -rf "$DST.lydia-update-old" 2>/dev/null || true
+  if /usr/bin/ditto "$SRC" "$DST.alice-update-new"; then
+    rm -rf "$DST.alice-update-old" 2>/dev/null || true
+    mv "$DST" "$DST.alice-update-old" 2>/dev/null || rm -rf "$DST"
+    mv "$DST.alice-update-new" "$DST"
+    rm -rf "$DST.alice-update-old" 2>/dev/null || true
   fi
 fi
 /usr/bin/xattr -dr com.apple.quarantine "$DST" 2>/dev/null || true
@@ -2720,7 +2724,7 @@ function isBootstrapComplete() {
   if (marker.schemaVersion !== BOOTSTRAP_MARKER_SCHEMA_VERSION) return false
   if (typeof marker.pinnedCommit !== 'string' || marker.pinnedCommit.length < 7) return false
   // We DELIBERATELY do NOT verify that the checkout is currently at the
-  // pinned commit -- users update via the in-app update path or `lydia
+  // pinned commit -- users update via the in-app update path or `alice
   // update`, which moves HEAD legitimately. The marker just attests "we
   // ran the bootstrap successfully at least once." We DO additionally require
   // a runnable venv: an interrupted or split-home install can leave the marker
@@ -2743,7 +2747,7 @@ function writeBootstrapMarker(payload) {
 }
 
 function resolveWebDist() {
-  const override = process.env.LYDIA_DESKTOP_WEB_DIST
+  const override = process.env.ALICE_DESKTOP_WEB_DIST
   if (override && directoryExists(path.resolve(override))) return path.resolve(override)
 
   const unpackedDist = path.join(unpackedPathFor(APP_ROOT), 'dist')
@@ -2760,7 +2764,7 @@ function resolveWebDist() {
     rememberLog(
       `[web-dist] dashboard frontend dir resolved to an asar-internal path that ` +
         `is not a real directory: ${fallback}. Static routes will 404. ` +
-        `Ensure dist/** is unpacked (asarUnpack) or set LYDIA_DESKTOP_WEB_DIST.`
+        `Ensure dist/** is unpacked (asarUnpack) or set ALICE_DESKTOP_WEB_DIST.`
     )
   }
   return fallback
@@ -2776,7 +2780,7 @@ function resolveRendererIndex() {
   rememberLog(
     `[renderer] index.html not found — the desktop app was packaged without a ` +
       `renderer bundle. Tried: ${candidates.join(', ')}. ` +
-      `Rebuild with: lydia desktop --force-build`
+      `Rebuild with: alice desktop --force-build`
   )
   return candidates[0]
 }
@@ -2806,7 +2810,7 @@ function resolveAliceCwd() {
   // real directory), then the home dir.
   const candidates = [
     readDefaultProjectDir(),
-    process.env.LYDIA_DESKTOP_CWD,
+    process.env.ALICE_DESKTOP_CWD,
     IS_PACKAGED ? null : process.env.INIT_CWD,
     IS_PACKAGED ? null : process.cwd(),
     !IS_PACKAGED ? SOURCE_REPO_ROOT : null,
@@ -2923,7 +2927,7 @@ function createActiveBackend(backendArgs) {
 
   return {
     kind: 'python',
-    label: `Lydia at ${ACTIVE_ALICE_ROOT}`,
+    label: `Alice at ${ACTIVE_ALICE_ROOT}`,
     command,
     args: ['-m', 'alice_cli.main', ...backendArgs],
     env: buildDesktopBackendEnv({
@@ -2980,7 +2984,7 @@ function resolveAliceBackend(backendArgs) {
 
   // 2. Development source -- when running `npm run dev` from a checkout, the
   //    cloned repo at SOURCE_REPO_ROOT takes precedence over ACTIVE and any
-  //    installed `lydia` on PATH so local Python edits are actually exercised.
+  //    installed `alice` on PATH so local Python edits are actually exercised.
   //    (In dev with no checkout, SOURCE_REPO_ROOT won't pass isAliceSourceRoot.)
   if (!IS_PACKAGED && isAliceSourceRoot(SOURCE_REPO_ROOT)) {
     const backend = createPythonBackend(SOURCE_REPO_ROOT, `Alice source at ${SOURCE_REPO_ROOT}`, backendArgs)
@@ -2988,23 +2992,23 @@ function resolveAliceBackend(backendArgs) {
   }
 
   // 3. Bootstrap-complete ACTIVE_ALICE_ROOT -- the canonical install at
-  //    %LOCALAPPDATA%\lydia\alice-agent (Windows) or ~/.alice/alice-agent.
+  //    %LOCALAPPDATA%\alice\alice-agent (Windows) or ~/.alice/alice-agent.
   //    The bootstrap marker means install.ps1 stages finished and the user
   //    completed initial configuration; we trust the install and go straight
-  //    to spawning lydia. Updates flow through the in-app update path
+  //    to spawning alice. Updates flow through the in-app update path
   //    (applyUpdates -> git pull) or `alice update` from the CLI.
   if (isBootstrapComplete()) {
     return createActiveBackend(backendArgs)
   }
 
-  // 4. Existing `lydia` on PATH -- installed via install.ps1 / install.sh from
+  // 4. Existing `alice` on PATH -- installed via install.ps1 / install.sh from
   //    a previous tool-only setup, or pip-installed system-wide. Use it but
   //    do NOT write a bootstrap marker; the user did this themselves and we
   //    don't want to take ownership of an install we didn't perform.
   //    ALICE_DESKTOP_IGNORE_EXISTING=1 forces the bootstrap path for testing.
   if (process.env.ALICE_DESKTOP_IGNORE_EXISTING !== '1') {
     let aliceCommand = null
-    const aliceOverride = process.env.ALICE_DESKTOP_LYDIA
+    const aliceOverride = process.env.ALICE_DESKTOP_ALICE
 
     if (aliceOverride) {
       const resolvedOverride = findOnPath(aliceOverride)
@@ -3021,7 +3025,7 @@ function resolveAliceBackend(backendArgs) {
 
     if (aliceCommand) {
       if (looksLikeDesktopAppBinary(aliceCommand)) {
-        rememberLog(`Ignoring desktop app executable on PATH while resolving Lydia CLI: ${aliceCommand}`)
+        rememberLog(`Ignoring desktop app executable on PATH while resolving Alice CLI: ${aliceCommand}`)
         aliceCommand = null
       }
     }
@@ -3032,7 +3036,7 @@ function resolveAliceBackend(backendArgs) {
         return unwrapped
       }
 
-      // Smoke-test the candidate before trusting it. A `lydia` shim
+      // Smoke-test the candidate before trusting it. A `alice` shim
       // left behind by a half-uninstalled pip install (or a venv
       // entry-point pointing at a deleted interpreter) still resolves
       // via findOnPath but explodes on spawn -- the user then sees a
@@ -3071,7 +3075,7 @@ function resolveAliceBackend(backendArgs) {
     // backend hands the spawn step a guaranteed ModuleNotFoundError.
     // Verify the import works before trusting the candidate; on
     // failure, fall through to step 6 so the bootstrap runner pulls
-    // a uv-managed 3.11 into %LOCALAPPDATA%\lydia\alice-agent\venv.
+    // a uv-managed 3.11 into %LOCALAPPDATA%\alice\alice-agent\venv.
     if (canImportAliceCli(python)) {
       return {
         kind: 'python',
@@ -3132,7 +3136,7 @@ async function ensureRuntime(backend) {
 
     if (await handOffWindowsBootstrapRecovery('bootstrap-needed')) {
       const handoffError = new Error(
-        'Lydia recovery was handed off to Lydia Setup. The desktop will restart when recovery completes.'
+        'Alice recovery was handed off to Alice Setup. The desktop will restart when recovery completes.'
       )
       handoffError.isBootstrapFailure = true
       handoffError.bootstrapHandedOff = true
@@ -3187,7 +3191,7 @@ async function ensureRuntime(backend) {
     bootstrapAbortController = null
 
     if (bootstrapResult.cancelled) {
-      const cancelledError = new Error('Lydia install was cancelled.')
+      const cancelledError = new Error('Alice install was cancelled.')
       cancelledError.isBootstrapFailure = true
       cancelledError.bootstrapCancelled = true
       bootstrapFailure = cancelledError
@@ -3204,7 +3208,7 @@ async function ensureRuntime(backend) {
       bootstrapError.failedStage = bootstrapResult.failedStage || null
       // Latch the failure so subsequent startAlice() calls return this
       // same error without re-running install.ps1.  Cleared by the
-      // lydia:bootstrap:reset IPC (renderer's "Reload and retry").
+      // alice:bootstrap:reset IPC (renderer's "Reload and retry").
       bootstrapFailure = bootstrapError
       throw bootstrapError
     }
@@ -3223,23 +3227,23 @@ async function ensureRuntime(backend) {
   // attests they ran successfully).
   if (!isAliceSourceRoot(ACTIVE_ALICE_ROOT)) {
     throw new Error(
-      `Lydia install at ${ACTIVE_ALICE_ROOT} is missing or incomplete. ` +
+      `Alice install at ${ACTIVE_ALICE_ROOT} is missing or incomplete. ` +
         'Reinstall via the desktop installer or scripts/install.ps1.'
     )
   }
 
-  // On Windows, preflight Git Bash. Lydia' terminal tool calls bash.exe
+  // On Windows, preflight Git Bash. Alice' terminal tool calls bash.exe
   // directly (tools/environments/local.py); without it the agent can't run
   // terminal commands. install.ps1's Stage-Git puts PortableGit at
-  // %LOCALAPPDATA%\lydia\git\, which findGitBash() picks up, so for any
+  // %LOCALAPPDATA%\alice\git\, which findGitBash() picks up, so for any
   // user who completed the bootstrap this is a no-op. For users who got
-  // here via an external `lydia` on PATH, this check still helps.
+  // here via an external `alice` on PATH, this check still helps.
   if (IS_WINDOWS && !findGitBash()) {
     throw new Error(
-      'Git for Windows is required for Lydia on Windows (provides Git Bash, ' +
+      'Git for Windows is required for Alice on Windows (provides Git Bash, ' +
         "which the agent's terminal tool uses). Install it from " +
         'https://git-scm.com/download/win or run `winget install -e --id Git.Git`, ' +
-        'then relaunch Lydia.'
+        'then relaunch Alice.'
     )
   }
 
@@ -3253,15 +3257,15 @@ async function ensureRuntime(backend) {
     // install.ps1 succeeds. If we hit this, the user (or a deleted venv)
     // broke the invariant; tell them to re-run the install.
     throw new Error(
-      `Lydia venv missing at ${VENV_ROOT}. Re-run the desktop installer or ` + '`scripts/install.ps1` to rebuild it.'
+      `Alice venv missing at ${VENV_ROOT}. Re-run the desktop installer or ` + '`scripts/install.ps1` to rebuild it.'
     )
   }
 
   backend.command = getVenvPython(VENV_ROOT)
-  backend.label = `Lydia at ${ACTIVE_ALICE_ROOT} (venv: ${VENV_ROOT})`
+  backend.label = `Alice at ${ACTIVE_ALICE_ROOT} (venv: ${VENV_ROOT})`
   updateBootProgress({
     phase: 'runtime.ready',
-    message: 'Lydia runtime is ready',
+    message: 'Alice runtime is ready',
     progress: 82,
     running: true,
     error: null
@@ -3904,7 +3908,7 @@ function closePreviewWatchers() {
   }
 }
 
-async function waitForLydia(baseUrl, token) {
+async function waitForAlice(baseUrl, token) {
   const deadline = Date.now() + 45_000
   let lastError = null
 
@@ -3954,7 +3958,7 @@ function sendClosePreviewRequested() {
 
 // Tell the renderer the machine just woke. Sleep silently drops the
 // renderer's WebSocket to the local backend; the renderer reconnects on this
-// signal so the chat composer doesn't stay stuck on "Starting Lydia...".
+// signal so the chat composer doesn't stay stuck on "Starting Alice...".
 function sendPowerResume() {
   if (!mainWindow || mainWindow.isDestroyed()) return
   const { webContents } = mainWindow
@@ -4361,10 +4365,10 @@ function installMediaPermissions() {
 // OAuth remote-gateway auth.
 //
 // Hosted Alice gateways gate the dashboard behind an OAuth provider (e.g.
-// Nous Research) instead of a static session token. The auth model is
+// Stuko) instead of a static session token. The auth model is
 // fundamentally different from the token path:
 //
-//   * REST is authed by HttpOnly session cookies (``lydia_session_at``),
+//   * REST is authed by HttpOnly session cookies (``alice_session_at``),
 //     established by a browser redirect round-trip (/login → IDP →
 //     /auth/callback sets cookies). We cannot read the HttpOnly cookie value
 //     in JS — instead we let an Electron BrowserWindow complete the round
@@ -4375,9 +4379,9 @@ function installMediaPermissions() {
 //     ``POST /api/auth/ws-ticket`` (cookie-authed). The legacy ``?token=``
 //     path is unconditionally rejected by gated gateways.
 //   * Nous Portal now issues a 24h ROTATING, reuse-detected refresh token
-//     alongside the ~15-min access token (Portal NAS #293 / lydia #37247).
-//     Both are set as HttpOnly cookies (``lydia_session_at`` ~15 min,
-//     ``lydia_session_rt`` 24h). When the AT cookie lapses but the RT cookie
+//     alongside the ~15-min access token (Portal NAS #293 / alice #37247).
+//     Both are set as HttpOnly cookies (``alice_session_at`` ~15 min,
+//     ``alice_session_rt`` 24h). When the AT cookie lapses but the RT cookie
 //     is still alive, the gateway middleware transparently rotates a fresh AT
 //     on the next authenticated request — so connectivity must NOT be gated on
 //     the AT cookie alone. We probe liveness by actually minting a ws-ticket
@@ -4812,11 +4816,11 @@ async function sanitizeDesktopConnectionConfig(config = readDesktopConnectionCon
   const scoped = key ? config.profiles?.[key] || null : null
   const block = key ? scoped || {} : config.remote || {}
 
-  const envOverride = key ? false : Boolean(process.env.LYDIA_DESKTOP_REMOTE_URL)
+  const envOverride = key ? false : Boolean(process.env.ALICE_DESKTOP_REMOTE_URL)
 
   const remoteToken = decryptDesktopSecret(block.token)
   const authMode = normAuthMode(block.authMode)
-  const remoteUrl = envOverride ? String(process.env.LYDIA_DESKTOP_REMOTE_URL || '') : String(block.url || '')
+  const remoteUrl = envOverride ? String(process.env.ALICE_DESKTOP_REMOTE_URL || '') : String(block.url || '')
   const mode = envOverride || (key ? scoped?.mode : config.mode) === 'remote' ? 'remote' : 'local'
 
   let remoteOauthConnected = false
@@ -4842,7 +4846,7 @@ async function sanitizeDesktopConnectionConfig(config = readDesktopConnectionCon
     remoteTokenPreview: tokenPreview(remoteToken),
     remoteTokenSet: Boolean(remoteToken),
     // The env override only forces the global/primary connection; a per-profile
-    // scope is never overridden by LYDIA_DESKTOP_REMOTE_URL.
+    // scope is never overridden by ALICE_DESKTOP_REMOTE_URL.
     envOverride
   }
 }
@@ -4906,7 +4910,7 @@ async function buildRemoteConnection(rawUrl, authMode, token, source) {
   if (authMode === 'oauth') {
     // OAuth gateway: auth comes from the session cookies in the OAuth
     // partition. Liveness is NOT "is the access-token cookie present?" —
-    // Portal issues a 24h rotating refresh token (lydia #37247), and the
+    // Portal issues a 24h rotating refresh token (alice #37247), and the
     // gateway middleware transparently rotates a fresh ~15-min access token
     // from it on the next authenticated request. So a session with an expired
     // AT cookie but a live RT cookie is still perfectly connectable. We
@@ -4964,7 +4968,7 @@ async function buildRemoteConnection(rawUrl, authMode, token, source) {
 // Resolve the remote backend for a given profile, or null when that profile
 // should run a LOCAL backend. Precedence:
 //   1. explicit per-profile remote override (connection.json `profiles[name]`)
-//   2. env override (LYDIA_DESKTOP_REMOTE_URL/_TOKEN) — applies app-wide
+//   2. env override (ALICE_DESKTOP_REMOTE_URL/_TOKEN) — applies app-wide
 //   3. global remote (connection.json `mode: 'remote'`)
 // A null/empty profile resolves the env/global remote, so legacy callers and
 // the connection test (which pass no profile) are unchanged.
@@ -4981,12 +4985,12 @@ async function resolveRemoteBackend(profile) {
   }
 
   // 2. Env override (global, token-auth only).
-  const rawEnvUrl = process.env.LYDIA_DESKTOP_REMOTE_URL
-  const rawEnvToken = process.env.LYDIA_DESKTOP_REMOTE_TOKEN
+  const rawEnvUrl = process.env.ALICE_DESKTOP_REMOTE_URL
+  const rawEnvToken = process.env.ALICE_DESKTOP_REMOTE_TOKEN
   if (rawEnvUrl) {
     if (!rawEnvToken) {
       throw new Error(
-        'LYDIA_DESKTOP_REMOTE_URL is set but LYDIA_DESKTOP_REMOTE_TOKEN is not. ' +
+        'ALICE_DESKTOP_REMOTE_URL is set but ALICE_DESKTOP_REMOTE_TOKEN is not. ' +
           'Both must be provided to connect to a remote Alice backend.'
       )
     }
@@ -5019,7 +5023,7 @@ function configuredRemoteProfileNames() {
 // Remote, or the env override): a SINGLE remote backend serves every profile via
 // ?profile=. Distinct from per-profile overrides — here there's one host for all.
 function globalRemoteActive() {
-  if (process.env.LYDIA_DESKTOP_REMOTE_URL) {
+  if (process.env.ALICE_DESKTOP_REMOTE_URL) {
     return true
   }
   return readDesktopConnectionConfig().mode === 'remote'
@@ -5040,7 +5044,7 @@ async function requestJsonForProfile(profile, path, method, body) {
 
 async function probeRemoteAuthMode(rawUrl) {
   // Determine how a remote gateway expects callers to authenticate, WITHOUT
-  // sending any credentials. ``/api/status`` is public on every Lydia
+  // sending any credentials. ``/api/status`` is public on every Alice
   // gateway (it backs the portal liveness probe) and reports:
   //   auth_required: true  → OAuth gate is engaged (cookie + ws-ticket auth)
   //   auth_required: false → loopback/--insecure: legacy session-token auth
@@ -5072,7 +5076,7 @@ async function probeRemoteAuthMode(rawUrl) {
 
   if (authRequired) {
     // Best-effort: a gated gateway exposes the registered providers so the
-    // button can read "Sign in with Nous Research" instead of a generic
+    // button can read "Sign in with Stuko" instead of a generic
     // label, and so a username/password provider can be distinguished from
     // an OAuth-redirect one (``supports_password``). A failure here doesn't
     // change the auth mode, so swallow it.
@@ -5186,7 +5190,7 @@ function stopBackendChild(child) {
   }
 }
 
-function resetLydiaConnection() {
+function resetAliceConnection() {
   connectionPromise = null
   backendStartFailure = null
 
@@ -5201,9 +5205,9 @@ function resetLydiaConnection() {
 // startAlice() spawns fresh instead of racing the dying one. Shared by the
 // connection-config and profile switch flows.
 async function teardownPrimaryBackendAndWait() {
-  // Capture the reference before resetLydiaConnection() nulls aliceProcess.
+  // Capture the reference before resetAliceConnection() nulls aliceProcess.
   const dying = aliceProcess && !aliceProcess.killed ? aliceProcess : null
-  resetLydiaConnection()
+  resetAliceConnection()
 
   await waitForBackendExit(dying)
 }
@@ -5331,7 +5335,7 @@ async function spawnPoolBackend(profile, entry) {
   // tolerate.
   const remote = await resolveRemoteBackend(profile)
   if (remote) {
-    await waitForLydia(remote.baseUrl, remote.token)
+    await waitForAlice(remote.baseUrl, remote.token)
     return {
       ...remote,
       profile,
@@ -5412,7 +5416,7 @@ async function spawnPoolBackend(profile, entry) {
   entry.port = port
 
   const baseUrl = `http://127.0.0.1:${port}`
-  await Promise.race([waitForLydia(baseUrl, token), startFailed])
+  await Promise.race([waitForAlice(baseUrl, token), startFailed])
   ready = true
   const authToken = await adoptServedDashboardToken(baseUrl, token, {
     childAlive: () => child.exitCode === null && !child.killed,
@@ -5521,7 +5525,7 @@ async function startAlice() {
     const remote = await resolveRemoteBackend(primaryProfileKey())
     if (remote) {
       await advanceBootProgress('backend.remote', `Connecting to remote Alice backend at ${remote.baseUrl}`, 24)
-      await waitForLydia(remote.baseUrl, remote.token)
+      await waitForAlice(remote.baseUrl, remote.token)
       updateBootProgress({
         phase: 'backend.ready',
         message: 'Remote Alice backend is ready',
@@ -5553,15 +5557,15 @@ async function startAlice() {
     // --port 0: the OS assigns an ephemeral port; the child announces it on stdout.
     const backendArgs = ['serve', '--host', '127.0.0.1', '--port', '0']
     // Pin the desktop's chosen profile via the global --profile flag. This is
-    // deterministic (it wins over the sticky ~/.lydia/active_profile file) and
-    // resolves ALICE_HOME the same way `lydia -p <name>` does on the CLI. An
+    // deterministic (it wins over the sticky ~/.alice/active_profile file) and
+    // resolves ALICE_HOME the same way `alice -p <name>` does on the CLI. An
     // unset preference keeps the legacy launch so existing installs are
     // unaffected.
     const activeProfile = readActiveDesktopProfile()
     if (activeProfile) {
       backendArgs.unshift('--profile', activeProfile)
     }
-    await advanceBootProgress('backend.runtime', 'Resolving Lydia runtime', 28)
+    await advanceBootProgress('backend.runtime', 'Resolving Alice runtime', 28)
     const backend = await ensureRuntime(resolveAliceBackend(backendArgs))
     // Route old runtimes (no `serve`) through the legacy `dashboard --no-open`.
     backend.args = getBackendArgsForRuntime(backend)
@@ -5579,11 +5583,11 @@ async function startAlice() {
         cwd: aliceCwd,
         env: {
           ...process.env,
-          // Explicitly pin ALICE_HOME for the child so Python's get_lydia_home()
+          // Explicitly pin ALICE_HOME for the child so Python's get_alice_home()
           // resolves to the SAME location our resolveAliceHome() picked. Without
-          // this pin, Python falls back to ~/.lydia on every platform — fine on
+          // this pin, Python falls back to ~/.alice on every platform — fine on
           // mac/linux (where our default matches), but on Windows our default is
-          // %LOCALAPPDATA%\lydia, which differs from C:\Users\<u>\.lydia.
+          // %LOCALAPPDATA%\alice, which differs from C:\Users\<u>\.alice.
           // Mismatch would split config / sessions / .env / logs across two
           // directories. install.ps1 sets ALICE_HOME via setx; the desktop
           // can't reliably do that, so we set it inline for every spawn.
@@ -5661,7 +5665,7 @@ async function startAlice() {
 
     const baseUrl = `http://127.0.0.1:${port}`
     await advanceBootProgress('backend.wait', 'Waiting for Alice backend to become ready', 90)
-    await Promise.race([waitForLydia(baseUrl, token), backendStartFailed])
+    await Promise.race([waitForAlice(baseUrl, token), backendStartFailed])
     backendReady = true
     backendStartFailure = null
     const authToken = await adoptServedDashboardToken(baseUrl, token, {
@@ -5753,7 +5757,7 @@ function spawnSecondaryWindow({ sessionId, watch, newSession } = {}) {
     height: SESSION_WINDOW_MIN_HEIGHT,
     minWidth: SESSION_WINDOW_MIN_WIDTH,
     minHeight: SESSION_WINDOW_MIN_HEIGHT,
-    title: 'Lydia',
+    title: 'Alice',
     titleBarStyle: 'hidden',
     titleBarOverlay: getTitleBarOverlayOptions(),
     trafficLightPosition: IS_MAC ? WINDOW_BUTTON_POSITION : undefined,
@@ -5812,11 +5816,11 @@ function createNewSessionWindow() {
 
 // The pet overlay: a single transparent, frameless, always-on-top window that
 // hosts ONLY the floating mascot. Shift-clicking the in-window pet "pops it out"
-// here so it can leave the app's bounds and stay visible while Lydia is
+// here so it can leave the app's bounds and stay visible while Alice is
 // minimized (Codex-style task-completion glance). It carries no gateway
 // connection of its own — the main renderer is the single source of truth and
-// pushes pet state over IPC (lydia:pet-overlay:state); the overlay just renders
-// it. Control flows back (pop-in, composer submit) via lydia:pet-overlay:control.
+// pushes pet state over IPC (alice:pet-overlay:state); the overlay just renders
+// it. Control flows back (pop-in, composer submit) via alice:pet-overlay:control.
 let petOverlayWindow = null
 
 function petOverlayUrl() {
@@ -5854,9 +5858,9 @@ function spawnPetOverlayWindow(bounds) {
     hiddenInMissionControl: IS_MAC,
     // Non-activating: the overlay must never become the app's key/main window,
     // or it (a frameless, taskbar-skipping panel) becomes the app's switcher
-    // anchor and the Lydia icon drops out of cmd/alt-tab — especially when the
+    // anchor and the Alice icon drops out of cmd/alt-tab — especially when the
     // main window is minimized. We flip this on only while the composer needs
-    // the keyboard (see lydia:pet-overlay:set-focusable).
+    // the keyboard (see alice:pet-overlay:set-focusable).
     focusable: false,
     show: false,
     // Fully transparent — the renderer paints only the sprite + bubble.
@@ -5882,7 +5886,7 @@ function spawnPetOverlayWindow(bounds) {
   try {
     // Electron docs: macOS may transform process type on each
     // setVisibleOnAllWorkspaces() call unless skipTransformProcessType=true,
-    // which briefly hides the Dock/cmd-tab presence. Keep Lydia in the normal
+    // which briefly hides the Dock/cmd-tab presence. Keep Alice in the normal
     // ForegroundApplication class so shift-clicking the pet never drops the app
     // out of app switchers.
     win.setVisibleOnAllWorkspaces(
@@ -5953,7 +5957,7 @@ function createWindow() {
     ...computeWindowOptions(savedWindowState, screen.getAllDisplays()),
     minWidth: WINDOW_MIN_WIDTH,
     minHeight: WINDOW_MIN_HEIGHT,
-    title: 'Lydia',
+    title: 'Alice',
     // Frameless title bar on every platform so the renderer can paint the
     // "hide sidebar" button (and other left-side titlebar tools) flush with
     // the top edge — matching the macOS layout where the traffic lights sit
@@ -6084,7 +6088,7 @@ ipcMain.handle('alice:connection', async (_event, profile) => ensureBackend(prof
 // so the 'exit'/'error' handlers that would clear a dead connectionPromise never
 // fire — once the remote becomes unreachable across a sleep/wake the renderer
 // re-dials the same dead descriptor forever and the composer stays stuck on
-// "Starting Lydia…". Before the renderer's backoff loop reconnects, it asks us
+// "Starting Alice…". Before the renderer's backoff loop reconnects, it asks us
 // to confirm the cached PRIMARY backend is still reachable; if a remote one is
 // not, we drop the cache so the next getConnection() rebuilds it. Local backends
 // self-heal via their child 'exit' handler, so we never touch them here.
@@ -6112,10 +6116,10 @@ ipcMain.handle('alice:connection:revalidate', async () => {
     return { ok: true, rebuilt: false }
   } catch {
     // Unreachable remote: drop the stale cache so the renderer's next reconnect
-    // tick rebuilds a fresh, reachable descriptor. resetLydiaConnection only
+    // tick rebuilds a fresh, reachable descriptor. resetAliceConnection only
     // nulls connectionPromise for a remote (no child to SIGTERM).
     rememberLog('Cached remote Alice backend failed liveness probe; dropping stale connection.')
-    resetLydiaConnection()
+    resetAliceConnection()
     return { ok: true, rebuilt: true }
   }
 })
@@ -6296,7 +6300,7 @@ ipcMain.handle('alice:bootstrap:repair', async () => {
   }
   bootstrapFailure = null
   backendStartFailure = null
-  resetLydiaConnection()
+  resetAliceConnection()
   return { ok: true }
 })
 ipcMain.handle('alice:bootstrap:cancel', async () => {
@@ -6564,7 +6568,7 @@ ipcMain.handle('alice:notify', (_event, payload) => {
   // and the body click still works.
   const actions = Array.isArray(payload?.actions) ? payload.actions : []
   const notification = new Notification({
-    title: payload?.title || 'Lydia',
+    title: payload?.title || 'Alice',
     body: payload?.body || '',
     silent: Boolean(payload?.silent),
     actions: actions.map(action => ({ type: 'button', text: String(action?.text || '') }))
@@ -6893,11 +6897,11 @@ function windowsShellSpec() {
 // Resolve the interactive shell for the embedded terminal: an explicit user
 // override wins, otherwise auto-detect the best one installed for the platform.
 function terminalShellCommand() {
-  // LYDIA_DESKTOP_SHELL is the cross-platform escape hatch (a path or a bare
+  // ALICE_DESKTOP_SHELL is the cross-platform escape hatch (a path or a bare
   // name on PATH); $SHELL is honored on POSIX, where it's the user's canonical
   // choice, but ignored on Windows, where it's usually a stray MSYS/Git path
   // node-pty can't spawn natively.
-  const override = (process.env.LYDIA_DESKTOP_SHELL || (IS_WINDOWS ? '' : process.env.SHELL) || '').trim()
+  const override = (process.env.ALICE_DESKTOP_SHELL || (IS_WINDOWS ? '' : process.env.SHELL) || '').trim()
 
   if (override) {
     const resolved = isExecutableFile(override) ? override : findOnPath(override)
@@ -6941,7 +6945,7 @@ function terminalShellEnv() {
 
   // Strip color/theme-detection vars that ride along when Electron is launched
   // from a non-tty agent shell (Cursor's runner sets NO_COLOR/FORCE_COLOR=0
-  // /TERM=dumb; some terminals set COLORFGBG which would flip Lydia' TUI into
+  // /TERM=dumb; some terminals set COLORFGBG which would flip Alice' TUI into
   // light-mode). Our PTY is a real xterm-compat terminal — force truecolor.
   delete env.NO_COLOR
   delete env.FORCE_COLOR
@@ -6950,13 +6954,13 @@ function terminalShellEnv() {
   env.COLORTERM = 'truecolor'
   env.LC_CTYPE = env.LC_CTYPE || 'UTF-8'
   env.TERM = 'xterm-256color'
-  env.TERM_PROGRAM = 'Lydia'
+  env.TERM_PROGRAM = 'Alice'
   env.TERM_PROGRAM_VERSION = app.getVersion()
 
-  // Let a lydia/--tui launched in this pane know it's embedded in the desktop
-  // GUI (build_environment_hints surfaces this). Distinct from LYDIA_DESKTOP,
+  // Let a alice/--tui launched in this pane know it's embedded in the desktop
+  // GUI (build_environment_hints surfaces this). Distinct from ALICE_DESKTOP,
   // which marks the agent *backend* and gates cron/gateway behavior.
-  env.LYDIA_DESKTOP_TERMINAL = '1'
+  env.ALICE_DESKTOP_TERMINAL = '1'
 
   return env
 }
@@ -7144,7 +7148,7 @@ ipcMain.handle('alice:git:scanRepos', async (_event, roots, options) => {
 
 ipcMain.handle('alice:terminal:start', async (event, payload = {}) => {
   if (!nodePty) {
-    throw new Error('PTY support is unavailable. Reinstall desktop dependencies and restart Lydia.')
+    throw new Error('PTY support is unavailable. Reinstall desktop dependencies and restart Alice.')
   }
 
   ensureSpawnHelperExecutable()
@@ -7236,9 +7240,9 @@ ipcMain.handle('alice:updates:branch:set', async (_event, name) => {
   return { branch }
 })
 
-// Resolve the canonical Lydia version (the one `release.py` bumps in
+// Resolve the canonical Alice version (the one `release.py` bumps in
 // alice_cli/__init__.py + pyproject.toml) so the desktop About panel shows the
-// real Lydia version instead of the Electron app's own package.json version,
+// real Alice version instead of the Electron app's own package.json version,
 // which historically drifted (stuck at 0.0.2). Falls back to app.getVersion()
 // when the source tree can't be read (e.g. a packaged build without the repo).
 function resolveAliceVersion() {
@@ -7258,7 +7262,7 @@ function resolveAliceVersion() {
   return app.getVersion()
 }
 
-// Re-resolve the live Lydia version and push it into the native About panel
+// Re-resolve the live Alice version and push it into the native About panel
 // just before showing it, so an in-place `alice update` is reflected without
 // an app restart. macOS only — `showAboutPanel()` is a no-op elsewhere, and the
 // other platforms don't use this menu item.
@@ -7266,7 +7270,7 @@ function showAboutPanelFresh() {
   app.setAboutPanelOptions({
     applicationName: APP_NAME,
     applicationVersion: resolveAliceVersion(),
-    copyright: 'Copyright © 2026 Nous Research'
+    copyright: 'Copyright © 2026 Stuko'
   })
   app.showAboutPanel()
 }
@@ -7276,7 +7280,7 @@ ipcMain.handle('alice:version', async () => ({
   electronVersion: process.versions.electron,
   nodeVersion: process.versions.node,
   platform: process.platform,
-  lydiaRoot: resolveUpdateRoot()
+  aliceRoot: resolveUpdateRoot()
 }))
 
 // ===========================================================================
@@ -7285,7 +7289,7 @@ ipcMain.handle('alice:version', async () => ({
 //
 // The renderer's About → Danger Zone surfaces three options that mirror the
 // CLI exactly: GUI only, Lite (keep user data), Full. We ask the agent to do
-// the actual removal via `lydia uninstall …` so the cross-platform PATH /
+// the actual removal via `alice uninstall …` so the cross-platform PATH /
 // registry / service / node-symlink cleanup all lives in one place
 // (alice_cli/uninstall.py + alice_cli/gui_uninstall.py).
 //
@@ -7304,7 +7308,7 @@ async function getUninstallSummary() {
   // Fast JS-side fallback used when the agent venv is gone (lite client) or the
   // probe fails — the renderer still needs *something* to render options from.
   const fallback = () => ({
-    lydia_home: ALICE_HOME,
+    alice_home: ALICE_HOME,
     agent_installed: isAliceSourceRoot(agentRoot) && fileExists(py),
     gui_installed: true,
     source_built_artifacts: [],
@@ -7433,12 +7437,12 @@ async function runDesktopUninstall(mode) {
   let runnerArgs
   try {
     if (IS_WINDOWS) {
-      scriptPath = path.join(app.getPath('temp'), `lydia-uninstall-${Date.now()}.cmd`)
+      scriptPath = path.join(app.getPath('temp'), `alice-uninstall-${Date.now()}.cmd`)
       fs.writeFileSync(scriptPath, buildWindowsCleanupScript(scriptArgs))
       runner = process.env.ComSpec || 'cmd.exe'
       runnerArgs = ['/c', scriptPath]
     } else {
-      scriptPath = path.join(app.getPath('temp'), `lydia-uninstall-${Date.now()}.sh`)
+      scriptPath = path.join(app.getPath('temp'), `alice-uninstall-${Date.now()}.sh`)
       fs.writeFileSync(scriptPath, buildPosixCleanupScript(scriptArgs), { mode: 0o755 })
       runner = '/bin/bash'
       runnerArgs = [scriptPath]
@@ -7484,7 +7488,7 @@ ipcMain.handle('alice:vscode-theme:fetch', async (_event, id) => fetchMarketplac
 ipcMain.handle('alice:vscode-theme:search', async (_event, query) => searchMarketplaceThemes(String(query || ''), 20))
 
 // ---------------------------------------------------------------------------
-// lydia:// deep links (e.g. lydia://blueprint/morning-brief?time=08:00).
+// alice:// deep links (e.g. alice://blueprint/morning-brief?time=08:00).
 // A docs/dashboard "Send to App" button opens this URL; we route it into the
 // running app's chat composer. Three delivery paths: macOS 'open-url',
 // Win/Linux running-app 'second-instance' (argv), Win/Linux cold-start argv.
@@ -7507,7 +7511,7 @@ function handleDeepLink(url) {
     rememberLog(`[deeplink] ignoring malformed url: ${url}`)
     return
   }
-  // lydia://blueprint/<key>?slot=val  -> host="blueprint", path="/<key>"
+  // alice://blueprint/<key>?slot=val  -> host="blueprint", path="/<key>"
   const kind = parsed.hostname || ''
   const name = decodeURIComponent((parsed.pathname || '').replace(/^\//, ''))
   const params = {}
@@ -7598,7 +7602,7 @@ app.whenReady().then(() => {
   registerPowerResumeListeners()
   createWindow()
 
-  // Win/Linux cold start: the launching lydia:// URL is in our own argv.
+  // Win/Linux cold start: the launching alice:// URL is in our own argv.
   const _coldStartLink = _extractDeepLink(process.argv)
   if (_coldStartLink) handleDeepLink(_coldStartLink)
 

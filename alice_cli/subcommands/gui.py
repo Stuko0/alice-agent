@@ -17,9 +17,10 @@ def build_gui_parser(subparsers, *, cmd_gui: Callable) -> None:
         aliases=["gui"],
         help="Build and launch the native desktop app",
         description=(
-            "Launch the Alice Electron desktop app. By default this installs "
-            "workspace Node dependencies, builds the current OS's unpacked "
-            "Electron app, then launches that packaged artifact."
+            "Launch the Alice desktop app (Wails Go shell by default). "
+            "By default this installs workspace Node dependencies, builds the "
+            "Wails desktop binary, then launches it. Pass --electron to use "
+            "the legacy Electron shell."
         ),
     )
     gui_parser.add_argument(
@@ -54,6 +55,17 @@ def build_gui_parser(subparsers, *, cmd_gui: Callable) -> None:
         "--skip-build",
         action="store_true",
         help="Skip npm install/package and launch the existing unpacked app from apps/desktop/release",
+    )
+    runtime_group = gui_parser.add_mutually_exclusive_group()
+    runtime_group.add_argument(
+        "--wails",
+        action="store_true",
+        help="Launch using the Wails Go runtime shell (this is the default)",
+    )
+    runtime_group.add_argument(
+        "--electron",
+        action="store_true",
+        help="Launch using the legacy Electron shell instead of the default Wails runtime",
     )
     gui_parser.add_argument(
         "--force-build",

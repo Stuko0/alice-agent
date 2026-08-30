@@ -64,7 +64,7 @@ The model picker lives in the **composer**, just left of the microphone. Click i
 
 ### File browser
 
-Explore and preview the working directory without leaving the app — useful for following along as the agent reads, writes, and edits files. Set the initial project directory with `alice desktop --cwd <path>` (or the `LYDIA_DESKTOP_CWD` environment variable).
+Explore and preview the working directory without leaving the app — useful for following along as the agent reads, writes, and edits files. Set the initial project directory with `alice desktop --cwd <path>` (or the `ALICE_DESKTOP_CWD` environment variable).
 
 ### Voice
 
@@ -109,7 +109,7 @@ The app also surfaces the broader Alice management surface so you don't have to 
 
 The app checks for updates in the background and offers a one-click update when one is ready.
 
-The [manual update process](https://alice-agent.nousresearch.com/docs/getting-started/updating) also works with the GUI.
+The [manual update process](https://alice-agent.stuko.dev/docs/getting-started/updating) also works with the GUI.
 
 ## Uninstalling
 
@@ -129,22 +129,26 @@ Running `alice uninstall --gui` from a **source checkout** (a `alice desktop` de
 
 ## CLI reference: `alice desktop`
 
-To launch via the CLI, simply run `alice desktop`. By default it installs workspace Node dependencies, builds the current OS's unpacked Electron app, then launches that packaged artifact.
+To launch via the CLI, simply run `alice desktop`. By default it installs workspace
+Node dependencies, builds the **Wails** desktop binary (`apps/desktop-wails/`), then
+launches it. The legacy Electron shell is still available via `--electron`.
 
 | Flag                 | Description                                                                               |
 | -------------------- | ----------------------------------------------------------------------------------------- |
+| `--wails`            | Launch the Wails Go shell (this is the default; the flag exists for explicitness)         |
+| `--electron`         | Launch the legacy Electron shell instead of the default Wails runtime                      |
 | `--skip-build`       | Skip npm install/package and launch the existing unpacked app from `apps/desktop/release` |
 | `--force-build`      | Force a full rebuild even if the content stamp matches                                    |
 | `--build-only`       | Build the desktop app but do not launch it (used by `alice update`)                      |
-| `--source`           | Launch via `electron .` against `apps/desktop/dist` instead of the packaged app           |
-| `--cwd PATH`         | Initial project directory for desktop chat sessions (sets `LYDIA_DESKTOP_CWD`)           |
-| `--alice-root PATH` | Override the Alice source root the app uses (sets `LYDIA_DESKTOP_LYDIA_ROOT`)          |
+| `--source`           | Launch via `electron .` against `apps/desktop/dist` instead of the packaged app (Electron)|
+| `--cwd PATH`         | Initial project directory for desktop chat sessions (sets `ALICE_DESKTOP_CWD`)           |
+| `--alice-root PATH` | Override the Alice source root the app uses (sets `ALICE_DESKTOP_ALICE_ROOT`)          |
 | `--ignore-existing`  | Force the app to ignore any `alice` CLI already on `PATH` during backend resolution      |
 | `--fake-boot`        | Enable deterministic boot delays for validating the startup UI                            |
 
 ## How it works
 
-The packaged app ships the Electron shell and a native React chat surface. On first launch it can install the Alice Agent runtime into `ALICE_HOME` (`~/.alice`, or `%LOCALAPPDATA%\alice` on Windows) — **the same layout a CLI install uses**, which is why the two are interchangeable. Backend resolution first honours `LYDIA_DESKTOP_LYDIA_ROOT`, then a completed managed install, then a probed `alice` on `PATH` (unless `--ignore-existing` / `LYDIA_DESKTOP_IGNORE_EXISTING=1` is set), and finally an explicit `LYDIA_DESKTOP_LYDIA` command override for packagers such as Nix. The React renderer talks to a headless backend the app launches for you — a `alice serve` process that serves the `tui_gateway` JSON-RPC/WebSocket API — and reuses the agent runtime rather than embedding `alice --tui`. The desktop app is **self-contained**: it runs its own `alice serve` backend and never opens or requires the [web dashboard](./features/web-dashboard.md). (Runtimes older than the `serve` command fall back to a headless `dashboard --no-open` automatically, so an app update never outruns its backend.) Install, backend-resolution, and self-update logic live in the Electron main process.
+The packaged app ships the Electron shell and a native React chat surface. On first launch it can install the Alice Agent runtime into `ALICE_HOME` (`~/.alice`, or `%LOCALAPPDATA%\alice` on Windows) — **the same layout a CLI install uses**, which is why the two are interchangeable. Backend resolution first honours `ALICE_DESKTOP_ALICE_ROOT`, then a completed managed install, then a probed `alice` on `PATH` (unless `--ignore-existing` / `ALICE_DESKTOP_IGNORE_EXISTING=1` is set), and finally an explicit `ALICE_DESKTOP_ALICE` command override for packagers such as Nix. The React renderer talks to a headless backend the app launches for you — a `alice serve` process that serves the `tui_gateway` JSON-RPC/WebSocket API — and reuses the agent runtime rather than embedding `alice --tui`. The desktop app is **self-contained**: it runs its own `alice serve` backend and never opens or requires the [web dashboard](./features/web-dashboard.md). (Runtimes older than the `serve` command fall back to a headless `dashboard --no-open` automatically, so an app update never outruns its backend.) Install, backend-resolution, and self-update logic live in the Electron main process.
 
 ## Connecting to a remote backend
 
@@ -158,10 +162,10 @@ The connection has two halves: on the backend you protect it with an **auth prov
 
 **Pick a provider based on where the backend lives:**
 
-- **OAuth (Nous Portal) — preferred for anything reachable beyond your own machine.** Logins are verified against your Nous account, so this is the option suitable for a VPS, a public host, or any remote backend. Register the dashboard with `alice dashboard register` (or the Portal [`/local-dashboards`](https://portal.nousresearch.com/local-dashboards) page) to provision its OAuth client, then sign in from the app with **Sign in with Nous Research**. A self-hosted OIDC provider works the same way if you run your own identity provider.
+- **OAuth (Nous Portal) — preferred for anything reachable beyond your own machine.** Logins are verified against your Nous account, so this is the option suitable for a VPS, a public host, or any remote backend. Register the dashboard with `alice dashboard register` (or the Portal [`/local-dashboards`](https://stuko.dev/local-dashboards) page) to provision its OAuth client, then sign in from the app with **Sign in with Stuko**. A self-hosted OIDC provider works the same way if you run your own identity provider.
 - **Username/password — local / trusted-network use only.** The simplest option when the backend is on the same trusted LAN or reachable only over a VPN (e.g. Tailscale). It protects a single shared credential with no external identity provider, so **do not use it for a dashboard exposed to the public internet** — reach for OAuth there instead.
 
-The rest of this section shows the username/password path because it's the quickest to stand up on a trusted network; for the OAuth path see [Web Dashboard → Default provider: Nous Research](./features/web-dashboard.md#default-provider-nous-research).
+The rest of this section shows the username/password path because it's the quickest to stand up on a trusted network; for the OAuth path see [Web Dashboard → Default provider: Stuko](./features/web-dashboard.md#default-provider-nous-research).
 
 ### On the backend (the remote machine)
 
@@ -170,12 +174,12 @@ Set a username and password, then start the backend bound to a reachable address
 ```bash
 # 1. Set the dashboard login credentials.
 cat >> ~/.alice/.env <<'EOF'
-LYDIA_DASHBOARD_BASIC_AUTH_USERNAME=admin
-LYDIA_DASHBOARD_BASIC_AUTH_PASSWORD=choose-a-strong-password
+ALICE_DASHBOARD_BASIC_AUTH_USERNAME=admin
+ALICE_DASHBOARD_BASIC_AUTH_PASSWORD=choose-a-strong-password
 # Recommended: a stable signing secret so sessions survive restarts.
 # Without it a random key is generated per boot and you'll be logged out
 # on every restart.
-LYDIA_DASHBOARD_BASIC_AUTH_SECRET=$(openssl rand -base64 32)
+ALICE_DASHBOARD_BASIC_AUTH_SECRET=$(openssl rand -base64 32)
 EOF
 chmod 600 ~/.alice/.env
 
@@ -188,7 +192,7 @@ Keep that `alice serve` process running for as long as you want the desktop app 
 
 Separately, make sure the **gateway is running** on the remote host if you rely on messaging channels — the `alice serve` backend is what the desktop app talks to, but your Telegram/Discord/Slack gateway sessions are a different process that you start and keep running on their own. See [Messaging](./messaging/index.md) for gateway setup.
 
-Prefer not to keep a plaintext password at rest? Set `LYDIA_DASHBOARD_BASIC_AUTH_PASSWORD_HASH` to a scrypt hash instead — compute it with `python -c "from plugins.dashboard_auth.basic import hash_password; print(hash_password('PW'))"`. Full configuration surface (config.yaml keys, every env var, the rate limiter): [Web Dashboard → Username/password provider](./features/web-dashboard.md#usernamepassword-provider-no-oauth-idp).
+Prefer not to keep a plaintext password at rest? Set `ALICE_DASHBOARD_BASIC_AUTH_PASSWORD_HASH` to a scrypt hash instead — compute it with `python -c "from plugins.dashboard_auth.basic import hash_password; print(hash_password('PW'))"`. Full configuration surface (config.yaml keys, every env var, the rate limiter): [Web Dashboard → Username/password provider](./features/web-dashboard.md#usernamepassword-provider-no-oauth-idp).
 
 Running the backend as a systemd service? Give the unit `EnvironmentFile=%h/.alice/.env` so the credentials are in the environment at boot.
 
@@ -201,10 +205,10 @@ The backend reads and writes your `.env` (API keys, secrets) and can run agent c
 **Settings → Gateway → Remote gateway:**
 
 1. **Remote URL** — `http://<backend-host>:9119` (path prefixes like `/alice` work if you front it with a reverse proxy)
-2. **Sign in** — the app detects which provider the backend advertises and adapts the button. For a username/password backend it shows a **Sign in** button that opens a credential form (enter the credentials from step 1). For an OAuth backend it shows **Sign in with `<provider>`** (e.g. *Sign in with Nous Research*), which runs the provider's browser sign-in. Either way the app ends up with an authenticated session against the backend.
-3. **Save and reconnect** — switches the desktop shell onto the remote backend. The session refreshes automatically; you stay signed in across restarts when `LYDIA_DASHBOARD_BASIC_AUTH_SECRET` is set.
+2. **Sign in** — the app detects which provider the backend advertises and adapts the button. For a username/password backend it shows a **Sign in** button that opens a credential form (enter the credentials from step 1). For an OAuth backend it shows **Sign in with `<provider>`** (e.g. *Sign in with Stuko*), which runs the provider's browser sign-in. Either way the app ends up with an authenticated session against the backend.
+3. **Save and reconnect** — switches the desktop shell onto the remote backend. The session refreshes automatically; you stay signed in across restarts when `ALICE_DASHBOARD_BASIC_AUTH_SECRET` is set.
 
-You can also set the backend URL without the UI via the `LYDIA_DESKTOP_REMOTE_URL` environment variable before launching the app (it overrides the in-app setting); you still sign in from the Gateway settings panel.
+You can also set the backend URL without the UI via the `ALICE_DESKTOP_REMOTE_URL` environment variable before launching the app (it overrides the in-app setting); you still sign in from the Gateway settings panel.
 
 :::note Per-profile remote hosts
 The remote gateway host is configured per [profile](./profiles.md), so each profile can point at its own remote backend (or stay on its local one). Switching profiles switches which remote host the app connects to.
@@ -212,9 +216,9 @@ The remote gateway host is configured per [profile](./profiles.md), so each prof
 
 ### Troubleshooting
 
-- **Sign-in fails with 401 / "Invalid credentials"** — the username or password doesn't match the backend's `LYDIA_DASHBOARD_BASIC_AUTH_USERNAME` / `LYDIA_DASHBOARD_BASIC_AUTH_PASSWORD`. The backend returns the same generic error for an unknown user and a wrong password (no enumeration oracle), so double-check both. Confirm the gate is on with `curl -s http://<host>:9119/api/status | jq '.auth_required, .auth_providers'` — it should report `true` and include `"basic"`.
+- **Sign-in fails with 401 / "Invalid credentials"** — the username or password doesn't match the backend's `ALICE_DASHBOARD_BASIC_AUTH_USERNAME` / `ALICE_DASHBOARD_BASIC_AUTH_PASSWORD`. The backend returns the same generic error for an unknown user and a wrong password (no enumeration oracle), so double-check both. Confirm the gate is on with `curl -s http://<host>:9119/api/status | jq '.auth_required, .auth_providers'` — it should report `true` and include `"basic"`.
 - **No "Sign in" button — it asks for a session token instead** — the backend's username/password provider isn't active. `/api/status` won't list `"basic"` in `auth_providers`. Make sure both the username and a password (or password hash) are set in `~/.alice/.env` and that the dashboard process actually loaded them.
-- **Signed out on every restart** — set `LYDIA_DASHBOARD_BASIC_AUTH_SECRET` to a stable value. Without it the token-signing key is regenerated per boot, invalidating all sessions.
+- **Signed out on every restart** — set `ALICE_DASHBOARD_BASIC_AUTH_SECRET` to a stable value. Without it the token-signing key is regenerated per boot, invalidating all sessions.
 - **Connection refused / times out** — the backend bound to `127.0.0.1` (the default) or a firewall/VPN is blocking the port. Bind to `0.0.0.0` or the tailscale IP and open the port to your trusted network.
 
 For the same setup from the web-dashboard angle, see [Web Dashboard → Connecting Alice Desktop to a remote backend](./features/web-dashboard.md#connecting-alice-desktop-to-a-remote-backend); the env vars are catalogued under [Environment Variables → Web Dashboard & Alice Desktop](../reference/environment-variables.md#web-dashboard--alice-desktop).
@@ -273,7 +277,7 @@ npm run dev          # Vite renderer + Electron, which boots the Python backend
 Point the app at a specific checkout, or sandbox it from your real config:
 
 ```bash
-LYDIA_DESKTOP_LYDIA_ROOT=/path/to/clone npm run dev
+ALICE_DESKTOP_ALICE_ROOT=/path/to/clone npm run dev
 ALICE_HOME=/tmp/throwaway npm run dev
 npm run dev:fake-boot   # exercise the startup overlay with deterministic delays
 ```

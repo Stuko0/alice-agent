@@ -21,8 +21,10 @@ def _ns(**kw):
         source=False,
         fake_boot=False,
         ignore_existing=False,
-        lydia_root=None,
+        alice_root=None,
         cwd=None,
+        wails=False,
+        electron=False,
     )
     defaults.update(kw)
     return argparse.Namespace(**defaults)
@@ -67,7 +69,7 @@ def test_gui_installs_packages_and_launches_desktop_app(tmp_path, monkeypatch):
          patch("alice_cli.main._desktop_macos_relaunchable_fixup"), \
          patch("alice_cli.main.subprocess.run", side_effect=[pack_ok, launch_ok]) as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns())
+        cli_main.cmd_gui(_ns(electron=True, ))
 
     assert exc.value.code == 0
     mock_install.assert_called_once_with("/usr/bin/npm", root, capture_output=False, env=None)
@@ -79,9 +81,9 @@ def test_gui_installs_packages_and_launches_desktop_app(tmp_path, monkeypatch):
 
 def test_gui_forwards_desktop_environment_overrides(tmp_path, monkeypatch):
     root = _make_desktop_tree(tmp_path)
-    lydia_root = tmp_path / "custom-alice"
+    alice_root = tmp_path / "custom-alice"
     cwd = tmp_path / "project"
-    lydia_root.mkdir()
+    alice_root.mkdir()
     cwd.mkdir()
     monkeypatch.setattr(cli_main, "PROJECT_ROOT", root)
     _make_packaged_executable(root, monkeypatch)
@@ -95,18 +97,18 @@ def test_gui_forwards_desktop_environment_overrides(tmp_path, monkeypatch):
          patch("alice_cli.main._desktop_macos_relaunchable_fixup"), \
          patch("alice_cli.main.subprocess.run", side_effect=[ok, ok]) as mock_run, \
          pytest.raises(SystemExit):
-        cli_main.cmd_gui(_ns(
+        cli_main.cmd_gui(_ns(electron=True, 
             fake_boot=True,
             ignore_existing=True,
-            lydia_root=str(lydia_root),
+            alice_root=str(alice_root),
             cwd=str(cwd),
         ))
 
     launch_env = mock_run.call_args_list[1].kwargs["env"]
-    assert launch_env["LYDIA_DESKTOP_BOOT_FAKE"] == "1"
-    assert launch_env["LYDIA_DESKTOP_IGNORE_EXISTING"] == "1"
-    assert launch_env["LYDIA_DESKTOP_LYDIA_ROOT"] == str(lydia_root)
-    assert launch_env["LYDIA_DESKTOP_CWD"] == str(cwd)
+    assert launch_env["ALICE_DESKTOP_BOOT_FAKE"] == "1"
+    assert launch_env["ALICE_DESKTOP_IGNORE_EXISTING"] == "1"
+    assert launch_env["ALICE_DESKTOP_ALICE_ROOT"] == str(alice_root)
+    assert launch_env["ALICE_DESKTOP_CWD"] == str(cwd)
 
 
 def test_gui_exits_when_npm_missing(tmp_path, monkeypatch, capsys):
@@ -115,7 +117,7 @@ def test_gui_exits_when_npm_missing(tmp_path, monkeypatch, capsys):
 
     with patch("alice_cli.main.shutil.which", return_value=None), \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns())
+        cli_main.cmd_gui(_ns(electron=True, ))
 
     assert exc.value.code == 1
     assert "npm was not found" in capsys.readouterr().out
@@ -127,7 +129,7 @@ def test_gui_skip_build_requires_existing_packaged_app(tmp_path, monkeypatch, ca
     monkeypatch.setattr(cli_main.sys, "platform", "darwin")
 
     with pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns(skip_build=True))
+        cli_main.cmd_gui(_ns(electron=True, skip_build=True))
 
     assert exc.value.code == 1
     assert "no packaged desktop app" in capsys.readouterr().out
@@ -145,7 +147,7 @@ def test_gui_skip_build_launches_existing_packaged_app_without_npm(tmp_path, mon
          patch("alice_cli.main._run_npm_install_deterministic") as mock_install, \
          patch("alice_cli.main.subprocess.run", return_value=launch_ok) as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns(skip_build=True))
+        cli_main.cmd_gui(_ns(electron=True, skip_build=True))
 
     assert exc.value.code == 0
     mock_install.assert_not_called()
@@ -165,7 +167,7 @@ def test_gui_linux_configures_sandbox_before_launch(tmp_path, monkeypatch):
     with patch("alice_cli.main.shutil.which", return_value="/usr/bin/sudo"), \
          patch("alice_cli.main.subprocess.run", return_value=ok) as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns(skip_build=True))
+        cli_main.cmd_gui(_ns(electron=True, skip_build=True))
 
     assert exc.value.code == 0
     assert mock_run.call_args_list[0].args[0] == ["/usr/bin/sudo", "chown", "root:root", str(sandbox)]
@@ -186,7 +188,7 @@ def test_gui_linux_rejects_symlink_sandbox(tmp_path, monkeypatch):
     with patch("alice_cli.main.shutil.which", return_value="/usr/bin/sudo"), \
          patch("alice_cli.main.subprocess.run") as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns(skip_build=True))
+        cli_main.cmd_gui(_ns(electron=True, skip_build=True))
 
     assert exc.value.code == 1
     # Must NOT have called sudo chown/chmod on the symlink target
@@ -214,7 +216,7 @@ def test_gui_linux_skips_fixup_when_already_configured(tmp_path, monkeypatch):
     with patch("alice_cli.main.shutil.which", return_value="/usr/bin/sudo"), \
          patch("alice_cli.main.subprocess.run", return_value=launch_ok) as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns(skip_build=True))
+        cli_main.cmd_gui(_ns(electron=True, skip_build=True))
 
     assert exc.value.code == 0
     # Only the launch call — no sudo chown/chmod
@@ -235,7 +237,7 @@ def test_gui_linux_falls_back_to_no_sandbox_when_userns_is_restricted(tmp_path, 
          patch("alice_cli.main._desktop_linux_needs_no_sandbox", return_value=True), \
          patch("alice_cli.main.subprocess.run", return_value=launch_ok) as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns(skip_build=True))
+        cli_main.cmd_gui(_ns(electron=True, skip_build=True))
 
     assert exc.value.code == 0
     mock_run.assert_called_once()
@@ -251,7 +253,7 @@ def test_gui_linux_exits_when_sandbox_fixup_fails_without_safe_fallback(tmp_path
          patch("alice_cli.main._desktop_linux_needs_no_sandbox", return_value=False), \
          patch("alice_cli.main.subprocess.run") as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns(skip_build=True))
+        cli_main.cmd_gui(_ns(electron=True, skip_build=True))
 
     assert exc.value.code == 1
     mock_run.assert_not_called()
@@ -272,7 +274,7 @@ def test_gui_source_mode_uses_renderer_build_and_electron(tmp_path, monkeypatch)
          patch("alice_cli.main._write_desktop_build_stamp"), \
          patch("alice_cli.main.subprocess.run", side_effect=[build_ok, launch_ok]) as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns(source=True))
+        cli_main.cmd_gui(_ns(electron=True, source=True))
 
     assert exc.value.code == 0
     assert mock_run.call_args_list[0].args[0] == ["/usr/bin/npm", "run", "build"]
@@ -310,7 +312,7 @@ def test_desktop_build_stamp_skips_build_when_up_to_date(tmp_path, monkeypatch):
          patch("alice_cli.main.subprocess.run", return_value=launch_ok) as mock_run, \
          patch("alice_cli.main._desktop_macos_relaunchable_fixup"), \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns())
+        cli_main.cmd_gui(_ns(electron=True, ))
 
     assert exc.value.code == 0
     mock_install.assert_not_called()
@@ -335,7 +337,7 @@ def test_desktop_force_build_overrides_stamp(tmp_path, monkeypatch):
          patch("alice_cli.main._desktop_macos_relaunchable_fixup"), \
          patch("alice_cli.main.subprocess.run", side_effect=[pack_ok, launch_ok]) as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns(force_build=True))
+        cli_main.cmd_gui(_ns(electron=True, force_build=True))
 
     assert exc.value.code == 0
     mock_install.assert_called_once()
@@ -542,7 +544,7 @@ def test_gui_retries_pack_once_after_purging_build_cache(tmp_path, monkeypatch):
          patch("alice_cli.main._redownload_electron_dist", return_value=True), \
          patch("alice_cli.main.subprocess.run", side_effect=run_side_effect) as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns())
+        cli_main.cmd_gui(_ns(electron=True, ))
 
     assert exc.value.code == 0
     mock_purge.assert_called_once()
@@ -574,7 +576,7 @@ def test_gui_redownloads_electron_via_mirror_then_repacks(tmp_path, monkeypatch,
          patch("alice_cli.main._redownload_electron_dist", side_effect=[False, True]) as mock_dl, \
          patch("alice_cli.main.subprocess.run", side_effect=[pack_fail, pack_fail]) as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns())
+        cli_main.cmd_gui(_ns(electron=True, ))
 
     assert exc.value.code == 1
     # initial pack + mirror pack = 2 npm calls. The first-retry pack is skipped
@@ -614,7 +616,7 @@ def test_gui_retries_pack_under_mirror_even_when_prefetch_blocked(tmp_path, monk
          patch("alice_cli.main._redownload_electron_dist", return_value=False), \
          patch("alice_cli.main.subprocess.run", side_effect=[pack_fail, pack_fail]) as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns())
+        cli_main.cmd_gui(_ns(electron=True, ))
 
     assert exc.value.code == 1
     # Initial pack + mirror-driven pack = 2; the mirror retry runs even though
@@ -649,7 +651,7 @@ def test_gui_install_failure_self_heals_electron_and_continues(tmp_path, monkeyp
          patch("alice_cli.main._try_redownload_electron_dist", return_value=True) as mock_dl, \
          patch("alice_cli.main.subprocess.run", side_effect=[pack_ok, launch_ok]) as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns())
+        cli_main.cmd_gui(_ns(electron=True, ))
 
     assert exc.value.code == 0
     mock_dl.assert_called()  # tried to repopulate the dist
@@ -672,7 +674,7 @@ def test_gui_install_failure_hard_fails_when_electron_not_staged(tmp_path, monke
          patch("alice_cli.main._run_npm_install_deterministic", return_value=install_fail), \
          patch("alice_cli.main.subprocess.run") as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns())
+        cli_main.cmd_gui(_ns(electron=True, ))
 
     assert exc.value.code == 1
     mock_run.assert_not_called()  # build never started
@@ -697,7 +699,7 @@ def test_gui_install_failure_hard_fails_when_electron_dist_exists(tmp_path, monk
          patch("alice_cli.main._electron_dist_ok", return_value=True), \
          patch("alice_cli.main.subprocess.run") as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns())
+        cli_main.cmd_gui(_ns(electron=True, ))
 
     assert exc.value.code == 1
     mock_run.assert_not_called()
@@ -729,7 +731,7 @@ def test_gui_does_not_retry_after_packaged_executable_exists(tmp_path, monkeypat
          patch("alice_cli.main._redownload_electron_dist", return_value=True) as mock_dl, \
          patch("alice_cli.main.subprocess.run", return_value=pack_fail) as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns())
+        cli_main.cmd_gui(_ns(electron=True, ))
 
     assert exc.value.code == 1
     # Neither destructive recovery runs, and there is exactly ONE pack attempt.
@@ -758,7 +760,7 @@ def test_gui_does_not_override_user_electron_mirror(tmp_path, monkeypatch, capsy
          patch("alice_cli.main._purge_electron_build_cache", return_value=[]) as mock_purge, \
          patch("alice_cli.main.subprocess.run", side_effect=[pack_fail]) as mock_run, \
          pytest.raises(SystemExit) as exc:
-        cli_main.cmd_gui(_ns())
+        cli_main.cmd_gui(_ns(electron=True, ))
 
     assert exc.value.code == 1
     mock_purge.assert_called_once()
@@ -1056,3 +1058,258 @@ def test_desktop_launch_options_survives_config_error():
         flags, gpu = cli_main._desktop_launch_options()
     assert flags == []
     assert gpu == "auto"
+
+
+# ── Wails default-runtime tests ─────────────────────────────────────
+
+
+def _make_wails_bin(wails_dir: Path, platform: str = "linux") -> Path:
+    """Materialize a fake Wails binary under the temp tree."""
+    exe_name = "alice-desktop.exe" if platform == "win32" else "alice-desktop"
+    bin_path = wails_dir / "build" / "bin" / exe_name
+    bin_path.parent.mkdir(parents=True, exist_ok=True)
+    bin_path.write_text("", encoding="utf-8")
+    return bin_path
+
+
+def test_gui_defaults_to_wails_runtime(tmp_path, monkeypatch):
+    """No --electron flag → the Wails branch installs, builds, and launches."""
+    root = _make_desktop_tree(tmp_path)
+    desktop_dir = root / "apps" / "desktop"
+    wails_dir = root / "apps" / "desktop-wails"
+    wails_dir.mkdir()
+    (desktop_dir / "dist").mkdir()
+    (desktop_dir / "dist" / "index.html").write_text("<html/>", encoding="utf-8")
+    monkeypatch.setattr(cli_main, "PROJECT_ROOT", root)
+    bin_path = wails_dir / "build" / "bin" / "alice-desktop"
+
+    install_ok = subprocess.CompletedProcess(["npm", "ci"], 0)
+    build_ok = subprocess.CompletedProcess(["npm", "run", "build"], 0)
+    wails_ok = subprocess.CompletedProcess(["wails", "build"], 0)
+    launch_ok = subprocess.CompletedProcess([str(bin_path)], 0)
+
+    calls = {"n": 0}
+
+    def run_side_effect(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 2:  # after `wails build` — materialize the binary
+            bin_path.parent.mkdir(parents=True, exist_ok=True)
+            bin_path.write_text("", encoding="utf-8")
+        return [build_ok, wails_ok, launch_ok][calls["n"] - 1]
+
+    with patch("alice_cli.main.shutil.which", return_value="/usr/bin/npm"), \
+         patch("alice_cli.main._run_npm_install_deterministic", return_value=install_ok), \
+         patch("alice_cli.main._wails_build_needed", return_value=True), \
+         patch("alice_cli.main._write_desktop_build_stamp") as mock_stamp, \
+         patch("alice_cli.main.subprocess.run", side_effect=run_side_effect) as mock_run, \
+         pytest.raises(SystemExit) as exc:
+        cli_main.cmd_gui(_ns())
+
+    assert exc.value.code == 0
+    assert mock_run.call_args_list[0].args[0] == ["/usr/bin/npm", "run", "build"]
+    assert mock_run.call_args_list[0].kwargs["cwd"] == desktop_dir
+    assert mock_run.call_args_list[1].args[0] == ["wails", "build"]
+    assert mock_run.call_args_list[1].kwargs["cwd"] == wails_dir
+    assert mock_run.call_args_list[2].args[0] == [str(bin_path)]
+    assert mock_run.call_args_list[2].kwargs["cwd"] == wails_dir
+    # stamp is written after a successful Wails build
+    mock_stamp.assert_called_once_with(root, source_mode=False)
+
+
+def test_gui_wails_skips_build_when_stamp_matches(tmp_path, monkeypatch):
+    """Stamp up-to-date + binary present → launch only, no npm/wails build."""
+    root = _make_desktop_tree(tmp_path)
+    desktop_dir = root / "apps" / "desktop"
+    wails_dir = root / "apps" / "desktop-wails"
+    wails_dir.mkdir()
+    monkeypatch.setattr(cli_main, "PROJECT_ROOT", root)
+    bin_path = _make_wails_bin(wails_dir)
+
+    launch_ok = subprocess.CompletedProcess([str(bin_path)], 0)
+
+    with patch("alice_cli.main.shutil.which", return_value="/usr/bin/npm"), \
+         patch("alice_cli.main._run_npm_install_deterministic") as mock_install, \
+         patch("alice_cli.main._wails_build_needed", return_value=False), \
+         patch("alice_cli.main.subprocess.run", return_value=launch_ok) as mock_run, \
+         pytest.raises(SystemExit) as exc:
+        cli_main.cmd_gui(_ns())
+
+    assert exc.value.code == 0
+    mock_install.assert_not_called()
+    mock_run.assert_called_once()
+    assert mock_run.call_args.args[0] == [str(bin_path)]
+
+
+def test_gui_wails_build_only_exits_without_launch(tmp_path, monkeypatch, capsys):
+    """--build-only produces the Wails binary and exits 0 without launching."""
+    root = _make_desktop_tree(tmp_path)
+    desktop_dir = root / "apps" / "desktop"
+    wails_dir = root / "apps" / "desktop-wails"
+    wails_dir.mkdir()
+    (desktop_dir / "dist").mkdir()
+    (desktop_dir / "dist" / "index.html").write_text("<html/>", encoding="utf-8")
+    monkeypatch.setattr(cli_main, "PROJECT_ROOT", root)
+    bin_path = wails_dir / "build" / "bin" / "alice-desktop"
+
+    build_ok = subprocess.CompletedProcess(["npm", "run", "build"], 0)
+    wails_ok = subprocess.CompletedProcess(["wails", "build"], 0)
+
+    def run_side_effect(*args, **kwargs):
+        bin_path.parent.mkdir(parents=True, exist_ok=True)
+        bin_path.write_text("", encoding="utf-8")
+        return wails_ok
+
+    with patch("alice_cli.main.shutil.which", return_value="/usr/bin/npm"), \
+         patch("alice_cli.main._run_npm_install_deterministic") as mock_install, \
+         patch("alice_cli.main.subprocess.run", side_effect=run_side_effect) as mock_run, \
+         pytest.raises(SystemExit) as exc:
+        cli_main.cmd_gui(_ns(build_only=True))
+
+    assert exc.value.code == 0
+    mock_install.assert_not_called()
+    # frontend build + wails build, but NO launch call
+    assert len(mock_run.call_args_list) == 2
+    assert "Production Wails desktop binary built" in capsys.readouterr().out
+
+
+def test_gui_wails_skip_build_launches_prebuilt(tmp_path, monkeypatch):
+    """--skip-build with an existing Wails binary launches it directly."""
+    root = _make_desktop_tree(tmp_path)
+    wails_dir = root / "apps" / "desktop-wails"
+    wails_dir.mkdir()
+    monkeypatch.setattr(cli_main, "PROJECT_ROOT", root)
+    bin_path = _make_wails_bin(wails_dir)
+
+    launch_ok = subprocess.CompletedProcess([str(bin_path)], 0)
+
+    with patch("alice_cli.main.shutil.which", return_value="/usr/bin/npm"), \
+         patch("alice_cli.main._run_npm_install_deterministic") as mock_install, \
+         patch("alice_cli.main.subprocess.run", return_value=launch_ok) as mock_run, \
+         pytest.raises(SystemExit) as exc:
+        cli_main.cmd_gui(_ns(skip_build=True))
+
+    assert exc.value.code == 0
+    mock_install.assert_not_called()
+    mock_run.assert_called_once()
+    assert mock_run.call_args.args[0] == [str(bin_path)]
+
+
+def test_gui_wails_skip_build_missing_binary_exits(tmp_path, monkeypatch, capsys):
+    """--skip-build without a built Wails binary exits 1 with a hint."""
+    root = _make_desktop_tree(tmp_path)
+    wails_dir = root / "apps" / "desktop-wails"
+    wails_dir.mkdir()
+    monkeypatch.setattr(cli_main, "PROJECT_ROOT", root)
+
+    with patch("alice_cli.main.shutil.which", return_value="/usr/bin/npm"), \
+         pytest.raises(SystemExit) as exc:
+        cli_main.cmd_gui(_ns(skip_build=True))
+
+    assert exc.value.code == 1
+    assert "Prebuilt binary not found" in capsys.readouterr().out
+
+
+def test_gui_electron_flag_selects_electron_runtime(tmp_path, monkeypatch):
+    """--electron routes back to the legacy packaged-app path."""
+    root = _make_desktop_tree(tmp_path)
+    monkeypatch.setattr(cli_main, "PROJECT_ROOT", root)
+    packaged_exe = _make_packaged_executable(root, monkeypatch)
+
+    launch_ok = subprocess.CompletedProcess([str(packaged_exe)], 0)
+
+    with patch("alice_cli.main.shutil.which", return_value="/usr/bin/npm"), \
+         patch("alice_cli.main._run_npm_install_deterministic") as mock_install, \
+         patch("alice_cli.main.subprocess.run", return_value=launch_ok) as mock_run, \
+         pytest.raises(SystemExit) as exc:
+        cli_main.cmd_gui(_ns(electron=True, skip_build=True))
+
+    assert exc.value.code == 0
+    mock_install.assert_not_called()
+    assert mock_run.call_args.args[0] == [str(packaged_exe)]
+
+
+def test_gui_parser_rejects_wails_and_electron_together():
+    """--wails and --electron are mutually exclusive (argparse error, exit 2)."""
+    import argparse
+
+    from alice_cli.subcommands.gui import build_gui_parser
+
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="command")
+    build_gui_parser(subparsers, cmd_gui=lambda *a, **k: None)
+
+    with pytest.raises(SystemExit) as exc:
+        parser.parse_args(["desktop", "--wails", "--electron"])
+    assert exc.value.code == 2
+
+    # Each flag alone parses fine, and neither is set by default
+    ns = parser.parse_args(["desktop"])
+    assert ns.wails is False
+    assert ns.electron is False
+    ns = parser.parse_args(["desktop", "--wails"])
+    assert ns.wails is True
+    ns = parser.parse_args(["desktop", "--electron"])
+    assert ns.electron is True
+
+
+def test_compute_desktop_content_hash_includes_wails_sources(tmp_path, monkeypatch):
+    """Editing apps/desktop-wails sources invalidates the desktop build stamp."""
+    root = _make_desktop_tree(tmp_path)
+    wails_dir = root / "apps" / "desktop-wails"
+    wails_dir.mkdir(parents=True)
+    (wails_dir / "main.go").write_text("package main\n", encoding="utf-8")
+    (root / "package.json").write_text("{}", encoding="utf-8")
+    (root / "package-lock.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(cli_main, "PROJECT_ROOT", root)
+
+    h1 = cli_main._compute_desktop_content_hash(root)
+    (wails_dir / "main.go").write_text("package main\n// changed\n", encoding="utf-8")
+    h2 = cli_main._compute_desktop_content_hash(root)
+    assert h1 != h2
+    assert len(h1) == 64
+
+
+def test_gui_wails_force_build_rebuilds_once_and_launches(tmp_path, monkeypatch):
+    """--force-build in Wails mode rebuilds exactly once (no double build)."""
+    root = _make_desktop_tree(tmp_path)
+    desktop_dir = root / "apps" / "desktop"
+    wails_dir = root / "apps" / "desktop-wails"
+    wails_dir.mkdir()
+    (desktop_dir / "dist").mkdir()
+    (desktop_dir / "dist" / "index.html").write_text("<html/>", encoding="utf-8")
+    monkeypatch.setattr(cli_main, "PROJECT_ROOT", root)
+    bin_path = wails_dir / "build" / "bin" / "alice-desktop"
+
+    install_ok = subprocess.CompletedProcess(["npm", "ci"], 0)
+    build_ok = subprocess.CompletedProcess(["npm", "run", "build"], 0)
+    wails_ok = subprocess.CompletedProcess(["wails", "build"], 0)
+    launch_ok = subprocess.CompletedProcess([str(bin_path)], 0)
+
+    calls = {"n": 0}
+
+    def run_side_effect(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            bin_path.parent.mkdir(parents=True, exist_ok=True)
+            bin_path.write_text("", encoding="utf-8")
+        return [build_ok, wails_ok, launch_ok][calls["n"] - 1]
+
+    with patch("alice_cli.main.shutil.which", return_value="/usr/bin/npm"), \
+         patch("alice_cli.main._run_npm_install_deterministic", return_value=install_ok), \
+         patch("alice_cli.main._wails_build_needed", return_value=False) as mock_needed, \
+         patch("alice_cli.main._write_desktop_build_stamp") as mock_stamp, \
+         patch("alice_cli.main.subprocess.run", side_effect=run_side_effect) as mock_run, \
+         pytest.raises(SystemExit) as exc:
+        cli_main.cmd_gui(_ns(force_build=True))
+
+    assert exc.value.code == 0
+    # frontend build + wails build + launch = 3 calls (exactly one rebuild)
+    assert mock_run.call_count == 3
+    assert [c.args[0] for c in mock_run.call_args_list] == [
+        ["/usr/bin/npm", "run", "build"],
+        ["wails", "build"],
+        [str(bin_path)],
+    ]
+    mock_stamp.assert_called_once_with(root, source_mode=False)
+    # force_build short-circuits the stamp check (Python `or` short-circuit)
+    mock_needed.assert_not_called()

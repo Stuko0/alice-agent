@@ -3,7 +3,7 @@
 //! Direct port of `runBootstrap` from `apps/desktop/electron/bootstrap-runner.cjs`.
 //! Drives install.ps1 / install.sh stage-by-stage, emits progress events
 //! over the Tauri `bootstrap` channel, writes a forensic log to
-//! LYDIA_HOME/logs/bootstrap-<timestamp>.log.
+//! ALICE_HOME/logs/bootstrap-<timestamp>.log.
 //!
 //! Lifecycle:
 //!   1. `start_bootstrap` (Tauri command) → spawns the worker task.
@@ -43,9 +43,9 @@ pub struct StartBootstrapArgs {
     /// bootstrap-runner passes false to avoid building-while-running.
     #[serde(default = "default_true")]
     pub include_desktop: bool,
-    /// Optional override for LYDIA_HOME. Tests use this; production
+    /// Optional override for ALICE_HOME. Tests use this; production
     /// almost always falls back to the OS default.
-    pub lydia_home: Option<String>,
+    pub alice_home: Option<String>,
 }
 
 fn default_true() -> bool {
@@ -156,31 +156,38 @@ pub async fn get_bootstrap_status(
     })
 }
 
-/// Spawn the locally-built Lydia desktop binary, then close the installer
+/// Spawn the locally-built Alice desktop binary, then close the installer
 /// window. Caller resolves the binary path from `install_root`.
 ///
 /// Returns Err with a human-readable message if the binary doesn't exist
 /// (e.g. when Stage-Desktop was skipped) so the frontend can present
 /// actionable failure UI rather than silently doing nothing.
 #[tauri::command]
-pub async fn launch_lydia_desktop(
+pub async fn launch_alice_desktop(
     app: AppHandle,
     install_root: String,
 ) -> Result<(), String> {
     let install_root = PathBuf::from(install_root);
-    let exe_path = resolve_lydia_desktop_exe(&install_root).ok_or_else(|| {
+    let exe_path = resolve_alice_desktop_exe(&install_root).ok_or_else(|| {
         format!(
-            "Couldn't find a built Lydia desktop at {}. The desktop build step \
-             may have been skipped or failed. Run `Lydia desktop` from a \
+            "Couldn't find a built Alice desktop (checked the Wails binary at \
+             {} and the legacy Electron app under {}). The desktop build step \
+             may have been skipped or failed. Run `Alice desktop` from a \
              terminal to build and launch it.",
+            install_root
+                .join("apps")
+                .join("desktop-wails")
+                .join("build")
+                .join("bin")
+                .display(),
             install_root.join("apps").join("desktop").join("release").display()
         )
     })?;
 
-    tracing::info!(?exe_path, "launching Lydia desktop");
+    tracing::info!(?exe_path, "launching Alice desktop");
 
     // Detach from us — the installer is about to exit. On macOS launch the
-    // bundle through LaunchServices instead of exec'ing Contents/MacOS/Lydia
+    // bundle through LaunchServices instead of exec'ing Contents/MacOS/Alice
     // directly; this matches user double-click/open behavior and avoids cwd /
     // quarantine oddities after a self-update rebuild.
     let mut cmd = desktop_launch_command(&exe_path, &install_root);
@@ -207,23 +214,39 @@ pub async fn launch_lydia_desktop(
     Ok(())
 }
 
-/// Walks the well-known electron-builder unpacked-app paths under
-/// `install_root`. Mirrors the resolver in `cmd_gui` (apps/desktop/release/
-/// <os>-unpacked/<exe>).
-pub(crate) fn resolve_lydia_desktop_exe(install_root: &std::path::Path) -> Option<PathBuf> {
+/// Walks the well-known desktop binary paths under `install_root`. The Wails
+/// shell (the default runtime) is resolved first; the electron-builder
+/// unpacked-app paths remain as the legacy fallback until the Electron
+/// pipeline is deprecated.
+pub(crate) fn resolve_alice_desktop_exe(install_root: &std::path::Path) -> Option<PathBuf> {
+    let exe_name = if cfg!(target_os = "windows") {
+        "alice-desktop.exe"
+    } else {
+        "alice-desktop"
+    };
+    let wails_bin = install_root
+        .join("apps")
+        .join("desktop-wails")
+        .join("build")
+        .join("bin")
+        .join(exe_name);
+    if wails_bin.exists() {
+        return Some(wails_bin);
+    }
+
     let release_dir = install_root.join("apps").join("desktop").join("release");
     let candidates: &[(&str, &str)] = if cfg!(target_os = "windows") {
         &[
-            ("win-unpacked", "Lydia.exe"),
-            ("win-arm64-unpacked", "Lydia.exe"),
+            ("win-unpacked", "Alice.exe"),
+            ("win-arm64-unpacked", "Alice.exe"),
         ]
     } else if cfg!(target_os = "macos") {
         &[
-            ("mac/Lydia.app/Contents/MacOS", "Lydia"),
-            ("mac-arm64/Lydia.app/Contents/MacOS", "Lydia"),
+            ("mac/Alice.app/Contents/MacOS", "Alice"),
+            ("mac-arm64/Alice.app/Contents/MacOS", "Alice"),
         ]
     } else {
-        &[("linux-unpacked", "lydia")]
+        &[("linux-unpacked", "alice")]
     };
     for (subdir, exe) in candidates {
         let p = release_dir.join(subdir).join(exe);
@@ -234,11 +257,11 @@ pub(crate) fn resolve_lydia_desktop_exe(install_root: &std::path::Path) -> Optio
     None
 }
 
-pub(crate) fn resolve_lydia_desktop_app(install_root: &std::path::Path) -> Option<PathBuf> {
-    let exe = resolve_lydia_desktop_exe(install_root)?;
+pub(crate) fn resolve_alice_desktop_app(install_root: &std::path::Path) -> Option<PathBuf> {
+    let exe = resolve_alice_desktop_exe(install_root)?;
     #[cfg(target_os = "macos")]
     {
-        // .../Lydia.app/Contents/MacOS/Lydia -> .../Lydia.app
+        // .../Alice.app/Contents/MacOS/Alice -> .../Alice.app
         let app = exe.parent()?.parent()?.parent()?.to_path_buf();
         if app.extension().and_then(|e| e.to_str()) == Some("app") && app.is_dir() {
             return Some(app);
@@ -254,25 +277,25 @@ pub(crate) fn resolve_lydia_desktop_app(install_root: &std::path::Path) -> Optio
 
 /// True when a prior install completed (bootstrap-complete marker present) AND a
 /// launchable desktop app exists on disk. Used by the installer's launcher fast
-/// path so a bare re-open just opens Lydia instead of re-running setup.
-pub(crate) fn lydia_is_installed(install_root: &std::path::Path) -> bool {
-    install_root.join(".lydia-bootstrap-complete").exists()
-        && resolve_lydia_desktop_exe(install_root).is_some()
+/// path so a bare re-open just opens Alice instead of re-running setup.
+pub(crate) fn alice_is_installed(install_root: &std::path::Path) -> bool {
+    install_root.join(".alice-bootstrap-complete").exists()
+        && resolve_alice_desktop_exe(install_root).is_some()
 }
 
 /// Spawn the already-built desktop app, detached. Returns Err if no built app
 /// exists or the spawn fails, so the caller can fall back to showing the
 /// installer UI.
 pub(crate) fn spawn_installed_desktop(install_root: &std::path::Path) -> std::io::Result<()> {
-    let exe = resolve_lydia_desktop_exe(install_root).ok_or_else(|| {
-        std::io::Error::new(std::io::ErrorKind::NotFound, "no built Lydia desktop app")
+    let exe = resolve_alice_desktop_exe(install_root).ok_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::NotFound, "no built Alice desktop app")
     })?;
     let mut cmd = desktop_launch_command_std(&exe, install_root);
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;
         // DETACHED_PROCESS = 0x00000008 — keep the desktop alive after the
-        // installer exits, mirroring launch_lydia_desktop. Kept correct here
+        // installer exits, mirroring launch_alice_desktop. Kept correct here
         // even though the only caller is macOS-gated today, so future reuse on
         // Windows doesn't reintroduce the relaunch race.
         cmd.creation_flags(0x0000_0008);
@@ -284,7 +307,7 @@ pub(crate) fn spawn_installed_desktop(install_root: &std::path::Path) -> std::io
 pub(crate) fn open_macos_app_detached(app_bundle: &std::path::Path) -> std::io::Result<()> {
     let mut cmd = std::process::Command::new("/usr/bin/open");
     cmd.arg(app_bundle);
-    cmd.current_dir(crate::paths::lydia_home());
+    cmd.current_dir(crate::paths::alice_home());
     cmd.spawn().map(|_child| ())
 }
 
@@ -307,7 +330,7 @@ fn desktop_launch_command(
         if let Some(app_bundle) = app_bundle_for_exe(exe_path) {
             let mut cmd = tokio::process::Command::new("/usr/bin/open");
             cmd.arg(app_bundle);
-            cmd.current_dir(crate::paths::lydia_home());
+            cmd.current_dir(crate::paths::alice_home());
             return cmd;
         }
     }
@@ -326,7 +349,7 @@ fn desktop_launch_command_std(
         if let Some(app_bundle) = app_bundle_for_exe(exe_path) {
             let mut cmd = std::process::Command::new("/usr/bin/open");
             cmd.arg(app_bundle);
-            cmd.current_dir(crate::paths::lydia_home());
+            cmd.current_dir(crate::paths::alice_home());
             return cmd;
         }
     }
@@ -421,7 +444,7 @@ async fn run_bootstrap(
         &app,
         &script.path,
         &manifest_args_full,
-        args.lydia_home.as_deref(),
+        args.alice_home.as_deref(),
         None,
         Some("__manifest__".to_string()),
     )
@@ -528,7 +551,7 @@ async fn run_bootstrap(
             &app,
             &script.path,
             &stage_args,
-            args.lydia_home.as_deref(),
+            args.alice_home.as_deref(),
             local_cancel_rx,
             Some(stage.name.clone()),
         )
@@ -636,21 +659,21 @@ async fn run_bootstrap(
     }
 
     // 4. Resolve install_root. install.ps1 doesn't (yet) report this back
-    // explicitly; we infer it from $LydiaHome which Stage-Repository clones
-    // the repo INTO at $LydiaHome\lydia-agent. Mirrors lydia_constants.
-    let lydia_home = args
-        .lydia_home
+    // explicitly; we infer it from $AliceHome which Stage-Repository clones
+    // the repo INTO at $AliceHome\alice-agent. Mirrors alice_constants.
+    let alice_home = args
+        .alice_home
         .clone()
-        .unwrap_or_else(|| crate::paths::lydia_home().to_string_lossy().into_owned());
-    let install_root = PathBuf::from(&lydia_home).join("lydia-agent");
+        .unwrap_or_else(|| crate::paths::alice_home().to_string_lossy().into_owned());
+    let install_root = PathBuf::from(&alice_home).join("alice-agent");
 
-    // Copy ourselves to LYDIA_HOME/lydia-setup.exe so the desktop app can
+    // Copy ourselves to ALICE_HOME/alice-setup.exe so the desktop app can
     // re-invoke us with `--update` and shortcuts have a stable target. This is
     // a one-shot install concern; an `--update` re-invocation no-ops because
     // we're already running from that path. Best-effort — a failure here must
     // not fail an otherwise-successful install.
-    if let Err(err) = crate::paths::copy_self_to_lydia_home() {
-        tracing::warn!(?err, "failed to copy installer into LYDIA_HOME (non-fatal)");
+    if let Err(err) = crate::paths::copy_self_to_alice_home() {
+        tracing::warn!(?err, "failed to copy installer into ALICE_HOME (non-fatal)");
         emit_log(&format!(
             "[bootstrap] warning: could not stage updater binary: {err}"
         ));
@@ -683,7 +706,7 @@ async fn run_install_script(
     app: &AppHandle,
     script_path: &std::path::Path,
     args: &[String],
-    lydia_home_override: Option<&str>,
+    alice_home_override: Option<&str>,
     cancel_rx: Option<mpsc::Receiver<()>>,
     stage_name: Option<String>,
 ) -> Result<powershell::ScriptResult> {
@@ -735,7 +758,7 @@ async fn run_install_script(
         }),
     };
 
-    powershell::run_script(script_path, args, sink, lydia_home_override, cancel_rx)
+    powershell::run_script(script_path, args, sink, alice_home_override, cancel_rx)
         .await
         .map_err(|e| {
             tracing::error!(?e, "install script invocation failed");
@@ -826,7 +849,7 @@ mod tests {
 
     fn unique_tmp_dir(tag: &str) -> PathBuf {
         let base = std::env::temp_dir().join(format!(
-            "lydia-bootstrap-test-{tag}-{}-{}",
+            "alice-bootstrap-test-{tag}-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -844,22 +867,22 @@ mod tests {
         if cfg!(target_os = "macos") {
             let macos_dir = release
                 .join("mac-arm64")
-                .join("Lydia.app")
+                .join("Alice.app")
                 .join("Contents")
                 .join("MacOS");
             std::fs::create_dir_all(&macos_dir).unwrap();
-            std::fs::write(macos_dir.join("Lydia"), b"#!/bin/sh\n").unwrap();
-            macos_dir.parent().unwrap().parent().unwrap().to_path_buf() // .../Lydia.app
+            std::fs::write(macos_dir.join("Alice"), b"#!/bin/sh\n").unwrap();
+            macos_dir.parent().unwrap().parent().unwrap().to_path_buf() // .../Alice.app
         } else if cfg!(target_os = "windows") {
             let dir = release.join("win-unpacked");
             std::fs::create_dir_all(&dir).unwrap();
-            let exe = dir.join("Lydia.exe");
+            let exe = dir.join("Alice.exe");
             std::fs::write(&exe, b"stub").unwrap();
             exe
         } else {
             let dir = release.join("linux-unpacked");
             std::fs::create_dir_all(&dir).unwrap();
-            let exe = dir.join("lydia");
+            let exe = dir.join("alice");
             std::fs::write(&exe, b"stub").unwrap();
             exe
         }
@@ -867,14 +890,14 @@ mod tests {
 
     // The relaunch / install target is derived from the rebuilt desktop app.
     // On macOS this MUST resolve to the .app bundle (what `open` relaunches and
-    // what the updater ditto's over /Applications/Lydia.app). A regression in
+    // what the updater ditto's over /Applications/Alice.app). A regression in
     // this derivation breaks the post-update auto-relaunch, so guard it.
     #[test]
-    fn resolve_lydia_desktop_app_finds_built_bundle() {
+    fn resolve_alice_desktop_app_finds_built_bundle() {
         let root = unique_tmp_dir("app-ok");
         let expected = make_release_tree(&root);
 
-        let resolved = resolve_lydia_desktop_app(&root)
+        let resolved = resolve_alice_desktop_app(&root)
             .expect("should resolve the freshly-built desktop app");
 
         #[cfg(target_os = "macos")]
@@ -894,12 +917,65 @@ mod tests {
     }
 
     #[test]
-    fn resolve_lydia_desktop_app_is_none_without_a_build() {
+    fn resolve_alice_desktop_app_is_none_without_a_build() {
         let root = unique_tmp_dir("app-none");
         // No release tree created.
         assert!(
-            resolve_lydia_desktop_app(&root).is_none(),
+            resolve_alice_desktop_app(&root).is_none(),
             "no resolved app when nothing has been built"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    // Build a fake Wails binary tree (apps/desktop-wails/build/bin/<exe>).
+    fn make_wails_tree(install_root: &Path) -> PathBuf {
+        let bin_dir = install_root
+            .join("apps")
+            .join("desktop-wails")
+            .join("build")
+            .join("bin");
+        std::fs::create_dir_all(&bin_dir).unwrap();
+        let exe_name = if cfg!(target_os = "windows") {
+            "alice-desktop.exe"
+        } else {
+            "alice-desktop"
+        };
+        let exe = bin_dir.join(exe_name);
+        std::fs::write(&exe, b"stub").unwrap();
+        exe
+    }
+
+    #[test]
+    fn resolve_alice_desktop_exe_prefers_wails_over_electron() {
+        let root = unique_tmp_dir("exe-wails-first");
+        // Both the Wails binary and the legacy Electron app exist: the Wails
+        // shell is the default runtime, so it MUST win.
+        let wails_exe = make_wails_tree(&root);
+        let _electron_exe = make_release_tree(&root);
+
+        let resolved = resolve_alice_desktop_exe(&root)
+            .expect("should resolve the Wails binary when present");
+        assert_eq!(resolved, wails_exe);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn resolve_alice_desktop_exe_falls_back_to_electron() {
+        let root = unique_tmp_dir("exe-electron-fallback");
+        let electron_exe = make_release_tree(&root);
+
+        let resolved = resolve_alice_desktop_exe(&root)
+            .expect("should fall back to the Electron app when no Wails binary");
+        assert_eq!(resolved, electron_exe);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn resolve_alice_desktop_exe_is_none_without_a_build() {
+        let root = unique_tmp_dir("exe-none");
+        assert!(
+            resolve_alice_desktop_exe(&root).is_none(),
+            "no resolved exe when nothing has been built"
         );
         let _ = std::fs::remove_dir_all(&root);
     }

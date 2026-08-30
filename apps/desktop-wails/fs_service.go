@@ -162,8 +162,16 @@ type SelectPathsRequest struct {
 	Multiple     bool              `json:"multiple"`
 }
 
+// psEscape escapes a string for embedding inside a PowerShell single-quoted
+// literal (PowerShell escapes a quote by doubling it).
+func psEscape(s string) string {
+	return strings.ReplaceAll(s, "'", "''")
+}
+
 // SelectPaths opens the OS-native file/folder picker (zenity on Linux,
-// osascript on macOS, powershell on Windows) and returns the chosen paths.
+// osascript on macOS, PowerShell + WinForms on Windows) and returns the chosen
+// paths. A user cancel returns an empty slice, not an error — cancel is a
+// normal outcome, not a failure.
 func (fs *FSService) SelectPaths(options SelectPathsRequest) ([]string, error) {
 	var args []string
 	switch runtime.GOOS {
@@ -183,7 +191,38 @@ func (fs *FSService) SelectPaths(options SelectPathsRequest) ([]string, error) {
 		paths := strings.Split(strings.TrimSpace(string(out)), ", ")
 		return paths, nil
 	case "windows":
-		return []string{}, nil
+		// PowerShell + WinForms dialogs. -STA is required for the dialog
+		// classes. Multi-select prints one path per line; single-select and
+		// folder mode print a single line.
+		var script string
+		if options.Directories {
+			script = fmt.Sprintf(
+				"Add-Type -AssemblyName System.Windows.Forms\n"+
+					"$f = New-Object System.Windows.Forms.FolderBrowserDialog\n"+
+					"$f.Description = '%s'\n"+
+					"if ($f.ShowDialog() -eq 'OK') { $f.SelectedPath }\n",
+				psEscape(options.Title))
+		} else {
+			script = fmt.Sprintf(
+				"Add-Type -AssemblyName System.Windows.Forms\n"+
+					"$f = New-Object System.Windows.Forms.OpenFileDialog\n"+
+					"$f.Multiselect = $%v\n"+
+					"$f.Title = '%s'\n"+
+					"if ($f.ShowDialog() -eq 'OK') { $f.FileNames }\n",
+				options.Multiple, psEscape(options.Title))
+		}
+		out, err := exec.Command("powershell", "-NoProfile", "-STA", "-Command", script).Output()
+		if err != nil {
+			return []string{}, nil
+		}
+		var paths []string
+		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				paths = append(paths, line)
+			}
+		}
+		return paths, nil
 	default:
 		// Linux: zenity/kdialog file dialog
 		if _, err := exec.LookPath("zenity"); err == nil {
@@ -241,7 +280,8 @@ func (fs *FSService) SaveImageBuffer(data []byte, ext string) (string, error) {
 	return tmpFile.Name(), nil
 }
 
-// SaveClipboardImage pulls the clipboard image (Linux: xclip) to a temp file.
+// SaveClipboardImage pulls the clipboard image (Linux: xclip, Windows:
+// PowerShell Clipboard.GetImage, macOS: osascript) to a temp file.
 func (fs *FSService) SaveClipboardImage() (string, error) {
 	switch runtime.GOOS {
 	case "darwin":
@@ -252,6 +292,28 @@ func (fs *FSService) SaveClipboardImage() (string, error) {
 			return "", err
 		}
 		return "/tmp/alice-clipboard.png", nil
+	case "windows":
+		tmpFile, err := os.CreateTemp("", "alice-clipboard-*.png")
+		if err != nil {
+			return "", err
+		}
+		tmpName := tmpFile.Name()
+		tmpFile.Close()
+		script := fmt.Sprintf(
+			"Add-Type -AssemblyName System.Windows.Forms\n"+
+				"$img = [System.Windows.Forms.Clipboard]::GetImage()\n"+
+				"if ($img -ne $null) { $img.Save('%s') } else { exit 1 }\n",
+			psEscape(tmpName))
+		if err := exec.Command("powershell", "-NoProfile", "-STA", "-Command", script).Run(); err != nil {
+			os.Remove(tmpName)
+			return "", fmt.Errorf("clipboard has no image")
+		}
+		info, err := os.Stat(tmpName)
+		if err != nil || info.Size() == 0 {
+			os.Remove(tmpName)
+			return "", fmt.Errorf("clipboard has no image")
+		}
+		return tmpName, nil
 	default:
 		if _, err := exec.LookPath("xclip"); err != nil {
 			return "", fmt.Errorf("xclip not available")
