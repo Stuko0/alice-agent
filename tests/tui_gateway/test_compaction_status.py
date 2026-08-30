@@ -21,7 +21,7 @@ def server():
         "sys.modules",
         {
             "alice_constants": MagicMock(
-                get_alice_home=MagicMock(return_value="/tmp/lydia_test_compaction")
+                get_alice_home=MagicMock(return_value="/tmp/alice_test_compaction")
             ),
             "alice_cli.env_loader": MagicMock(),
             "alice_cli.banner": MagicMock(),

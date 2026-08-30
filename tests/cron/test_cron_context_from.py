@@ -12,19 +12,19 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 @pytest.fixture
 def cron_env(tmp_path, monkeypatch):
     """Isolated cron environment with temp ALICE_HOME."""
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    (lydia_home / "cron").mkdir()
-    (lydia_home / "cron" / "output").mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    (alice_home / "cron").mkdir()
+    (alice_home / "cron" / "output").mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     import cron.jobs as jobs_mod
-    monkeypatch.setattr(jobs_mod, "LYDIA_DIR", lydia_home)
-    monkeypatch.setattr(jobs_mod, "CRON_DIR", lydia_home / "cron")
-    monkeypatch.setattr(jobs_mod, "JOBS_FILE", lydia_home / "cron" / "jobs.json")
-    monkeypatch.setattr(jobs_mod, "OUTPUT_DIR", lydia_home / "cron" / "output")
+    monkeypatch.setattr(jobs_mod, "ALICE_DIR", alice_home)
+    monkeypatch.setattr(jobs_mod, "CRON_DIR", alice_home / "cron")
+    monkeypatch.setattr(jobs_mod, "JOBS_FILE", alice_home / "cron" / "jobs.json")
+    monkeypatch.setattr(jobs_mod, "OUTPUT_DIR", alice_home / "cron" / "output")
 
-    return lydia_home
+    return alice_home
 
 
 class TestJobContextFromField:

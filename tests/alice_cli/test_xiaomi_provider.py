@@ -298,9 +298,9 @@ class TestXiaomiProvidersModule:
     """Test Xiaomi in the unified providers module."""
 
     def test_overlay_exists(self):
-        from alice_cli.providers import LYDIA_OVERLAYS
-        assert "xiaomi" in LYDIA_OVERLAYS
-        overlay = LYDIA_OVERLAYS["xiaomi"]
+        from alice_cli.providers import ALICE_OVERLAYS
+        assert "xiaomi" in ALICE_OVERLAYS
+        overlay = ALICE_OVERLAYS["xiaomi"]
         assert overlay.transport == "openai_chat"
         assert overlay.base_url_env_var == "XIAOMI_BASE_URL"
         assert not overlay.is_aggregator
@@ -368,7 +368,7 @@ class TestXiaomiAgentInit:
         importlib.import_module("run_agent")
 
     def test_api_mode_is_chat_completions(self):
-        from alice_cli.providers import LYDIA_OVERLAYS, TRANSPORT_TO_API_MODE
-        overlay = LYDIA_OVERLAYS["xiaomi"]
+        from alice_cli.providers import ALICE_OVERLAYS, TRANSPORT_TO_API_MODE
+        overlay = ALICE_OVERLAYS["xiaomi"]
         api_mode = TRANSPORT_TO_API_MODE[overlay.transport]
         assert api_mode == "chat_completions"

@@ -331,7 +331,7 @@ def test_make_tui_argv_exits_with_recovery_hint_when_workspace_unrecoverable(
     tmp_path: Path, main_mod, monkeypatch, capsys
 ) -> None:
     """Missing ui-tui + no git checkout → clean error, never touches node/npm."""
-    monkeypatch.delenv("LYDIA_TUI_DIR", raising=False)
+    monkeypatch.delenv("ALICE_TUI_DIR", raising=False)
     monkeypatch.setattr(main_mod, "_ensure_tui_node", lambda: None)
 
     # No .git beside ui-tui → _restore_tui_workspace bails, fallback message fires.
@@ -356,8 +356,8 @@ def test_make_tui_argv_restores_missing_workspace_from_git(
     tmp_path: Path, main_mod, monkeypatch, capsys
 ) -> None:
     """Missing ui-tui in a git checkout self-heals via `git restore` and continues."""
-    monkeypatch.delenv("LYDIA_TUI_DIR", raising=False)
-    monkeypatch.delenv("LYDIA_QUIET", raising=False)
+    monkeypatch.delenv("ALICE_TUI_DIR", raising=False)
+    monkeypatch.delenv("ALICE_QUIET", raising=False)
     monkeypatch.setattr(main_mod, "_ensure_tui_node", lambda: None)
 
     tui_dir = tmp_path / "ui-tui"

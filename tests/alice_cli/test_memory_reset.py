@@ -14,21 +14,21 @@ import pytest
 @pytest.fixture
 def memory_env(tmp_path, monkeypatch):
     """Set up a fake ALICE_HOME with memory files."""
-    lydia_home = tmp_path / ".alice"
-    memories = lydia_home / "memories"
+    alice_home = tmp_path / ".alice"
+    memories = alice_home / "memories"
     memories.mkdir(parents=True)
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     # Create sample memory files
     (memories / "MEMORY.md").write_text(
-        "§\nLydia repo is at ~/.alice/alice-agent\n§\nUser prefers dark themes",
+        "§\nAlice repo is at ~/.alice/alice-agent\n§\nUser prefers dark themes",
         encoding="utf-8",
     )
     (memories / "USER.md").write_text(
         "§\nUser is Teknium\n§\nTimezone: US Pacific",
         encoding="utf-8",
     )
-    return lydia_home, memories
+    return alice_home, memories
 
 
 def _run_memory_reset(target="all", yes=False, monkeypatch=None, confirm_input="no"):
@@ -64,7 +64,7 @@ class TestMemoryReset:
 
     def test_reset_all_with_yes_flag(self, memory_env):
         """--yes flag should skip confirmation and delete both files."""
-        lydia_home, memories = memory_env
+        alice_home, memories = memory_env
         assert (memories / "MEMORY.md").exists()
         assert (memories / "USER.md").exists()
 
@@ -75,7 +75,7 @@ class TestMemoryReset:
 
     def test_reset_memory_only(self, memory_env):
         """--target memory should only delete MEMORY.md."""
-        lydia_home, memories = memory_env
+        alice_home, memories = memory_env
 
         result = _run_memory_reset(target="memory", yes=True)
         assert result == "deleted"
@@ -84,7 +84,7 @@ class TestMemoryReset:
 
     def test_reset_user_only(self, memory_env):
         """--target user should only delete USER.md."""
-        lydia_home, memories = memory_env
+        alice_home, memories = memory_env
 
         result = _run_memory_reset(target="user", yes=True)
         assert result == "deleted"
@@ -93,16 +93,16 @@ class TestMemoryReset:
 
     def test_reset_no_files_exist(self, tmp_path, monkeypatch):
         """Should return 'nothing' when no memory files exist."""
-        lydia_home = tmp_path / ".alice"
-        (lydia_home / "memories").mkdir(parents=True)
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        (alice_home / "memories").mkdir(parents=True)
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
         result = _run_memory_reset(target="all", yes=True)
         assert result == "nothing"
 
     def test_reset_confirmation_denied(self, memory_env):
         """Without --yes and without typing 'yes', should be cancelled."""
-        lydia_home, memories = memory_env
+        alice_home, memories = memory_env
 
         result = _run_memory_reset(target="all", yes=False, confirm_input="no")
         assert result == "cancelled"
@@ -112,7 +112,7 @@ class TestMemoryReset:
 
     def test_reset_confirmation_accepted(self, memory_env):
         """Typing 'yes' should proceed with deletion."""
-        lydia_home, memories = memory_env
+        alice_home, memories = memory_env
 
         result = _run_memory_reset(target="all", yes=False, confirm_input="yes")
         assert result == "deleted"
@@ -135,7 +135,7 @@ class TestMemoryReset:
 
     def test_reset_partial_files(self, memory_env):
         """Reset should work when only one memory file exists."""
-        lydia_home, memories = memory_env
+        alice_home, memories = memory_env
         (memories / "USER.md").unlink()
 
         result = _run_memory_reset(target="all", yes=True)
@@ -144,10 +144,10 @@ class TestMemoryReset:
 
     def test_reset_empty_memories_dir(self, tmp_path, monkeypatch):
         """No memories dir at all should report nothing."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir(parents=True)
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir(parents=True)
         # No memories dir
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
         # The memories dir won't exist; get_alice_home() / "memories" won't have files
         result = _run_memory_reset(target="all", yes=True)

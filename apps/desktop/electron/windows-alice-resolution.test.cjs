@@ -1,16 +1,16 @@
 'use strict'
 
-// Regression guards for Windows `lydia` resolution in main.cjs.
+// Regression guards for Windows `alice` resolution in main.cjs.
 //
 // main.cjs has no module.exports, so these follow the repo's source-assertion
 // test pattern (see windows-child-process.test.cjs). They pin the two Windows
 // resolution bugs that caused desktop reinstall loops:
 //   1. findOnPath() tried the empty extension FIRST, so an extensionless
-//      Git-Bash `lydia` shim shadowed the real lydia.cmd/lydia.exe; the
+//      Git-Bash `alice` shim shadowed the real alice.cmd/alice.exe; the
 //      shim then failed the --version probe and the desktop fell through to a
 //      spurious bootstrap/repair.
 //   2. handOffWindowsBootstrapRecovery() chose --update vs the destructive
-//      --repair by checking ONLY venv\Scripts\lydia.exe (the console-script
+//      --repair by checking ONLY venv\Scripts\alice.exe (the console-script
 //      shim, written at the END of venv setup and absent in interrupted
 //      states), so it escalated to a full venv recreate even on healthy
 //      installs.
@@ -36,7 +36,7 @@ test('findOnPath tries PATHEXT extensions before the bare (empty) name on Window
   assert.doesNotMatch(
     source,
     /\['', \.\.\.\(process\.env\.PATHEXT/,
-    'empty-extension-first order regressed: an extensionless shim can shadow lydia.cmd/.exe'
+    'empty-extension-first order regressed: an extensionless shim can shadow alice.cmd/.exe'
   )
 })
 
@@ -50,7 +50,7 @@ test('Windows bootstrap recovery chooses --update when any real-install signal i
   )
   assert.match(
     source,
-    /\.lydia-bootstrap-complete/,
+    /\.alice-bootstrap-complete/,
     'recovery must accept the bootstrap-complete marker as a real-install signal'
   )
   assert.match(
@@ -58,10 +58,10 @@ test('Windows bootstrap recovery chooses --update when any real-install signal i
     /updaterArgs = haveRealInstall \? \['--update'/,
     'updaterArgs must gate on haveRealInstall'
   )
-  // The old too-narrow check (only venv\Scripts\lydia.exe) must not return.
+  // The old too-narrow check (only venv\Scripts\alice.exe) must not return.
   assert.doesNotMatch(
     source,
-    /updaterArgs = fileExists\(venvLydia\) \?/,
-    'recovery regressed to gating only on the lydia.exe shim, which forces destructive --repair'
+    /updaterArgs = fileExists\(venvAlice\) \?/,
+    'recovery regressed to gating only on the alice.exe shim, which forces destructive --repair'
   )
 })

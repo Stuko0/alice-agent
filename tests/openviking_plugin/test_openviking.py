@@ -154,7 +154,7 @@ class TestOpenVikingSkillQuerySafety:
 
         assert openviking_plugin._derive_openviking_user_text(skill_message) == ""
 
-    def test_skill_markers_match_lydia_scaffolding(self, tmp_path, monkeypatch):
+    def test_skill_markers_match_alice_scaffolding(self, tmp_path, monkeypatch):
         import agent.skill_bundles as skill_bundles
         import agent.skill_commands as skill_commands
         import tools.skills_tool as skills_tool
@@ -165,7 +165,7 @@ class TestOpenVikingSkillQuerySafety:
         _write_bundle(bundles_dir, "demo", ["example"])
 
         monkeypatch.setattr(skills_tool, "SKILLS_DIR", skills_dir)
-        monkeypatch.setenv("LYDIA_BUNDLES_DIR", str(bundles_dir))
+        monkeypatch.setenv("ALICE_BUNDLES_DIR", str(bundles_dir))
         monkeypatch.setattr(skill_commands, "_skill_commands", {})
         monkeypatch.setattr(skill_commands, "_skill_commands_platform", None)
         monkeypatch.setattr(skill_bundles, "_bundles_cache", {})

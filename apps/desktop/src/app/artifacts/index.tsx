@@ -481,8 +481,8 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
   const openArtifact = useCallback(
     async (href: string) => {
       try {
-        if (window.lydiaDesktop?.openExternal) {
-          await window.lydiaDesktop.openExternal(href)
+        if (window.aliceDesktop?.openExternal) {
+          await window.aliceDesktop.openExternal(href)
         } else {
           window.open(href, '_blank', 'noopener,noreferrer')
         }

@@ -40,12 +40,12 @@ def catalog_dir(tmp_path, monkeypatch):
     """Provide an isolated optional-mcps/ directory."""
     cat = tmp_path / "optional-mcps"
     cat.mkdir()
-    monkeypatch.setenv("LYDIA_OPTIONAL_MCPS", str(cat))
+    monkeypatch.setenv("ALICE_OPTIONAL_MCPS", str(cat))
     return cat
 
 
 @pytest.fixture(autouse=True)
-def _isolate_lydia_home(tmp_path, monkeypatch):
+def _isolate_alice_home(tmp_path, monkeypatch):
     """Redirect all config I/O to a temp ALICE_HOME."""
     hh = tmp_path / "alice-home"
     hh.mkdir()
@@ -795,9 +795,9 @@ class TestShippedCatalog:
         manifest. Intentionally NOT a snapshot of catalog names (those are
         expected to change as PRs land).
         """
-        # Use the actual repo's optional-mcps directory (no LYDIA_OPTIONAL_MCPS
+        # Use the actual repo's optional-mcps directory (no ALICE_OPTIONAL_MCPS
         # override) so this test catches real manifests.
-        monkeypatch.delenv("LYDIA_OPTIONAL_MCPS", raising=False)
+        monkeypatch.delenv("ALICE_OPTIONAL_MCPS", raising=False)
         from alice_cli.mcp_catalog import _catalog_root, _parse_manifest
 
         root = _catalog_root()

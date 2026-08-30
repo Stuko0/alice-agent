@@ -207,7 +207,7 @@ def test_do_list_platform_env_is_ignored(three_source_env, monkeypatch):
     """`alice skills list` reads the active profile's config via
     ALICE_HOME (swapped by -p), so it must NOT pass a platform arg to
     ``get_disabled_skill_names`` — otherwise per-platform overrides
-    would silently leak in from LYDIA_PLATFORM env."""
+    would silently leak in from ALICE_PLATFORM env."""
     from agent import skill_utils
 
     seen = {}

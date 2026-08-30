@@ -37,15 +37,15 @@ async function resolveImageSrc(path: string): Promise<string> {
     return path
   }
 
-  if (window.lydiaDesktop && isRemoteGateway()) {
+  if (window.aliceDesktop && isRemoteGateway()) {
     return gatewayMediaDataUrl(path)
   }
 
-  if (!window.lydiaDesktop?.readFileDataUrl) {
+  if (!window.aliceDesktop?.readFileDataUrl) {
     return mediaExternalUrl(path)
   }
 
-  return window.lydiaDesktop.readFileDataUrl(filePathFromMediaPath(path))
+  return window.aliceDesktop.readFileDataUrl(filePathFromMediaPath(path))
 }
 
 export const GeneratedImage: FC<{ aspectRatio?: string; result?: unknown }> = ({ aspectRatio, result }) => {
@@ -100,7 +100,7 @@ export const GeneratedImage: FC<{ aspectRatio?: string; result?: unknown }> = ({
         href="#"
         onClick={event => {
           event.preventDefault()
-          void window.lydiaDesktop?.openExternal(mediaExternalUrl(image))
+          void window.aliceDesktop?.openExternal(mediaExternalUrl(image))
         }}
       >
         {copy.openImage}: {mediaName(image)}

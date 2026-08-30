@@ -15,8 +15,8 @@ import type {
   CronJobUpdates,
   ElevenLabsVoicesResponse,
   EnvVarInfo,
-  LydiaConfig,
-  LydiaConfigRecord,
+  AliceConfig,
+  AliceConfigRecord,
   LogsResponse,
   MemoryProviderConfig,
   MemoryProviderOAuthStatus,
@@ -76,8 +76,8 @@ export type {
   ElevenLabsVoicesResponse,
   EnvVarInfo,
   GatewayReadyPayload,
-  LydiaConfig,
-  LydiaConfigRecord,
+  AliceConfig,
+  AliceConfigRecord,
   LogsResponse,
   MemoryProviderConfig,
   MemoryProviderOAuthStatus,
@@ -120,7 +120,7 @@ export type {
   ToolsetInfo
 } from '@/types/alice'
 
-export class LydiaGateway extends JsonRpcGatewayClient {
+export class AliceGateway extends JsonRpcGatewayClient {
   constructor() {
     super({
       closedErrorMessage: 'Alice gateway connection closed',
@@ -136,7 +136,7 @@ export class LydiaGateway extends JsonRpcGatewayClient {
 // should target. Mirrors $activeGatewayProfile, pushed in from the store via
 // setApiRequestProfile so this module needs no store import (avoids a cycle).
 // Electron main consumes request.profile to pick which backend *process* serves
-// the call; each pooled backend already has its own LYDIA_HOME, so no backend
+// the call; each pooled backend already has its own ALICE_HOME, so no backend
 // change is needed. Null → primary, so single-profile users are unaffected.
 let _apiProfile: null | string = null
 
@@ -154,7 +154,7 @@ export async function listSessions(
   archived: 'exclude' | 'include' | 'only' = 'exclude',
   order: 'created' | 'recent' = 'recent'
 ): Promise<PaginatedSessions> {
-  const result = await window.lydiaDesktop.api<PaginatedSessions>({
+  const result = await window.aliceDesktop.api<PaginatedSessions>({
     path:
       `/api/sessions?limit=${limit}&offset=0&min_messages=${Math.max(0, minMessages)}` +
       `&archived=${archived}&order=${order}`,
@@ -195,7 +195,7 @@ export async function listAllProfileSessions(
     ? `&exclude_sources=${encodeURIComponent(filter.excludeSources.join(','))}`
     : ''
 
-  const result = await window.lydiaDesktop.api<PaginatedSessions>({
+  const result = await window.aliceDesktop.api<PaginatedSessions>({
     path:
       `/api/profiles/sessions?limit=${limit}&offset=0&min_messages=${Math.max(0, minMessages)}` +
       `&archived=${archived}&order=${order}&profile=${encodeURIComponent(profile)}${sourceParam}${excludeParam}`,
@@ -214,7 +214,7 @@ export async function listAllProfileSessions(
 // read path. A remote session's row lives only on its remote host, so a mutation
 // that hit the local primary would no-op or 404. Omit for the current/default.
 export function setSessionArchived(id: string, archived: boolean, profile?: string | null): Promise<{ ok: boolean }> {
-  return window.lydiaDesktop.api<{ ok: boolean }>({
+  return window.aliceDesktop.api<{ ok: boolean }>({
     ...(profile ? { profile } : {}),
     path: `/api/sessions/${encodeURIComponent(id)}`,
     method: 'PATCH',
@@ -223,7 +223,7 @@ export function setSessionArchived(id: string, archived: boolean, profile?: stri
 }
 
 export function searchSessions(query: string): Promise<SessionSearchResponse> {
-  return window.lydiaDesktop.api<SessionSearchResponse>({
+  return window.aliceDesktop.api<SessionSearchResponse>({
     path: `/api/sessions/search?q=${encodeURIComponent(query)}`
   })
 }
@@ -235,7 +235,7 @@ export function searchSessions(query: string): Promise<SessionSearchResponse> {
 export function getSession(id: string, profile?: string | null): Promise<SessionInfo> {
   const suffix = profile ? `?profile=${encodeURIComponent(profile)}` : ''
 
-  return window.lydiaDesktop.api<SessionInfo>({
+  return window.aliceDesktop.api<SessionInfo>({
     ...(profile ? { profile } : {}),
     path: `/api/sessions/${encodeURIComponent(id)}${suffix}`
   })
@@ -248,14 +248,14 @@ export function getSession(id: string, profile?: string | null): Promise<Session
 export function getSessionMessages(id: string, profile?: string | null): Promise<SessionMessagesResponse> {
   const suffix = profile ? `?profile=${encodeURIComponent(profile)}` : ''
 
-  return window.lydiaDesktop.api<SessionMessagesResponse>({
+  return window.aliceDesktop.api<SessionMessagesResponse>({
     ...(profile ? { profile } : {}),
     path: `/api/sessions/${encodeURIComponent(id)}/messages${suffix}`
   })
 }
 
 export function deleteSession(id: string, profile?: string | null): Promise<{ ok: boolean }> {
-  return window.lydiaDesktop.api<{ ok: boolean }>({
+  return window.aliceDesktop.api<{ ok: boolean }>({
     ...(profile ? { profile } : {}),
     path: `/api/sessions/${encodeURIComponent(id)}`,
     method: 'DELETE'
@@ -267,7 +267,7 @@ export function renameSession(
   title: string,
   profile?: string | null
 ): Promise<{ ok: boolean; title: string }> {
-  return window.lydiaDesktop.api<{ ok: boolean; title: string }>({
+  return window.aliceDesktop.api<{ ok: boolean; title: string }>({
     ...(profile ? { profile } : {}),
     path: `/api/sessions/${encodeURIComponent(id)}`,
     method: 'PATCH',
@@ -276,14 +276,14 @@ export function renameSession(
 }
 
 export function getGlobalModelInfo(): Promise<ModelInfoResponse> {
-  return window.lydiaDesktop.api<ModelInfoResponse>({
+  return window.aliceDesktop.api<ModelInfoResponse>({
     ...profileScoped(),
     path: '/api/model/info'
   })
 }
 
 export function getStatus(): Promise<StatusResponse> {
-  return window.lydiaDesktop.api<StatusResponse>({
+  return window.aliceDesktop.api<StatusResponse>({
     ...profileScoped(),
     path: '/api/status'
   })
@@ -315,42 +315,42 @@ export function getLogs(params: {
 
   const suffix = query.toString()
 
-  return window.lydiaDesktop.api<LogsResponse>({
+  return window.aliceDesktop.api<LogsResponse>({
     ...profileScoped(),
     path: suffix ? `/api/logs?${suffix}` : '/api/logs'
   })
 }
 
-export function getLydiaConfig(): Promise<LydiaConfig> {
-  return window.lydiaDesktop.api<LydiaConfig>({
+export function getAliceConfig(): Promise<AliceConfig> {
+  return window.aliceDesktop.api<AliceConfig>({
     ...profileScoped(),
     path: '/api/config'
   })
 }
 
-export function getLydiaConfigRecord(): Promise<LydiaConfigRecord> {
-  return window.lydiaDesktop.api<LydiaConfigRecord>({
+export function getAliceConfigRecord(): Promise<AliceConfigRecord> {
+  return window.aliceDesktop.api<AliceConfigRecord>({
     ...profileScoped(),
     path: '/api/config'
   })
 }
 
-export function getLydiaConfigDefaults(): Promise<LydiaConfigRecord> {
-  return window.lydiaDesktop.api<LydiaConfigRecord>({
+export function getAliceConfigDefaults(): Promise<AliceConfigRecord> {
+  return window.aliceDesktop.api<AliceConfigRecord>({
     ...profileScoped(),
     path: '/api/config/defaults'
   })
 }
 
-export function getLydiaConfigSchema(): Promise<ConfigSchemaResponse> {
-  return window.lydiaDesktop.api<ConfigSchemaResponse>({
+export function getAliceConfigSchema(): Promise<ConfigSchemaResponse> {
+  return window.aliceDesktop.api<ConfigSchemaResponse>({
     ...profileScoped(),
     path: '/api/config/schema'
   })
 }
 
-export function saveLydiaConfig(config: LydiaConfigRecord): Promise<{ ok: boolean }> {
-  return window.lydiaDesktop.api<{ ok: boolean }>({
+export function saveAliceConfig(config: AliceConfigRecord): Promise<{ ok: boolean }> {
+  return window.aliceDesktop.api<{ ok: boolean }>({
     ...profileScoped(),
     path: '/api/config',
     method: 'PUT',
@@ -359,13 +359,13 @@ export function saveLydiaConfig(config: LydiaConfigRecord): Promise<{ ok: boolea
 }
 
 export function getMemoryProviderConfig(provider: string): Promise<MemoryProviderConfig> {
-  return window.lydiaDesktop.api<MemoryProviderConfig>({
+  return window.aliceDesktop.api<MemoryProviderConfig>({
     path: `/api/memory/providers/${encodeURIComponent(provider)}/config`
   })
 }
 
 export function saveMemoryProviderConfig(provider: string, values: Record<string, string>): Promise<{ ok: boolean }> {
-  return window.lydiaDesktop.api<{ ok: boolean }>({
+  return window.aliceDesktop.api<{ ok: boolean }>({
     path: `/api/memory/providers/${encodeURIComponent(provider)}/config`,
     method: 'PUT',
     body: { values }
@@ -373,14 +373,14 @@ export function saveMemoryProviderConfig(provider: string, values: Record<string
 }
 
 export function getEnvVars(): Promise<Record<string, EnvVarInfo>> {
-  return window.lydiaDesktop.api<Record<string, EnvVarInfo>>({
+  return window.aliceDesktop.api<Record<string, EnvVarInfo>>({
     ...profileScoped(),
     path: '/api/env'
   })
 }
 
 export function setEnvVar(key: string, value: string): Promise<{ ok: boolean }> {
-  return window.lydiaDesktop.api<{ ok: boolean }>({
+  return window.aliceDesktop.api<{ ok: boolean }>({
     ...profileScoped(),
     path: '/api/env',
     method: 'PUT',
@@ -393,7 +393,7 @@ export function validateProviderCredential(
   value: string,
   apiKey?: string
 ): Promise<{ ok: boolean; reachable: boolean; message: string; models?: string[] }> {
-  return window.lydiaDesktop.api<{ ok: boolean; reachable: boolean; message: string; models?: string[] }>({
+  return window.aliceDesktop.api<{ ok: boolean; reachable: boolean; message: string; models?: string[] }>({
     ...profileScoped(),
     path: '/api/providers/validate',
     method: 'POST',
@@ -402,7 +402,7 @@ export function validateProviderCredential(
 }
 
 export function deleteEnvVar(key: string): Promise<{ ok: boolean }> {
-  return window.lydiaDesktop.api<{ ok: boolean }>({
+  return window.aliceDesktop.api<{ ok: boolean }>({
     ...profileScoped(),
     path: '/api/env',
     method: 'DELETE',
@@ -411,7 +411,7 @@ export function deleteEnvVar(key: string): Promise<{ ok: boolean }> {
 }
 
 export function revealEnvVar(key: string): Promise<{ key: string; value: string }> {
-  return window.lydiaDesktop.api<{ key: string; value: string }>({
+  return window.aliceDesktop.api<{ key: string; value: string }>({
     ...profileScoped(),
     path: '/api/env/reveal',
     method: 'POST',
@@ -420,14 +420,14 @@ export function revealEnvVar(key: string): Promise<{ key: string; value: string 
 }
 
 export function listOAuthProviders(): Promise<OAuthProvidersResponse> {
-  return window.lydiaDesktop.api<OAuthProvidersResponse>({
+  return window.aliceDesktop.api<OAuthProvidersResponse>({
     ...profileScoped(),
     path: '/api/providers/oauth'
   })
 }
 
 export function disconnectOAuthProvider(providerId: string): Promise<{ ok: boolean; provider: string }> {
-  return window.lydiaDesktop.api<{ ok: boolean; provider: string }>({
+  return window.aliceDesktop.api<{ ok: boolean; provider: string }>({
     ...profileScoped(),
     path: `/api/providers/oauth/${encodeURIComponent(providerId)}`,
     method: 'DELETE'
@@ -435,7 +435,7 @@ export function disconnectOAuthProvider(providerId: string): Promise<{ ok: boole
 }
 
 export function startOAuthLogin(providerId: string): Promise<OAuthStartResponse> {
-  return window.lydiaDesktop.api<OAuthStartResponse>({
+  return window.aliceDesktop.api<OAuthStartResponse>({
     ...profileScoped(),
     path: `/api/providers/oauth/${encodeURIComponent(providerId)}/start`,
     method: 'POST',
@@ -468,23 +468,38 @@ export interface CustomProviderProbe {
 }
 
 export function listCustomProviders(): Promise<CustomProviderSpec[]> {
-  return window.lydiaDesktop.api<CustomProviderSpec[]>({
+  return window.aliceDesktop.api<CustomProviderSpec[]>({
     ...profileScoped(),
     path: '/api/providers/custom'
   })
 }
 
 export function addCustomProvider(spec: CustomProviderSpec): Promise<CustomProviderSpec & { id: string }> {
-  return window.lydiaDesktop.api<CustomProviderSpec & { id: string }>({
+  // If api_key_env looks like an actual API key (not an env var name),
+  // auto-generate the env var name from the provider name and store the
+  // key value directly.
+  const cleanSpec = { ...spec }
+  if (cleanSpec.api_key_env) {
+    const val = cleanSpec.api_key_env.trim()
+    // If it contains common API key patterns, treat it as the key value
+    if (val.startsWith('sk-') || val.startsWith('key-') || val.includes('-') || val.length > 20) {
+      const envName = cleanSpec.name.toUpperCase().replace(/[^A-Z0-9_]/g, '_') + '_API_KEY'
+      cleanSpec.api_key_env = envName
+      // We'll need to save the key separately after adding the provider
+      // Store it temporarily in the spec for the backend to handle
+      ;(cleanSpec as any)._api_key_value = val
+    }
+  }
+  return window.aliceDesktop.api<CustomProviderSpec & { id: string }>({
     ...profileScoped(),
     path: '/api/providers/custom',
     method: 'POST',
-    body: spec
+    body: cleanSpec
   })
 }
 
 export function deleteCustomProvider(providerId: string): Promise<{ removed: boolean; id: string }> {
-  return window.lydiaDesktop.api<{ removed: boolean; id: string }>({
+  return window.aliceDesktop.api<{ removed: boolean; id: string }>({
     ...profileScoped(),
     path: `/api/providers/custom/${encodeURIComponent(providerId)}`,
     method: 'DELETE'
@@ -492,7 +507,7 @@ export function deleteCustomProvider(providerId: string): Promise<{ removed: boo
 }
 
 export function testCustomProvider(providerId: string): Promise<CustomProviderProbe> {
-  return window.lydiaDesktop.api<CustomProviderProbe>({
+  return window.aliceDesktop.api<CustomProviderProbe>({
     ...profileScoped(),
     path: `/api/providers/custom/${encodeURIComponent(providerId)}/test`,
     method: 'POST',
@@ -514,14 +529,14 @@ export interface HelpTaskContent extends HelpTopic {
 }
 
 export function listHelpTopics(): Promise<HelpTopic[]> {
-  return window.lydiaDesktop.api<HelpTopic[]>({
+  return window.aliceDesktop.api<HelpTopic[]>({
     ...profileScoped(),
     path: '/api/help/topics'
   })
 }
 
 export function getHelpTask(taskId: string): Promise<HelpTaskContent> {
-  return window.lydiaDesktop.api<HelpTaskContent>({
+  return window.aliceDesktop.api<HelpTaskContent>({
     ...profileScoped(),
     path: `/api/help/task/${encodeURIComponent(taskId)}`
   })
@@ -560,14 +575,14 @@ export interface MigrationOptions {
 }
 
 export function scanMigration(): Promise<MigrationScanResult> {
-  return window.lydiaDesktop.api<MigrationScanResult>({
+  return window.aliceDesktop.api<MigrationScanResult>({
     ...profileScoped(),
     path: '/api/migration/scan'
   })
 }
 
 export function previewMigration(options: MigrationOptions): Promise<MigrationResult> {
-  return window.lydiaDesktop.api<MigrationResult>({
+  return window.aliceDesktop.api<MigrationResult>({
     ...profileScoped(),
     path: '/api/migration/preview',
     method: 'POST',
@@ -576,7 +591,7 @@ export function previewMigration(options: MigrationOptions): Promise<MigrationRe
 }
 
 export function applyMigration(options: MigrationOptions): Promise<MigrationResult> {
-  return window.lydiaDesktop.api<MigrationResult>({
+  return window.aliceDesktop.api<MigrationResult>({
     ...profileScoped(),
     path: '/api/migration/apply',
     method: 'POST',
@@ -585,7 +600,7 @@ export function applyMigration(options: MigrationOptions): Promise<MigrationResu
 }
 
 export function submitOAuthCode(providerId: string, sessionId: string, code: string): Promise<OAuthSubmitResponse> {
-  return window.lydiaDesktop.api<OAuthSubmitResponse>({
+  return window.aliceDesktop.api<OAuthSubmitResponse>({
     ...profileScoped(),
     path: `/api/providers/oauth/${encodeURIComponent(providerId)}/submit`,
     method: 'POST',
@@ -594,14 +609,14 @@ export function submitOAuthCode(providerId: string, sessionId: string, code: str
 }
 
 export function pollOAuthSession(providerId: string, sessionId: string): Promise<OAuthPollResponse> {
-  return window.lydiaDesktop.api<OAuthPollResponse>({
+  return window.aliceDesktop.api<OAuthPollResponse>({
     ...profileScoped(),
     path: `/api/providers/oauth/${encodeURIComponent(providerId)}/poll/${encodeURIComponent(sessionId)}`
   })
 }
 
 export function cancelOAuthSession(sessionId: string): Promise<{ ok: boolean }> {
-  return window.lydiaDesktop.api<{ ok: boolean }>({
+  return window.aliceDesktop.api<{ ok: boolean }>({
     ...profileScoped(),
     path: `/api/providers/oauth/sessions/${encodeURIComponent(sessionId)}`,
     method: 'DELETE'
@@ -611,7 +626,7 @@ export function cancelOAuthSession(sessionId: string): Promise<{ ok: boolean }> 
 // Memory-provider OAuth connect (provider-keyed; 404s for providers without an
 // OAuth flow). Profile-scoped: the grant lands in the active profile's config.
 export function startMemoryProviderOAuth(provider: string): Promise<MemoryProviderOAuthStatus> {
-  return window.lydiaDesktop.api<MemoryProviderOAuthStatus>({
+  return window.aliceDesktop.api<MemoryProviderOAuthStatus>({
     ...profileScoped(),
     path: `/api/memory/providers/${encodeURIComponent(provider)}/oauth/start`,
     method: 'POST'
@@ -619,21 +634,21 @@ export function startMemoryProviderOAuth(provider: string): Promise<MemoryProvid
 }
 
 export function getMemoryProviderOAuthStatus(provider: string): Promise<MemoryProviderOAuthStatus> {
-  return window.lydiaDesktop.api<MemoryProviderOAuthStatus>({
+  return window.aliceDesktop.api<MemoryProviderOAuthStatus>({
     ...profileScoped(),
     path: `/api/memory/providers/${encodeURIComponent(provider)}/oauth/status`
   })
 }
 
 export function getSkills(): Promise<SkillInfo[]> {
-  return window.lydiaDesktop.api<SkillInfo[]>({
+  return window.aliceDesktop.api<SkillInfo[]>({
     ...profileScoped(),
     path: '/api/skills'
   })
 }
 
 export function getStarmapGraph(): Promise<StarmapGraph> {
-  return window.lydiaDesktop.api<StarmapGraph>({
+  return window.aliceDesktop.api<StarmapGraph>({
     ...profileScoped(),
     // Backend REST contract — stays /api/learning even though the UI feature is
     // now "star map". Renaming this would break against an un-upgraded backend.
@@ -649,14 +664,14 @@ export interface LearningNodeDetail {
 }
 
 export function getLearningNode(id: string): Promise<LearningNodeDetail> {
-  return window.lydiaDesktop.api<LearningNodeDetail>({
+  return window.aliceDesktop.api<LearningNodeDetail>({
     ...profileScoped(),
     path: `/api/learning/node?id=${encodeURIComponent(id)}`
   })
 }
 
 export function deleteLearningNode(id: string): Promise<{ message: string; ok: boolean }> {
-  return window.lydiaDesktop.api<{ message: string; ok: boolean }>({
+  return window.aliceDesktop.api<{ message: string; ok: boolean }>({
     ...profileScoped(),
     path: '/api/learning/node',
     method: 'DELETE',
@@ -665,7 +680,7 @@ export function deleteLearningNode(id: string): Promise<{ message: string; ok: b
 }
 
 export function editLearningNode(id: string, content: string): Promise<{ message: string; ok: boolean }> {
-  return window.lydiaDesktop.api<{ message: string; ok: boolean }>({
+  return window.aliceDesktop.api<{ message: string; ok: boolean }>({
     ...profileScoped(),
     path: '/api/learning/node',
     method: 'PUT',
@@ -674,7 +689,7 @@ export function editLearningNode(id: string, content: string): Promise<{ message
 }
 
 export function toggleSkill(name: string, enabled: boolean): Promise<{ ok: boolean; name: string; enabled: boolean }> {
-  return window.lydiaDesktop.api<{ ok: boolean; name: string; enabled: boolean }>({
+  return window.aliceDesktop.api<{ ok: boolean; name: string; enabled: boolean }>({
     ...profileScoped(),
     path: '/api/skills/toggle',
     method: 'PUT',
@@ -683,7 +698,7 @@ export function toggleSkill(name: string, enabled: boolean): Promise<{ ok: boole
 }
 
 export function getToolsets(): Promise<ToolsetInfo[]> {
-  return window.lydiaDesktop.api<ToolsetInfo[]>({
+  return window.aliceDesktop.api<ToolsetInfo[]>({
     ...profileScoped(),
     path: '/api/tools/toolsets'
   })
@@ -693,7 +708,7 @@ export function toggleToolset(
   name: string,
   enabled: boolean
 ): Promise<{ ok: boolean; name: string; enabled: boolean }> {
-  return window.lydiaDesktop.api<{ ok: boolean; name: string; enabled: boolean }>({
+  return window.aliceDesktop.api<{ ok: boolean; name: string; enabled: boolean }>({
     ...profileScoped(),
     path: `/api/tools/toolsets/${encodeURIComponent(name)}`,
     method: 'PUT',
@@ -702,7 +717,7 @@ export function toggleToolset(
 }
 
 export function getToolsetConfig(name: string): Promise<ToolsetConfig> {
-  return window.lydiaDesktop.api<ToolsetConfig>({
+  return window.aliceDesktop.api<ToolsetConfig>({
     ...profileScoped(),
     path: `/api/tools/toolsets/${encodeURIComponent(name)}/config`
   })
@@ -712,7 +727,7 @@ export function selectToolsetProvider(
   name: string,
   provider: string
 ): Promise<{ ok: boolean; name: string; provider: string }> {
-  return window.lydiaDesktop.api<{ ok: boolean; name: string; provider: string }>({
+  return window.aliceDesktop.api<{ ok: boolean; name: string; provider: string }>({
     ...profileScoped(),
     path: `/api/tools/toolsets/${encodeURIComponent(name)}/provider`,
     method: 'PUT',
@@ -721,7 +736,7 @@ export function selectToolsetProvider(
 }
 
 export function runToolsetPostSetup(name: string, key: string): Promise<ActionResponse & { key: string }> {
-  return window.lydiaDesktop.api<ActionResponse & { key: string }>({
+  return window.aliceDesktop.api<ActionResponse & { key: string }>({
     ...profileScoped(),
     path: `/api/tools/toolsets/${encodeURIComponent(name)}/post-setup`,
     method: 'POST',
@@ -730,14 +745,14 @@ export function runToolsetPostSetup(name: string, key: string): Promise<ActionRe
 }
 
 export function getComputerUseStatus(): Promise<ComputerUseStatus> {
-  return window.lydiaDesktop.api<ComputerUseStatus>({
+  return window.aliceDesktop.api<ComputerUseStatus>({
     ...profileScoped(),
     path: '/api/tools/computer-use/status'
   })
 }
 
 export function grantComputerUsePermissions(): Promise<ActionResponse> {
-  return window.lydiaDesktop.api<ActionResponse>({
+  return window.aliceDesktop.api<ActionResponse>({
     ...profileScoped(),
     path: '/api/tools/computer-use/permissions/grant',
     method: 'POST'
@@ -745,7 +760,7 @@ export function grantComputerUsePermissions(): Promise<ActionResponse> {
 }
 
 export function getMessagingPlatforms(): Promise<MessagingPlatformsResponse> {
-  return window.lydiaDesktop.api<MessagingPlatformsResponse>({
+  return window.aliceDesktop.api<MessagingPlatformsResponse>({
     path: '/api/messaging/platforms'
   })
 }
@@ -754,7 +769,7 @@ export function updateMessagingPlatform(
   platformId: string,
   body: MessagingPlatformUpdate
 ): Promise<{ ok: boolean; platform: string }> {
-  return window.lydiaDesktop.api<{ ok: boolean; platform: string }>({
+  return window.aliceDesktop.api<{ ok: boolean; platform: string }>({
     path: `/api/messaging/platforms/${encodeURIComponent(platformId)}`,
     method: 'PUT',
     body
@@ -762,26 +777,26 @@ export function updateMessagingPlatform(
 }
 
 export function testMessagingPlatform(platformId: string): Promise<MessagingPlatformTestResponse> {
-  return window.lydiaDesktop.api<MessagingPlatformTestResponse>({
+  return window.aliceDesktop.api<MessagingPlatformTestResponse>({
     path: `/api/messaging/platforms/${encodeURIComponent(platformId)}/test`,
     method: 'POST'
   })
 }
 
 export function getCronJobs(): Promise<CronJob[]> {
-  return window.lydiaDesktop.api<CronJob[]>({
+  return window.aliceDesktop.api<CronJob[]>({
     path: '/api/cron/jobs'
   })
 }
 
 export function getCronJob(jobId: string): Promise<CronJob> {
-  return window.lydiaDesktop.api<CronJob>({
+  return window.aliceDesktop.api<CronJob>({
     path: `/api/cron/jobs/${encodeURIComponent(jobId)}`
   })
 }
 
 export async function getCronJobRuns(jobId: string, limit = 20): Promise<SessionInfo[]> {
-  const { runs } = await window.lydiaDesktop.api<{ runs: SessionInfo[] }>({
+  const { runs } = await window.aliceDesktop.api<{ runs: SessionInfo[] }>({
     path: `/api/cron/jobs/${encodeURIComponent(jobId)}/runs?limit=${limit}`
   })
 
@@ -789,7 +804,7 @@ export async function getCronJobRuns(jobId: string, limit = 20): Promise<Session
 }
 
 export function createCronJob(body: CronJobCreatePayload): Promise<CronJob> {
-  return window.lydiaDesktop.api<CronJob>({
+  return window.aliceDesktop.api<CronJob>({
     path: '/api/cron/jobs',
     method: 'POST',
     body
@@ -797,7 +812,7 @@ export function createCronJob(body: CronJobCreatePayload): Promise<CronJob> {
 }
 
 export function updateCronJob(jobId: string, updates: CronJobUpdates): Promise<CronJob> {
-  return window.lydiaDesktop.api<CronJob>({
+  return window.aliceDesktop.api<CronJob>({
     path: `/api/cron/jobs/${encodeURIComponent(jobId)}`,
     method: 'PUT',
     body: { updates }
@@ -805,41 +820,41 @@ export function updateCronJob(jobId: string, updates: CronJobUpdates): Promise<C
 }
 
 export function pauseCronJob(jobId: string): Promise<CronJob> {
-  return window.lydiaDesktop.api<CronJob>({
+  return window.aliceDesktop.api<CronJob>({
     path: `/api/cron/jobs/${encodeURIComponent(jobId)}/pause`,
     method: 'POST'
   })
 }
 
 export function resumeCronJob(jobId: string): Promise<CronJob> {
-  return window.lydiaDesktop.api<CronJob>({
+  return window.aliceDesktop.api<CronJob>({
     path: `/api/cron/jobs/${encodeURIComponent(jobId)}/resume`,
     method: 'POST'
   })
 }
 
 export function triggerCronJob(jobId: string): Promise<CronJob> {
-  return window.lydiaDesktop.api<CronJob>({
+  return window.aliceDesktop.api<CronJob>({
     path: `/api/cron/jobs/${encodeURIComponent(jobId)}/trigger`,
     method: 'POST'
   })
 }
 
 export function deleteCronJob(jobId: string): Promise<{ ok: boolean }> {
-  return window.lydiaDesktop.api<{ ok: boolean }>({
+  return window.aliceDesktop.api<{ ok: boolean }>({
     path: `/api/cron/jobs/${encodeURIComponent(jobId)}`,
     method: 'DELETE'
   })
 }
 
 export function getProfiles(): Promise<ProfilesResponse> {
-  return window.lydiaDesktop.api<ProfilesResponse>({
+  return window.aliceDesktop.api<ProfilesResponse>({
     path: '/api/profiles'
   })
 }
 
 export function createProfile(body: ProfileCreatePayload): Promise<{ name: string; ok: boolean; path: string }> {
-  return window.lydiaDesktop.api<{ name: string; ok: boolean; path: string }>({
+  return window.aliceDesktop.api<{ name: string; ok: boolean; path: string }>({
     path: '/api/profiles',
     method: 'POST',
     body
@@ -847,7 +862,7 @@ export function createProfile(body: ProfileCreatePayload): Promise<{ name: strin
 }
 
 export function renameProfile(name: string, newName: string): Promise<{ name: string; ok: boolean; path: string }> {
-  return window.lydiaDesktop.api<{ name: string; ok: boolean; path: string }>({
+  return window.aliceDesktop.api<{ name: string; ok: boolean; path: string }>({
     path: `/api/profiles/${encodeURIComponent(name)}`,
     method: 'PATCH',
     body: { new_name: newName }
@@ -855,20 +870,20 @@ export function renameProfile(name: string, newName: string): Promise<{ name: st
 }
 
 export function deleteProfile(name: string): Promise<{ ok: boolean; path: string }> {
-  return window.lydiaDesktop.api<{ ok: boolean; path: string }>({
+  return window.aliceDesktop.api<{ ok: boolean; path: string }>({
     path: `/api/profiles/${encodeURIComponent(name)}`,
     method: 'DELETE'
   })
 }
 
 export function getProfileSoul(name: string): Promise<ProfileSoul> {
-  return window.lydiaDesktop.api<ProfileSoul>({
+  return window.aliceDesktop.api<ProfileSoul>({
     path: `/api/profiles/${encodeURIComponent(name)}/soul`
   })
 }
 
 export function updateProfileSoul(name: string, content: string): Promise<{ ok: boolean }> {
-  return window.lydiaDesktop.api<{ ok: boolean }>({
+  return window.aliceDesktop.api<{ ok: boolean }>({
     path: `/api/profiles/${encodeURIComponent(name)}/soul`,
     method: 'PUT',
     body: { content }
@@ -876,20 +891,20 @@ export function updateProfileSoul(name: string, content: string): Promise<{ ok: 
 }
 
 export function getProfileSetupCommand(name: string): Promise<ProfileSetupCommand> {
-  return window.lydiaDesktop.api<ProfileSetupCommand>({
+  return window.aliceDesktop.api<ProfileSetupCommand>({
     path: `/api/profiles/${encodeURIComponent(name)}/setup-command`
   })
 }
 
 export function getUsageAnalytics(days = 30): Promise<AnalyticsResponse> {
-  return window.lydiaDesktop.api<AnalyticsResponse>({
+  return window.aliceDesktop.api<AnalyticsResponse>({
     ...profileScoped(),
     path: `/api/analytics/usage?days=${Math.max(1, Math.floor(days))}`
   })
 }
 
 export function getGlobalModelOptions(opts?: { refresh?: boolean }): Promise<ModelOptionsResponse> {
-  return window.lydiaDesktop.api<ModelOptionsResponse>({
+  return window.aliceDesktop.api<ModelOptionsResponse>({
     ...profileScoped(),
     path: opts?.refresh ? '/api/model/options?refresh=1' : '/api/model/options'
   })
@@ -906,7 +921,7 @@ export interface RecommendedDefaultModel {
 // curation `alice model` does — for Nous it honors the free/paid tier so a
 // free user gets a free model instead of a paid default.
 export function getRecommendedDefaultModel(provider: string): Promise<RecommendedDefaultModel> {
-  return window.lydiaDesktop.api<RecommendedDefaultModel>({
+  return window.aliceDesktop.api<RecommendedDefaultModel>({
     ...profileScoped(),
     path: `/api/model/recommended-default?provider=${encodeURIComponent(provider)}`
   })
@@ -916,7 +931,7 @@ export function setGlobalModel(
   provider: string,
   model: string
 ): Promise<{ ok: boolean; provider: string; model: string }> {
-  return window.lydiaDesktop.api<{ ok: boolean; provider: string; model: string }>({
+  return window.aliceDesktop.api<{ ok: boolean; provider: string; model: string }>({
     ...profileScoped(),
     path: '/api/model/set',
     method: 'POST',
@@ -929,21 +944,21 @@ export function setGlobalModel(
 }
 
 export function getAuxiliaryModels(): Promise<AuxiliaryModelsResponse> {
-  return window.lydiaDesktop.api<AuxiliaryModelsResponse>({
+  return window.aliceDesktop.api<AuxiliaryModelsResponse>({
     ...profileScoped(),
     path: '/api/model/auxiliary'
   })
 }
 
 export function getMoaModels(): Promise<MoaConfigResponse> {
-  return window.lydiaDesktop.api<MoaConfigResponse>({
+  return window.aliceDesktop.api<MoaConfigResponse>({
     ...profileScoped(),
     path: '/api/model/moa'
   })
 }
 
 export function saveMoaModels(body: MoaConfigResponse): Promise<MoaConfigResponse & { ok: boolean }> {
-  return window.lydiaDesktop.api<MoaConfigResponse & { ok: boolean }>({
+  return window.aliceDesktop.api<MoaConfigResponse & { ok: boolean }>({
     ...profileScoped(),
     path: '/api/model/moa',
     method: 'PUT',
@@ -952,7 +967,7 @@ export function saveMoaModels(body: MoaConfigResponse): Promise<MoaConfigRespons
 }
 
 export function setModelAssignment(body: ModelAssignmentRequest): Promise<ModelAssignmentResponse> {
-  return window.lydiaDesktop.api<ModelAssignmentResponse>({
+  return window.aliceDesktop.api<ModelAssignmentResponse>({
     ...profileScoped(),
     path: '/api/model/set',
     method: 'POST',
@@ -961,15 +976,15 @@ export function setModelAssignment(body: ModelAssignmentRequest): Promise<ModelA
 }
 
 export function restartGateway(): Promise<ActionResponse> {
-  return window.lydiaDesktop.api<ActionResponse>({
+  return window.aliceDesktop.api<ActionResponse>({
     ...profileScoped(),
     path: '/api/gateway/restart',
     method: 'POST'
   })
 }
 
-export function updateLydia(): Promise<ActionResponse> {
-  return window.lydiaDesktop.api<ActionResponse>({
+export function updateAlice(): Promise<ActionResponse> {
+  return window.aliceDesktop.api<ActionResponse>({
     ...profileScoped(),
     path: '/api/alice/update',
     method: 'POST'
@@ -979,22 +994,22 @@ export function updateLydia(): Promise<ActionResponse> {
 /** Query the connected backend's own update state. In remote mode this is the
  *  authoritative source for the backend's behind-count + "what's changed",
  *  distinct from the Electron client clone's git state. */
-export function checkLydiaUpdate(force = false): Promise<BackendUpdateCheckResponse> {
-  return window.lydiaDesktop.api<BackendUpdateCheckResponse>({
+export function checkAliceUpdate(force = false): Promise<BackendUpdateCheckResponse> {
+  return window.aliceDesktop.api<BackendUpdateCheckResponse>({
     ...profileScoped(),
     path: `/api/alice/update/check${force ? '?force=true' : ''}`
   })
 }
 
 export function getActionStatus(name: string, lines = 200): Promise<ActionStatusResponse> {
-  return window.lydiaDesktop.api<ActionStatusResponse>({
+  return window.aliceDesktop.api<ActionStatusResponse>({
     ...profileScoped(),
     path: `/api/actions/${encodeURIComponent(name)}/status?lines=${Math.max(1, lines)}`
   })
 }
 
 export function transcribeAudio(dataUrl: string, mimeType?: string): Promise<AudioTranscriptionResponse> {
-  return window.lydiaDesktop.api<AudioTranscriptionResponse>({
+  return window.aliceDesktop.api<AudioTranscriptionResponse>({
     path: '/api/audio/transcribe',
     method: 'POST',
     body: {
@@ -1005,7 +1020,7 @@ export function transcribeAudio(dataUrl: string, mimeType?: string): Promise<Aud
 }
 
 export function speakText(text: string): Promise<AudioSpeakResponse> {
-  return window.lydiaDesktop.api<AudioSpeakResponse>({
+  return window.aliceDesktop.api<AudioSpeakResponse>({
     path: '/api/audio/speak',
     method: 'POST',
     body: { text }
@@ -1013,7 +1028,7 @@ export function speakText(text: string): Promise<AudioSpeakResponse> {
 }
 
 export function getElevenLabsVoices(): Promise<ElevenLabsVoicesResponse> {
-  return window.lydiaDesktop.api<ElevenLabsVoicesResponse>({
+  return window.aliceDesktop.api<ElevenLabsVoicesResponse>({
     path: '/api/audio/elevenlabs/voices'
   })
 }

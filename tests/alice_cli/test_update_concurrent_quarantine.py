@@ -20,7 +20,7 @@ import pytest
 from alice_cli import main as cli_main
 
 
-# Tests in this module either exercise the REAL _detect_concurrent_lydia_instances
+# Tests in this module either exercise the REAL _detect_concurrent_alice_instances
 # helper (and need the autouse stub in tests/alice_cli/conftest.py disabled),
 # or supply their own explicit return value via patch.object. Mark the whole
 # module so the conftest fixture skips its default stub.
@@ -28,7 +28,7 @@ pytestmark = pytest.mark.real_concurrent_gate
 
 
 # ---------------------------------------------------------------------------
-# _detect_concurrent_lydia_instances
+# _detect_concurrent_alice_instances
 # ---------------------------------------------------------------------------
 
 
@@ -47,7 +47,7 @@ def test_detect_concurrent_returns_empty_when_no_other_processes(_winp, tmp_path
 
     fake_psutil = types.SimpleNamespace(process_iter=lambda attrs: iter([]))
     with patch.dict(sys.modules, {"psutil": fake_psutil}):
-        result = cli_main._detect_concurrent_lydia_instances(scripts_dir)
+        result = cli_main._detect_concurrent_alice_instances(scripts_dir)
 
     assert result == []
 
@@ -62,13 +62,13 @@ def test_detect_concurrent_excludes_self_pid(_winp, tmp_path):
     procs = [_make_proc(my_pid, str(shim), "alice.exe")]
     fake_psutil = types.SimpleNamespace(process_iter=lambda attrs: iter(procs))
     with patch.dict(sys.modules, {"psutil": fake_psutil}):
-        result = cli_main._detect_concurrent_lydia_instances(scripts_dir)
+        result = cli_main._detect_concurrent_alice_instances(scripts_dir)
 
     assert result == []
 
 
 @patch.object(cli_main, "_is_windows", return_value=True)
-def test_detect_concurrent_finds_other_lydia_process(_winp, tmp_path):
+def test_detect_concurrent_finds_other_alice_process(_winp, tmp_path):
     scripts_dir = tmp_path
     shim = scripts_dir / "alice.exe"
     shim.write_bytes(b"")
@@ -80,7 +80,7 @@ def test_detect_concurrent_finds_other_lydia_process(_winp, tmp_path):
     ]
     fake_psutil = types.SimpleNamespace(process_iter=lambda attrs: iter(procs))
     with patch.dict(sys.modules, {"psutil": fake_psutil}):
-        result = cli_main._detect_concurrent_lydia_instances(scripts_dir)
+        result = cli_main._detect_concurrent_alice_instances(scripts_dir)
 
     assert result == [(other_pid, "alice.exe")]
 
@@ -96,7 +96,7 @@ def test_detect_concurrent_matches_case_insensitively(_winp, tmp_path):
     procs = [_make_proc(9999, upper, "ALICE.EXE")]
     fake_psutil = types.SimpleNamespace(process_iter=lambda attrs: iter(procs))
     with patch.dict(sys.modules, {"psutil": fake_psutil}):
-        result = cli_main._detect_concurrent_lydia_instances(scripts_dir)
+        result = cli_main._detect_concurrent_alice_instances(scripts_dir)
 
     assert result == [(9999, "ALICE.EXE")]
 
@@ -108,7 +108,7 @@ def test_detect_concurrent_no_psutil_returns_empty(_winp, tmp_path):
 
     # Block psutil import — simulate environment without it.
     with patch.dict(sys.modules, {"psutil": None}):
-        result = cli_main._detect_concurrent_lydia_instances(scripts_dir)
+        result = cli_main._detect_concurrent_alice_instances(scripts_dir)
 
     assert result == []
 
@@ -116,7 +116,7 @@ def test_detect_concurrent_no_psutil_returns_empty(_winp, tmp_path):
 @patch.object(cli_main, "_is_windows", return_value=False)
 def test_detect_concurrent_is_noop_off_windows(_winp, tmp_path):
     """No process enumeration off-Windows; the file-lock issue is Windows-only."""
-    assert cli_main._detect_concurrent_lydia_instances(tmp_path) == []
+    assert cli_main._detect_concurrent_alice_instances(tmp_path) == []
 
 
 # ---------------------------------------------------------------------------
@@ -196,14 +196,14 @@ def test_detect_concurrent_excludes_parent_chain(_winp, tmp_path):
         ancestor_exe=str(shim),
     )
     with patch.dict(sys.modules, {"psutil": fake_psutil}):
-        result = cli_main._detect_concurrent_lydia_instances(scripts_dir)
+        result = cli_main._detect_concurrent_alice_instances(scripts_dir)
 
     # Both self AND the launcher are excluded; no false positive.
     assert result == []
 
 
 @patch.object(cli_main, "_is_windows", return_value=True)
-def test_detect_concurrent_still_finds_unrelated_other_lydia(_winp, tmp_path):
+def test_detect_concurrent_still_finds_unrelated_other_alice(_winp, tmp_path):
     """A sibling alice.exe outside our ancestor chain must still be reported."""
     scripts_dir = tmp_path
     shim = scripts_dir / "alice.exe"
@@ -223,7 +223,7 @@ def test_detect_concurrent_still_finds_unrelated_other_lydia(_winp, tmp_path):
         ancestor_exe=str(shim),
     )
     with patch.dict(sys.modules, {"psutil": fake_psutil}):
-        result = cli_main._detect_concurrent_lydia_instances(scripts_dir)
+        result = cli_main._detect_concurrent_alice_instances(scripts_dir)
 
     assert result == [(sibling_pid, "alice.exe")]
 
@@ -251,7 +251,7 @@ def test_detect_concurrent_parent_chain_walks_deep(_winp, tmp_path):
         ancestor_exe=str(shim),
     )
     with patch.dict(sys.modules, {"psutil": fake_psutil}):
-        result = cli_main._detect_concurrent_lydia_instances(scripts_dir)
+        result = cli_main._detect_concurrent_alice_instances(scripts_dir)
 
     assert result == []
 
@@ -285,7 +285,7 @@ def test_detect_concurrent_parents_call_robust_to_one_bad_hop(_winp, tmp_path):
         ancestor_exe=None,
     )
     with patch.dict(sys.modules, {"psutil": fake_psutil}):
-        result = cli_main._detect_concurrent_lydia_instances(scripts_dir)
+        result = cli_main._detect_concurrent_alice_instances(scripts_dir)
 
     # No crash; helper completes. (Degenerate stub: launcher exe unreadable.)
     assert result == [(launcher_pid, "alice.exe")]
@@ -312,7 +312,7 @@ def test_detect_concurrent_parent_walk_handles_stub_without_process(_winp, tmp_p
     # SimpleNamespace with ONLY process_iter — no Process / NoSuchProcess.
     fake_psutil = types.SimpleNamespace(process_iter=lambda attrs: iter(rows))
     with patch.dict(sys.modules, {"psutil": fake_psutil}):
-        result = cli_main._detect_concurrent_lydia_instances(scripts_dir)
+        result = cli_main._detect_concurrent_alice_instances(scripts_dir)
 
     # Parent-walk silently failed; self still excluded; other still reported.
     assert result == [(other_pid, "alice.exe")]
@@ -342,7 +342,7 @@ def test_format_message_mentions_pids_and_remediation(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# _quarantine_running_lydia_exe — retry + reboot-deferred fallback
+# _quarantine_running_alice_exe — retry + reboot-deferred fallback
 # ---------------------------------------------------------------------------
 
 
@@ -352,7 +352,7 @@ def test_quarantine_succeeds_first_attempt(_winp, tmp_path):
     shim = tmp_path / "alice.exe"
     shim.write_bytes(b"old")
 
-    pairs = cli_main._quarantine_running_lydia_exe(tmp_path)
+    pairs = cli_main._quarantine_running_alice_exe(tmp_path)
 
     assert len(pairs) == 1
     orig, quarantine = pairs[0]
@@ -378,11 +378,11 @@ def test_quarantine_retries_then_succeeds(_winp, tmp_path, monkeypatch):
         return original_rename(self, target)
 
     # Speed up the test: avoid actual sleeps in the backoff schedule.
-    monkeypatch.setattr(cli_main, "_lydia_exe_shims", lambda d: [shim])
+    monkeypatch.setattr(cli_main, "_alice_exe_shims", lambda d: [shim])
     with patch.object(Path, "rename", flaky_rename), patch(
         "time.sleep", lambda *_a, **_k: None
     ):
-        pairs = cli_main._quarantine_running_lydia_exe(tmp_path)
+        pairs = cli_main._quarantine_running_alice_exe(tmp_path)
 
     assert call_count["n"] >= 2
     assert len(pairs) == 1
@@ -404,11 +404,11 @@ def test_quarantine_falls_back_to_reboot_schedule(_winp, tmp_path, capsys, monke
         scheduled_calls.append((s, q))
         return True
 
-    monkeypatch.setattr(cli_main, "_lydia_exe_shims", lambda d: [shim])
+    monkeypatch.setattr(cli_main, "_alice_exe_shims", lambda d: [shim])
     with patch.object(Path, "rename", always_fails), patch.object(
         cli_main, "_schedule_replace_on_reboot", fake_schedule
     ), patch("time.sleep", lambda *_a, **_k: None):
-        pairs = cli_main._quarantine_running_lydia_exe(tmp_path)
+        pairs = cli_main._quarantine_running_alice_exe(tmp_path)
 
     captured = capsys.readouterr().out
 
@@ -433,11 +433,11 @@ def test_quarantine_actionable_warning_when_everything_fails(
     def always_fails(self, target):
         raise OSError(32, "share violation")
 
-    monkeypatch.setattr(cli_main, "_lydia_exe_shims", lambda d: [shim])
+    monkeypatch.setattr(cli_main, "_alice_exe_shims", lambda d: [shim])
     with patch.object(Path, "rename", always_fails), patch.object(
         cli_main, "_schedule_replace_on_reboot", lambda *_a, **_k: False
     ), patch("time.sleep", lambda *_a, **_k: None):
-        pairs = cli_main._quarantine_running_lydia_exe(tmp_path)
+        pairs = cli_main._quarantine_running_alice_exe(tmp_path)
 
     captured = capsys.readouterr().out
     assert pairs == []
@@ -736,7 +736,7 @@ def test_cmd_update_aborts_on_concurrent_instance(_winp, tmp_path, capsys):
         cli_main, "_venv_scripts_dir", return_value=scripts_dir
     ), patch.object(
         cli_main,
-        "_detect_concurrent_lydia_instances",
+        "_detect_concurrent_alice_instances",
         return_value=[(4242, "alice.exe")],
     ), patch.object(
         cli_main, "_run_pre_update_backup"
@@ -782,7 +782,7 @@ def test_cmd_update_force_bypasses_concurrent_check(_winp, tmp_path):
     with patch.object(
         cli_main, "_venv_scripts_dir", return_value=scripts_dir
     ), patch.object(
-        cli_main, "_detect_concurrent_lydia_instances", detect
+        cli_main, "_detect_concurrent_alice_instances", detect
     ), patch.object(
         cli_main, "_run_pre_update_backup", side_effect=sentinel
     ), patch.object(

@@ -39,7 +39,7 @@ describe("EFFORT_OPTIONS", () => {
   });
 
   it("covers the real reasoning levels plus thinking-off", () => {
-    // Invariant against lydia_constants.VALID_REASONING_EFFORTS + 'none'.
+    // Invariant against alice_constants.VALID_REASONING_EFFORTS + 'none'.
     const values = new Set(EFFORT_OPTIONS.map((o) => o.value));
     for (const level of ["none", "minimal", "low", "medium", "high", "xhigh"]) {
       expect(values.has(level)).toBe(true);

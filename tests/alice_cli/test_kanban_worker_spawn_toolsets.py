@@ -28,7 +28,7 @@ def test_default_spawn_pins_assignee_profile_cli_toolsets(monkeypatch, tmp_path)
     """Manual profile assignment should keep that profile's CLI tools.
 
     Regression guard for dispatcher-spawned workers that boot with
-    LYDIA_KANBAN_TASK: the worker must not collapse to only kanban lifecycle
+    ALICE_KANBAN_TASK: the worker must not collapse to only kanban lifecycle
     tools when the assigned profile's top-level ``toolsets`` is the default
     composite. The spawned CLI gets an explicit --toolsets pin resolved from
     platform_toolsets.cli; model_tools appends task-scoped kanban tools later.
@@ -61,7 +61,7 @@ agent:
 
     from alice_cli import kanban_db as kb
 
-    monkeypatch.setattr(kb, "_resolve_lydia_argv", lambda: ["alice"])
+    monkeypatch.setattr(kb, "_resolve_alice_argv", lambda: ["alice"])
 
     captured = {}
 
@@ -82,7 +82,7 @@ agent:
 
     assert pid == 4242
     assert captured["env"]["ALICE_HOME"] == str(profile)
-    assert captured["env"]["LYDIA_KANBAN_TASK"] == "t_spawn_tools"
+    assert captured["env"]["ALICE_KANBAN_TASK"] == "t_spawn_tools"
     assert "--toolsets" in captured["cmd"]
     pinned = captured["cmd"][captured["cmd"].index("--toolsets") + 1].split(",")
     for required in ("terminal", "web", "file", "skills", "code_execution", "delegation"):

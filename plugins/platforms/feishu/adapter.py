@@ -1547,24 +1547,24 @@ class FeishuAdapter(BasePlatformAdapter):
             bot_name=os.getenv("FEISHU_BOT_NAME", "").strip(),
             dedup_cache_size=max(
                 32,
-                env_int("LYDIA_FEISHU_DEDUP_CACHE_SIZE", _DEFAULT_DEDUP_CACHE_SIZE),
+                env_int("ALICE_FEISHU_DEDUP_CACHE_SIZE", _DEFAULT_DEDUP_CACHE_SIZE),
             ),
             text_batch_delay_seconds=env_float(
-                "LYDIA_FEISHU_TEXT_BATCH_DELAY_SECONDS", _DEFAULT_TEXT_BATCH_DELAY_SECONDS
+                "ALICE_FEISHU_TEXT_BATCH_DELAY_SECONDS", _DEFAULT_TEXT_BATCH_DELAY_SECONDS
             ),
             text_batch_split_delay_seconds=env_float(
-                "LYDIA_FEISHU_TEXT_BATCH_SPLIT_DELAY_SECONDS", 2.0
+                "ALICE_FEISHU_TEXT_BATCH_SPLIT_DELAY_SECONDS", 2.0
             ),
             text_batch_max_messages=max(
                 1,
-                env_int("LYDIA_FEISHU_TEXT_BATCH_MAX_MESSAGES", _DEFAULT_TEXT_BATCH_MAX_MESSAGES),
+                env_int("ALICE_FEISHU_TEXT_BATCH_MAX_MESSAGES", _DEFAULT_TEXT_BATCH_MAX_MESSAGES),
             ),
             text_batch_max_chars=max(
                 1,
-                env_int("LYDIA_FEISHU_TEXT_BATCH_MAX_CHARS", _DEFAULT_TEXT_BATCH_MAX_CHARS),
+                env_int("ALICE_FEISHU_TEXT_BATCH_MAX_CHARS", _DEFAULT_TEXT_BATCH_MAX_CHARS),
             ),
             media_batch_delay_seconds=env_float(
-                "LYDIA_FEISHU_MEDIA_BATCH_DELAY_SECONDS", _DEFAULT_MEDIA_BATCH_DELAY_SECONDS
+                "ALICE_FEISHU_MEDIA_BATCH_DELAY_SECONDS", _DEFAULT_MEDIA_BATCH_DELAY_SECONDS
             ),
             webhook_host=str(
                 extra.get("webhook_host") or os.getenv("FEISHU_WEBHOOK_HOST", _DEFAULT_WEBHOOK_HOST)
@@ -1931,7 +1931,7 @@ class FeishuAdapter(BasePlatformAdapter):
     ) -> SendResult:
         """Send an interactive card with approval buttons.
 
-        The buttons carry ``lydia_action`` in their value dict so that
+        The buttons carry ``alice_action`` in their value dict so that
         ``_handle_card_action_event`` can intercept them and call
         ``resolve_gateway_approval()`` to unblock the waiting agent thread.
         """
@@ -1947,7 +1947,7 @@ class FeishuAdapter(BasePlatformAdapter):
                     "tag": "button",
                     "text": {"tag": "plain_text", "content": label},
                     "type": btn_type,
-                    "value": {"lydia_action": action_name, "approval_id": approval_id},
+                    "value": {"alice_action": action_name, "approval_id": approval_id},
                 }
 
             card = {
@@ -2004,7 +2004,7 @@ class FeishuAdapter(BasePlatformAdapter):
                 "text": {"tag": "plain_text", "content": label},
                 "type": btn_type,
                 "value": {
-                    "lydia_update_prompt_action": answer,
+                    "alice_update_prompt_action": answer,
                     "update_prompt_id": prompt_id,
                 },
             }
@@ -2596,13 +2596,13 @@ class FeishuAdapter(BasePlatformAdapter):
         event = getattr(data, "event", None)
         action = getattr(event, "action", None)
         action_value = getattr(action, "value", {}) or {}
-        lydia_action = action_value.get("lydia_action") if isinstance(action_value, dict) else None
+        alice_action = action_value.get("alice_action") if isinstance(action_value, dict) else None
         update_prompt_action = (
-            action_value.get("lydia_update_prompt_action")
+            action_value.get("alice_update_prompt_action")
             if isinstance(action_value, dict) else None
         )
 
-        if lydia_action:
+        if alice_action:
             return self._handle_approval_card_action(event=event, action_value=action_value, loop=loop)
         if update_prompt_action:
             return self._handle_update_prompt_card_action(
@@ -2655,7 +2655,7 @@ class FeishuAdapter(BasePlatformAdapter):
         if not state:
             logger.debug("[Feishu] Approval %s already resolved or unknown", approval_id)
             return P2CardActionTriggerResponse() if P2CardActionTriggerResponse else None
-        choice = _APPROVAL_CHOICE_MAP.get(action_value.get("lydia_action"), "deny")
+        choice = _APPROVAL_CHOICE_MAP.get(action_value.get("alice_action"), "deny")
 
         operator = getattr(event, "operator", None)
         open_id = str(getattr(operator, "open_id", "") or "")
@@ -2712,7 +2712,7 @@ class FeishuAdapter(BasePlatformAdapter):
             logger.debug("[Feishu] Update prompt %s already resolved or unknown", prompt_id)
             return P2CardActionTriggerResponse() if P2CardActionTriggerResponse else None
 
-        answer = str(action_value.get("lydia_update_prompt_action", "") or "").strip().lower()
+        answer = str(action_value.get("alice_update_prompt_action", "") or "").strip().lower()
         if answer not in {"y", "n"}:
             logger.debug("[Feishu] Card action has invalid update prompt answer=%r", answer)
             return P2CardActionTriggerResponse() if P2CardActionTriggerResponse else None

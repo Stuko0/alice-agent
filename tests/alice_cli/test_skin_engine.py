@@ -43,20 +43,20 @@ class TestSkinConfig:
 
 
 class TestBuiltinSkins:
-    def test_ares_skin_loads(self):
+    def test_alice_skin_loads(self):
         from alice_cli.skin_engine import load_skin
-        skin = load_skin("ares")
-        assert skin.name == "ares"
-        assert skin.tool_prefix == "╎"
-        assert skin.get_color("banner_border") == "#9F1C1C"
-        assert skin.get_color("response_border") == "#C7A96B"
-        assert skin.get_color("session_label") == "#C7A96B"
-        assert skin.get_color("session_border") == "#6E584B"
-        assert skin.get_branding("agent_name") == "Ares Agent"
+        skin = load_skin("alice")
+        assert skin.name == "alice"
+        assert skin.tool_prefix == "♧"
+        assert skin.get_color("banner_border") == "#413d57"
+        assert skin.get_color("response_border") == "#7848a0"
+        assert skin.get_color("session_label") == "#958da5"
+        assert skin.get_color("session_border") == "#6e687c"
+        assert skin.get_branding("agent_name") == "Alice Agent"
 
-    def test_ares_has_spinner_customization(self):
+    def test_alice_has_spinner_customization(self):
         from alice_cli.skin_engine import load_skin
-        skin = load_skin("ares")
+        skin = load_skin("alice")
         wings = skin.get_spinner_wings()
         assert len(wings) > 0
         assert isinstance(wings[0], tuple)
@@ -79,34 +79,23 @@ class TestBuiltinSkins:
 
         skin = load_skin("daylight")
         assert skin.name == "daylight"
-        assert skin.tool_prefix == "│"
-        assert skin.get_color("banner_title") == "#575279"
-        assert skin.get_color("status_bar_bg") == "#fffaf3"
-        assert skin.get_color("voice_status_bg") == "#fffaf3"
-        assert skin.get_color("completion_menu_bg") == "#fffaf3"
-        assert skin.get_color("completion_menu_current_bg") == "#f2e9e1"
-        assert skin.get_color("completion_menu_meta_bg") == "#f4ede8"
-        assert skin.get_color("completion_menu_meta_current_bg") == "#dfdad9"
+        assert skin.tool_prefix == "┊"
+        assert skin.get_color("banner_title") == "#2c2c2c"
+        assert skin.get_color("status_bar_bg") == "#f3f4f6"
 
     def test_warm_lightmode_skin_loads(self):
         from alice_cli.skin_engine import load_skin
 
         skin = load_skin("warm-lightmode")
         assert skin.name == "warm-lightmode"
-        assert skin.get_color("banner_text") == "#2C1810"
-        assert skin.get_color("completion_menu_bg") == "#F5EFE0"
+        assert skin.get_color("banner_text") == "#3d3228"
 
-    def test_charizard_skin_has_dark_ember_completion_menu(self):
+    def test_dragon_skin_loads(self):
         from alice_cli.skin_engine import load_skin
 
-        skin = load_skin("charizard")
-        assert skin.name == "charizard"
-        assert skin.get_color("banner_dim") == "#C58A45"
-        assert skin.get_color("completion_menu_bg") == "#0B0503"
-        assert skin.get_color("completion_menu_current_bg") == "#4A1B07"
-        assert skin.get_color("completion_menu_meta_bg") == "#120806"
-        assert skin.get_color("completion_menu_meta_current_bg") == "#5A260D"
-        assert skin.get_color("selection_bg") == "#5A260D"
+        skin = load_skin("dragon")
+        assert skin.name == "dragon"
+        assert skin.get_color("banner_dim") == "#7A3511"
 
     def test_unknown_skin_falls_back_to_default(self):
         from alice_cli.skin_engine import load_skin
@@ -126,10 +115,10 @@ class TestBuiltinSkins:
 class TestSkinManagement:
     def test_set_active_skin(self):
         from alice_cli.skin_engine import set_active_skin, get_active_skin, get_active_skin_name
-        skin = set_active_skin("ares")
-        assert skin.name == "ares"
-        assert get_active_skin_name() == "ares"
-        assert get_active_skin().name == "ares"
+        skin = set_active_skin("alice")
+        assert skin.name == "alice"
+        assert get_active_skin_name() == "alice"
+        assert get_active_skin().name == "alice"
 
     def test_get_active_skin_defaults(self):
         from alice_cli.skin_engine import get_active_skin
@@ -141,7 +130,7 @@ class TestSkinManagement:
         skins = list_skins()
         names = [s["name"] for s in skins]
         assert "default" in names
-        assert "ares" in names
+        assert "alice" in names
         assert "mono" in names
         assert "slate" in names
         assert "daylight" in names
@@ -152,8 +141,8 @@ class TestSkinManagement:
 
     def test_init_skin_from_config(self):
         from alice_cli.skin_engine import init_skin_from_config, get_active_skin_name
-        init_skin_from_config({"display": {"skin": "ares"}})
-        assert get_active_skin_name() == "ares"
+        init_skin_from_config({"display": {"skin": "alice"}})
+        assert get_active_skin_name() == "alice"
 
     def test_init_skin_from_empty_config(self):
         from alice_cli.skin_engine import init_skin_from_config, get_active_skin_name
@@ -264,15 +253,15 @@ class TestDisplayIntegration:
     def test_get_skin_tool_prefix_custom(self):
         from alice_cli.skin_engine import set_active_skin
         from agent.display import get_skin_tool_prefix
-        set_active_skin("ares")
-        assert get_skin_tool_prefix() == "╎"
+        set_active_skin("alice")
+        assert get_skin_tool_prefix() == "♧"
 
     def test_tool_message_uses_skin_prefix(self):
         from alice_cli.skin_engine import set_active_skin
         from agent.display import get_cute_tool_message
-        set_active_skin("ares")
+        set_active_skin("alice")
         msg = get_cute_tool_message("terminal", {"command": "ls"}, 0.5)
-        assert msg.startswith("╎")
+        assert msg.startswith("♧")
         assert "┊" not in msg
 
     def test_tool_message_default_prefix(self):
@@ -287,27 +276,27 @@ class TestCliBrandingHelpers:
 
         assert get_active_prompt_symbol() == "❯ "
 
-    def test_active_prompt_symbol_ares(self):
+    def test_active_prompt_symbol_alice(self):
         from alice_cli.skin_engine import set_active_skin, get_active_prompt_symbol
 
-        set_active_skin("ares")
-        assert get_active_prompt_symbol() == "⚔ "
+        set_active_skin("alice")
+        assert get_active_prompt_symbol() == "♠ "
 
-    def test_active_help_header_ares(self):
+    def test_active_help_header_alice(self):
         from alice_cli.skin_engine import set_active_skin, get_active_help_header
 
-        set_active_skin("ares")
-        assert get_active_help_header() == "(⚔) Available Commands"
+        set_active_skin("alice")
+        assert get_active_help_header() == "(♠♥♦♣) Available Commands"
 
-    def test_active_goodbye_ares(self):
+    def test_active_goodbye_alice(self):
         from alice_cli.skin_engine import set_active_skin, get_active_goodbye
 
-        set_active_skin("ares")
-        assert get_active_goodbye() == "Farewell, warrior! ⚔"
+        set_active_skin("alice")
+        assert get_active_goodbye() == "We're all mad here. ♠♥♦♣"
 
     def test_prompt_toolkit_style_overrides_cover_tui_classes(self):
         from alice_cli.skin_engine import set_active_skin, get_prompt_toolkit_style_overrides
-        set_active_skin("ares")
+        set_active_skin("alice")
         overrides = get_prompt_toolkit_style_overrides()
         required = {
             "input-area",
@@ -365,7 +354,7 @@ class TestCliBrandingHelpers:
             get_prompt_toolkit_style_overrides,
         )
 
-        set_active_skin("ares")
+        set_active_skin("alice")
         skin = get_active_skin()
         overrides = get_prompt_toolkit_style_overrides()
         assert overrides["prompt"] == skin.get_color("prompt")
@@ -386,5 +375,5 @@ class TestCliBrandingHelpers:
         set_active_skin("daylight")
         skin = get_active_skin()
         overrides = get_prompt_toolkit_style_overrides()
-        assert overrides["status-bar"] == f"bg:{skin.get_color('status_bar_bg')} {skin.get_color('banner_text')}"
-        assert overrides["voice-status"] == f"bg:{skin.get_color('voice_status_bg')} {skin.get_color('ui_label')}"
+        assert overrides["status-bar"] == f"bg:{skin.get_color('status_bar_bg')} {skin.get_color('status_bar_text')}"
+        assert overrides["voice-status"] == f"bg:{skin.get_color('status_bar_bg')} {skin.get_color('ui_label')}"

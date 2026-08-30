@@ -1,8 +1,8 @@
 import { isGatewayReauthRequired, resolveGatewayWsUrl } from '@alice/shared'
 import { useEffect, useRef } from 'react'
 
-import type { LydiaConnection } from '@/global'
-import { LydiaGateway } from '@/alice'
+import type { AliceConnection } from '@/global'
+import { AliceGateway } from '@/alice'
 import { translateNow } from '@/i18n'
 import { desktopDefaultCwd } from '@/lib/desktop-fs'
 import {
@@ -50,10 +50,10 @@ const RECONNECT_ESCALATE_AFTER = 6
 interface GatewayBootOptions {
   handleGatewayEvent: (event: RpcEvent) => void
   onConnectionReady: (
-    connection: Awaited<ReturnType<NonNullable<typeof window.lydiaDesktop>['getConnection']>> | null
+    connection: Awaited<ReturnType<NonNullable<typeof window.aliceDesktop>['getConnection']>> | null
   ) => void
-  onGatewayReady: (gateway: LydiaGateway | null) => void
-  refreshLydiaConfig: () => Promise<void>
+  onGatewayReady: (gateway: AliceGateway | null) => void
+  refreshAliceConfig: () => Promise<void>
   refreshSessions: () => Promise<void>
 }
 
@@ -61,14 +61,14 @@ export function useGatewayBoot({
   handleGatewayEvent,
   onConnectionReady,
   onGatewayReady,
-  refreshLydiaConfig,
+  refreshAliceConfig,
   refreshSessions
 }: GatewayBootOptions) {
   const callbacksRef = useRef({
     handleGatewayEvent,
     onConnectionReady,
     onGatewayReady,
-    refreshLydiaConfig,
+    refreshAliceConfig,
     refreshSessions
   })
 
@@ -76,15 +76,15 @@ export function useGatewayBoot({
     handleGatewayEvent,
     onConnectionReady,
     onGatewayReady,
-    refreshLydiaConfig,
+    refreshAliceConfig,
     refreshSessions
   }
 
   useEffect(() => {
     let cancelled = false
-    const desktop = window.lydiaDesktop
+    const desktop = window.aliceDesktop
 
-    const publish = (next: LydiaConnection | null) => {
+    const publish = (next: AliceConnection | null) => {
       callbacksRef.current.onConnectionReady(next)
       setConnection(next)
     }
@@ -167,7 +167,7 @@ export function useGatewayBoot({
 
         reconnectAttempt = 0
         // Resync state that may have moved on the backend while we were asleep.
-        await callbacksRef.current.refreshLydiaConfig().catch(() => undefined)
+        await callbacksRef.current.refreshAliceConfig().catch(() => undefined)
         await callbacksRef.current.refreshSessions().catch(() => undefined)
       } catch (err) {
         // OAuth session expired mid-reconnect: surface the actionable "sign in
@@ -233,7 +233,7 @@ export function useGatewayBoot({
       progress: 6
     })
 
-    const gateway = new LydiaGateway()
+    const gateway = new AliceGateway()
     callbacksRef.current.onGatewayReady(gateway)
     setPrimaryGateway(gateway, normalizeProfileKey($activeGatewayProfile.get()))
     // Secondary (background-profile) sockets funnel into the same handler.
@@ -333,9 +333,16 @@ export function useGatewayBoot({
 
     async function boot() {
       try {
+        const log = (msg: string) => {
+          console.log(msg)
+          try { window['go']?.main?.App?.WriteFrontendLog?.(msg) } catch {}
+        }
+        log('[Boot] Step 1: getting connection...')
         const conn = await desktop.getConnection()
+        log('[Boot] Step 1 OK: got connection:' + JSON.stringify(conn))
 
         if (cancelled) {
+          log('[Boot] cancelled after step 1')
           return
         }
 
@@ -350,23 +357,31 @@ export function useGatewayBoot({
         // conn.wsUrl is stale; resolveGatewayWsUrl() re-mints it and, on
         // failure, throws a reauth error rather than connecting with a dead
         // ticket (which would surface as an opaque "connection closed").
+        log('[Boot] Step 2: resolving WS URL...')
         const wsUrl = await resolveGatewayWsUrl(desktop, conn)
+        log('[Boot] Step 2 OK: wsUrl=' + wsUrl)
+        log('[Boot] Step 3: connecting WS...')
         await gateway.connect(wsUrl)
+        log('[Boot] Step 3 OK: WS connected!')
 
         if (cancelled) {
+          log('[Boot] cancelled after step 3')
           return
         }
 
         // Record which profile the primary (window) backend booted as, so
         // same-profile resumes are no-op swaps and any reconnect targets the
         // right backend. Best-effort: a missing preference means "default".
+        log('[Boot] Step 3.5: get profile...')
         try {
           const pref = await desktop.profile?.get?.()
           const profileKey = (pref?.profile ?? '').trim() || 'default'
           $activeGatewayProfile.set(profileKey)
           setPrimaryGateway(gateway, profileKey)
           void ensureGatewayForProfile(profileKey)
-        } catch {
+          log('[Boot] Step 3.5 OK')
+        } catch (e) {
+          log('[Boot] Step 3.5 error: ' + (e?.message || String(e)))
           $activeGatewayProfile.set('default')
         }
 
@@ -375,17 +390,29 @@ export function useGatewayBoot({
           message: translateNow('boot.steps.loadingSettings'),
           progress: 97
         })
+        log('[Boot] Step 4: ensureDefaultWorkspaceCwd...')
         await ensureDefaultWorkspaceCwd()
-        const remoteDefault = await desktopDefaultCwd().catch(() => null)
+        log('[Boot] Step 4 OK')
+        log('[Boot] Step 4.1: desktopDefaultCwd...')
+        const remoteDefault = await desktopDefaultCwd().catch((e) => {
+          log('[Boot] Step 4.1 error: ' + (e?.message || String(e)))
+          return null
+        })
+        log('[Boot] Step 4.1 OK: ' + JSON.stringify(remoteDefault))
 
         if (remoteDefault?.cwd && !$activeSessionId.get() && !$currentCwd.get()) {
+          log('[Boot] Step 4.2: setting cwd...')
           setCurrentCwd(remoteDefault.cwd)
           setCurrentBranch(remoteDefault.branch || '')
+          log('[Boot] Step 4.2 OK')
         }
 
-        await callbacksRef.current.refreshLydiaConfig()
+        log('[Boot] Step 5: refreshAliceConfig...')
+        await callbacksRef.current.refreshAliceConfig()
+        log('[Boot] Step 5 OK')
 
         if (cancelled) {
+          log('[Boot] cancelled after step 5')
           return
         }
 
@@ -394,12 +421,27 @@ export function useGatewayBoot({
           message: translateNow('boot.steps.loadingSessions'),
           progress: 99
         })
-        await callbacksRef.current.refreshSessions()
+        log('[Boot] Step 6: refreshSessions...')
+        // refreshSessions can hang on large profiles or WebKit fetch quirks.
+        // Don't let it block the boot — the sidebar repopulates on the next
+        // interaction anyway. Timeout at 8s then proceed.
+        await Promise.race([
+          callbacksRef.current.refreshSessions(),
+          new Promise<void>((_, reject) => setTimeout(() => reject(new Error('refreshSessions timeout (8s)')), 8000))
+        ]).catch((err) => {
+          log('[Boot] Step 6 TIMEOUT/ERROR: ' + (err?.message || String(err)))
+          // Non-fatal: continue boot without sessions loaded
+        })
+        log('[Boot] Step 6 DONE (or timed out)')
         completeDesktopBoot()
         bootCompleted = true
+        log('[Boot] COMPLETE!')
       } catch (err) {
         if (!cancelled) {
           const message = err instanceof Error ? err.message : String(err)
+          const stack = err instanceof Error ? err.stack : ''
+          log('[Boot] FAILED at step: ' + message)
+          log('[Boot] FAILED stack: ' + stack)
           failDesktopBoot(message)
           notifyError(err, translateNow('boot.errors.desktopBootFailed'))
           setSessionsLoading(false)

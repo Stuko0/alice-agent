@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react'
 import { HUD_ITEM, HUD_TEXT } from '@/app/floating-hud'
 import type { DesktopMarketplaceSearchItem } from '@/global'
 import { useI18n } from '@/i18n'
+import { desktopSupports } from '@/lib/desktop-capabilities'
 import { triggerHaptic } from '@/lib/haptics'
 import { Check, Download, Loader2, Palette } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -51,7 +52,10 @@ export function MarketplaceThemePage({ search, onPickTheme }: MarketplaceThemePa
 
   const query = useQuery({
     queryKey: ['marketplace-themes', debouncedSearch],
-    queryFn: () => window.lydiaDesktop?.themes?.searchMarketplace(debouncedSearch) ?? Promise.resolve([]),
+    queryFn: () =>
+      desktopSupports('vscodeThemes')
+        ? window.aliceDesktop?.themes?.searchMarketplace(debouncedSearch) ?? Promise.resolve([])
+        : Promise.resolve([]),
     staleTime: 5 * 60 * 1000
   })
 

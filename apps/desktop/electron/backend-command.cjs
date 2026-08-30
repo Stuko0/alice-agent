@@ -1,6 +1,6 @@
 'use strict'
 
-// Backend subcommand routing for the desktop-managed Lydia process.
+// Backend subcommand routing for the desktop-managed Alice process.
 //
 // The desktop app launches its own headless backend via `alice serve` — it
 // must NEVER depend on or launch the browser `dashboard`. But `serve` is a

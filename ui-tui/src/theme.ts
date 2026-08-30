@@ -344,13 +344,13 @@ const FALSE_RE = /^(?:0|false|no|off)$/
 
 // TERM_PROGRAM fallback allow-list for terminals whose default profile is
 // light and which may not expose COLORFGBG. This currently includes Apple
-// Terminal. Explicit LYDIA_TUI_THEME / COLORFGBG signals above still win,
+// Terminal. Explicit ALICE_TUI_THEME / COLORFGBG signals above still win,
 // so dark Apple Terminal profiles that advertise a dark background stay dark.
 const LIGHT_DEFAULT_TERM_PROGRAMS = new Set<string>(['Apple_Terminal'])
 
 // Best-effort RGB → luminance check.  Currently only accepts a 3- or
 // 6-digit hex value (with or without a leading `#`); the env var name
-// `LYDIA_TUI_BACKGROUND` is intentionally generic so a future OSC11
+// `ALICE_TUI_BACKGROUND` is intentionally generic so a future OSC11
 // query helper can cache its answer there too, but additional formats
 // (rgb()/hsl()/named colours) would need explicit parsing here first.
 const LUMA_LIGHT_THRESHOLD = 0.6
@@ -387,12 +387,12 @@ function backgroundLuminance(raw: string): null | number {
 
 // Pick light vs dark with ordered, explainable signals (#11300):
 //
-//   1. `LYDIA_TUI_LIGHT` boolean — `1`/`true`/`yes`/`on` → light;
+//   1. `ALICE_TUI_LIGHT` boolean — `1`/`true`/`yes`/`on` → light;
 //      `0`/`false`/`no`/`off` → dark.  Either explicit value wins
 //      regardless of any later signal.
-//   2. `LYDIA_TUI_THEME` named override — `light` / `dark` win over
+//   2. `ALICE_TUI_THEME` named override — `light` / `dark` win over
 //      every signal below.
-//   3. `LYDIA_TUI_BACKGROUND` hex hint (3- or 6-digit) — luminance
+//   3. `ALICE_TUI_BACKGROUND` hex hint (3- or 6-digit) — luminance
 //      ≥ LUMA_LIGHT_THRESHOLD → light.
 //   4. `COLORFGBG` last field — XFCE / rxvt / Terminal.app emit
 //      slot 7 or 15 on light profiles; 0–15 ranges are otherwise
@@ -408,7 +408,7 @@ export function detectLightMode(
   // precedence rule even though the production allow-list is empty.
   lightDefaultTermPrograms: ReadonlySet<string> = LIGHT_DEFAULT_TERM_PROGRAMS
 ): boolean {
-  const lightFlag = (env.LYDIA_TUI_LIGHT ?? '').trim().toLowerCase()
+  const lightFlag = (env.ALICE_TUI_LIGHT ?? '').trim().toLowerCase()
 
   if (TRUE_RE.test(lightFlag)) {
     return true
@@ -418,7 +418,7 @@ export function detectLightMode(
     return false
   }
 
-  const themeFlag = (env.LYDIA_TUI_THEME ?? '').trim().toLowerCase()
+  const themeFlag = (env.ALICE_TUI_THEME ?? '').trim().toLowerCase()
 
   if (themeFlag === 'light') {
     return true
@@ -428,7 +428,7 @@ export function detectLightMode(
     return false
   }
 
-  const bgHint = backgroundLuminance(env.LYDIA_TUI_BACKGROUND ?? '')
+  const bgHint = backgroundLuminance(env.ALICE_TUI_BACKGROUND ?? '')
 
   if (bgHint !== null) {
     return bgHint >= LUMA_LIGHT_THRESHOLD

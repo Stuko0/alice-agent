@@ -10,7 +10,7 @@
  *      relaunch/claim a GUI update; AppImage/.deb/.rpm/dev/unresolved paths land
  *      on the guiSkew terminal state and do NOT claim the GUI was updated.
  *   2. Launch context is replayed on re-exec (args filtered of Electron
- *      internals; LYDIA_HOME / LYDIA_DESKTOP_* env + cwd preserved) and is
+ *      internals; ALICE_HOME / ALICE_DESKTOP_* env + cwd preserved) and is
  *      safely shell-quoted.
  *   3. The sandbox preflight: chrome-sandbox must be root-owned + setuid to be
  *      launchable; otherwise the decision degrades to a manual terminal state
@@ -36,7 +36,7 @@ const {
   shellQuote
 } = require('./update-relaunch.cjs')
 
-const ROOT = '/home/u/.lydia/lydia-agent'
+const ROOT = '/home/u/.alice/alice-agent'
 const UNPACKED = path.join(ROOT, 'apps', 'desktop', 'release', 'linux-unpacked')
 
 // ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ test('unpackedDirName maps platform to the electron-builder dir', () => {
 })
 
 test('resolveUnpackedRelease returns the dir for a binary UNDER release/<plat>-unpacked', () => {
-  const exec = path.join(UNPACKED, 'lydia')
+  const exec = path.join(UNPACKED, 'alice')
   assert.equal(resolveUnpackedRelease(exec, ROOT, 'linux'), UNPACKED)
   // The unpacked dir itself also counts.
   assert.equal(resolveUnpackedRelease(UNPACKED, ROOT, 'linux'), UNPACKED)
@@ -57,23 +57,23 @@ test('resolveUnpackedRelease returns the dir for a binary UNDER release/<plat>-u
 
 test('resolveUnpackedRelease is null for AppImage / .deb / .rpm / dev / unresolved paths', () => {
   // AppImage mount
-  assert.equal(resolveUnpackedRelease('/tmp/.mount_Lydia12345/AppRun', ROOT, 'linux'), null)
+  assert.equal(resolveUnpackedRelease('/tmp/.mount_Alice12345/AppRun', ROOT, 'linux'), null)
   // .deb / .rpm system install
-  assert.equal(resolveUnpackedRelease('/usr/lib/lydia/lydia', ROOT, 'linux'), null)
-  assert.equal(resolveUnpackedRelease('/opt/Lydia/lydia', ROOT, 'linux'), null)
+  assert.equal(resolveUnpackedRelease('/usr/lib/alice/alice', ROOT, 'linux'), null)
+  assert.equal(resolveUnpackedRelease('/opt/Alice/alice', ROOT, 'linux'), null)
   // dev electron
   assert.equal(
-    resolveUnpackedRelease('/home/u/.lydia/lydia-agent/node_modules/electron/dist/electron', ROOT, 'linux'),
+    resolveUnpackedRelease('/home/u/.alice/alice-agent/node_modules/electron/dist/electron', ROOT, 'linux'),
     null
   )
   // empty / missing
   assert.equal(resolveUnpackedRelease('', ROOT, 'linux'), null)
-  assert.equal(resolveUnpackedRelease(path.join(UNPACKED, 'lydia'), '', 'linux'), null)
+  assert.equal(resolveUnpackedRelease(path.join(UNPACKED, 'alice'), '', 'linux'), null)
 })
 
 test('resolveUnpackedRelease is not fooled by a sibling prefix dir', () => {
   // `.../release/linux-unpacked-evil` must NOT match `.../release/linux-unpacked`.
-  const sneaky = path.join(ROOT, 'apps', 'desktop', 'release', 'linux-unpacked-evil', 'lydia')
+  const sneaky = path.join(ROOT, 'apps', 'desktop', 'release', 'linux-unpacked-evil', 'alice')
   assert.equal(resolveUnpackedRelease(sneaky, ROOT, 'linux'), null)
 })
 
@@ -146,30 +146,30 @@ test('collectRelaunchArgs drops Electron internals, keeps user/launcher args', (
     '--field-trial-handle=123',
     '--no-sandbox', // sandbox opt-out — KEEP (user/env intent + relaunch fallback)
     '--lang=en-US',
-    'lydia://open/agent/42', // deep link — keep
+    'alice://open/agent/42', // deep link — keep
     '--profile=work', // app flag — keep
     '--remote-debugging-port=9222' // internal — drop
   ]
-  assert.deepEqual(collectRelaunchArgs(argv), ['--no-sandbox', 'lydia://open/agent/42', '--profile=work'])
+  assert.deepEqual(collectRelaunchArgs(argv), ['--no-sandbox', 'alice://open/agent/42', '--profile=work'])
   assert.deepEqual(collectRelaunchArgs(undefined), [])
 })
 
-test('collectRelaunchEnv preserves LYDIA_HOME + LYDIA_DESKTOP_* + sandbox opt-out only', () => {
+test('collectRelaunchEnv preserves ALICE_HOME + ALICE_DESKTOP_* + sandbox opt-out only', () => {
   const env = {
-    LYDIA_HOME: '/home/u/.lydia',
-    LYDIA_DESKTOP_REMOTE_URL: 'http://box:9119',
-    LYDIA_DESKTOP_REMOTE_TOKEN: 'secret',
-    LYDIA_DESKTOP_LYDIA_ROOT: '/home/u/dev/lydia',
+    ALICE_HOME: '/home/u/.alice',
+    ALICE_DESKTOP_REMOTE_URL: 'http://box:9119',
+    ALICE_DESKTOP_REMOTE_TOKEN: 'secret',
+    ALICE_DESKTOP_ALICE_ROOT: '/home/u/dev/alice',
     ELECTRON_DISABLE_SANDBOX: '1', // sandbox opt-out — preserved
     PATH: '/usr/bin', // not preserved
     HOME: '/home/u', // not preserved
     UNRELATED: 'x'
   }
   assert.deepEqual(collectRelaunchEnv(env), {
-    LYDIA_HOME: '/home/u/.lydia',
-    LYDIA_DESKTOP_REMOTE_URL: 'http://box:9119',
-    LYDIA_DESKTOP_REMOTE_TOKEN: 'secret',
-    LYDIA_DESKTOP_LYDIA_ROOT: '/home/u/dev/lydia',
+    ALICE_HOME: '/home/u/.alice',
+    ALICE_DESKTOP_REMOTE_URL: 'http://box:9119',
+    ALICE_DESKTOP_REMOTE_TOKEN: 'secret',
+    ALICE_DESKTOP_ALICE_ROOT: '/home/u/dev/alice',
     ELECTRON_DISABLE_SANDBOX: '1'
   })
   assert.deepEqual(collectRelaunchEnv(null), {})
@@ -187,9 +187,9 @@ test('shellQuote neutralizes single quotes and metacharacters', () => {
 test('buildRelaunchScript embeds pid/exec/args/env/cwd and is valid bash', () => {
   const script = buildRelaunchScript({
     pid: 4242,
-    execPath: '/home/u/.lydia/lydia-agent/apps/desktop/release/linux-unpacked/Lydia',
-    args: ['lydia://open/agent/42', "--note=it's fine"],
-    env: { LYDIA_HOME: '/home/u/.lydia', LYDIA_DESKTOP_REMOTE_URL: 'http://box:9119' },
+    execPath: '/home/u/.alice/alice-agent/apps/desktop/release/linux-unpacked/Alice',
+    args: ['alice://open/agent/42', "--note=it's fine"],
+    env: { ALICE_HOME: '/home/u/.alice', ALICE_DESKTOP_REMOTE_URL: 'http://box:9119' },
     cwd: '/home/u/work dir'
   })
 
@@ -199,13 +199,13 @@ test('buildRelaunchScript embeds pid/exec/args/env/cwd and is valid bash', () =>
   assert.match(script, /kill -9 "\$APP_PID"/)
   assert.match(script, /rm -f -- "\$0"/)
   // env exports + cwd restore + args replay are present and quoted.
-  assert.match(script, /export LYDIA_HOME='\/home\/u\/\.lydia'/)
-  assert.match(script, /export LYDIA_DESKTOP_REMOTE_URL='http:\/\/box:9119'/)
+  assert.match(script, /export ALICE_HOME='\/home\/u\/\.alice'/)
+  assert.match(script, /export ALICE_DESKTOP_REMOTE_URL='http:\/\/box:9119'/)
   assert.match(script, /cd '\/home\/u\/work dir'/)
-  assert.match(script, /exec '.*\/linux-unpacked\/Lydia' 'lydia:\/\/open\/agent\/42' '--note=it'\\''s fine'/)
+  assert.match(script, /exec '.*\/linux-unpacked\/Alice' 'alice:\/\/open\/agent\/42' '--note=it'\\''s fine'/)
 
   // It must be syntactically valid bash (`bash -n`). Write to a temp file and lint.
-  const tmp = path.join(os.tmpdir(), `lydia-relaunch-test-${Date.now()}.sh`)
+  const tmp = path.join(os.tmpdir(), `alice-relaunch-test-${Date.now()}.sh`)
   fs.writeFileSync(tmp, script)
   try {
     execFileSync('bash', ['-n', tmp], { stdio: 'pipe' })
@@ -217,12 +217,12 @@ test('buildRelaunchScript embeds pid/exec/args/env/cwd and is valid bash', () =>
 test('buildRelaunchScript with no args/env still lints clean', () => {
   const script = buildRelaunchScript({
     pid: 1,
-    execPath: '/opt/Lydia/Lydia',
+    execPath: '/opt/Alice/Alice',
     args: [],
     env: {},
     cwd: ''
   })
-  const tmp = path.join(os.tmpdir(), `lydia-relaunch-test2-${Date.now()}.sh`)
+  const tmp = path.join(os.tmpdir(), `alice-relaunch-test2-${Date.now()}.sh`)
   fs.writeFileSync(tmp, script)
   try {
     execFileSync('bash', ['-n', tmp], { stdio: 'pipe' })
@@ -230,5 +230,5 @@ test('buildRelaunchScript with no args/env still lints clean', () => {
     fs.rmSync(tmp, { force: true })
   }
   // exec line has no trailing args.
-  assert.match(script, /exec '\/opt\/Lydia\/Lydia'\n/)
+  assert.match(script, /exec '\/opt\/Alice\/Alice'\n/)
 })

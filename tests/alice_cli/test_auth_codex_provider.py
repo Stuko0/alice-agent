@@ -22,9 +22,9 @@ from alice_cli.auth import (
 )
 
 
-def _setup_lydia_auth(lydia_home: Path, *, access_token: str = "access", refresh_token: str = "refresh"):
+def _setup_alice_auth(alice_home: Path, *, access_token: str = "access", refresh_token: str = "refresh"):
     """Write Codex tokens into the Alice auth store."""
-    lydia_home.mkdir(parents=True, exist_ok=True)
+    alice_home.mkdir(parents=True, exist_ok=True)
     auth_store = {
         "version": 1,
         "active_provider": "openai-codex",
@@ -39,7 +39,7 @@ def _setup_lydia_auth(lydia_home: Path, *, access_token: str = "access", refresh
             },
         },
     }
-    auth_file = lydia_home / "auth.json"
+    auth_file = alice_home / "auth.json"
     auth_file.write_text(json.dumps(auth_store, indent=2))
     return auth_file
 
@@ -51,9 +51,9 @@ def _jwt_with_exp(exp_epoch: int) -> str:
 
 
 def test_read_codex_tokens_success(tmp_path, monkeypatch):
-    lydia_home = tmp_path / "alice"
-    _setup_lydia_auth(lydia_home)
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    alice_home = tmp_path / "alice"
+    _setup_alice_auth(alice_home)
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     data = _read_codex_tokens()
     assert data["tokens"]["access_token"] == "access"
@@ -61,11 +61,11 @@ def test_read_codex_tokens_success(tmp_path, monkeypatch):
 
 
 def test_read_codex_tokens_missing(tmp_path, monkeypatch):
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
     # Empty auth store
-    (lydia_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    (alice_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     with pytest.raises(AuthError) as exc:
         _read_codex_tokens()
@@ -73,9 +73,9 @@ def test_read_codex_tokens_missing(tmp_path, monkeypatch):
 
 
 def test_resolve_codex_runtime_credentials_missing_access_token(tmp_path, monkeypatch):
-    lydia_home = tmp_path / "alice"
-    _setup_lydia_auth(lydia_home, access_token="")
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    alice_home = tmp_path / "alice"
+    _setup_alice_auth(alice_home, access_token="")
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "missing-codex"))
 
     with pytest.raises(AuthError) as exc:
@@ -85,10 +85,10 @@ def test_resolve_codex_runtime_credentials_missing_access_token(tmp_path, monkey
 
 
 def test_resolve_codex_runtime_credentials_refreshes_expiring_token(tmp_path, monkeypatch):
-    lydia_home = tmp_path / "alice"
+    alice_home = tmp_path / "alice"
     expiring_token = _jwt_with_exp(int(time.time()) - 10)
-    _setup_lydia_auth(lydia_home, access_token=expiring_token, refresh_token="refresh-old")
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    _setup_alice_auth(alice_home, access_token=expiring_token, refresh_token="refresh-old")
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     called = {"count": 0}
 
@@ -105,9 +105,9 @@ def test_resolve_codex_runtime_credentials_refreshes_expiring_token(tmp_path, mo
 
 
 def test_resolve_codex_runtime_credentials_force_refresh(tmp_path, monkeypatch):
-    lydia_home = tmp_path / "alice"
-    _setup_lydia_auth(lydia_home, access_token="access-current", refresh_token="refresh-old")
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    alice_home = tmp_path / "alice"
+    _setup_alice_auth(alice_home, access_token="access-current", refresh_token="refresh-old")
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     called = {"count": 0}
 
@@ -133,8 +133,8 @@ def test_resolve_codex_runtime_credentials_falls_back_to_pool_when_singleton_emp
     re-auth, restore from backup) hit a bare HTTP 401 on chat but worked fine on
     auxiliary calls.  The fallback closes that divergence.
     """
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
     # Singleton: empty tokens (would normally raise AuthError).
     # Pool: valid access_token.
     auth_store = {
@@ -152,8 +152,8 @@ def test_resolve_codex_runtime_credentials_falls_back_to_pool_when_singleton_emp
             ],
         },
     }
-    (lydia_home / "auth.json").write_text(json.dumps(auth_store))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    (alice_home / "auth.json").write_text(json.dumps(auth_store))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     resolved = resolve_codex_runtime_credentials()
     assert resolved["api_key"] == "pool-fallback-token"
@@ -165,8 +165,8 @@ def test_resolve_codex_runtime_credentials_pool_fallback_skips_exhausted(tmp_pat
     """The pool fallback skips entries currently in an exhaustion cooldown window."""
     import time as _time
 
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
     future_reset = _time.time() + 3600  # 1h cooldown remaining
     auth_store = {
         "version": 1,
@@ -186,8 +186,8 @@ def test_resolve_codex_runtime_credentials_pool_fallback_skips_exhausted(tmp_pat
             ],
         },
     }
-    (lydia_home / "auth.json").write_text(json.dumps(auth_store))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    (alice_home / "auth.json").write_text(json.dumps(auth_store))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     resolved = resolve_codex_runtime_credentials()
     assert resolved["api_key"] == "usable-token"
@@ -196,8 +196,8 @@ def test_resolve_codex_runtime_credentials_pool_fallback_skips_exhausted(tmp_pat
 
 def test_resolve_codex_runtime_credentials_pool_fallback_no_usable_entry(tmp_path, monkeypatch):
     """When both singleton and pool are empty/unusable, the original AuthError propagates."""
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
     auth_store = {
         "version": 1,
         "providers": {},
@@ -207,8 +207,8 @@ def test_resolve_codex_runtime_credentials_pool_fallback_no_usable_entry(tmp_pat
             ],
         },
     }
-    (lydia_home / "auth.json").write_text(json.dumps(auth_store))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    (alice_home / "auth.json").write_text(json.dumps(auth_store))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     with pytest.raises(AuthError) as exc:
         resolve_codex_runtime_credentials()
@@ -222,10 +222,10 @@ def test_resolve_provider_explicit_codex_does_not_fallback(monkeypatch):
 
 
 def test_save_codex_tokens_roundtrip(tmp_path, monkeypatch):
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
-    (lydia_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
+    (alice_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     _save_codex_tokens({"access_token": "at123", "refresh_token": "rt456"})
     data = _read_codex_tokens()
@@ -242,9 +242,9 @@ def test_save_codex_tokens_syncs_credential_pool(tmp_path, monkeypatch):
     holding a consumed refresh token and stale error markers, causing an
     immediate 401 token_invalidated on the next request.
     """
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
-    (lydia_home / "auth.json").write_text(json.dumps({
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
+    (alice_home / "auth.json").write_text(json.dumps({
         "version": 1,
         "providers": {
             "openai-codex": {
@@ -276,12 +276,12 @@ def test_save_codex_tokens_syncs_credential_pool(tmp_path, monkeypatch):
             ],
         },
     }))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     _save_codex_tokens({"access_token": "new-at", "refresh_token": "new-rt"},
                        last_refresh="2026-05-27T00:00:00Z")
 
-    auth = json.loads((lydia_home / "auth.json").read_text())
+    auth = json.loads((alice_home / "auth.json").read_text())
     pool = auth["credential_pool"]["openai-codex"]
     seeded = next(e for e in pool if e["source"] == "device_code")
     assert seeded["access_token"] == "new-at"
@@ -320,9 +320,9 @@ def test_save_codex_tokens_syncs_manual_device_code_entries(tmp_path, monkeypatc
     the *previous* singleton access_token (true legacy aliases), and leaves
     distinct-token entries alone (independent accounts).
     """
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
-    (lydia_home / "auth.json").write_text(json.dumps({
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
+    (alice_home / "auth.json").write_text(json.dumps({
         "version": 1,
         "providers": {
             "openai-codex": {
@@ -373,12 +373,12 @@ def test_save_codex_tokens_syncs_manual_device_code_entries(tmp_path, monkeypatc
             ],
         },
     }))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     _save_codex_tokens({"access_token": "fresh-at", "refresh_token": "fresh-rt"},
                        last_refresh="2026-05-28T00:00:00Z")
 
-    auth = json.loads((lydia_home / "auth.json").read_text())
+    auth = json.loads((alice_home / "auth.json").read_text())
     pool = auth["credential_pool"]["openai-codex"]
 
     # Singleton-seeded device_code entry: refreshed and error markers cleared.
@@ -423,9 +423,9 @@ def test_save_codex_tokens_does_not_overwrite_independent_manual_entries(tmp_pat
     entries whose tokens never matched the singleton are independent accounts
     and must be left alone.
     """
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
-    (lydia_home / "auth.json").write_text(json.dumps({
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
+    (alice_home / "auth.json").write_text(json.dumps({
         "version": 1,
         "providers": {
             "openai-codex": {
@@ -471,7 +471,7 @@ def test_save_codex_tokens_does_not_overwrite_independent_manual_entries(tmp_pat
             ],
         },
     }))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     # User re-authenticates account A — fresh device-code login produces new
     # tokens.  The legitimate update is the seeded singleton mirror; the
@@ -481,7 +481,7 @@ def test_save_codex_tokens_does_not_overwrite_independent_manual_entries(tmp_pat
         last_refresh="2026-06-05T00:00:00Z",
     )
 
-    auth = json.loads((lydia_home / "auth.json").read_text())
+    auth = json.loads((alice_home / "auth.json").read_text())
     pool = auth["credential_pool"]["openai-codex"]
 
     # Singleton-seeded entry: refreshed (legitimate sync).
@@ -518,9 +518,9 @@ def test_save_codex_tokens_still_refreshes_legacy_manual_alias(tmp_path, monkeyp
     The distinguishing signal: a legacy alias has access_token == previous
     singleton access_token; an independent account does not.
     """
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
-    (lydia_home / "auth.json").write_text(json.dumps({
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
+    (alice_home / "auth.json").write_text(json.dumps({
         "version": 1,
         "providers": {
             "openai-codex": {
@@ -554,14 +554,14 @@ def test_save_codex_tokens_still_refreshes_legacy_manual_alias(tmp_path, monkeyp
             ],
         },
     }))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     _save_codex_tokens(
         {"access_token": "fresh-at", "refresh_token": "fresh-rt"},
         last_refresh="2026-06-05T00:00:00Z",
     )
 
-    auth = json.loads((lydia_home / "auth.json").read_text())
+    auth = json.loads((alice_home / "auth.json").read_text())
     pool = auth["credential_pool"]["openai-codex"]
 
     # Singleton: refreshed.
@@ -589,9 +589,9 @@ def test_save_codex_tokens_handles_missing_previous_singleton_tokens(tmp_path, m
     pool entry can be a true alias and only the singleton-seeded entry gets
     written.
     """
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
-    (lydia_home / "auth.json").write_text(json.dumps({
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
+    (alice_home / "auth.json").write_text(json.dumps({
         "version": 1,
         "providers": {},
         "credential_pool": {
@@ -607,14 +607,14 @@ def test_save_codex_tokens_handles_missing_previous_singleton_tokens(tmp_path, m
             ],
         },
     }))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     _save_codex_tokens(
         {"access_token": "first-at", "refresh_token": "first-rt"},
         last_refresh="2026-06-05T00:00:00Z",
     )
 
-    auth = json.loads((lydia_home / "auth.json").read_text())
+    auth = json.loads((alice_home / "auth.json").read_text())
     pool = auth["credential_pool"]["openai-codex"]
     # Pre-existing independent entry with no relationship to a (now-new)
     # singleton MUST be preserved.
@@ -631,9 +631,9 @@ def test_save_codex_tokens_alias_match_uses_access_token_only(tmp_path, monkeypa
     have access_token but no refresh_token.  These should still be treated as
     aliases when the access_token matches.
     """
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
-    (lydia_home / "auth.json").write_text(json.dumps({
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
+    (alice_home / "auth.json").write_text(json.dumps({
         "version": 1,
         "providers": {
             "openai-codex": {
@@ -653,14 +653,14 @@ def test_save_codex_tokens_alias_match_uses_access_token_only(tmp_path, monkeypa
             ],
         },
     }))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     _save_codex_tokens(
         {"access_token": "new-at", "refresh_token": "new-rt"},
         last_refresh="2026-06-05T00:00:00Z",
     )
 
-    auth = json.loads((lydia_home / "auth.json").read_text())
+    auth = json.loads((alice_home / "auth.json").read_text())
     pool = auth["credential_pool"]["openai-codex"]
     alias = next(e for e in pool if e["id"] == "alias-no-refresh")
     # Treated as alias → refreshed with new tokens.
@@ -674,9 +674,9 @@ def test_save_codex_tokens_clears_error_markers_only_on_refreshed_entries(tmp_pa
     with their own stale-error markers must be left alone (their stale state
     is not the current re-auth's business).
     """
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
-    (lydia_home / "auth.json").write_text(json.dumps({
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
+    (alice_home / "auth.json").write_text(json.dumps({
         "version": 1,
         "providers": {
             "openai-codex": {
@@ -708,14 +708,14 @@ def test_save_codex_tokens_clears_error_markers_only_on_refreshed_entries(tmp_pa
             ],
         },
     }))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     _save_codex_tokens(
         {"access_token": "fresh-at", "refresh_token": "fresh-rt"},
         last_refresh="2026-06-05T00:00:00Z",
     )
 
-    auth = json.loads((lydia_home / "auth.json").read_text())
+    auth = json.loads((alice_home / "auth.json").read_text())
     pool = auth["credential_pool"]["openai-codex"]
 
     # Singleton: refreshed AND error markers cleared.
@@ -754,13 +754,13 @@ def test_import_codex_cli_tokens_missing(tmp_path, monkeypatch):
 
 def test_codex_tokens_not_written_to_shared_file(tmp_path, monkeypatch):
     """Verify _save_codex_tokens writes only to Alice auth store, not ~/.codex/."""
-    lydia_home = tmp_path / "alice"
+    alice_home = tmp_path / "alice"
     codex_home = tmp_path / "codex-cli"
-    lydia_home.mkdir(parents=True, exist_ok=True)
+    alice_home.mkdir(parents=True, exist_ok=True)
     codex_home.mkdir(parents=True, exist_ok=True)
 
-    (lydia_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    (alice_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
 
     _save_codex_tokens({"access_token": "alice-at", "refresh_token": "alice-rt"})
@@ -773,10 +773,10 @@ def test_codex_tokens_not_written_to_shared_file(tmp_path, monkeypatch):
     assert data["tokens"]["access_token"] == "alice-at"
 
 
-def test_resolve_returns_lydia_auth_store_source(tmp_path, monkeypatch):
-    lydia_home = tmp_path / "alice"
-    _setup_lydia_auth(lydia_home)
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+def test_resolve_returns_alice_auth_store_source(tmp_path, monkeypatch):
+    alice_home = tmp_path / "alice"
+    _setup_alice_auth(alice_home)
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     creds = resolve_codex_runtime_credentials()
     assert creds["source"] == "alice-auth-store"

@@ -95,7 +95,7 @@ export const $petActivity = atom<PetActivity>({})
 /**
  * Profile the pet RPCs should resolve against. Pets are per-profile — the active
  * pet (`display.pet.*`) and the installed sprites live under each profile's
- * LYDIA_HOME — so every pet RPC carries this. The gateway no-ops it for the
+ * ALICE_HOME — so every pet RPC carries this. The gateway no-ops it for the
  * launch profile (own-profile backends already resolve it) and rebinds for any
  * other profile, which is what makes per-profile pets work in app-global remote
  * mode (one backend serving every profile).

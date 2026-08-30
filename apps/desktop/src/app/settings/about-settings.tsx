@@ -21,7 +21,7 @@ import {
 import { ListRow, SectionHeading, SettingsContent } from './primitives'
 import { UninstallSection } from './uninstall-section'
 
-const RELEASE_NOTES_URL = 'https://10.1.200.116:3000/arquant-admin/NewLydia/releases'
+const RELEASE_NOTES_URL = 'https://10.1.200.116:3000/arquant-admin/NewAlice/releases'
 
 function relativeTime(ms: number | undefined, a: Translations['settings']['about']) {
   if (!ms) {
@@ -158,7 +158,7 @@ export function AboutSettings() {
                 href={RELEASE_NOTES_URL}
                 onClick={event => {
                   event.preventDefault()
-                  void window.lydiaDesktop?.openExternal?.(RELEASE_NOTES_URL)
+                  void window.aliceDesktop?.openExternal?.(RELEASE_NOTES_URL)
                 }}
                 rel="noreferrer"
                 target="_blank"

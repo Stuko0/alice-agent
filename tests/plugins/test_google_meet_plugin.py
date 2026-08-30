@@ -25,10 +25,10 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _isolate_home(tmp_path, monkeypatch):
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
-    yield lydia_home
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
+    yield alice_home
 
 
 # ---------------------------------------------------------------------------
@@ -173,9 +173,9 @@ def test_start_spawns_subprocess_and_writes_active_pointer(tmp_path):
     assert res["ok"] is True
     assert res["meeting_id"] == "abc-defg-hij"
     assert res["pid"] == 99999
-    assert captured_env["LYDIA_MEET_URL"] == "https://meet.google.com/abc-defg-hij"
-    assert captured_env["LYDIA_MEET_GUEST_NAME"] == "Test Bot"
-    assert captured_env["LYDIA_MEET_DURATION"] == "15m"
+    assert captured_env["ALICE_MEET_URL"] == "https://meet.google.com/abc-defg-hij"
+    assert captured_env["ALICE_MEET_GUEST_NAME"] == "Test Bot"
+    assert captured_env["ALICE_MEET_DURATION"] == "15m"
     # python -m plugins.google_meet.meet_bot
     assert any("plugins.google_meet.meet_bot" in a for a in captured_argv)
 
@@ -456,11 +456,11 @@ def test_start_realtime_env_vars_threaded_through():
             realtime_instructions="Be brief.",
             realtime_api_key="sk-test",
         )
-    assert captured_env["LYDIA_MEET_MODE"] == "realtime"
-    assert captured_env["LYDIA_MEET_REALTIME_MODEL"] == "gpt-realtime"
-    assert captured_env["LYDIA_MEET_REALTIME_VOICE"] == "alloy"
-    assert captured_env["LYDIA_MEET_REALTIME_INSTRUCTIONS"] == "Be brief."
-    assert captured_env["LYDIA_MEET_REALTIME_KEY"] == "sk-test"
+    assert captured_env["ALICE_MEET_MODE"] == "realtime"
+    assert captured_env["ALICE_MEET_REALTIME_MODEL"] == "gpt-realtime"
+    assert captured_env["ALICE_MEET_REALTIME_VOICE"] == "alloy"
+    assert captured_env["ALICE_MEET_REALTIME_INSTRUCTIONS"] == "Be brief."
+    assert captured_env["ALICE_MEET_REALTIME_KEY"] == "sk-test"
 
 
 def test_meet_join_accepts_realtime_mode():

@@ -266,4 +266,4 @@ curl -X POST -H "Content-Type: application/json" -H "X-Alice-Session-Token: $TOK
   http://localhost:PORT/api/model/set
 ```
 
-The session token is injected into the dashboard HTML at startup and rotates on every server restart. Grab it from the browser devtools (`window.__LYDIA_SESSION_TOKEN__`) if you're scripting against a running dashboard.
+The session token is injected into the dashboard HTML at startup and rotates on every server restart. Grab it from the browser devtools (`window.__ALICE_SESSION_TOKEN__`) if you're scripting against a running dashboard.

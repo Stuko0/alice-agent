@@ -1,11 +1,11 @@
 """Regression for #21454: re-running install.sh on a symlinked prior install.
 
 Older versions of ``install.sh`` created ``$command_link_dir/alice`` as a
-symlink to the pip-generated entry point at ``$LYDIA_BIN`` (i.e.
+symlink to the pip-generated entry point at ``$ALICE_BIN`` (i.e.
 ``venv/bin/alice``). When ``setup_path()`` later switched to writing a bash
 shim with ``cat > "$command_link_dir/alice" <<EOF``, the redirect followed
 the existing symlink and overwrote the pip entry point with the shim. The
-shim's ``exec "$LYDIA_BIN" "$@"`` then self-recursed and ``alice`` hung on
+shim's ``exec "$ALICE_BIN" "$@"`` then self-recursed and ``alice`` hung on
 every invocation.
 
 These tests pin the fix: ``setup_path()`` must remove ``$command_link_dir/alice``
@@ -67,7 +67,7 @@ def test_re_running_setup_path_block_preserves_pip_entry_point(tmp_path: Path) -
           local_bin/alice       <- symlink → ../venv/bin/alice  (old install)
 
     Then we run the exact shim-write block from setup_path() with
-    ``LYDIA_BIN`` and ``command_link_dir`` pointed at this fixture. The fix
+    ``ALICE_BIN`` and ``command_link_dir`` pointed at this fixture. The fix
     requires that, after the run:
 
       * ``venv/bin/alice`` still contains its original pip-script body
@@ -90,7 +90,7 @@ def test_re_running_setup_path_block_preserves_pip_entry_point(tmp_path: Path) -
 
     block = _extract_setup_path_shim_block()
     # Drive the block with the real env vars setup_path() sets.
-    script = f'set -e\nLYDIA_BIN={pip_entry!s}\ncommand_link_dir={command_link_dir!s}\n{block}\n'
+    script = f'set -e\nALICE_BIN={pip_entry!s}\ncommand_link_dir={command_link_dir!s}\n{block}\n'
     result = subprocess.run(
         ["bash", "-c", script],
         capture_output=True,

@@ -115,7 +115,7 @@ const stopMemoryMonitor = startMemoryMonitor({
   }
 })
 
-if (process.env.LYDIA_HEAPDUMP_ON_START === '1') {
+if (process.env.ALICE_HEAPDUMP_ON_START === '1') {
   void performHeapDump('manual')
 }
 

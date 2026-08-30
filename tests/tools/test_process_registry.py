@@ -10,7 +10,7 @@ import time
 import pytest
 from unittest.mock import MagicMock, patch
 
-from tools.environments.local import _LYDIA_PROVIDER_ENV_FORCE_PREFIX
+from tools.environments.local import _ALICE_PROVIDER_ENV_FORCE_PREFIX
 from tools.process_registry import (
     ProcessRegistry,
     ProcessSession,
@@ -196,13 +196,13 @@ def test_close_terminal_tool_routes_to_registry(monkeypatch):
 
 
 def test_close_terminal_tool_gated_on_desktop(monkeypatch):
-    """Hidden unless LYDIA_DESKTOP is set (mirrors read_terminal gating)."""
+    """Hidden unless ALICE_DESKTOP is set (mirrors read_terminal gating)."""
     from tools.close_terminal_tool import check_close_terminal_requirements
 
-    monkeypatch.delenv("LYDIA_DESKTOP", raising=False)
+    monkeypatch.delenv("ALICE_DESKTOP", raising=False)
     assert check_close_terminal_requirements() is False
 
-    monkeypatch.setenv("LYDIA_DESKTOP", "1")
+    monkeypatch.setenv("ALICE_DESKTOP", "1")
     assert check_close_terminal_requirements() is True
 
 
@@ -688,7 +688,7 @@ class TestSpawnEnvSanitization:
                 env_vars={
                     "MY_CUSTOM_VAR": "keep-me",
                     "TELEGRAM_BOT_TOKEN": "drop-me",
-                    f"{_LYDIA_PROVIDER_ENV_FORCE_PREFIX}TELEGRAM_BOT_TOKEN": "forced-bot-token",
+                    f"{_ALICE_PROVIDER_ENV_FORCE_PREFIX}TELEGRAM_BOT_TOKEN": "forced-bot-token",
                 },
             )
 
@@ -696,7 +696,7 @@ class TestSpawnEnvSanitization:
         assert env["MY_CUSTOM_VAR"] == "keep-me"
         assert env["TELEGRAM_BOT_TOKEN"] == "forced-bot-token"
         assert "FIRECRAWL_API_KEY" not in env
-        assert f"{_LYDIA_PROVIDER_ENV_FORCE_PREFIX}TELEGRAM_BOT_TOKEN" not in env
+        assert f"{_ALICE_PROVIDER_ENV_FORCE_PREFIX}TELEGRAM_BOT_TOKEN" not in env
         assert env["PYTHONUNBUFFERED"] == "1"
 
     def test_spawn_via_env_uses_backend_temp_dir_for_artifacts(self, registry):
@@ -720,11 +720,11 @@ class TestSpawnEnvSanitization:
 
         bg_command = env.commands[0][0]
         assert session.pid == 4321
-        assert "/data/data/com.termux/files/usr/tmp/lydia_bg_" in bg_command
+        assert "/data/data/com.termux/files/usr/tmp/alice_bg_" in bg_command
         assert ".exit" in bg_command
         assert "rc=$?;" in bg_command
-        assert " > /tmp/lydia_bg_" not in bg_command
-        assert "cat /tmp/lydia_bg_" not in bg_command
+        assert " > /tmp/alice_bg_" not in bg_command
+        assert "cat /tmp/alice_bg_" not in bg_command
         fake_thread.start.assert_called_once()
 
     def test_spawn_via_env_checks_returncode_when_wrapper_fails(self, registry):
@@ -797,14 +797,14 @@ class TestSpawnEnvSanitization:
             registry._env_poller_loop(
                 session,
                 env,
-                "/path with spaces/lydia_bg.log",
-                "/path with spaces/lydia_bg.pid",
-                "/path with spaces/lydia_bg.exit",
+                "/path with spaces/alice_bg.log",
+                "/path with spaces/alice_bg.pid",
+                "/path with spaces/alice_bg.exit",
             )
 
-        assert env.commands[0][0] == "cat '/path with spaces/lydia_bg.log' 2>/dev/null"
-        assert env.commands[1][0] == "kill -0 \"$(cat '/path with spaces/lydia_bg.pid' 2>/dev/null)\" 2>/dev/null; echo $?"
-        assert env.commands[2][0] == "cat '/path with spaces/lydia_bg.exit' 2>/dev/null"
+        assert env.commands[0][0] == "cat '/path with spaces/alice_bg.log' 2>/dev/null"
+        assert env.commands[1][0] == "kill -0 \"$(cat '/path with spaces/alice_bg.pid' 2>/dev/null)\" 2>/dev/null; echo $?"
+        assert env.commands[2][0] == "cat '/path with spaces/alice_bg.exit' 2>/dev/null"
 
 
 # =========================================================================

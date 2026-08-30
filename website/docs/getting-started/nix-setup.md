@@ -41,17 +41,17 @@ No clone needed. Nix fetches, builds, and runs everything:
 
 ```bash
 # Run the desktop app
-nix run github:NousResearch/alice-agent#desktop
+nix run github:Stuko0/alice-agent#desktop
 
 # Or install persistently
-nix profile install github:NousResearch/alice-agent#desktop
+nix profile install github:Stuko0/alice-agent#desktop
 
 # run the tui
-nix run github:NousResearch/alice-agent -- setup
-nix run github:NousResearch/alice-agent -- --tui
+nix run github:Stuko0/alice-agent -- setup
+nix run github:Stuko0/alice-agent -- --tui
 
 # or install it in your profile
-nix profile install github:NousResearch/alice-agent
+nix profile install github:Stuko0/alice-agent
 alice setup
 alice --tui
 ```
@@ -69,7 +69,7 @@ The `default` package adds ~700 MB to the closure. If you only need messaging pl
 <summary><strong>Running from a local clone</strong></summary>
 
 ```bash
-git clone https://github.com/NousResearch/alice-agent.git
+git clone https://github.com/Stuko0/alice-agent.git
 cd alice-agent
 nix develop
 alice setup
@@ -94,7 +94,7 @@ This module requires NixOS. For non-NixOS systems (macOS, other Linux distros), 
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    alice-agent.url = "github:NousResearch/alice-agent";
+    alice-agent.url = "github:Stuko0/alice-agent";
   };
 
   outputs = { nixpkgs, alice-agent, ... }: {
@@ -149,7 +149,7 @@ When `container.enable = true` and `addToSystemPackages = true`, **every** `alic
 - The routing is transparent: `alice chat`, `alice sessions list`, `alice version`, etc. all exec into the container under the hood
 - All CLI flags are forwarded as-is
 - If the container isn't running, the CLI retries briefly (5s with a spinner for interactive use, 10s silently for scripts) then fails with a clear error — no silent fallback
-- For developers working on the alice codebase, set `LYDIA_DEV=1` to bypass container routing and run the local checkout directly
+- For developers working on the alice codebase, set `ALICE_DEV=1` to bypass container routing and run the local checkout directly
 
 Set `container.hostUsers` to create a `~/.alice` symlink to the service state directory, so the host CLI and the container share sessions, config, and memories:
 
@@ -554,7 +554,7 @@ When alice runs via the NixOS module, the following CLI commands are **blocked**
 
 This prevents drift between what Nix declares and what's on disk. Detection uses two signals:
 
-1. **`LYDIA_MANAGED=true`** environment variable — set by the systemd service, visible to the gateway process
+1. **`ALICE_MANAGED=true`** environment variable — set by the systemd service, visible to the gateway process
 2. **`.managed` marker file** in `ALICE_HOME` — set by the activation script, visible to interactive shells (e.g., `docker exec -it alice-agent alice config set ...` is also blocked)
 
 To change configuration, edit your Nix config and run `sudo nixos-rebuild switch`.
@@ -733,7 +733,7 @@ External flakes can override the package directly:
 
 ```nix
 {
-  inputs.alice-agent.url = "github:NousResearch/alice-agent";
+  inputs.alice-agent.url = "github:Stuko0/alice-agent";
   outputs = { alice-agent, nixpkgs, ... }: {
     nixpkgs.overlays = [ alice-agent.overlays.default ];
     # Then:
@@ -801,7 +801,7 @@ nix flake check
 nix build .#checks.x86_64-linux.package-contents   # binaries exist + version
 nix build .#checks.x86_64-linux.entry-points-sync  # pyproject.toml ↔ Nix package sync
 nix build .#checks.x86_64-linux.cli-commands        # gateway/config subcommands
-nix build .#checks.x86_64-linux.managed-guard       # LYDIA_MANAGED blocks mutation
+nix build .#checks.x86_64-linux.managed-guard       # ALICE_MANAGED blocks mutation
 nix build .#checks.x86_64-linux.bundled-skills      # skills present in package
 nix build .#checks.x86_64-linux.config-roundtrip    # merge script preserves user keys
 ```
@@ -814,8 +814,8 @@ nix build .#checks.x86_64-linux.config-roundtrip    # merge script preserves use
 | `package-contents` | `alice` and `alice-agent` binaries exist and `alice version` runs |
 | `entry-points-sync` | Every `[project.scripts]` entry in `pyproject.toml` has a wrapped binary in the Nix package |
 | `cli-commands` | `alice --help` exposes `gateway` and `config` subcommands |
-| `managed-guard` | `LYDIA_MANAGED=true alice config set ...` prints the NixOS error |
-| `bundled-skills` | Skills directory exists, contains SKILL.md files, `LYDIA_BUNDLED_SKILLS` is set in wrapper |
+| `managed-guard` | `ALICE_MANAGED=true alice config set ...` prints the NixOS error |
+| `bundled-skills` | Skills directory exists, contains SKILL.md files, `ALICE_BUNDLED_SKILLS` is set in wrapper |
 | `config-roundtrip` | 7 merge scenarios: fresh install, Nix override, user key preservation, mixed merge, MCP additive merge, nested deep merge, idempotency |
 
 </details>

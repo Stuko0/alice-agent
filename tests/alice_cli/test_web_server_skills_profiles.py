@@ -21,7 +21,7 @@ def _write_skill(skills_dir, name, description="test skill"):
 
 
 @pytest.fixture
-def isolated_profiles(tmp_path, monkeypatch, _isolate_lydia_home):
+def isolated_profiles(tmp_path, monkeypatch, _isolate_alice_home):
     """Isolated default home + one named profile, each with its own skills."""
     from alice_constants import get_alice_home
     from alice_cli import profiles
@@ -36,7 +36,7 @@ def isolated_profiles(tmp_path, monkeypatch, _isolate_lydia_home):
     _write_skill(default_home / "skills", "dashboard-skill")
     _write_skill(worker_home / "skills", "worker-skill")
 
-    monkeypatch.setattr(profiles, "_get_default_lydia_home", lambda: default_home)
+    monkeypatch.setattr(profiles, "_get_default_alice_home", lambda: default_home)
     monkeypatch.setattr(profiles, "_get_profiles_root", lambda: profiles_root)
     return {"default": default_home, "worker_alpha": worker_home}
 
@@ -171,7 +171,7 @@ class TestProfileScopedHubActions:
             calls.append((list(subcommand), name))
             return _FakeProc()
 
-        monkeypatch.setattr(web_server, "_spawn_lydia_action", _fake_spawn)
+        monkeypatch.setattr(web_server, "_spawn_alice_action", _fake_spawn)
         resp = client.post(
             "/api/skills/hub/install",
             json={"identifier": "official/demo", "profile": "worker_alpha"},
@@ -196,7 +196,7 @@ class TestProfileScopedHubActions:
 
         monkeypatch.setattr(
             web_server,
-            "_spawn_lydia_action",
+            "_spawn_alice_action",
             lambda subcommand, name: calls.append(list(subcommand)) or _FakeProc(),
         )
         resp = client.post(

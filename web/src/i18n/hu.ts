@@ -120,8 +120,8 @@ export const hu: Translations = {
     starting: "Indul",
     startedInBackground: "Háttérben elindítva — kövesse a naplókat a folyamathoz",
     stopped: "Leállítva",
-    updateLydia: "Alice frissítése",
-    updatingLydia: "Alice frissítése…",
+    updateAlice: "Alice frissítése",
+    updatingAlice: "Alice frissítése…",
     waitingForOutput: "Várakozás a kimenetre…",
   },
 
@@ -513,7 +513,7 @@ export const hu: Translations = {
       highest_tier: "Legmagasabb szint",
       highest_tier_hint: "Copper → Silver → Gold → Diamond → Olympian",
       latest: "Legutóbbi",
-      latest_hint_empty: "futtasd többet a Lydiat",
+      latest_hint_empty: "futtasd többet a Alicet",
       none_yet: "Még semmi",
     },
     state: {

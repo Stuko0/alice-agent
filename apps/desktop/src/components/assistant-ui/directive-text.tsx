@@ -9,13 +9,13 @@ import { ZoomableImage } from '@/components/chat/zoomable-image'
 import { extractEmbeddedImages } from '@/lib/embedded-images'
 import { gatewayMediaDataUrl, isRemoteGateway } from '@/lib/media'
 
-const LYDIA_REF_TYPES = ['file', 'folder', 'url', 'image', 'tool', 'line', 'terminal', 'session'] as const
-type LydiaRefType = (typeof LYDIA_REF_TYPES)[number]
+const ALICE_REF_TYPES = ['file', 'folder', 'url', 'image', 'tool', 'line', 'terminal', 'session'] as const
+type AliceRefType = (typeof ALICE_REF_TYPES)[number]
 
 /** Single source of truth for chip icon glyphs (Tabler outline @ 24×24).
  * Used both by the rendered <DirectiveIcon> and the raw SVG markup the
  * contenteditable composer embeds via `directiveIconSvg`. */
-const ICON_PATHS: Record<LydiaRefType, string[]> = {
+const ICON_PATHS: Record<AliceRefType, string[]> = {
   file: [
     'M14 3v4a1 1 0 0 0 1 1h4',
     'M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2',
@@ -52,7 +52,7 @@ const ICON_FALLBACK = ['M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0', 'M16 12v1.5a2.5 2.5
 const SVG_ATTRS =
   'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
 
-const iconPathsFor = (type: string) => ICON_PATHS[type as LydiaRefType] ?? ICON_FALLBACK
+const iconPathsFor = (type: string) => ICON_PATHS[type as AliceRefType] ?? ICON_FALLBACK
 
 /** SVG markup string for embedding directly in HTML (composer contenteditable). */
 export function directiveIconSvg(type: string) {
@@ -158,7 +158,7 @@ export const DIRECTIVE_CHIP_CLASS =
  */
 const CANONICAL_DIRECTIVE_RE = /:([\w-]{1,64})\[([^\]\n]{1,1024})\](?:\{name=([^}\n]{1,1024})\})?/g
 
-const LYDIA_DIRECTIVE_RE = new RegExp(
+const ALICE_DIRECTIVE_RE = new RegExp(
   '@(file|folder|url|image|tool|line|terminal|session):(' +
     '`[^`\\n]+`' +
     '|"[^"\\n]+"' +
@@ -209,7 +209,7 @@ export function formatRefValue(value: string): string {
   return value
 }
 
-export const lydiaDirectiveFormatter: Unstable_DirectiveFormatter = {
+export const aliceDirectiveFormatter: Unstable_DirectiveFormatter = {
   serialize(item: Unstable_TriggerItem): string {
     const metadata = item.metadata as { rawText?: unknown; insertId?: unknown } | undefined
     const rawText = typeof metadata?.rawText === 'string' ? metadata.rawText : null
@@ -256,14 +256,14 @@ function parseDirectiveText(text: string): Unstable_DirectiveSegment[] {
       label: match[2] || match[3] || '',
       id: match[3] || match[2] || ''
     })),
-    ...Array.from(text.matchAll(LYDIA_DIRECTIVE_RE)).map(match => {
+    ...Array.from(text.matchAll(ALICE_DIRECTIVE_RE)).map(match => {
       const id = unwrapRefValue(match[2] || '')
 
       return {
         start: match.index ?? 0,
         end: (match.index ?? 0) + match[0].length,
         type: match[1] || 'file',
-        label: shortLabel(match[1] as LydiaRefType, id),
+        label: shortLabel(match[1] as AliceRefType, id),
         id
       }
     })
@@ -299,7 +299,7 @@ function parseDirectiveText(text: string): Unstable_DirectiveSegment[] {
   return segments
 }
 
-function shortLabel(type: LydiaRefType, id: string): string {
+function shortLabel(type: AliceRefType, id: string): string {
   if (type === 'terminal') {
     return id || 'terminal'
   }
@@ -337,7 +337,7 @@ function safeEmbeddedImages(text: string) {
 
 function safeDirectiveSegments(text: string): Unstable_DirectiveSegment[] {
   try {
-    return [...lydiaDirectiveFormatter.parse(text)]
+    return [...aliceDirectiveFormatter.parse(text)]
   } catch {
     return [{ kind: 'text', text }]
   }
@@ -403,7 +403,7 @@ const DirectiveImage: FC<{ id: string; label: string }> = ({ id, label }) => {
     // Remote gateway: the image lives on the gateway's disk, not ours — fetch
     // it over the authenticated API. Local: read it straight off this disk.
     const load =
-      window.lydiaDesktop && isRemoteGateway() ? gatewayMediaDataUrl(id) : window.lydiaDesktop?.readFileDataUrl(id)
+      window.aliceDesktop && isRemoteGateway() ? gatewayMediaDataUrl(id) : window.aliceDesktop?.readFileDataUrl(id)
 
     void Promise.resolve(load)
       .then(url => alive && url && setSrc(url))

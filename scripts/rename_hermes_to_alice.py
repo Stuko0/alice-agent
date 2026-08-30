@@ -7,9 +7,9 @@ an exclusion list to avoid corrupting external references, binary files,
 and auto-generated content.
 
 Usage:
-    python scripts/rename_hermes_to_lydia.py --dry-run    # preview changes
-    python scripts/rename_hermes_to_lydia.py              # apply changes
-    python scripts/rename_hermes_to_lydia.py --phase 3    # run specific phase only
+    python scripts/rename_hermes_to_alice.py --dry-run    # preview changes
+    python scripts/rename_hermes_to_alice.py              # apply changes
+    python scripts/rename_hermes_to_alice.py --phase 3    # run specific phase only
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ SKIP_DIRS = {
 SKIP_FILES = {
     "uv.lock",
     "package-lock.json",
-    "rename_hermes_to_lydia.py",  # don't modify ourselves
+    "rename_hermes_to_alice.py",  # don't modify ourselves
 }
 
 # File extensions to treat as text (everything else is skipped)
@@ -66,7 +66,7 @@ EXCLUSION_PATTERNS = [
     r"Hermes 2",                  # Model name "Hermes 2 Pro" etc.
     r"Hermes 3",                  # Model name
     r"teknium/OpenHermes",        # HuggingFace model
-    r"NousResearch/Hermes",       # HuggingFace model paths (keep model refs)
+    r"Stuko0/alice-agent",       # HuggingFace model paths (keep model refs)
 ]
 
 # Compile exclusion patterns
@@ -85,8 +85,8 @@ REPLACEMENTS = [
     ("nousresearch/hermes-agent", "stuk0o/alice-agent"),
 
     # === GitHub/Gitea repo URLs ===
-    ("github.com/NousResearch/hermes-agent", "10.1.200.116:3000/arquant-admin/NewLydia"),
-    ("NousResearch/hermes-agent", "arquant-admin/NewLydia"),
+    ("github.com/Stuko0/hermes-agent", "10.1.200.116:3000/arquant-admin/NewAlice"),
+    ("Stuko0/hermes-agent", "arquant-admin/NewAlice"),
 
     # === Python package (underscored) ===
     ("hermes_agent", "alice_agent"),
@@ -100,16 +100,16 @@ REPLACEMENTS = [
     ("hermes_cli", "alice_cli"),
 
     # === Class names ===
-    ("HermesMCPOAuthProvider", "LydiaMCPOAuthProvider"),
-    ("HermesTokenStorage", "LydiaTokenStorage"),
-    ("HermesIndexSource", "LydiaIndexSource"),
-    ("HermesACPAgent", "LydiaACPAgent"),
-    ("HermesOverlay", "LydiaOverlay"),
+    ("HermesMCPOAuthProvider", "AliceMCPOAuthProvider"),
+    ("HermesTokenStorage", "AliceTokenStorage"),
+    ("HermesIndexSource", "AliceIndexSource"),
+    ("HermesACPAgent", "AliceACPAgent"),
+    ("HermesOverlay", "AliceOverlay"),
     ("HermesCLI", "AliceCLI"),
 
     # === Function/method names (long → short) ===
     ("_get_platform_default_hermes_home", "_get_platform_default_alice_home"),
-    ("_detect_concurrent_hermes_instances", "_detect_concurrent_lydia_instances"),
+    ("_detect_concurrent_hermes_instances", "_detect_concurrent_alice_instances"),
     ("set_hermes_home_override", "set_alice_home_override"),
     ("get_hermes_home_override", "get_alice_home_override"),
     ("reset_hermes_home_override", "reset_alice_home_override"),
@@ -119,23 +119,23 @@ REPLACEMENTS = [
     ("find_hermes_node_executable", "find_alice_node_executable"),
     ("iter_hermes_node_dirs", "iter_alice_node_dirs"),
     ("with_hermes_node_path", "with_alice_node_path"),
-    ("hermesManagedNodePathEntries", "lydiaManagedNodePathEntries"),
+    ("hermesManagedNodePathEntries", "aliceManagedNodePathEntries"),
     ("get_hermes_home", "get_alice_home"),
     ("get_hermes_dir", "get_alice_dir"),
 
     # === Environment variables ===
     ("ALICE_HOME_LEGACY", "ALICE_HOME"),
-    ("HERMES_MODEL", "LYDIA_MODEL"),
-    ("HERMES_PROVIDER", "LYDIA_PROVIDER"),
-    ("HERMES_API_KEY", "LYDIA_API_KEY"),
-    ("HERMES_PROFILE", "LYDIA_PROFILE"),
-    ("HERMES_DEBUG", "LYDIA_DEBUG"),
-    ("HERMES_CONFIG", "LYDIA_CONFIG"),
-    ("HERMES_LOG_LEVEL", "LYDIA_LOG_LEVEL"),
-    ("HERMES_QUIET", "LYDIA_QUIET"),
-    ("HERMES_SKIP_NEWS", "LYDIA_SKIP_NEWS"),
-    ("HERMES_NO_COLOR", "LYDIA_NO_COLOR"),
-    ("HERMES_GATEWAY_URL", "LYDIA_GATEWAY_URL"),
+    ("HERMES_MODEL", "ALICE_MODEL"),
+    ("HERMES_PROVIDER", "ALICE_PROVIDER"),
+    ("HERMES_API_KEY", "ALICE_API_KEY"),
+    ("HERMES_PROFILE", "ALICE_PROFILE"),
+    ("HERMES_DEBUG", "ALICE_DEBUG"),
+    ("HERMES_CONFIG", "ALICE_CONFIG"),
+    ("HERMES_LOG_LEVEL", "ALICE_LOG_LEVEL"),
+    ("HERMES_QUIET", "ALICE_QUIET"),
+    ("HERMES_SKIP_NEWS", "ALICE_SKIP_NEWS"),
+    ("HERMES_NO_COLOR", "ALICE_NO_COLOR"),
+    ("HERMES_GATEWAY_URL", "ALICE_GATEWAY_URL"),
 
     # === Filesystem paths ===
     ("~/.hermes", "~/.alice"),

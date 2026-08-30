@@ -9,7 +9,7 @@ change-detector.
 from __future__ import annotations
 
 from agent import learning_graph
-from alice_constants import reset_lydia_home_override, set_lydia_home_override
+from alice_constants import reset_alice_home_override, set_alice_home_override
 
 
 def _node(name: str, category: str, related=None):
@@ -73,11 +73,11 @@ def test_memory_is_cards_split_on_separator(tmp_path):
         "Project uses pytest with xdist\n§\nUser prefers concise responses",
         encoding="utf-8",
     )
-    token = set_lydia_home_override(home)
+    token = set_alice_home_override(home)
     try:
         graph = learning_graph.build_learning_graph()
     finally:
-        reset_lydia_home_override(token)
+        reset_alice_home_override(token)
 
     titles = [c["title"] for c in graph["memory"]]
     assert "Project uses pytest with xdist" in titles
@@ -91,11 +91,11 @@ def test_memory_is_cards_split_on_separator(tmp_path):
 def test_full_payload_shape_and_edge_integrity(tmp_path):
     home = tmp_path / ".alice"
     home.mkdir()
-    token = set_lydia_home_override(home)
+    token = set_alice_home_override(home)
     try:
         graph = learning_graph.build_learning_graph()
     finally:
-        reset_lydia_home_override(token)
+        reset_alice_home_override(token)
 
     ids = {n["id"] for n in graph["nodes"]}
     assert all(e["source"] in ids and e["target"] in ids for e in graph["edges"])

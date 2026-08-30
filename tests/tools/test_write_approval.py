@@ -16,8 +16,8 @@ import pytest
 
 
 @pytest.fixture
-def lydia_home(monkeypatch):
-    d = tempfile.mkdtemp(prefix="lydia_wa_test_")
+def alice_home(monkeypatch):
+    d = tempfile.mkdtemp(prefix="alice_wa_test_")
     home = os.path.join(d, ".alice")
     os.makedirs(home)
     monkeypatch.setenv("ALICE_HOME", home)
@@ -36,14 +36,14 @@ def _set_approval(subsystem, enabled):
 # Config resolution
 # ---------------------------------------------------------------------------
 
-def test_default_gate_is_off(lydia_home):
+def test_default_gate_is_off(alice_home):
     from tools import write_approval as wa
     # Default: gate off → writes flow freely.
     assert wa.write_approval_enabled("memory") is False
     assert wa.write_approval_enabled("skills") is False
 
 
-def test_invalid_subsystem_is_off(lydia_home):
+def test_invalid_subsystem_is_off(alice_home):
     from tools import write_approval as wa
     assert wa.write_approval_enabled("bogus") is False
 
@@ -67,7 +67,7 @@ def test_normalize_enabled_coerces_values():
 # Memory gate
 # ---------------------------------------------------------------------------
 
-def test_memory_gate_off_allows_write(lydia_home):
+def test_memory_gate_off_allows_write(alice_home):
     # Default (gate off) → write straight through, no staging.
     from tools.memory_tool import memory_tool, MemoryStore
     from tools import write_approval as wa
@@ -78,7 +78,7 @@ def test_memory_gate_off_allows_write(lydia_home):
     assert wa.pending_count("memory") == 0
 
 
-def test_memory_gate_on_no_interactive_stages(lydia_home):
+def test_memory_gate_on_no_interactive_stages(alice_home):
     # Gate on, no approval callback / not a gateway context → stage.
     from tools.memory_tool import memory_tool, MemoryStore
     from tools import write_approval as wa
@@ -94,7 +94,7 @@ def test_memory_gate_on_no_interactive_stages(lydia_home):
     assert pend[0]["id"] == r["pending_id"]
 
 
-def test_memory_gate_on_then_apply(lydia_home):
+def test_memory_gate_on_then_apply(alice_home):
     from tools.memory_tool import memory_tool, MemoryStore, apply_memory_pending
     from tools import write_approval as wa
     _set_approval("memory", True)
@@ -107,7 +107,7 @@ def test_memory_gate_on_then_apply(lydia_home):
     assert "approved entry" in store.user_entries[0]
 
 
-def test_cli_memory_approve_without_live_agent_uses_fresh_store(lydia_home, capsys):
+def test_cli_memory_approve_without_live_agent_uses_fresh_store(alice_home, capsys):
     """#46783: ``/memory approve`` from a context with no live agent (e.g. the
     Desktop GUI) passed ``memory_store=None`` into the shared handler, which
     returned "memory store unavailable" and applied nothing. The CLI handler must
@@ -137,7 +137,7 @@ def test_cli_memory_approve_without_live_agent_uses_fresh_store(lydia_home, caps
     assert any("remember the launch date" in e for e in reloaded.memory_entries)
 
 
-def test_load_on_disk_store_honors_configured_char_limits(lydia_home, monkeypatch):
+def test_load_on_disk_store_honors_configured_char_limits(alice_home, monkeypatch):
     """load_on_disk_store() must read memory.memory_char_limit /
     user_char_limit from config so approvals applied without a live agent
     enforce the SAME caps as the live agent (agent_init.py). Falls back to
@@ -174,7 +174,7 @@ _SKILL = (
 )
 
 
-def test_skill_gate_off_allows_create(lydia_home):
+def test_skill_gate_off_allows_create(alice_home):
     # Default (gate off) → skill is created normally, not staged.
     import importlib
     import tools.skill_manager_tool as smt
@@ -185,7 +185,7 @@ def test_skill_gate_off_allows_create(lydia_home):
     assert wa.pending_count("skills") == 0
 
 
-def test_skill_gate_on_always_stages(lydia_home):
+def test_skill_gate_on_always_stages(alice_home):
     # Skills stage even in the foreground (too big to review inline).
     from tools.skill_manager_tool import skill_manage
     from tools import write_approval as wa
@@ -196,7 +196,7 @@ def test_skill_gate_on_always_stages(lydia_home):
     assert wa.pending_count("skills") == 1
 
 
-def test_skill_gate_on_then_apply_writes_file(lydia_home):
+def test_skill_gate_on_then_apply_writes_file(alice_home):
     # SKILLS_DIR is resolved at import time, so reload the skill module under
     # this test's ALICE_HOME to exercise the real on-disk write path.
     import importlib
@@ -211,7 +211,7 @@ def test_skill_gate_on_then_apply_writes_file(lydia_home):
     assert smt._find_skill("applied-skill") is not None
 
 
-def test_skill_create_diff_is_full_content(lydia_home):
+def test_skill_create_diff_is_full_content(alice_home):
     from tools.skill_manager_tool import skill_manage
     from tools import write_approval as wa
     _set_approval("skills", True)
@@ -225,7 +225,7 @@ def test_skill_create_diff_is_full_content(lydia_home):
 # Pending store CRUD
 # ---------------------------------------------------------------------------
 
-def test_pending_store_roundtrip(lydia_home):
+def test_pending_store_roundtrip(alice_home):
     from tools import write_approval as wa
     rec = wa.stage_write("memory", {"action": "add", "target": "user", "content": "x"},
                          summary="add x", origin="foreground")
@@ -241,14 +241,14 @@ def test_pending_store_roundtrip(lydia_home):
 # Shared command handler
 # ---------------------------------------------------------------------------
 
-def test_handle_pending_list_empty(lydia_home):
+def test_handle_pending_list_empty(alice_home):
     from alice_cli.write_approval_commands import handle_pending_subcommand
     from tools import write_approval as wa
     out = handle_pending_subcommand(wa.MEMORY, ["pending"])
     assert "No pending memory" in out
 
 
-def test_handle_approve_all(lydia_home):
+def test_handle_approve_all(alice_home):
     from alice_cli.write_approval_commands import handle_pending_subcommand
     from tools.memory_tool import MemoryStore
     from tools import write_approval as wa
@@ -263,7 +263,7 @@ def test_handle_approve_all(lydia_home):
     assert len(store.user_entries) == 2
 
 
-def test_handle_reject(lydia_home):
+def test_handle_reject(alice_home):
     from alice_cli.write_approval_commands import handle_pending_subcommand
     from tools import write_approval as wa
     rec = wa.stage_write("skills", {"action": "create", "name": "s"},
@@ -273,7 +273,7 @@ def test_handle_reject(lydia_home):
     assert wa.pending_count("skills") == 0
 
 
-def test_handle_approval_on(lydia_home):
+def test_handle_approval_on(alice_home):
     from alice_cli.write_approval_commands import handle_pending_subcommand
     from tools import write_approval as wa
     captured = {}
@@ -285,7 +285,7 @@ def test_handle_approval_on(lydia_home):
     assert "on" in out
 
 
-def test_handle_approval_off(lydia_home):
+def test_handle_approval_off(alice_home):
     from alice_cli.write_approval_commands import handle_pending_subcommand
     from tools import write_approval as wa
     captured = {}
@@ -297,7 +297,7 @@ def test_handle_approval_off(lydia_home):
     assert "off" in out
 
 
-def test_handle_mode_alias_still_works(lydia_home):
+def test_handle_mode_alias_still_works(alice_home):
     # 'mode' is kept as a back-compat alias for 'approval'.
     from alice_cli.write_approval_commands import handle_pending_subcommand
     from tools import write_approval as wa
@@ -310,7 +310,7 @@ def test_handle_mode_alias_still_works(lydia_home):
     assert "on" in out
 
 
-def test_handle_approval_invalid(lydia_home):
+def test_handle_approval_invalid(alice_home):
     from alice_cli.write_approval_commands import handle_pending_subcommand
     from tools import write_approval as wa
     out = handle_pending_subcommand(wa.MEMORY, ["approval", "bogus"],
@@ -318,7 +318,7 @@ def test_handle_approval_invalid(lydia_home):
     assert "Invalid value" in out
 
 
-def test_handle_unknown_subcommand_returns_none(lydia_home):
+def test_handle_unknown_subcommand_returns_none(alice_home):
     from alice_cli.write_approval_commands import handle_pending_subcommand
     from tools import write_approval as wa
     # An unrecognized /skills subcommand (e.g. 'search') must return None so
@@ -340,7 +340,7 @@ def approval_callback_cleanup():
     set_approval_callback(None)
 
 
-def test_memory_inline_approve_writes(lydia_home, approval_callback_cleanup):
+def test_memory_inline_approve_writes(alice_home, approval_callback_cleanup):
     from tools.memory_tool import memory_tool, MemoryStore
     from tools.terminal_tool import set_approval_callback
     from tools import write_approval as wa
@@ -363,7 +363,7 @@ def test_memory_inline_approve_writes(lydia_home, approval_callback_cleanup):
     assert "approved fact" in calls[0][0]
 
 
-def test_memory_inline_deny_blocks(lydia_home, approval_callback_cleanup):
+def test_memory_inline_deny_blocks(alice_home, approval_callback_cleanup):
     from tools.memory_tool import memory_tool, MemoryStore
     from tools.terminal_tool import set_approval_callback
     from tools import write_approval as wa
@@ -378,7 +378,7 @@ def test_memory_inline_deny_blocks(lydia_home, approval_callback_cleanup):
     assert wa.pending_count("memory") == 0  # denied, not staged
 
 
-def test_memory_inline_callback_error_stages(lydia_home, approval_callback_cleanup):
+def test_memory_inline_callback_error_stages(alice_home, approval_callback_cleanup):
     # If the prompt machinery fails, fall back to staging — never drop silently.
     from tools.memory_tool import memory_tool, MemoryStore
     from tools.terminal_tool import set_approval_callback
@@ -394,7 +394,7 @@ def test_memory_inline_callback_error_stages(lydia_home, approval_callback_clean
     assert wa.pending_count("memory") == 1
 
 
-def test_gateway_context_stages_not_prompts(lydia_home, monkeypatch):
+def test_gateway_context_stages_not_prompts(alice_home, monkeypatch):
     # A gateway session has no per-thread CLI callback; the dangerous-command
     # /approve round-trip lives in the pending-queue machinery which the gate
     # does not use. The gate must stage, never attempt an inline prompt
@@ -402,7 +402,7 @@ def test_gateway_context_stages_not_prompts(lydia_home, monkeypatch):
     from tools.memory_tool import memory_tool, MemoryStore
     from tools import write_approval as wa
     _set_approval("memory", True)
-    monkeypatch.setenv("LYDIA_GATEWAY_SESSION", "1")
+    monkeypatch.setenv("ALICE_GATEWAY_SESSION", "1")
 
     store = MemoryStore(); store.load_from_disk()
     r = json.loads(memory_tool("add", "memory", "gateway fact", store=store))
@@ -411,7 +411,7 @@ def test_gateway_context_stages_not_prompts(lydia_home, monkeypatch):
     assert wa.pending_count("memory") == 1
 
 
-def test_skills_never_prompt_inline_even_with_callback(lydia_home, approval_callback_cleanup):
+def test_skills_never_prompt_inline_even_with_callback(alice_home, approval_callback_cleanup):
     # Skills always stage — even when an interactive callback is registered.
     from tools.skill_manager_tool import skill_manage
     from tools.terminal_tool import set_approval_callback
@@ -429,7 +429,7 @@ def test_skills_never_prompt_inline_even_with_callback(lydia_home, approval_call
     assert wa.pending_count("skills") == 1
 
 
-def test_memory_invalid_params_rejected_before_staging(lydia_home):
+def test_memory_invalid_params_rejected_before_staging(alice_home):
     # Param validation must run BEFORE the gate so a broken write is rejected
     # immediately instead of staged and failing at approve time.
     from tools.memory_tool import memory_tool, MemoryStore

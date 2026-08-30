@@ -158,5 +158,5 @@ def test_ensure_dependency_uses_powershell_on_windows(tmp_path):
         assert "powershell" in cmd[0].lower()
         assert "-Ensure" in cmd
         assert cmd[cmd.index("-Ensure") + 1] == "node"
-        assert "-LydiaHome" in cmd
+        assert "-AliceHome" in cmd
         assert str(tmp_path / "fakehome") in cmd

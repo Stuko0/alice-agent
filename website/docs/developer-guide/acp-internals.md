@@ -27,7 +27,7 @@ alice acp / alice-acp / python -m acp_adapter
   -> parse --version / --check / --setup before server startup
   -> load ~/.alice/.env
   -> configure stderr logging
-  -> construct LydiaACPAgent
+  -> construct AliceACPAgent
   -> acp.run_agent(agent, use_unstable_protocol=True)
 ```
 
@@ -37,7 +37,7 @@ Stdout is reserved for ACP JSON-RPC transport. Human-readable logs go to stderr.
 
 ## Major components
 
-### `LydiaACPAgent`
+### `AliceACPAgent`
 
 `acp_adapter/server.py` implements the ACP agent protocol.
 

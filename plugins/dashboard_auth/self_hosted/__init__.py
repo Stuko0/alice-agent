@@ -60,10 +60,10 @@ same precedence convention as the ``nous`` plugin)::
           # credential — prefer the env var / ~/.alice/.env over config.yaml.
 
     # Environment overrides (Docker/Fly secret injection)
-    LYDIA_DASHBOARD_OIDC_ISSUER
-    LYDIA_DASHBOARD_OIDC_CLIENT_ID
-    LYDIA_DASHBOARD_OIDC_SCOPES        # optional; defaults to "openid profile email"
-    LYDIA_DASHBOARD_OIDC_CLIENT_SECRET # optional; set for a confidential client
+    ALICE_DASHBOARD_OIDC_ISSUER
+    ALICE_DASHBOARD_OIDC_CLIENT_ID
+    ALICE_DASHBOARD_OIDC_SCOPES        # optional; defaults to "openid profile email"
+    ALICE_DASHBOARD_OIDC_CLIENT_SECRET # optional; set for a confidential client
                                         # (the .env file is the canonical home —
                                         # it's a secret, not a behavioural setting)
 
@@ -238,7 +238,7 @@ class SelfHostedOIDCProvider(DashboardAuthProvider):
         # Same flat ``state=…;verifier=…`` cookie shape every provider uses;
         # the auth-route layer prepends ``provider=`` and parses it back out.
         cookie_payload = {
-            "lydia_session_pkce": f"state={state};verifier={code_verifier}",
+            "alice_session_pkce": f"state={state};verifier={code_verifier}",
         }
         return LoginStart(redirect_url=redirect_url, cookie_payload=cookie_payload)
 
@@ -788,7 +788,7 @@ def register(ctx) -> None:
     """Plugin entry — called by the plugin loader at startup.
 
     Registers :class:`SelfHostedOIDCProvider` only when both an issuer and a
-    client_id are configured (via ``LYDIA_DASHBOARD_OIDC_*`` env vars or the
+    client_id are configured (via ``ALICE_DASHBOARD_OIDC_*`` env vars or the
     ``dashboard.oauth.self_hosted`` block in config.yaml). Operator-owned
     loopback / ``--insecure`` dashboards leave these unset, so the plugin is a
     no-op for them.
@@ -803,27 +803,27 @@ def register(ctx) -> None:
     oidc_cfg = _oidc_subsection(oauth_section)
 
     issuer = _resolve_setting(
-        "LYDIA_DASHBOARD_OIDC_ISSUER", oidc_cfg.get("issuer")
+        "ALICE_DASHBOARD_OIDC_ISSUER", oidc_cfg.get("issuer")
     )
     client_id = _resolve_setting(
-        "LYDIA_DASHBOARD_OIDC_CLIENT_ID", oidc_cfg.get("client_id")
+        "ALICE_DASHBOARD_OIDC_CLIENT_ID", oidc_cfg.get("client_id")
     )
     scopes = (
-        _resolve_setting("LYDIA_DASHBOARD_OIDC_SCOPES", oidc_cfg.get("scopes"))
+        _resolve_setting("ALICE_DASHBOARD_OIDC_SCOPES", oidc_cfg.get("scopes"))
         or _DEFAULT_SCOPES
     )
     # Optional — set only for a confidential client. A credential, so the
     # canonical home is the env var / ~/.alice/.env; config.yaml is supported
     # for precedence symmetry. Empty ⇒ public client (unchanged behaviour).
     client_secret = _resolve_setting(
-        "LYDIA_DASHBOARD_OIDC_CLIENT_SECRET", oidc_cfg.get("client_secret")
+        "ALICE_DASHBOARD_OIDC_CLIENT_SECRET", oidc_cfg.get("client_secret")
     )
 
     if not issuer or not client_id:
         LAST_SKIP_REASON = (
             "Self-hosted OIDC dashboard auth is not configured. Set both an "
             "issuer and a client_id — either as env vars "
-            "(LYDIA_DASHBOARD_OIDC_ISSUER + LYDIA_DASHBOARD_OIDC_CLIENT_ID) "
+            "(ALICE_DASHBOARD_OIDC_ISSUER + ALICE_DASHBOARD_OIDC_CLIENT_ID) "
             "or under dashboard.oauth.self_hosted.{issuer,client_id} in "
             "config.yaml — or pass --insecure to skip the OAuth gate "
             "entirely. (issuer set: %s; client_id set: %s)"

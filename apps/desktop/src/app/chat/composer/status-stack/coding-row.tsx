@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { SanitizedInput } from '@/components/ui/sanitized-input'
-import type { LydiaGitBranch } from '@/global'
+import type { AliceGitBranch } from '@/global'
 import { useI18n } from '@/i18n'
 import { gitRef } from '@/lib/sanitize'
 import { $repoStatus, $repoWorktrees } from '@/store/coding-status'
@@ -39,7 +39,7 @@ interface BranchActionCopy {
   branchSwitchHome: string
 }
 
-const branchActionLabel = (branch: LydiaGitBranch, copy: BranchActionCopy) => {
+const branchActionLabel = (branch: AliceGitBranch, copy: BranchActionCopy) => {
   if (branch.checkedOut) {
     return copy.branchOpenExisting
   }
@@ -57,7 +57,7 @@ interface CodingStatusRowProps {
    *  branch). Drives the dialog's "convert a branch" picker. */
   onConvertBranch?: (branch: string, path?: null | string, isDefault?: boolean) => Promise<void>
   /** List the repo's local branches for the "convert a branch" picker. */
-  onListBranches?: () => Promise<LydiaGitBranch[]>
+  onListBranches?: () => Promise<AliceGitBranch[]>
   /** Open the review pane (changed files + diffs). */
   onOpen?: () => void
   /** Jump into an existing worktree (open a fresh session anchored there). */
@@ -92,7 +92,7 @@ export const CodingStatusRow = memo(function CodingStatusRow({
   const [branchBase, setBranchBase] = useState<string | undefined>(undefined)
   const [branchPending, setBranchPending] = useState(false)
   const [convertMode, setConvertMode] = useState(false)
-  const [branches, setBranches] = useState<LydiaGitBranch[]>([])
+  const [branches, setBranches] = useState<AliceGitBranch[]>([])
   const [branchesLoading, setBranchesLoading] = useState(false)
 
   const loadBranches = useCallback(async () => {
@@ -134,7 +134,7 @@ export const CodingStatusRow = memo(function CodingStatusRow({
     void loadBranches()
   }
 
-  const convertBranch = async (branch: LydiaGitBranch) => {
+  const convertBranch = async (branch: AliceGitBranch) => {
     if (branchPending || !branch || !onConvertBranch) {
       return
     }

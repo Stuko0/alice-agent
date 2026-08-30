@@ -385,7 +385,7 @@ export const coreCommands: SlashCommand[] = [
         if (text) {
           return sys(`copied ${text.length} characters`)
         } else {
-          return sys('clipboard copy failed — try LYDIA_TUI_FORCE_OSC52=1 to force the escape sequence')
+          return sys('clipboard copy failed — try ALICE_TUI_FORCE_OSC52=1 to force the escape sequence')
         }
       }
 

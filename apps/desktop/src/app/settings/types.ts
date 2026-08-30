@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 
-import type { LydiaGateway } from '@/alice'
+import type { AliceGateway } from '@/alice'
 import type { IconComponent } from '@/lib/icons'
 import type { EnvVarInfo } from '@/types/alice'
 
@@ -16,7 +16,7 @@ export type SettingsView =
 export type EnvPatch = Partial<Pick<EnvVarInfo, 'is_set' | 'redacted_value'>>
 
 export interface SettingsPageProps {
-  gateway?: LydiaGateway | null
+  gateway?: AliceGateway | null
   onClose: () => void
   onConfigSaved?: () => void
   onMainModelChanged?: (provider: string, model: string) => void

@@ -237,7 +237,7 @@ Add a named toolset for your platform:
 ```python
 "alice-your-platform": {
     "description": "Your Platform bot toolset",
-    "tools": _LYDIA_CORE_TOOLS,
+    "tools": _ALICE_CORE_TOOLS,
     "includes": []
 },
 ```

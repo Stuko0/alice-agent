@@ -342,7 +342,7 @@ cron:
   script_timeout_seconds: 300   # 5 分钟
 ```
 
-或设置 `LYDIA_CRON_SCRIPT_TIMEOUT` 环境变量。解析顺序为：环境变量 → config.yaml → 默认 120 秒。
+或设置 `ALICE_CRON_SCRIPT_TIMEOUT` 环境变量。解析顺序为：环境变量 → config.yaml → 默认 120 秒。
 
 ## 无 agent 模式（纯脚本任务）
 
@@ -644,7 +644,7 @@ cronjob(action="create", name="summarize-new-msgs",
 Alice 自身的 `~/.alice/state.db` 是内部 schema，会在版本间变更。不要从预运行门控中查询它——指向你自己的数据库或 feed。
 :::
 
-致谢：此方案集由 @iankar8 在 [#2654](https://github.com/NousResearch/alice-agent/pull/2654) 中的探索所启发，该 PR 提议将 sql/file/command 触发器作为并行机制添加。`script` + `wakeAgent` 门控已以零成本覆盖了所有三种情况，因此该工作以文档形式落地。
+致谢：此方案集由 @iankar8 在 [#2654](https://github.com/Stuko0/alice-agent/pull/2654) 中的探索所启发，该 PR 提议将 sql/file/command 触发器作为并行机制添加。`script` + `wakeAgent` 门控已以零成本覆盖了所有三种情况，因此该工作以文档形式落地。
 
 ### 串联任务：`context_from`
 

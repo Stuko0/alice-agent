@@ -19,12 +19,12 @@ test('isWslEnvironment detects WSL2 env vars on linux', () => {
 })
 
 test('isWindowsBinaryPathInWsl blocks Windows binary types on WSL', () => {
-  assert.equal(isWindowsBinaryPathInWsl('/mnt/c/Tools/lydia.exe', { isWsl: true }), true)
-  assert.equal(isWindowsBinaryPathInWsl('/mnt/c/Tools/lydia.cmd', { isWsl: true }), true)
-  assert.equal(isWindowsBinaryPathInWsl('/mnt/c/Tools/lydia.bat', { isWsl: true }), true)
+  assert.equal(isWindowsBinaryPathInWsl('/mnt/c/Tools/alice.exe', { isWsl: true }), true)
+  assert.equal(isWindowsBinaryPathInWsl('/mnt/c/Tools/alice.cmd', { isWsl: true }), true)
+  assert.equal(isWindowsBinaryPathInWsl('/mnt/c/Tools/alice.bat', { isWsl: true }), true)
   assert.equal(isWindowsBinaryPathInWsl('/mnt/c/Tools/install.ps1', { isWsl: true }), true)
-  assert.equal(isWindowsBinaryPathInWsl('/usr/local/bin/lydia', { isWsl: true }), false)
-  assert.equal(isWindowsBinaryPathInWsl('/mnt/c/Tools/lydia.exe', { isWsl: false }), false)
+  assert.equal(isWindowsBinaryPathInWsl('/usr/local/bin/alice', { isWsl: true }), false)
+  assert.equal(isWindowsBinaryPathInWsl('/mnt/c/Tools/alice.exe', { isWsl: false }), false)
 })
 
 test('bundledRuntimeImportCheck selects platform-specific import checks', () => {
@@ -70,16 +70,16 @@ test('detectRemoteDisplay flags RDP sessions', () => {
   assert.match(String(detectRemoteDisplay({ env: { SESSIONNAME: 'RDP-Tcp#7' }, platform: 'win32' })), /^rdp/)
 })
 
-test('detectRemoteDisplay honors the LYDIA_DESKTOP_DISABLE_GPU override both ways', () => {
+test('detectRemoteDisplay honors the ALICE_DESKTOP_DISABLE_GPU override both ways', () => {
   // Force-on even on a local display.
   assert.match(
-    String(detectRemoteDisplay({ env: { LYDIA_DESKTOP_DISABLE_GPU: '1', DISPLAY: ':0' }, platform: 'linux' })),
+    String(detectRemoteDisplay({ env: { ALICE_DESKTOP_DISABLE_GPU: '1', DISPLAY: ':0' }, platform: 'linux' })),
     /override/
   )
   // Force-off even over SSH (escape hatch when a remote display has working accel).
   assert.equal(
     detectRemoteDisplay({
-      env: { LYDIA_DESKTOP_DISABLE_GPU: 'false', SSH_CONNECTION: '1.2.3.4 5 6.7.8.9 22' },
+      env: { ALICE_DESKTOP_DISABLE_GPU: 'false', SSH_CONNECTION: '1.2.3.4 5 6.7.8.9 22' },
       platform: 'linux'
     }),
     null

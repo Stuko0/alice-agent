@@ -15,19 +15,19 @@ Alice isn't just a CLI tool. You can import `AIAgent` directly and use it progra
 Install Alice directly from the repository:
 
 ```bash
-pip install git+https://github.com/NousResearch/alice-agent.git
+pip install git+https://github.com/Stuko0/alice-agent.git
 ```
 
 Or with [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv pip install git+https://github.com/NousResearch/alice-agent.git
+uv pip install git+https://github.com/Stuko0/alice-agent.git
 ```
 
 You can also pin it in your `requirements.txt`:
 
 ```text
-alice-agent @ git+https://github.com/NousResearch/alice-agent.git
+alice-agent @ git+https://github.com/Stuko0/alice-agent.git
 ```
 
 :::tip

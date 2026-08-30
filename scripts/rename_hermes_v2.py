@@ -22,7 +22,7 @@ SKIP_DIRS = {
 
 SKIP_FILES = {
     "uv.lock", "package-lock.json",
-    "rename_hermes_to_lydia.py", "rename_hermes_v2.py",
+    "rename_hermes_to_alice.py", "rename_hermes_v2.py",
 }
 
 TEXT_EXTENSIONS = {
@@ -45,7 +45,7 @@ TEXT_FILENAMES = {
 PROTECT_PATTERNS = [
     # Model names
     (re.compile(r"Nous[_\- ]?Hermes", re.IGNORECASE), "__PROT_NOUS_HERMES__"),
-    (re.compile(r"NousResearch/Hermes"), "__PROT_NR_HERMES__"),
+    (re.compile(r"Stuko0/alice-agent"), "__PROT_NR_HERMES__"),
     (re.compile(r"teknium/OpenHermes"), "__PROT_OPEN_HERMES__"),
     # Hermes 2, Hermes 3 model names (but only when it's clearly a model name)
     (re.compile(r"Hermes (?:2|3)\b"), "__PROT_HERMES_MODEL__"),
@@ -82,8 +82,8 @@ def replace_hermes(content: str) -> str:
 
     # Step 2: Do replacements (order: specific long patterns before short generic)
     # GitHub URLs first
-    result = result.replace("github.com/NousResearch/alice-agent", "10.1.200.116:3000/arquant-admin/NewLydia")
-    result = result.replace("NousResearch/alice-agent", "arquant-admin/NewLydia")
+    result = result.replace("github.com/Stuko0/alice-agent", "10.1.200.116:3000/arquant-admin/NewAlice")
+    result = result.replace("Stuko0/alice-agent", "arquant-admin/NewAlice")
     result = result.replace("nousresearch/alice-agent", "stuk0o/alice-agent")
 
     # Case-sensitive replacements using regex for word-level accuracy

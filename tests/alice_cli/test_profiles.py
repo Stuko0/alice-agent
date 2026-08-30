@@ -33,7 +33,7 @@ from alice_cli.profiles import (
     export_profile,
     import_profile,
     _get_profiles_root,
-    _get_default_lydia_home,
+    _get_default_alice_home,
     seed_profile_skills,
     has_bundled_skills_opt_out,
     NO_BUNDLED_SKILLS_MARKER,
@@ -136,7 +136,7 @@ class TestValidateProfileName:
 class TestGetProfileDir:
     """Tests for get_profile_dir()."""
 
-    def test_default_returns_lydia_home(self, profile_env):
+    def test_default_returns_alice_home(self, profile_env):
         tmp_path = profile_env
         result = get_profile_dir("default")
         assert result == tmp_path / ".alice"
@@ -664,7 +664,7 @@ class TestActiveProfile:
 class TestGetActiveProfileName:
     """Tests for get_active_profile_name()."""
 
-    def test_default_lydia_home_returns_default(self, profile_env):
+    def test_default_alice_home_returns_default(self, profile_env):
         # ALICE_HOME points to tmp_path/.alice which is the default
         assert get_active_profile_name() == "default"
 
@@ -764,7 +764,7 @@ class TestAliasCollision:
         wrapper_dir = profile_env / ".local" / "bin"
         wrapper_dir.mkdir(parents=True, exist_ok=True)
         bat_path = wrapper_dir / "mybot.bat"
-        bat_path.write_text("@echo off\r\nlydia -p mybot %*\r\n")
+        bat_path.write_text("@echo off\r\nalice -p mybot %*\r\n")
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
                 returncode=0, stdout=str(bat_path),
@@ -1010,8 +1010,8 @@ class TestRenameProfile:
 
         cfg = json.loads(honcho_path.read_text())
         assert "alice.ssi_health" not in cfg["hosts"]
-        assert cfg["hosts"]["lydia_heimdall"]["aiPeer"] == "ssi_health"
-        assert cfg["hosts"]["lydia_heimdall"]["peerName"] == "user-peer"
+        assert cfg["hosts"]["alice_heimdall"]["aiPeer"] == "ssi_health"
+        assert cfg["hosts"]["alice_heimdall"]["peerName"] == "user-peer"
 
     def test_pins_ai_peer_when_absent_on_honcho_host_rename(self, profile_env):
         tmp_path = profile_env
@@ -1028,8 +1028,8 @@ class TestRenameProfile:
 
         cfg = json.loads(honcho_path.read_text())
         assert "alice.ssi_health" not in cfg["hosts"]
-        assert cfg["hosts"]["lydia_heimdall"]["aiPeer"] == "ssi_health"
-        assert cfg["hosts"]["lydia_heimdall"]["workspace"] == "alice"
+        assert cfg["hosts"]["alice_heimdall"]["aiPeer"] == "ssi_health"
+        assert cfg["hosts"]["alice_heimdall"]["workspace"] == "alice"
 
     def test_does_not_overwrite_existing_honcho_host_on_rename(self, profile_env):
         tmp_path = profile_env
@@ -1038,7 +1038,7 @@ class TestRenameProfile:
         honcho_path.write_text(json.dumps({
             "hosts": {
                 "alice.ssi_health": {"aiPeer": "ssi_health"},
-                "lydia_heimdall": {"aiPeer": "heimdall"},
+                "alice_heimdall": {"aiPeer": "heimdall"},
             }
         }))
 
@@ -1047,7 +1047,7 @@ class TestRenameProfile:
 
         cfg = json.loads(honcho_path.read_text())
         assert cfg["hosts"]["alice.ssi_health"]["aiPeer"] == "ssi_health"
-        assert cfg["hosts"]["lydia_heimdall"]["aiPeer"] == "heimdall"
+        assert cfg["hosts"]["alice_heimdall"]["aiPeer"] == "heimdall"
 
     def test_default_raises_value_error(self, profile_env):
         with pytest.raises(ValueError, match="default"):
@@ -1250,7 +1250,7 @@ class TestExportImport:
             (sub / "marker.txt").write_text("excluded")
 
         for f in ("state.db", "gateway.pid", "gateway_state.json",
-                  "processes.json", "errors.log", ".lydia_history",
+                  "processes.json", "errors.log", ".alice_history",
                   "active_profile", ".update_check", "auth.lock"):
             (default_dir / f).write_text("excluded")
 
@@ -1277,7 +1277,7 @@ class TestExportImport:
         excluded_files = [
             "default/state.db", "default/gateway.pid",
             "default/gateway_state.json", "default/processes.json",
-            "default/errors.log", "default/.lydia_history",
+            "default/errors.log", "default/.alice_history",
             "default/active_profile", "default/.update_check",
             "default/auth.lock",
         ]
@@ -1375,20 +1375,20 @@ class TestProfileIsolation:
 
 
 # ===================================================================
-# TestGetProfilesRoot / TestGetDefaultLydiaHome (internal helpers)
+# TestGetProfilesRoot / TestGetDefaultAliceHome (internal helpers)
 # ===================================================================
 
 class TestInternalHelpers:
-    """Tests for _get_profiles_root() and _get_default_lydia_home()."""
+    """Tests for _get_profiles_root() and _get_default_alice_home()."""
 
     def test_profiles_root_under_home(self, profile_env):
         tmp_path = profile_env
         root = _get_profiles_root()
         assert root == tmp_path / ".alice" / "profiles"
 
-    def test_default_lydia_home(self, profile_env):
+    def test_default_alice_home(self, profile_env):
         tmp_path = profile_env
-        home = _get_default_lydia_home()
+        home = _get_default_alice_home()
         assert home == tmp_path / ".alice"
 
     def test_profiles_root_docker_deployment(self, tmp_path, monkeypatch):
@@ -1400,13 +1400,13 @@ class TestInternalHelpers:
         root = _get_profiles_root()
         assert root == docker_home / "profiles"
 
-    def test_default_lydia_home_docker(self, tmp_path, monkeypatch):
-        """In Docker, _get_default_lydia_home() returns ALICE_HOME itself."""
+    def test_default_alice_home_docker(self, tmp_path, monkeypatch):
+        """In Docker, _get_default_alice_home() returns ALICE_HOME itself."""
         docker_home = tmp_path / "opt" / "data"
         docker_home.mkdir(parents=True)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.setenv("ALICE_HOME", str(docker_home))
-        home = _get_default_lydia_home()
+        home = _get_default_alice_home()
         assert home == docker_home
 
     def test_profiles_root_profile_mode(self, tmp_path, monkeypatch):
@@ -1699,7 +1699,7 @@ class TestProfilesToServe:
         assert len(serve) == 1
         name, home = serve[0]
         assert name == "default"
-        assert home == _get_default_lydia_home()
+        assert home == _get_default_alice_home()
 
     def test_off_returns_only_active_named(self, profile_env, monkeypatch):
         # A named profile's gateway runs with ALICE_HOME pointing at the
@@ -1716,7 +1716,7 @@ class TestProfilesToServe:
         create_profile("writer", no_alias=True)
         serve = dict(profiles_to_serve(multiplex=True))
         assert set(serve) == {"default", "coder", "writer"}
-        assert serve["default"] == _get_default_lydia_home()
+        assert serve["default"] == _get_default_alice_home()
         assert serve["coder"] == get_profile_dir("coder")
 
     def test_on_default_always_first(self, profile_env):

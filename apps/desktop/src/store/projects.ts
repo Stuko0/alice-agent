@@ -1,7 +1,7 @@
 import { atom } from 'nanostores'
 
 import { liveSessionProjectId, type SidebarProjectTree } from '@/app/chat/sidebar/projects/workspace-groups'
-import type { LydiaGitBranch } from '@/global'
+import type { AliceGitBranch } from '@/global'
 import { desktopDefaultCwd, selectDesktopPaths, writeDesktopFileText } from '@/lib/desktop-fs'
 import { desktopGit } from '@/lib/desktop-git'
 import { isMissingRpcMethod } from '@/lib/gateway-rpc'
@@ -699,7 +699,7 @@ export async function startWorkInRepo(
 
 // Local branches for the composer's "convert a branch into a worktree" picker.
 // Empty on a remote backend / non-repo (the Electron probe can't run).
-export async function listRepoBranches(repoPath: string): Promise<LydiaGitBranch[]> {
+export async function listRepoBranches(repoPath: string): Promise<AliceGitBranch[]> {
   const git = desktopGit()
 
   if (!git?.branchList || !repoPath) {
@@ -776,14 +776,14 @@ export async function removeWorktreePath(
 // Reveal a project/worktree path in the OS file manager (git-GUI standard).
 export async function revealPath(path: null | string): Promise<void> {
   if (path) {
-    await window.lydiaDesktop?.revealPath?.(path)
+    await window.aliceDesktop?.revealPath?.(path)
   }
 }
 
 // Copy a path to the clipboard (git-GUI standard).
 export async function copyPath(path: null | string): Promise<void> {
   if (path) {
-    await window.lydiaDesktop?.writeClipboard?.(path)
+    await window.aliceDesktop?.writeClipboard?.(path)
   }
 }
 

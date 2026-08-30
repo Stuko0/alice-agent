@@ -117,14 +117,14 @@ class TestParseSchedule:
         Regression: when the configured zone differs from the server's local
         zone (common on cloud hosts running UTC), parse_schedule used
         ``dt.astimezone()`` (server-local), baking in the wrong offset. The
-        due-check compares against ``_lydia_now()`` (configured zone), so the
+        due-check compares against ``_alice_now()`` (configured zone), so the
         stored instant landed hours off the user's wall-clock intent — far
         enough that one-shots never became due. This asserts the parsed offset
         matches the configured-now offset, the invariant that keeps the stored
         instant on the same clock the scheduler checks against.
         """
         configured_now = datetime(2026, 6, 22, 20, 0, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))
-        monkeypatch.setattr("cron.jobs._lydia_now", lambda: configured_now)
+        monkeypatch.setattr("cron.jobs._alice_now", lambda: configured_now)
 
         result = parse_schedule("2026-06-22T20:07:00")  # naive, user wall-clock
 
@@ -150,7 +150,7 @@ class TestNaiveScheduleTimezoneDivergence:
         # zone is irrelevant to the parse now — that is the whole point.
         configured = timezone(timedelta(hours=5, minutes=30))
         now = datetime(2026, 6, 22, 20, 7, 30, tzinfo=configured)
-        monkeypatch.setattr("cron.jobs._lydia_now", lambda: now)
+        monkeypatch.setattr("cron.jobs._alice_now", lambda: now)
 
         # 30s ago in the configured wall clock, supplied as a NAIVE string.
         naive_str = (now - timedelta(seconds=30)).replace(tzinfo=None).isoformat()
@@ -175,7 +175,7 @@ class TestComputeNextRun:
     def test_once_recent_past_within_grace_returns_time(self, monkeypatch):
         now = datetime(2026, 3, 18, 4, 22, 3, tzinfo=timezone.utc)
         run_at = "2026-03-18T04:22:00+00:00"
-        monkeypatch.setattr("cron.jobs._lydia_now", lambda: now)
+        monkeypatch.setattr("cron.jobs._alice_now", lambda: now)
 
         schedule = {"kind": "once", "run_at": run_at}
 
@@ -189,7 +189,7 @@ class TestComputeNextRun:
     def test_once_with_last_run_returns_none_even_within_grace(self, monkeypatch):
         now = datetime(2026, 3, 18, 4, 22, 3, tzinfo=timezone.utc)
         run_at = "2026-03-18T04:22:00+00:00"
-        monkeypatch.setattr("cron.jobs._lydia_now", lambda: now)
+        monkeypatch.setattr("cron.jobs._alice_now", lambda: now)
 
         schedule = {"kind": "once", "run_at": run_at}
 
@@ -652,9 +652,9 @@ class TestAdvanceNextRun:
         assert result is True
 
         updated = get_job(job["id"])
-        from cron.jobs import _ensure_aware, _lydia_now
+        from cron.jobs import _ensure_aware, _alice_now
         new_next_dt = _ensure_aware(datetime.fromisoformat(updated["next_run_at"]))
-        assert new_next_dt > _lydia_now(), "next_run_at should be in the future after advance"
+        assert new_next_dt > _alice_now(), "next_run_at should be in the future after advance"
 
     def test_advances_cron_job(self, tmp_cron_dir):
         """Cron-expression jobs should have next_run_at bumped to the next occurrence."""
@@ -670,9 +670,9 @@ class TestAdvanceNextRun:
         assert result is True
 
         updated = get_job(job["id"])
-        from cron.jobs import _ensure_aware, _lydia_now
+        from cron.jobs import _ensure_aware, _alice_now
         new_next_dt = _ensure_aware(datetime.fromisoformat(updated["next_run_at"]))
-        assert new_next_dt > _lydia_now(), "next_run_at should be in the future after advance"
+        assert new_next_dt > _alice_now(), "next_run_at should be in the future after advance"
 
     def test_skips_oneshot_job(self, tmp_cron_dir):
         """One-shot jobs should NOT be advanced — they need to retry on restart."""
@@ -696,9 +696,9 @@ class TestAdvanceNextRun:
         advance_next_run(job["id"])
         # Regardless of return value, the job should still be in the future
         updated = get_job(job["id"])
-        from cron.jobs import _ensure_aware, _lydia_now
+        from cron.jobs import _ensure_aware, _alice_now
         new_next_dt = _ensure_aware(datetime.fromisoformat(updated["next_run_at"]))
-        assert new_next_dt > _lydia_now(), "next_run_at should remain in the future"
+        assert new_next_dt > _alice_now(), "next_run_at should remain in the future"
 
     def test_crash_safety_scenario(self, tmp_cron_dir):
         """Simulate the crash-loop scenario: after advance, the job should NOT be due."""
@@ -754,9 +754,9 @@ class TestGetDueJobs:
         assert due[0]["id"] == job["id"]
         # next_run_at should be fast-forwarded to the future (accumulated slots skipped)
         updated = get_job(job["id"])
-        from cron.jobs import _ensure_aware, _lydia_now
+        from cron.jobs import _ensure_aware, _alice_now
         next_dt = _ensure_aware(datetime.fromisoformat(updated["next_run_at"]))
-        assert next_dt > _lydia_now()
+        assert next_dt > _alice_now()
 
 
     def test_long_execution_does_not_perpetually_defer(self, tmp_cron_dir, monkeypatch):
@@ -768,20 +768,20 @@ class TestGetDueJobs:
         the 150s grace for a 5m interval. The job must be returned as due (run
         once) AND have next_run_at fast-forwarded (so accumulated missed slots
         don't all fire)."""
-        from cron.jobs import _ensure_aware, _lydia_now
+        from cron.jobs import _ensure_aware, _alice_now
         job = create_job(prompt="Long job", schedule="every 5m")
         jobs = load_jobs()
         # 11 minutes ago: > grace (150s for a 5m interval) — the "still running" miss.
-        stale = (_lydia_now() - timedelta(minutes=11)).isoformat()
+        stale = (_alice_now() - timedelta(minutes=11)).isoformat()
         jobs[0]["next_run_at"] = stale
-        jobs[0]["last_run_at"] = (_lydia_now() - timedelta(minutes=1)).isoformat()
+        jobs[0]["last_run_at"] = (_alice_now() - timedelta(minutes=1)).isoformat()
         save_jobs(jobs)
 
         due = get_due_jobs()
         assert [j["id"] for j in due] == [job["id"]], "long-execution job was skipped (perpetual-defer bug)"
         # next_run_at fast-forwarded into the future (no burst of missed slots).
         nxt = _ensure_aware(datetime.fromisoformat(get_job(job["id"])["next_run_at"]))
-        assert nxt > _lydia_now()
+        assert nxt > _alice_now()
 
 
     def test_stale_repeat_limited_job_consumes_one_run_on_catchup(self, tmp_cron_dir, monkeypatch):
@@ -789,11 +789,11 @@ class TestGetDueJobs:
         fires ONCE on catch-up and consumes one of its runs (it is no longer
         silently skipped). Pins the documented repeat-count interaction so it
         isn't changed accidentally."""
-        from cron.jobs import _lydia_now
+        from cron.jobs import _alice_now
         job = create_job(prompt="Limited", schedule="every 5m", repeat=3)
         jobs = load_jobs()
-        jobs[0]["next_run_at"] = (_lydia_now() - timedelta(minutes=11)).isoformat()
-        jobs[0]["last_run_at"] = (_lydia_now() - timedelta(minutes=11)).isoformat()
+        jobs[0]["next_run_at"] = (_alice_now() - timedelta(minutes=11)).isoformat()
+        jobs[0]["last_run_at"] = (_alice_now() - timedelta(minutes=11)).isoformat()
         save_jobs(jobs)
 
         # The stale job is returned to fire once (not skipped).
@@ -822,7 +822,7 @@ class TestGetDueJobs:
 
     def test_broken_recent_one_shot_without_next_run_is_recovered(self, tmp_cron_dir, monkeypatch):
         now = datetime(2026, 3, 18, 4, 22, 30, tzinfo=timezone.utc)
-        monkeypatch.setattr("cron.jobs._lydia_now", lambda: now)
+        monkeypatch.setattr("cron.jobs._alice_now", lambda: now)
 
         run_at = "2026-03-18T04:22:00+00:00"
         save_jobs(
@@ -854,7 +854,7 @@ class TestGetDueJobs:
 
     def test_broken_stale_one_shot_without_next_run_is_not_recovered(self, tmp_cron_dir, monkeypatch):
         now = datetime(2026, 3, 18, 4, 30, 0, tzinfo=timezone.utc)
-        monkeypatch.setattr("cron.jobs._lydia_now", lambda: now)
+        monkeypatch.setattr("cron.jobs._alice_now", lambda: now)
 
         save_jobs(
             [{
@@ -883,7 +883,7 @@ class TestGetDueJobs:
 
     def test_broken_cron_without_next_run_is_recovered(self, tmp_cron_dir, monkeypatch):
         now = datetime(2026, 3, 18, 10, 0, 0, tzinfo=timezone.utc)
-        monkeypatch.setattr("cron.jobs._lydia_now", lambda: now)
+        monkeypatch.setattr("cron.jobs._alice_now", lambda: now)
 
         save_jobs(
             [{
@@ -917,7 +917,7 @@ class TestGetDueJobs:
 
     def test_broken_interval_without_next_run_is_recovered(self, tmp_cron_dir, monkeypatch):
         now = datetime(2026, 3, 18, 10, 0, 0, tzinfo=timezone.utc)
-        monkeypatch.setattr("cron.jobs._lydia_now", lambda: now)
+        monkeypatch.setattr("cron.jobs._alice_now", lambda: now)
 
         save_jobs(
             [{
@@ -953,7 +953,7 @@ class TestGetDueJobs:
     def test_cron_next_run_offset_migration_is_rescheduled_not_fired(self, tmp_cron_dir, monkeypatch):
         current_tz = timezone(timedelta(hours=2))
         now = datetime(2026, 5, 19, 13, 2, 0, tzinfo=current_tz)
-        monkeypatch.setattr("cron.jobs._lydia_now", lambda: now)
+        monkeypatch.setattr("cron.jobs._alice_now", lambda: now)
 
         # A 21:00 cron was stored while Alice/system local time was UTC+10.
         # After the host moves to UTC+02, that absolute timestamp converts to
@@ -988,7 +988,7 @@ class TestGetDueJobs:
     def test_cron_offset_migration_does_not_repair_already_passed_wall_time(self, tmp_cron_dir, monkeypatch):
         current_tz = timezone(timedelta(hours=2))
         now = datetime(2026, 5, 19, 13, 2, 0, tzinfo=current_tz)
-        monkeypatch.setattr("cron.jobs._lydia_now", lambda: now)
+        monkeypatch.setattr("cron.jobs._alice_now", lambda: now)
 
         save_jobs(
             [{
@@ -1028,7 +1028,7 @@ class TestGetDueJobs:
         """Guard must NOT over-fire: a due cron in the SAME offset fires normally."""
         current_tz = timezone(timedelta(hours=2))
         now = datetime(2026, 5, 19, 21, 0, 30, tzinfo=current_tz)
-        monkeypatch.setattr("cron.jobs._lydia_now", lambda: now)
+        monkeypatch.setattr("cron.jobs._alice_now", lambda: now)
         save_jobs([{
             "id": "cron-same-tz", "name": "same tz", "prompt": "...",
             "schedule": {"kind": "cron", "expr": "0 21 * * 2", "display": "0 21 * * 2"},
@@ -1054,7 +1054,7 @@ class TestGetDueJobs:
         """
         current_tz = timezone(timedelta(hours=2))
         now = datetime(2026, 5, 19, 13, 2, 0, tzinfo=current_tz)
-        monkeypatch.setattr("cron.jobs._lydia_now", lambda: now)
+        monkeypatch.setattr("cron.jobs._alice_now", lambda: now)
         save_jobs([{
             "id": "interval-stale-tz", "name": "interval", "prompt": "...",
             "schedule": {"kind": "interval", "minutes": 60, "display": "every 1h"},
@@ -1078,7 +1078,7 @@ class TestGetDueJobs:
         the repair path — it falls through to the existing due/fast-forward logic."""
         current_tz = timezone(timedelta(hours=2))
         now = datetime(2026, 5, 19, 13, 0, 0, tzinfo=current_tz)
-        monkeypatch.setattr("cron.jobs._lydia_now", lambda: now)
+        monkeypatch.setattr("cron.jobs._alice_now", lambda: now)
         save_jobs([{
             "id": "cron-wall-equal", "name": "wall equal", "prompt": "...",
             "schedule": {"kind": "cron", "expr": "0 13 * * 2", "display": "0 13 * * 2"},
@@ -1295,7 +1295,7 @@ class TestCronOutputRetention:
             datetime(2026, 6, 25, 10, 0, 0, tzinfo=timezone.utc) + timedelta(seconds=i)
             for i in range(8)
         )
-        monkeypatch.setattr("cron.jobs._lydia_now", lambda: next(seq))
+        monkeypatch.setattr("cron.jobs._alice_now", lambda: next(seq))
         for _ in range(8):
             save_job_output("job1", "report")
         files = sorted(_job_output_dir("job1").glob("*.md"))

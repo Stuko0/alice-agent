@@ -42,7 +42,7 @@ Every Telegram bot starts with **@BotFather** — Telegram's official bot for cr
 
 2. **Send `/newbot`** — BotFather will ask you two things:
    - **Display name** — what users see (e.g., `Team Alice Assistant`)
-   - **Username** — must end in `bot` (e.g., `myteam_lydia_bot`)
+   - **Username** — must end in `bot` (e.g., `myteam_alice_bot`)
 
 3. **Copy the bot token** — BotFather replies with something like:
    ```

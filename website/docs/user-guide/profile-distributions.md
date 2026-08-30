@@ -101,7 +101,7 @@ Create `~/.alice/profiles/research-bot/distribution.yaml`:
 name: research-bot
 version: 1.0.0
 description: "Autonomous research assistant with arXiv and web tools"
-lydia_requires: ">=0.12.0"
+alice_requires: ">=0.12.0"
 author: "Your Name"
 license: "MIT"
 
@@ -181,7 +181,7 @@ backups/
 
 # Logs
 errors.log
-.lydia_history
+.alice_history
 ```
 
 This mirrors the [hard-excluded paths](#whats-not-in-a-distribution-ever) that the installer strips on its end. Anything else you want to keep out of the repo (scratch files, large assets, local-only skills) should also go in here.
@@ -487,7 +487,7 @@ You built Alice-on-top — maybe a compliance-monitoring harness, a customer-sup
 name: telemetry-harness
 version: 2.3.1
 description: "Compliance telemetry harness — monitors and reviews regulated workflows"
-lydia_requires: ">=0.13.0"
+alice_requires: ">=0.13.0"
 author: "Acme Compliance Inc."
 license: "Commercial"
 

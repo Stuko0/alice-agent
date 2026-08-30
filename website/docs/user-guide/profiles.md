@@ -296,7 +296,7 @@ subprocesses with `HOME={ALICE_HOME}/home`; you then need to initialize or link
 the profile-specific `~/.ssh`, `~/.gitconfig`, `~/.config/gh`, cloud CLI auth,
 Claude/Codex auth, npm state, and similar files inside that profile home.
 
-Alice also exposes `LYDIA_REAL_HOME` to subprocesses so scripts can still find
+Alice also exposes `ALICE_REAL_HOME` to subprocesses so scripts can still find
 the actual account home when `home_mode: profile` is active.
 
 The default profile is simply `~/.alice` itself. No migration needed — existing installs work identically.

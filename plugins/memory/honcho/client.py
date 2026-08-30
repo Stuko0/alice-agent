@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from alice_constants import get_alice_home
-from alice_cli.profiles import _get_default_lydia_home
+from alice_cli.profiles import _get_default_alice_home
 from plugins.plugin_utils import SingletonSlot
 from typing import Any, TYPE_CHECKING
 
@@ -55,11 +55,11 @@ def resolve_active_host() -> str:
     """Derive the Honcho host key from the active Alice profile.
 
     Resolution order:
-      1. LYDIA_HONCHO_HOST env var (explicit override)
+      1. ALICE_HONCHO_HOST env var (explicit override)
       2. Active profile name via profiles system -> ``alice.<profile>``
       3. Fallback: ``"alice"`` (default profile)
     """
-    explicit = os.environ.get("LYDIA_HONCHO_HOST", "").strip()
+    explicit = os.environ.get("ALICE_HONCHO_HOST", "").strip()
     if explicit:
         return explicit
 
@@ -92,7 +92,7 @@ def resolve_config_path() -> Path:
         return local_path
 
     # Default profile's config — host blocks accumulate here via setup/clone
-    default_path = _get_default_lydia_home() / "honcho.json"
+    default_path = _get_default_alice_home() / "honcho.json"
     if default_path != local_path and default_path.exists():
         return default_path
 
@@ -843,8 +843,8 @@ def get_honcho_client(config: HonchoClientConfig | None = None) -> Honcho:
         if not resolved_base_url or resolved_timeout is None:
             try:
                 from alice_cli.config import load_config
-                lydia_cfg = load_config()
-                honcho_cfg = lydia_cfg.get("honcho", {})
+                alice_cfg = load_config()
+                honcho_cfg = alice_cfg.get("honcho", {})
                 if isinstance(honcho_cfg, dict):
                     if not resolved_base_url:
                         resolved_base_url = honcho_cfg.get("base_url", "").strip() or None

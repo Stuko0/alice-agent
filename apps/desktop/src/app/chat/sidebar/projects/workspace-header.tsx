@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { SanitizedInput } from '@/components/ui/sanitized-input'
-import type { LydiaGitBranch } from '@/global'
+import type { AliceGitBranch } from '@/global'
 import { useI18n } from '@/i18n'
 import { gitRef } from '@/lib/sanitize'
 import { cn } from '@/lib/utils'
@@ -54,7 +54,7 @@ interface BranchActionCopy {
   branchSwitchHome: string
 }
 
-const branchActionLabel = (branch: LydiaGitBranch, copy: BranchActionCopy) => {
+const branchActionLabel = (branch: AliceGitBranch, copy: BranchActionCopy) => {
   if (branch.checkedOut) {
     return copy.branchOpenExisting
   }
@@ -150,7 +150,7 @@ export function StartWorkButton({ repoPath, onStarted }: { repoPath: string; onS
   const [name, setName] = useState('')
   const [pending, setPending] = useState(false)
   const [convertMode, setConvertMode] = useState(false)
-  const [branches, setBranches] = useState<LydiaGitBranch[]>([])
+  const [branches, setBranches] = useState<AliceGitBranch[]>([])
   const [branchesLoading, setBranchesLoading] = useState(false)
 
   const loadBranches = useCallback(async () => {
@@ -195,7 +195,7 @@ export function StartWorkButton({ repoPath, onStarted }: { repoPath: string; onS
     }
   }
 
-  const convert = async (branch: LydiaGitBranch) => {
+  const convert = async (branch: AliceGitBranch) => {
     if (pending || !repoPath || !branch) {
       return
     }

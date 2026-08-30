@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import type { LydiaGitWorktree } from '@/global'
+import type { AliceGitWorktree } from '@/global'
 import type { SessionInfo } from '@/alice'
 import { useI18n } from '@/i18n'
 import { $dismissedWorktreeIds, dismissWorktree } from '@/store/layout'
@@ -47,7 +47,7 @@ export function EnteredProjectContent({
   project: SidebarProjectTree
   renderRows: (sessions: SessionInfo[]) => React.ReactNode
   onNewSession?: (path: null | string) => void
-  repoWorktrees?: Record<string, LydiaGitWorktree[]>
+  repoWorktrees?: Record<string, AliceGitWorktree[]>
   liveSessions?: SessionInfo[]
   removedSessionIds?: ReadonlySet<string>
 }) {
@@ -88,7 +88,7 @@ function RepoFlatSection({
   showHeader: boolean
   renderRows: (sessions: SessionInfo[]) => React.ReactNode
   onNewSession?: (path: null | string) => void
-  discoveredWorktrees?: LydiaGitWorktree[]
+  discoveredWorktrees?: AliceGitWorktree[]
   liveSessions?: SessionInfo[]
   removedSessionIds?: ReadonlySet<string>
 }) {

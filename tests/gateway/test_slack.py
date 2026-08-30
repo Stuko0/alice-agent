@@ -3186,7 +3186,7 @@ class TestSlashCommands:
         assert msg.text == "/model anthropic/claude-sonnet-4"
 
     @pytest.mark.asyncio
-    async def test_legacy_lydia_prefix_still_works(self, adapter):
+    async def test_legacy_alice_prefix_still_works(self, adapter):
         """Backward compat: /alice btw foo must still route to /btw foo.
 
         Old workspace manifests only declared /alice as the single slash.
@@ -3204,7 +3204,7 @@ class TestSlashCommands:
         assert msg.text == "/btw run the tests"
 
     @pytest.mark.asyncio
-    async def test_legacy_lydia_freeform_question(self, adapter):
+    async def test_legacy_alice_freeform_question(self, adapter):
         """/alice <free-form text> must stay as the raw text (non-command)."""
         command = {
             "command": "/alice",
@@ -3915,7 +3915,7 @@ class TestSlashEphemeralAck:
         assert ("C_Q", "U_Q") in adapter._slash_command_contexts
 
     @pytest.mark.asyncio
-    async def test_legacy_lydia_slash_stashes_context(self, adapter):
+    async def test_legacy_alice_slash_stashes_context(self, adapter):
         """Legacy /alice <subcommand> also stashes context."""
         command = {
             "command": "/alice",
@@ -3930,7 +3930,7 @@ class TestSlashEphemeralAck:
         assert ("C_H", "U_H") in adapter._slash_command_contexts
 
     @pytest.mark.asyncio
-    async def test_freeform_lydia_question_does_not_stash_context(self, adapter):
+    async def test_freeform_alice_question_does_not_stash_context(self, adapter):
         """Free-form /alice <question> must NOT route agent reply ephemeral."""
         command = {
             "command": "/alice",

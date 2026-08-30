@@ -15,7 +15,7 @@ Te comento lo que encontré al revisar el repositorio con respecto a los archivo
    - **Acción:** No las tocaré, ya que son intencionales y necesarias para no romper instalaciones existentes de usuarios.
 
 4. **Archivos de los Skills (Gitea, Gitlab, Remote SSH, etc.)**
-   - **Efecto:** Múltiples skills aún intentan leer variables como `_lydia_env`, `ALICE_HOME_LEGACY` o usan nombres como `alice-agent`. Esto afectaría su ejecución si el usuario usa un entorno de Alice limpio, ya que buscarían configuraciones en rutas incorrectas.
+   - **Efecto:** Múltiples skills aún intentan leer variables como `_alice_env`, `ALICE_HOME_LEGACY` o usan nombres como `alice-agent`. Esto afectaría su ejecución si el usuario usa un entorno de Alice limpio, ya que buscarían configuraciones en rutas incorrectas.
    - **Acción:** Modificaré los `.md` y `.sh` de estos skills para usar los nombres correctos (`alice_env`, `ALICE_HOME`, `alice-agent`), tal y como solicitaste ("sí o sí").
 
 5. **Pruebas y Documentación (`tests/website/...`)**
@@ -31,7 +31,7 @@ Por favor, revisa el plan. Si estás de acuerdo en que modifique los skills y mu
 - **[DELETE]** `alice_cli/`
 - **[DELETE]** `plugins/alice-achievements/`
 - **[DELETE]** `alice_agent.egg-info/`
-- **[DELETE]** `lydia_find.txt` y `lydia_grep.txt`
+- **[DELETE]** `alice_find.txt` y `alice_grep.txt`
 
 ### Arreglo de TUI (alice-ink -> alice-ink)
 - Se ejecutará `git mv ui-tui/packages/alice-ink/alice-ink ui-tui/packages/alice-ink_temp` y luego se reemplazará la carpeta correctamente para solucionar el error de anidación.

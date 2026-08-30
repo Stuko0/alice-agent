@@ -2,7 +2,7 @@
 
 When a local LLM provider is detected (Ollama, llama.cpp, vLLM, etc.),
 the httpx stream read timeout should be automatically increased from the
-default 60s to LYDIA_API_TIMEOUT (1800s) to avoid premature connection
+default 60s to ALICE_API_TIMEOUT (1800s) to avoid premature connection
 kills during long prefill phases.
 """
 
@@ -29,18 +29,18 @@ class TestLocalStreamReadTimeout:
     def test_local_endpoint_bumps_read_timeout(self, base_url):
         """Local endpoint + default timeout -> bumps to base_timeout."""
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("LYDIA_STREAM_READ_TIMEOUT", None)
-            _base_timeout = float(os.getenv("LYDIA_API_TIMEOUT", 1800.0))
-            _stream_read_timeout = float(os.getenv("LYDIA_STREAM_READ_TIMEOUT", 120.0))
+            os.environ.pop("ALICE_STREAM_READ_TIMEOUT", None)
+            _base_timeout = float(os.getenv("ALICE_API_TIMEOUT", 1800.0))
+            _stream_read_timeout = float(os.getenv("ALICE_STREAM_READ_TIMEOUT", 120.0))
             if _stream_read_timeout == 120.0 and base_url and is_local_endpoint(base_url):
                 _stream_read_timeout = _base_timeout
             assert _stream_read_timeout == 1800.0
 
     def test_user_override_respected_for_local(self):
-        """User sets LYDIA_STREAM_READ_TIMEOUT -> keep their value even for local."""
-        with patch.dict(os.environ, {"LYDIA_STREAM_READ_TIMEOUT": "300"}, clear=False):
-            _base_timeout = float(os.getenv("LYDIA_API_TIMEOUT", 1800.0))
-            _stream_read_timeout = float(os.getenv("LYDIA_STREAM_READ_TIMEOUT", 120.0))
+        """User sets ALICE_STREAM_READ_TIMEOUT -> keep their value even for local."""
+        with patch.dict(os.environ, {"ALICE_STREAM_READ_TIMEOUT": "300"}, clear=False):
+            _base_timeout = float(os.getenv("ALICE_API_TIMEOUT", 1800.0))
+            _stream_read_timeout = float(os.getenv("ALICE_STREAM_READ_TIMEOUT", 120.0))
             base_url = "http://localhost:11434"
             if _stream_read_timeout == 120.0 and base_url and is_local_endpoint(base_url):
                 _stream_read_timeout = _base_timeout
@@ -54,9 +54,9 @@ class TestLocalStreamReadTimeout:
     def test_remote_endpoint_keeps_default(self, base_url):
         """Remote endpoint -> keep 120s default."""
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("LYDIA_STREAM_READ_TIMEOUT", None)
-            _base_timeout = float(os.getenv("LYDIA_API_TIMEOUT", 1800.0))
-            _stream_read_timeout = float(os.getenv("LYDIA_STREAM_READ_TIMEOUT", 120.0))
+            os.environ.pop("ALICE_STREAM_READ_TIMEOUT", None)
+            _base_timeout = float(os.getenv("ALICE_API_TIMEOUT", 1800.0))
+            _stream_read_timeout = float(os.getenv("ALICE_STREAM_READ_TIMEOUT", 120.0))
             if _stream_read_timeout == 120.0 and base_url and is_local_endpoint(base_url):
                 _stream_read_timeout = _base_timeout
             assert _stream_read_timeout == 120.0
@@ -64,9 +64,9 @@ class TestLocalStreamReadTimeout:
     def test_empty_base_url_keeps_default(self):
         """No base_url set -> keep 120s default."""
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("LYDIA_STREAM_READ_TIMEOUT", None)
-            _base_timeout = float(os.getenv("LYDIA_API_TIMEOUT", 1800.0))
-            _stream_read_timeout = float(os.getenv("LYDIA_STREAM_READ_TIMEOUT", 120.0))
+            os.environ.pop("ALICE_STREAM_READ_TIMEOUT", None)
+            _base_timeout = float(os.getenv("ALICE_API_TIMEOUT", 1800.0))
+            _stream_read_timeout = float(os.getenv("ALICE_STREAM_READ_TIMEOUT", 120.0))
             base_url = ""
             if _stream_read_timeout == 120.0 and base_url and is_local_endpoint(base_url):
                 _stream_read_timeout = _base_timeout

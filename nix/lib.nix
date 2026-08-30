@@ -33,7 +33,7 @@ in
   #   nodejs                     — fixed nodejs version for all packages we use in the repo
   #
   # Usage:
-  #   npm = lydiaNpmLib.mkNpmPassthru { folder = "ui-tui"; attr = "tui"; pname = "alice-tui"; };
+  #   npm = aliceNpmLib.mkNpmPassthru { folder = "ui-tui"; attr = "tui"; pname = "alice-tui"; };
   #   pkgs.buildNpmPackage (npm // {
   #     sourceRoot = "ui-tui";
   #     buildPhase = '' ... '';

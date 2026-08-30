@@ -244,7 +244,7 @@ export default function SystemPage() {
       api.getPortal(),
       // Cached (non-forced) check so the version row shows update status on
       // load without a separate effect / a forced network round-trip.
-      api.checkLydiaUpdate(false),
+      api.checkAliceUpdate(false),
     ])
       .then(([s, st, m, p, c, h, cur, prt, upd]) => {
         if (s.status === "fulfilled") setStatus(s.value);
@@ -492,10 +492,10 @@ export default function SystemPage() {
   // ── Update check / apply ───────────────────────────────────────────
   const checkForUpdate = useCallback(
     async (force = false) => {
-      if (status?.can_update_lydia === false) return;
+      if (status?.can_update_alice === false) return;
       setCheckingUpdate(true);
       try {
-        const info = await api.checkLydiaUpdate(force);
+        const info = await api.checkAliceUpdate(force);
         setUpdateInfo(info);
         if (force) {
           if (info.update_available) {
@@ -517,14 +517,14 @@ export default function SystemPage() {
         setCheckingUpdate(false);
       }
     },
-    [showToast, status?.can_update_lydia],
+    [showToast, status?.can_update_alice],
   );
 
   // Auto-check (cached) runs inside loadAll on mount; this is the
   // user-triggered forced re-check from the "Check for updates" button.
   const applyUpdate = async () => {
     setUpdateConfirmOpen(false);
-    if (status?.can_update_lydia === false) {
+    if (status?.can_update_alice === false) {
       showToast(
         "Alice updates are managed outside this dashboard.",
         "success",
@@ -532,7 +532,7 @@ export default function SystemPage() {
       return;
     }
     try {
-      const resp = await api.updateLydia();
+      const resp = await api.updateAlice();
       if (!resp.ok) {
         showToast(
           resp.message ??
@@ -617,7 +617,7 @@ export default function SystemPage() {
   }
 
   const gatewayRunning = status?.gateway_running;
-  const canUpdateLydia = status?.can_update_lydia !== false;
+  const canUpdateAlice = status?.can_update_alice !== false;
   const validEvents = hooks?.valid_events?.length
     ? hooks.valid_events
     : HOOK_EVENTS_FALLBACK;
@@ -636,7 +636,7 @@ export default function SystemPage() {
       />
 
       <ConfirmDialog
-        open={canUpdateLydia && updateConfirmOpen}
+        open={canUpdateAlice && updateConfirmOpen}
         onCancel={() => setUpdateConfirmOpen(false)}
         onConfirm={() => void applyUpdate()}
         title="Update Alice?"
@@ -821,8 +821,8 @@ export default function SystemPage() {
               <div>
                 <div className="text-xs uppercase tracking-wider text-muted-foreground">Alice</div>
                 <div className="flex items-center gap-2">
-                  <span>v{stats?.lydia_version}</span>
-                  {canUpdateLydia &&
+                  <span>v{stats?.alice_version}</span>
+                  {canUpdateAlice &&
                     updateInfo &&
                     (updateInfo.update_available ? (
                       <Badge tone="warning">
@@ -883,7 +883,7 @@ export default function SystemPage() {
                 CPU / memory / disk metrics.
               </p>
             )}
-            {canUpdateLydia && (
+            {canUpdateAlice && (
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
                 <Button
                   size="sm"
@@ -945,7 +945,7 @@ export default function SystemPage() {
                 </span>
               )}
               <a
-                href={portal?.subscription_url || "https://portal.nousresearch.com/manage-subscription"}
+                href={portal?.subscription_url || "https://stuko.dev/manage-subscription"}
                 target="_blank"
                 rel="noreferrer"
                 className="ml-auto text-xs text-primary underline"
@@ -1265,7 +1265,7 @@ export default function SystemPage() {
                   id="import-path"
                   value={importPath}
                   onChange={(e) => setImportPath(e.target.value)}
-                  placeholder="$LYDIA_HOME/backups/alice-backup.zip"
+                  placeholder="$ALICE_HOME/backups/alice-backup.zip"
                 />
               </div>
               <Button

@@ -11,7 +11,7 @@ Hermetic-test invariants enforced here (see AGENTS.md for rationale):
    CI. Code using ``Path.home() / ".alice"`` instead of the canonical
    ``get_alice_home()`` is a bug to fix at the callsite.)
 3. **Deterministic runtime.** TZ=UTC, LANG=C.UTF-8, PYTHONHASHSEED=0.
-4. **No LYDIA_SESSION_* inheritance** — the agent's current gateway
+4. **No ALICE_SESSION_* inheritance** — the agent's current gateway
    session must not leak into tests.
 
 These invariants make the local test run match CI closely. Gaps that
@@ -166,62 +166,62 @@ def _looks_like_credential(name: str) -> bool:
     return any(name.endswith(suf) for suf in _CREDENTIAL_SUFFIXES)
 
 
-# LYDIA_* vars that change test behavior by being set. Unset all of these
+# ALICE_* vars that change test behavior by being set. Unset all of these
 # unconditionally — individual tests that need them set do so explicitly.
-_LYDIA_BEHAVIORAL_VARS = frozenset({
-    "LYDIA_YOLO_MODE",
-    "LYDIA_INTERACTIVE",
-    "LYDIA_QUIET",
-    "LYDIA_TOOL_PROGRESS",
-    "LYDIA_TOOL_PROGRESS_MODE",
-    "LYDIA_MAX_ITERATIONS",
-    "LYDIA_SESSION_PLATFORM",
-    "LYDIA_SESSION_CHAT_ID",
-    "LYDIA_SESSION_CHAT_NAME",
-    "LYDIA_SESSION_THREAD_ID",
-    "LYDIA_SESSION_SOURCE",
-    "LYDIA_SESSION_KEY",
-    "LYDIA_GATEWAY_SESSION",
-    "LYDIA_CRON_SESSION",
-    "_LYDIA_GATEWAY",
-    "LYDIA_PLATFORM",
-    "LYDIA_MODEL",
-    "LYDIA_INFERENCE_MODEL",
-    "LYDIA_INFERENCE_PROVIDER",
-    "LYDIA_TUI_PROVIDER",
-    "LYDIA_MANAGED",
-    "LYDIA_MANAGED_DIR",
-    "LYDIA_DEV",
-    "LYDIA_CONTAINER",
-    "LYDIA_EPHEMERAL_SYSTEM_PROMPT",
-    "LYDIA_TIMEZONE",
-    "LYDIA_REDACT_SECRETS",
-    "LYDIA_BACKGROUND_NOTIFICATIONS",
-    "LYDIA_EXEC_ASK",
-    "LYDIA_HOME_MODE",
-    "LYDIA_AGENT_USE_LEGACY_SESSION_KEYS",
+_ALICE_BEHAVIORAL_VARS = frozenset({
+    "ALICE_YOLO_MODE",
+    "ALICE_INTERACTIVE",
+    "ALICE_QUIET",
+    "ALICE_TOOL_PROGRESS",
+    "ALICE_TOOL_PROGRESS_MODE",
+    "ALICE_MAX_ITERATIONS",
+    "ALICE_SESSION_PLATFORM",
+    "ALICE_SESSION_CHAT_ID",
+    "ALICE_SESSION_CHAT_NAME",
+    "ALICE_SESSION_THREAD_ID",
+    "ALICE_SESSION_SOURCE",
+    "ALICE_SESSION_KEY",
+    "ALICE_GATEWAY_SESSION",
+    "ALICE_CRON_SESSION",
+    "_ALICE_GATEWAY",
+    "ALICE_PLATFORM",
+    "ALICE_MODEL",
+    "ALICE_INFERENCE_MODEL",
+    "ALICE_INFERENCE_PROVIDER",
+    "ALICE_TUI_PROVIDER",
+    "ALICE_MANAGED",
+    "ALICE_MANAGED_DIR",
+    "ALICE_DEV",
+    "ALICE_CONTAINER",
+    "ALICE_EPHEMERAL_SYSTEM_PROMPT",
+    "ALICE_TIMEZONE",
+    "ALICE_REDACT_SECRETS",
+    "ALICE_BACKGROUND_NOTIFICATIONS",
+    "ALICE_EXEC_ASK",
+    "ALICE_HOME_MODE",
+    "ALICE_AGENT_USE_LEGACY_SESSION_KEYS",
     # Kanban path/board pins must never leak from a developer shell or
     # dispatched worker into tests; otherwise tests can write fake tasks to
     # the real ~/.alice/kanban.db instead of the per-test ALICE_HOME.
-    "LYDIA_KANBAN_DB",
-    "LYDIA_KANBAN_BOARD",
-    "LYDIA_KANBAN_HOME",
-    "LYDIA_KANBAN_WORKSPACES_ROOT",
-    "LYDIA_KANBAN_LOGS_ROOT",
-    "LYDIA_KANBAN_TASK",
-    "LYDIA_KANBAN_WORKSPACE",
-    "LYDIA_KANBAN_RUN_ID",
-    "LYDIA_KANBAN_CLAIM_LOCK",
-    "LYDIA_KANBAN_DISPATCH_IN_GATEWAY",
-    "LYDIA_TENANT",
+    "ALICE_KANBAN_DB",
+    "ALICE_KANBAN_BOARD",
+    "ALICE_KANBAN_HOME",
+    "ALICE_KANBAN_WORKSPACES_ROOT",
+    "ALICE_KANBAN_LOGS_ROOT",
+    "ALICE_KANBAN_TASK",
+    "ALICE_KANBAN_WORKSPACE",
+    "ALICE_KANBAN_RUN_ID",
+    "ALICE_KANBAN_CLAIM_LOCK",
+    "ALICE_KANBAN_DISPATCH_IN_GATEWAY",
+    "ALICE_TENANT",
     # Dashboard OAuth auth gate (PR #30156). When set, the bundled
     # dashboard-auth `nous` plugin auto-registers itself on plugin discovery,
     # which is triggered by any `/api/status` call. That leaks a provider
     # into the dashboard_auth registry across tests in the same worker and
     # makes assertions like `auth_providers == []` flaky. CI never sets
     # these, so production tests must not see them either.
-    "LYDIA_DASHBOARD_OAUTH_CLIENT_ID",
-    "LYDIA_DASHBOARD_PORTAL_URL",
+    "ALICE_DASHBOARD_OAUTH_CLIENT_ID",
+    "ALICE_DASHBOARD_PORTAL_URL",
     "TERMINAL_CWD",
     "TERMINAL_ENV",
     "TERMINAL_CONTAINER_CPU",
@@ -338,8 +338,8 @@ def _hermetic_environment(tmp_path, monkeypatch):
         if _looks_like_credential(name):
             monkeypatch.delenv(name, raising=False)
 
-    # 2. Blank behavioral LYDIA_* vars that could change test semantics.
-    for name in _LYDIA_BEHAVIORAL_VARS:
+    # 2. Blank behavioral ALICE_* vars that could change test semantics.
+    for name in _ALICE_BEHAVIORAL_VARS:
         monkeypatch.delenv(name, raising=False)
 
     # 3. Redirect ALICE_HOME to a per-test tempdir. Code that reads
@@ -352,13 +352,13 @@ def _hermetic_environment(tmp_path, monkeypatch):
     #    fixture. Any code in the codebase reading ``~/.alice/*`` via
     #    ``Path.home() / ".alice"`` instead of ``get_alice_home()``
     #    is a bug to fix at the callsite.
-    fake_lydia_home = tmp_path / "lydia_test"
-    fake_lydia_home.mkdir()
-    (fake_lydia_home / "sessions").mkdir()
-    (fake_lydia_home / "cron").mkdir()
-    (fake_lydia_home / "memories").mkdir()
-    (fake_lydia_home / "skills").mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(fake_lydia_home))
+    fake_alice_home = tmp_path / "alice_test"
+    fake_alice_home.mkdir()
+    (fake_alice_home / "sessions").mkdir()
+    (fake_alice_home / "cron").mkdir()
+    (fake_alice_home / "memories").mkdir()
+    (fake_alice_home / "skills").mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(fake_alice_home))
 
     # 4. Deterministic locale / timezone / hashseed. CI runs in UTC with
     #    C.UTF-8 locale; local dev often doesn't. Pin everything.
@@ -397,7 +397,7 @@ def _hermetic_environment(tmp_path, monkeypatch):
 # Backward-compat alias — old tests reference this fixture name. Keep it
 # as a no-op wrapper so imports don't break.
 @pytest.fixture(autouse=True)
-def _isolate_lydia_home(_hermetic_environment):
+def _isolate_alice_home(_hermetic_environment):
     """Alias preserved for any test that yields this name explicitly."""
     return None
 
@@ -652,7 +652,7 @@ def _live_system_guard(request, monkeypatch):
         monkeypatch.setattr(_os, "killpg", _guarded_killpg)
 
     # ── Subprocess command-string inspection (whole-line) ──────────
-    _LYDIA_TOKENS = (
+    _ALICE_TOKENS = (
         "alice-gateway",
         "alice.service",
         "alice_cli.main gateway",
@@ -684,15 +684,15 @@ def _live_system_guard(request, monkeypatch):
                 return ""
         return str(cmd)
 
-    def _matches_lydia_gateway(cmd_str: str) -> bool:
+    def _matches_alice_gateway(cmd_str: str) -> bool:
         low = cmd_str.lower()
-        return any(tok in low for tok in _LYDIA_TOKENS)
+        return any(tok in low for tok in _ALICE_TOKENS)
 
     def _is_blocked_systemctl(cmd) -> bool:
         cmd_str = _cmd_to_string(cmd)
         if "systemctl" not in cmd_str:
             return False
-        if not _matches_lydia_gateway(cmd_str):
+        if not _matches_alice_gateway(cmd_str):
             return False
         try:
             tokens = _shlex.split(cmd_str)

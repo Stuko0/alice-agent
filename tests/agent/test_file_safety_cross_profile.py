@@ -24,7 +24,7 @@ import pytest
 
 
 @pytest.fixture
-def fake_lydia(tmp_path, monkeypatch):
+def fake_alice(tmp_path, monkeypatch):
     """Build a fake Alice layout:
 
         <tmp>/
@@ -58,11 +58,11 @@ def fake_lydia(tmp_path, monkeypatch):
     # Monkeypatch the resolver functions used by file_safety so each test
     # can choose which profile is "active".
     import alice_constants
-    monkeypatch.setattr(alice_constants, "get_default_lydia_root", lambda: root)
+    monkeypatch.setattr(alice_constants, "get_default_alice_root", lambda: root)
 
     # The reloads below ensure get_cross_profile_warning/classify see the patched root.
     import agent.file_safety as fs
-    monkeypatch.setattr(fs, "_lydia_root_path", lambda: root)
+    monkeypatch.setattr(fs, "_alice_root_path", lambda: root)
 
     return {
         "root": root,
@@ -72,10 +72,10 @@ def fake_lydia(tmp_path, monkeypatch):
     }
 
 
-def _set_active_home(monkeypatch, lydia_home: Path):
-    """Point file_safety._lydia_home_path at a specific profile dir."""
+def _set_active_home(monkeypatch, alice_home: Path):
+    """Point file_safety._alice_home_path at a specific profile dir."""
     import agent.file_safety as fs
-    monkeypatch.setattr(fs, "_lydia_home_path", lambda: lydia_home)
+    monkeypatch.setattr(fs, "_alice_home_path", lambda: alice_home)
 
 
 # ---------------------------------------------------------------------------
@@ -84,24 +84,24 @@ def _set_active_home(monkeypatch, lydia_home: Path):
 
 
 class TestResolveActiveProfileName:
-    def test_default_when_home_is_root(self, fake_lydia, monkeypatch):
-        _set_active_home(monkeypatch, fake_lydia["default_home"])
+    def test_default_when_home_is_root(self, fake_alice, monkeypatch):
+        _set_active_home(monkeypatch, fake_alice["default_home"])
         from agent.file_safety import _resolve_active_profile_name
         assert _resolve_active_profile_name() == "default"
 
-    def test_named_profile(self, fake_lydia, monkeypatch):
-        _set_active_home(monkeypatch, fake_lydia["security_home"])
+    def test_named_profile(self, fake_alice, monkeypatch):
+        _set_active_home(monkeypatch, fake_alice["security_home"])
         from agent.file_safety import _resolve_active_profile_name
         assert _resolve_active_profile_name() == "alice-security"
 
-    def test_falls_back_to_default_on_resolution_failure(self, fake_lydia, monkeypatch):
+    def test_falls_back_to_default_on_resolution_failure(self, fake_alice, monkeypatch):
         """If ALICE_HOME resolution raises, return 'default' rather than crashing the tool."""
         import agent.file_safety as fs
 
         def _boom():
             raise RuntimeError("simulated")
 
-        monkeypatch.setattr(fs, "_lydia_home_path", _boom)
+        monkeypatch.setattr(fs, "_alice_home_path", _boom)
         # Should not raise — falls back to "default"
         assert fs._resolve_active_profile_name() == "default"
 
@@ -112,69 +112,69 @@ class TestResolveActiveProfileName:
 
 
 class TestClassifyCrossProfileTarget:
-    def test_same_profile_write_returns_none(self, fake_lydia, monkeypatch):
-        _set_active_home(monkeypatch, fake_lydia["security_home"])
+    def test_same_profile_write_returns_none(self, fake_alice, monkeypatch):
+        _set_active_home(monkeypatch, fake_alice["security_home"])
         from agent.file_safety import classify_cross_profile_target
         result = classify_cross_profile_target(
-            str(fake_lydia["security_home"] / "skills" / "foo" / "SKILL.md")
+            str(fake_alice["security_home"] / "skills" / "foo" / "SKILL.md")
         )
         assert result is None
 
-    def test_security_writing_default_skill(self, fake_lydia, monkeypatch):
+    def test_security_writing_default_skill(self, fake_alice, monkeypatch):
         """The exact incident from May 2026."""
-        _set_active_home(monkeypatch, fake_lydia["security_home"])
+        _set_active_home(monkeypatch, fake_alice["security_home"])
         from agent.file_safety import classify_cross_profile_target
         result = classify_cross_profile_target(
-            str(fake_lydia["default_home"] / "skills" / "foo" / "SKILL.md")
+            str(fake_alice["default_home"] / "skills" / "foo" / "SKILL.md")
         )
         assert result is not None
         assert result["active_profile"] == "alice-security"
         assert result["target_profile"] == "default"
         assert result["area"] == "skills"
 
-    def test_default_writing_security_skill(self, fake_lydia, monkeypatch):
+    def test_default_writing_security_skill(self, fake_alice, monkeypatch):
         """Inverse direction — default-profile session reaching into a named profile."""
-        _set_active_home(monkeypatch, fake_lydia["default_home"])
+        _set_active_home(monkeypatch, fake_alice["default_home"])
         from agent.file_safety import classify_cross_profile_target
         result = classify_cross_profile_target(
-            str(fake_lydia["security_home"] / "skills" / "foo" / "SKILL.md")
+            str(fake_alice["security_home"] / "skills" / "foo" / "SKILL.md")
         )
         assert result is not None
         assert result["active_profile"] == "default"
         assert result["target_profile"] == "alice-security"
 
-    def test_named_to_named_cross_profile(self, fake_lydia, monkeypatch):
-        _set_active_home(monkeypatch, fake_lydia["security_home"])
+    def test_named_to_named_cross_profile(self, fake_alice, monkeypatch):
+        _set_active_home(monkeypatch, fake_alice["security_home"])
         from agent.file_safety import classify_cross_profile_target
         result = classify_cross_profile_target(
-            str(fake_lydia["coder_home"] / "skills" / "foo" / "SKILL.md")
+            str(fake_alice["coder_home"] / "skills" / "foo" / "SKILL.md")
         )
         assert result is not None
         assert result["target_profile"] == "coder"
 
     @pytest.mark.parametrize("area", ["skills", "plugins", "cron", "memories"])
-    def test_all_profile_scoped_areas_classified(self, fake_lydia, monkeypatch, area):
-        _set_active_home(monkeypatch, fake_lydia["security_home"])
+    def test_all_profile_scoped_areas_classified(self, fake_alice, monkeypatch, area):
+        _set_active_home(monkeypatch, fake_alice["security_home"])
         from agent.file_safety import classify_cross_profile_target
-        target = fake_lydia["default_home"] / area / "foo.txt"
+        target = fake_alice["default_home"] / area / "foo.txt"
         result = classify_cross_profile_target(str(target))
         assert result is not None
         assert result["area"] == area
 
-    def test_non_lydia_path_returns_none(self, fake_lydia, monkeypatch, tmp_path):
-        _set_active_home(monkeypatch, fake_lydia["security_home"])
+    def test_non_alice_path_returns_none(self, fake_alice, monkeypatch, tmp_path):
+        _set_active_home(monkeypatch, fake_alice["security_home"])
         from agent.file_safety import classify_cross_profile_target
         # Path outside any Alice root
         assert classify_cross_profile_target(str(tmp_path / "random.txt")) is None
 
-    def test_lydia_config_not_classified_as_cross_profile(self, fake_lydia, monkeypatch):
+    def test_alice_config_not_classified_as_cross_profile(self, fake_alice, monkeypatch):
         """Files under <root>/config.yaml or <root>/.env are NOT profile-scoped
         (already covered by build_write_denied_paths). Don't double-warn."""
-        _set_active_home(monkeypatch, fake_lydia["security_home"])
+        _set_active_home(monkeypatch, fake_alice["security_home"])
         from agent.file_safety import classify_cross_profile_target
         # config.yaml at root level is not in PROFILE_SCOPED_AREAS
         result = classify_cross_profile_target(
-            str(fake_lydia["default_home"] / "config.yaml")
+            str(fake_alice["default_home"] / "config.yaml")
         )
         assert result is None
 
@@ -185,18 +185,18 @@ class TestClassifyCrossProfileTarget:
 
 
 class TestGetCrossProfileWarning:
-    def test_in_profile_returns_none(self, fake_lydia, monkeypatch):
-        _set_active_home(monkeypatch, fake_lydia["security_home"])
+    def test_in_profile_returns_none(self, fake_alice, monkeypatch):
+        _set_active_home(monkeypatch, fake_alice["security_home"])
         from agent.file_safety import get_cross_profile_warning
         assert get_cross_profile_warning(
-            str(fake_lydia["security_home"] / "skills" / "foo" / "SKILL.md")
+            str(fake_alice["security_home"] / "skills" / "foo" / "SKILL.md")
         ) is None
 
-    def test_cross_profile_warning_names_both_profiles(self, fake_lydia, monkeypatch):
-        _set_active_home(monkeypatch, fake_lydia["security_home"])
+    def test_cross_profile_warning_names_both_profiles(self, fake_alice, monkeypatch):
+        _set_active_home(monkeypatch, fake_alice["security_home"])
         from agent.file_safety import get_cross_profile_warning
         warn = get_cross_profile_warning(
-            str(fake_lydia["default_home"] / "skills" / "foo" / "SKILL.md")
+            str(fake_alice["default_home"] / "skills" / "foo" / "SKILL.md")
         )
         assert warn is not None
         # Must name BOTH profiles so the model knows which is which.
@@ -207,11 +207,11 @@ class TestGetCrossProfileWarning:
         # Must reference the area.
         assert "skills" in warn
 
-    def test_warning_is_defense_in_depth_not_boundary(self, fake_lydia, monkeypatch):
-        _set_active_home(monkeypatch, fake_lydia["security_home"])
+    def test_warning_is_defense_in_depth_not_boundary(self, fake_alice, monkeypatch):
+        _set_active_home(monkeypatch, fake_alice["security_home"])
         from agent.file_safety import get_cross_profile_warning
         warn = get_cross_profile_warning(
-            str(fake_lydia["default_home"] / "skills" / "foo" / "SKILL.md")
+            str(fake_alice["default_home"] / "skills" / "foo" / "SKILL.md")
         )
         # Must self-document as defense-in-depth so future reviewers
         # don't promote it to a hard block.

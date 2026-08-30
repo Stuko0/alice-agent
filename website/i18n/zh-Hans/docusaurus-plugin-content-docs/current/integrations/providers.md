@@ -52,7 +52,7 @@ sidebar_position: 1
 
 ### Nous Portal
 
-[Nous Portal](https://portal.nousresearch.com) 是 Nous Research 的统一订阅网关，也是**运行 Alice Agent 的推荐方式**。一次 OAuth 登录即可访问 300+ 前沿智能体模型（Claude、GPT、Gemini、DeepSeek、Qwen、Kimi、GLM、MiniMax、Grok 等），以及 [Tool Gateway](/user-guide/features/tool-gateway)（网页搜索、图像生成、TTS、浏览器自动化）和 [Nous Chat](https://chat.nousresearch.com)——费用从你的 Nous 订阅中扣除，无需单独管理各提供商账户。
+[Nous Portal](https://stuko.dev) 是 Stuko 的统一订阅网关，也是**运行 Alice Agent 的推荐方式**。一次 OAuth 登录即可访问 300+ 前沿智能体模型（Claude、GPT、Gemini、DeepSeek、Qwen、Kimi、GLM、MiniMax、Grok 等），以及 [Tool Gateway](/user-guide/features/tool-gateway)（网页搜索、图像生成、TTS、浏览器自动化）和 [Nous Chat](https://chat.nousresearch.com)——费用从你的 Nous 订阅中扣除，无需单独管理各提供商账户。
 
 ```bash
 alice setup --portal     # 全新安装——一条命令完成 OAuth + 提供商 + 网关配置
@@ -60,7 +60,7 @@ alice model              # 已有安装——从列表中选择"Nous Portal"
 alice portal info        # 随时查看登录状态和路由信息
 ```
 
-还没有订阅？前往 [portal.nousresearch.com/manage-subscription](https://portal.nousresearch.com/manage-subscription) 购买。
+还没有订阅？前往 [stuko.dev/manage-subscription](https://stuko.dev/manage-subscription) 购买。
 
 **完整详情：** 参见专属的 [Nous Portal 集成页面](/integrations/nous-portal)（订阅内容、模型目录、故障排查）以及分步指南[使用 Nous Portal 运行 Alice Agent](/guides/run-alice-with-nous-portal)。
 
@@ -193,8 +193,8 @@ model:
 | 环境变量 | 说明 |
 |---------------------|-------------|
 | `COPILOT_GITHUB_TOKEN` | Copilot API 的 GitHub token（最高优先级） |
-| `LYDIA_COPILOT_ACP_COMMAND` | 覆盖 Copilot CLI 二进制路径（默认：`copilot`） |
-| `LYDIA_COPILOT_ACP_ARGS` | 覆盖 ACP 参数（默认：`--acp --stdio`） |
+| `ALICE_COPILOT_ACP_COMMAND` | 覆盖 Copilot CLI 二进制路径（默认：`copilot`） |
+| `ALICE_COPILOT_ACP_ARGS` | 覆盖 ACP 参数（默认：`--acp --stdio`） |
 
 ### 一等 API Key 提供商
 
@@ -371,7 +371,7 @@ model:
   default: "qwen3-coder-plus"
 ```
 
-仅在 portal 端点迁移时才需设置 `LYDIA_QWEN_BASE_URL`（默认：`https://portal.qwen.ai/v1`）。
+仅在 portal 端点迁移时才需设置 `ALICE_QWEN_BASE_URL`（默认：`https://portal.qwen.ai/v1`）。
 
 :::tip Qwen OAuth 与 Qwen Cloud（阿里 DashScope）
 `qwen-oauth` 使用面向消费者的 Qwen Portal，通过 OAuth 登录——适合个人用户。`alibaba` 提供商使用 Qwen Cloud（阿里 DashScope），需要 `DASHSCOPE_API_KEY`——适合程序化/生产工作负载。两者都路由到 Qwen 系列模型，但端点不同。
@@ -683,7 +683,7 @@ alice model
 | `--enable-auto-tool-choice` | `tool_choice: "auto"` 所必需（Alice 的默认值） |
 | `--tool-call-parser <name>` | 模型工具调用格式的解析器 |
 
-支持的解析器：`alice`（Qwen 2.5、__PROT_LYDIA_MODEL__/3）、`llama3_json`（Llama 3.x）、`mistral`、`deepseek_v3`、`deepseek_v31`、`xlam`、`pythonic`。没有这些标志，工具调用将无法工作——模型会将工具调用以文本形式输出。
+支持的解析器：`alice`（Qwen 2.5、__PROT_ALICE_MODEL__/3）、`llama3_json`（Llama 3.x）、`mistral`、`deepseek_v3`、`deepseek_v31`、`xlam`、`pythonic`。没有这些标志，工具调用将无法工作——模型会将工具调用以文本形式输出。
 
 :::tip
 vLLM 支持人类可读的大小：`--max-model-len 64k`（小写 k = 1000，大写 K = 1024）。
@@ -756,7 +756,7 @@ alice model
 :::caution `--jinja` 是工具调用的必要条件
 没有 `--jinja`，llama-server 会完全忽略 `tools` 参数。模型会尝试在响应文本中写入 JSON 来调用工具，但 Alice 不会将其识别为工具调用——你会看到原始 JSON（如 `{"name": "web_search", ...}`）作为消息打印出来，而不是实际执行搜索。
 
-原生工具调用支持（最佳性能）：Llama 3.x、Qwen 2.5（包括 Coder）、__PROT_LYDIA_MODEL__/3、Mistral、DeepSeek、Functionary。其他所有模型使用通用处理器，可以工作但效率可能较低。完整列表参见 [llama.cpp 函数调用文档](https://github.com/ggml-org/llama.cpp/blob/master/docs/function-calling.md)。
+原生工具调用支持（最佳性能）：Llama 3.x、Qwen 2.5（包括 Coder）、__PROT_ALICE_MODEL__/3、Mistral、DeepSeek、Functionary。其他所有模型使用通用处理器，可以工作但效率可能较低。完整列表参见 [llama.cpp 函数调用文档](https://github.com/ggml-org/llama.cpp/blob/master/docs/function-calling.md)。
 
 可通过检查 `http://localhost:8080/props` 验证工具支持是否已激活——`chat_template` 字段应存在。
 :::

@@ -8,10 +8,10 @@ sidebar_position: 2
 # Nous Tool Gateway（工具网关）
 
 :::tip 快速开始
-Tool Gateway 包含在付费 Nous Portal 订阅中。**[管理订阅 →](https://portal.stuko.dev/manage-subscription)**
+Tool Gateway 包含在付费 Nous Portal 订阅中。**[管理订阅 →](https://stuko.dev/manage-subscription)**
 :::
 
-**Tool Gateway** 让已付费的 [Nous Portal](https://portal.stuko.dev) 用户通过同一份订阅，直接使用网页搜索、文生图、语音合成（TTS）与浏览器自动化，而**不必**再分别注册 Firecrawl、FAL、OpenAI、Browser Use 等服务的 API Key。
+**Tool Gateway** 让已付费的 [Nous Portal](https://stuko.dev) 用户通过同一份订阅，直接使用网页搜索、文生图、语音合成（TTS）与浏览器自动化，而**不必**再分别注册 Firecrawl、FAL、OpenAI、Browser Use 等服务的 API Key。
 
 ## 包含能力
 
@@ -26,7 +26,7 @@ Tool Gateway 包含在付费 Nous Portal 订阅中。**[管理订阅 →](https:
 
 ## 资格与账号
 
-Tool Gateway 仅对 **[付费](https://portal.stuko.dev/manage-subscription)** Nous Portal 订阅开放；免费档不可用——请 [升级订阅](https://portal.stuko.dev/manage-subscription) 后解锁。
+Tool Gateway 仅对 **[付费](https://stuko.dev/manage-subscription)** Nous Portal 订阅开放；免费档不可用——请 [升级订阅](https://stuko.dev/manage-subscription) 后解锁。
 
 检查当前状态：
 
@@ -176,7 +176,7 @@ FIRECRAWL_GATEWAY_URL=https://...         # 单独覆盖 Firecrawl 端点
 
 ### 订阅到期会怎样？
 
-经网关路由的工具会停止工作，直到你 [续订](https://portal.stuko.dev/manage-subscription) 或通过 `alice native` 改回直连 Key。
+经网关路由的工具会停止工作，直到你 [续订](https://stuko.dev/manage-subscription) 或通过 `alice native` 改回直连 Key。
 
 ### 与「消息网关」（各聊天平台）是否冲突？
 

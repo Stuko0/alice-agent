@@ -131,12 +131,12 @@ export const en: Translations = {
     starting: "Starting",
     startedInBackground: "Started in background — check logs for progress",
     stopped: "Stopped",
-    updateLydia: "Update Alice",
-    updateLydiaConfirmMessage:
+    updateAlice: "Update Alice",
+    updateAliceConfirmMessage:
       "This runs alice update and restarts the gateway when it finishes. Active sessions keep their prompt cache until then.",
-    updateLydiaConfirmNow: "Update now",
-    updateLydiaConfirmTitle: "Update Alice?",
-    updatingLydia: "Updating Alice…",
+    updateAliceConfirmNow: "Update now",
+    updateAliceConfirmTitle: "Update Alice?",
+    updatingAlice: "Updating Alice…",
     waitingForOutput: "Waiting for output…",
   },
 

@@ -29,11 +29,11 @@ def basic():
 @pytest.fixture(autouse=True)
 def _clear_basic_env(monkeypatch):
     for var in (
-        "LYDIA_DASHBOARD_BASIC_AUTH_USERNAME",
-        "LYDIA_DASHBOARD_BASIC_AUTH_PASSWORD",
-        "LYDIA_DASHBOARD_BASIC_AUTH_PASSWORD_HASH",
-        "LYDIA_DASHBOARD_BASIC_AUTH_SECRET",
-        "LYDIA_DASHBOARD_BASIC_AUTH_TTL_SECONDS",
+        "ALICE_DASHBOARD_BASIC_AUTH_USERNAME",
+        "ALICE_DASHBOARD_BASIC_AUTH_PASSWORD",
+        "ALICE_DASHBOARD_BASIC_AUTH_PASSWORD_HASH",
+        "ALICE_DASHBOARD_BASIC_AUTH_SECRET",
+        "ALICE_DASHBOARD_BASIC_AUTH_TTL_SECONDS",
     ):
         monkeypatch.delenv(var, raising=False)
 
@@ -172,7 +172,7 @@ class TestRegister:
         assert "username" in basic.LAST_SKIP_REASON
 
     def test_skips_when_username_but_no_password(self, basic, monkeypatch):
-        monkeypatch.setenv("LYDIA_DASHBOARD_BASIC_AUTH_USERNAME", "admin")
+        monkeypatch.setenv("ALICE_DASHBOARD_BASIC_AUTH_USERNAME", "admin")
         monkeypatch.setattr(basic, "_load_config_basic_auth_section", lambda: {})
         ctx = MagicMock()
         basic.register(ctx)
@@ -180,8 +180,8 @@ class TestRegister:
         assert "password" in basic.LAST_SKIP_REASON
 
     def test_registers_with_env_plaintext_password(self, basic, monkeypatch):
-        monkeypatch.setenv("LYDIA_DASHBOARD_BASIC_AUTH_USERNAME", "admin")
-        monkeypatch.setenv("LYDIA_DASHBOARD_BASIC_AUTH_PASSWORD", "hunter2")
+        monkeypatch.setenv("ALICE_DASHBOARD_BASIC_AUTH_USERNAME", "admin")
+        monkeypatch.setenv("ALICE_DASHBOARD_BASIC_AUTH_PASSWORD", "hunter2")
         monkeypatch.setattr(basic, "_load_config_basic_auth_section", lambda: {})
         ctx = MagicMock()
         basic.register(ctx)
@@ -216,7 +216,7 @@ class TestRegister:
             lambda: {"username": "admin", "password_hash": cfg_hash},
         )
         # Env plaintext should win over the config hash.
-        monkeypatch.setenv("LYDIA_DASHBOARD_BASIC_AUTH_PASSWORD", "env-pw")
+        monkeypatch.setenv("ALICE_DASHBOARD_BASIC_AUTH_PASSWORD", "env-pw")
         ctx = MagicMock()
         basic.register(ctx)
         provider = ctx.register_dashboard_auth_provider.call_args.args[0]
@@ -233,9 +233,9 @@ class TestRegister:
         # other's tokens (the restart-/multi-worker-survival contract).
         shared = secrets.token_bytes(32).hex()
         monkeypatch.setattr(basic, "_load_config_basic_auth_section", lambda: {})
-        monkeypatch.setenv("LYDIA_DASHBOARD_BASIC_AUTH_USERNAME", "admin")
-        monkeypatch.setenv("LYDIA_DASHBOARD_BASIC_AUTH_PASSWORD", "hunter2")
-        monkeypatch.setenv("LYDIA_DASHBOARD_BASIC_AUTH_SECRET", shared)
+        monkeypatch.setenv("ALICE_DASHBOARD_BASIC_AUTH_USERNAME", "admin")
+        monkeypatch.setenv("ALICE_DASHBOARD_BASIC_AUTH_PASSWORD", "hunter2")
+        monkeypatch.setenv("ALICE_DASHBOARD_BASIC_AUTH_SECRET", shared)
 
         ctx1, ctx2 = MagicMock(), MagicMock()
         basic.register(ctx1)

@@ -12,7 +12,7 @@ def _dockerfile_text() -> str:
     return DOCKERFILE.read_text()
 
 
-def test_dockerfile_makes_opt_lydia_readonly_for_lydia_user() -> None:
+def test_dockerfile_makes_opt_alice_readonly_for_alice_user() -> None:
     text = _dockerfile_text()
 
     # --chmod on the source COPY bakes read-only perms at copy time instead
@@ -28,7 +28,7 @@ def test_dockerfile_keeps_mutable_state_under_opt_data() -> None:
     text = _dockerfile_text()
 
     assert "ENV ALICE_HOME=/opt/data" in text
-    assert "ENV LYDIA_WRITE_SAFE_ROOT=/opt/data" in text
+    assert "ENV ALICE_WRITE_SAFE_ROOT=/opt/data" in text
     assert 'VOLUME [ "/opt/data" ]' in text
 
 
@@ -36,11 +36,11 @@ def test_dockerfile_disables_runtime_install_mutations() -> None:
     text = _dockerfile_text()
 
     assert "ENV PYTHONDONTWRITEBYTECODE=1" in text
-    assert "ENV LYDIA_DISABLE_LAZY_INSTALLS=1" in text
-    assert "LYDIA_TUI_DIR=/opt/alice/ui-tui" in text
+    assert "ENV ALICE_DISABLE_LAZY_INSTALLS=1" in text
+    assert "ALICE_TUI_DIR=/opt/alice/ui-tui" in text
 
 
-def test_dockerfile_does_not_chown_install_trees_to_lydia() -> None:
+def test_dockerfile_does_not_chown_install_trees_to_alice() -> None:
     text = _dockerfile_text()
     forbidden_patterns = (
         r"chown\s+-R\s+alice:alice\s+/opt/alice/\.venv",
@@ -91,13 +91,13 @@ def test_dockerfile_redirects_lazy_installs_to_durable_target() -> None:
 
     # The redirect target must be set AND must live under the data volume,
     # never under the immutable /opt/alice tree.
-    assert f"ENV LYDIA_LAZY_INSTALL_TARGET={target}" in text
+    assert f"ENV ALICE_LAZY_INSTALL_TARGET={target}" in text
     assert target.startswith("/opt/data/"), "target must be on the durable volume"
-    assert "ENV LYDIA_LAZY_INSTALL_TARGET=/opt/alice" not in text
+    assert "ENV ALICE_LAZY_INSTALL_TARGET=/opt/alice" not in text
 
     # The seal flag must still be present — the redirect rides on top of it,
     # it does not replace it.
-    assert "ENV LYDIA_DISABLE_LAZY_INSTALLS=1" in text
+    assert "ENV ALICE_DISABLE_LAZY_INSTALLS=1" in text
 
     # stage2-hook must seed + chown the target dir so first-use installs
     # succeed as the unprivileged alice runtime user.

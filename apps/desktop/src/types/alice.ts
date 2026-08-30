@@ -206,7 +206,7 @@ export interface GatewayReadyPayload {
   skin?: unknown
 }
 
-export interface LydiaConfig {
+export interface AliceConfig {
   agent?: {
     reasoning_effort?: string
     personalities?: Record<string, unknown>
@@ -228,7 +228,7 @@ export interface LydiaConfig {
   }
 }
 
-export type LydiaConfigRecord = Record<string, unknown>
+export type AliceConfigRecord = Record<string, unknown>
 
 export interface ModelInfoResponse {
   auto_context_length?: number
@@ -771,7 +771,7 @@ export interface StatusResponse {
   gateway_running: boolean
   gateway_state: string | null
   gateway_updated_at: string | null
-  lydia_home: string
+  alice_home: string
   latest_config_version: number
   release_date: string
   version: string

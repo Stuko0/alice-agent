@@ -66,7 +66,7 @@ class TestEnvFileReadBlocking:
             error = get_read_block_error(path)
             assert error is None, f"{path} should be allowed"
 
-    def test_allowed_lydia_env(self):
+    def test_allowed_alice_env(self):
         """Alice' own .env inside ALICE_HOME is NOT blocked by this rule
         (it's handled by other mechanisms). Only project-local .env is blocked."""
         # Note: alice internal .env is in ~/.alice/.env which is NOT a project-local
@@ -91,24 +91,24 @@ class TestCacheFileReadBlocking:
 
     def test_hub_index_cache_blocked(self, tmp_path):
         """Hub index-cache reads are blocked."""
-        lydia_home = tmp_path / ".alice"
-        cache = lydia_home / "skills" / ".hub" / "index-cache" / "data.json"
+        alice_home = tmp_path / ".alice"
+        cache = alice_home / "skills" / ".hub" / "index-cache" / "data.json"
         cache.parent.mkdir(parents=True)
         cache.write_text("{}")
 
-        with patch("agent.file_safety._lydia_home_path", return_value=lydia_home):
+        with patch("agent.file_safety._alice_home_path", return_value=alice_home):
             error = get_read_block_error(str(cache))
             assert error is not None
             assert "internal Alice cache" in error
 
     def test_hub_directory_blocked(self, tmp_path):
         """Hub directory reads are blocked."""
-        lydia_home = tmp_path / ".alice"
-        hub = lydia_home / "skills" / ".hub" / "metadata.json"
+        alice_home = tmp_path / ".alice"
+        hub = alice_home / "skills" / ".hub" / "metadata.json"
         hub.parent.mkdir(parents=True)
         hub.write_text("{}")
 
-        with patch("agent.file_safety._lydia_home_path", return_value=lydia_home):
+        with patch("agent.file_safety._alice_home_path", return_value=alice_home):
             error = get_read_block_error(str(hub))
             assert error is not None
 
@@ -121,12 +121,12 @@ class TestCacheFileReadBlocking:
 class TestCombinedGuards:
     """Both guards should work independently without interference."""
 
-    def test_env_guard_works_regardless_of_lydia_home(self, tmp_path):
+    def test_env_guard_works_regardless_of_alice_home(self, tmp_path):
         """The env basename guard does not depend on ALICE_HOME resolution."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
 
-        with patch("agent.file_safety._lydia_home_path", return_value=lydia_home):
+        with patch("agent.file_safety._alice_home_path", return_value=alice_home):
             # Regular project .env should still be blocked
             error = get_read_block_error("/workspace/.env")
             assert error is not None
@@ -137,12 +137,12 @@ class TestCombinedGuards:
 
     def test_cache_guard_still_works_with_env_guard(self, tmp_path):
         """Cache file blocking still works when env guard is active."""
-        lydia_home = tmp_path / ".alice"
-        cache = lydia_home / "skills" / ".hub" / "index-cache" / "x"
+        alice_home = tmp_path / ".alice"
+        cache = alice_home / "skills" / ".hub" / "index-cache" / "x"
         cache.parent.mkdir(parents=True)
         cache.write_text("")
 
-        with patch("agent.file_safety._lydia_home_path", return_value=lydia_home):
+        with patch("agent.file_safety._alice_home_path", return_value=alice_home):
             error = get_read_block_error(str(cache))
             assert error is not None
             assert "internal Alice cache" in error

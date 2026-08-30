@@ -27,9 +27,9 @@ def _make_event(text="/model"):
 
 @pytest.mark.asyncio
 async def test_handle_model_command_lists_saved_custom_provider(tmp_path, monkeypatch):
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    (lydia_home / "config.yaml").write_text(
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    (alice_home / "config.yaml").write_text(
         yaml.safe_dump(
             {
                 "model": {
@@ -52,7 +52,7 @@ async def test_handle_model_command_lists_saved_custom_provider(tmp_path, monkey
 
     import gateway.run as gateway_run
 
-    monkeypatch.setattr(gateway_run, "_lydia_home", lydia_home)
+    monkeypatch.setattr(gateway_run, "_alice_home", alice_home)
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
 
     result = await _make_runner()._handle_model_command(_make_event())
@@ -72,9 +72,9 @@ async def test_direct_model_switch_offloads_to_thread(tmp_path, monkeypatch):
 
     from alice_cli.model_switch import ModelSwitchResult
 
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    (lydia_home / "config.yaml").write_text(
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    (alice_home / "config.yaml").write_text(
         yaml.safe_dump(
             {"model": {"default": "gpt-5.4", "provider": "openrouter"}}
         ),
@@ -83,7 +83,7 @@ async def test_direct_model_switch_offloads_to_thread(tmp_path, monkeypatch):
 
     import gateway.run as gateway_run
 
-    monkeypatch.setattr(gateway_run, "_lydia_home", lydia_home)
+    monkeypatch.setattr(gateway_run, "_alice_home", alice_home)
 
     # Fail the switch so the handler returns before _finish_switch (which needs
     # full runner state) — we only care that the offload happened.

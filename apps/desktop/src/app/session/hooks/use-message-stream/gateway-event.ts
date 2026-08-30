@@ -58,7 +58,7 @@ interface GatewayEventDeps {
   failAssistantMessage: (sessionId: string, errorMessage: string) => void
   flushQueuedDeltas: (sessionId?: string) => void
   queryClient: QueryClient
-  refreshLydiaConfig: () => Promise<void>
+  refreshAliceConfig: () => Promise<void>
   sessionInterrupted: (sessionId: string) => boolean
   updateSessionState: (
     sessionId: string,
@@ -86,7 +86,7 @@ export function useGatewayEventHandler(deps: GatewayEventDeps) {
     failAssistantMessage,
     flushQueuedDeltas,
     queryClient,
-    refreshLydiaConfig,
+    refreshAliceConfig,
     sessionInterrupted,
     updateSessionState,
     upsertToolCall
@@ -217,7 +217,7 @@ export function useGatewayEventHandler(deps: GatewayEventDeps) {
           requestDesktopOnboarding(payload.credential_warning)
         }
 
-        void refreshLydiaConfig()
+        void refreshAliceConfig()
 
         if (modelChanged || providerChanged) {
           void queryClient.invalidateQueries({
@@ -667,7 +667,7 @@ export function useGatewayEventHandler(deps: GatewayEventDeps) {
       lastCwdInfoSessionRef,
       nativeSubagentSessionsRef,
       queryClient,
-      refreshLydiaConfig,
+      refreshAliceConfig,
       sessionInterrupted,
       updateSessionState,
       upsertToolCall

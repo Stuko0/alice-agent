@@ -32,17 +32,17 @@ def _clean_env(monkeypatch):
     those writes aren't tracked by monkeypatch and won't be undone by it.
     We add explicit cleanup on yield to prevent cross-test pollution.
     """
-    for var in ("LYDIA_IGNORE_USER_CONFIG", "LYDIA_IGNORE_RULES"):
+    for var in ("ALICE_IGNORE_USER_CONFIG", "ALICE_IGNORE_RULES"):
         monkeypatch.delenv(var, raising=False)
     yield
-    for var in ("LYDIA_IGNORE_USER_CONFIG", "LYDIA_IGNORE_RULES"):
+    for var in ("ALICE_IGNORE_USER_CONFIG", "ALICE_IGNORE_RULES"):
         os.environ.pop(var, None)
 
 
 class TestIgnoreUserConfigEnvGate:
-    """``load_cli_config()`` must honour ``LYDIA_IGNORE_USER_CONFIG=1``.
+    """``load_cli_config()`` must honour ``ALICE_IGNORE_USER_CONFIG=1``.
 
-    When the env var is set, user config at ``<lydia_home>/config.yaml`` is
+    When the env var is set, user config at ``<alice_home>/config.yaml`` is
     skipped even if present — the function returns only the built-in defaults
     (merged with the project-level ``cli-config.yaml`` fallback).
     """
@@ -60,9 +60,9 @@ class TestIgnoreUserConfigEnvGate:
         (tmp_path / "config.yaml").write_text(config_yaml)
 
     def _reload_cli(self, monkeypatch, tmp_path):
-        """Point cli._lydia_home at tmp_path and return a fresh load_cli_config."""
+        """Point cli._alice_home at tmp_path and return a fresh load_cli_config."""
         import cli
-        monkeypatch.setattr(cli, "_lydia_home", tmp_path)
+        monkeypatch.setattr(cli, "_alice_home", tmp_path)
         return cli.load_cli_config
 
     def test_user_config_loaded_when_flag_unset(self, tmp_path, monkeypatch):
@@ -76,13 +76,13 @@ class TestIgnoreUserConfigEnvGate:
         assert cfg["agent"]["system_prompt"] == "from user config"
 
     def test_user_config_skipped_when_flag_set(self, tmp_path, monkeypatch):
-        """With LYDIA_IGNORE_USER_CONFIG=1, user config.yaml is ignored.
+        """With ALICE_IGNORE_USER_CONFIG=1, user config.yaml is ignored.
 
         The built-in default ``model.default`` is empty string (no user override),
         and the user's ``agent.system_prompt`` is not seen.
         """
         self._write_user_config(tmp_path, "anthropic/claude-sonnet-4.6")
-        monkeypatch.setenv("LYDIA_IGNORE_USER_CONFIG", "1")
+        monkeypatch.setenv("ALICE_IGNORE_USER_CONFIG", "1")
 
         load_cli_config = self._reload_cli(monkeypatch, tmp_path)
         cfg = load_cli_config()
@@ -98,7 +98,7 @@ class TestIgnoreUserConfigEnvGate:
     def test_flag_ignored_when_set_to_other_value(self, tmp_path, monkeypatch):
         """Only the literal value "1" activates the bypass, matching the yolo pattern."""
         self._write_user_config(tmp_path, "anthropic/claude-sonnet-4.6")
-        monkeypatch.setenv("LYDIA_IGNORE_USER_CONFIG", "true")  # not "1"
+        monkeypatch.setenv("ALICE_IGNORE_USER_CONFIG", "true")  # not "1"
 
         load_cli_config = self._reload_cli(monkeypatch, tmp_path)
         cfg = load_cli_config()
@@ -114,8 +114,8 @@ class TestIgnoreRulesEnvGate:
     """
 
     def test_env_var_enables_ignore_rules(self, monkeypatch):
-        """Setting LYDIA_IGNORE_RULES=1 flips AliceCLI.ignore_rules True."""
-        monkeypatch.setenv("LYDIA_IGNORE_RULES", "1")
+        """Setting ALICE_IGNORE_RULES=1 flips AliceCLI.ignore_rules True."""
+        monkeypatch.setenv("ALICE_IGNORE_RULES", "1")
 
         # Import AliceCLI lazily — cli.py has heavy module-init side effects
         # that we don't want to run at test collection time.
@@ -129,24 +129,24 @@ class TestIgnoreRulesEnvGate:
         obj = object.__new__(cli.AliceCLI)
         # Replicate the exact logic from cli.py AliceCLI.__init__:
         ignore_rules = False  # constructor default
-        obj.ignore_rules = ignore_rules or os.environ.get("LYDIA_IGNORE_RULES") == "1"
+        obj.ignore_rules = ignore_rules or os.environ.get("ALICE_IGNORE_RULES") == "1"
 
         assert obj.ignore_rules is True
 
     def test_constructor_flag_alone_enables_ignore_rules(self, monkeypatch):
-        monkeypatch.delenv("LYDIA_IGNORE_RULES", raising=False)
+        monkeypatch.delenv("ALICE_IGNORE_RULES", raising=False)
         import cli
         obj = object.__new__(cli.AliceCLI)
         ignore_rules = True  # constructor argument
-        obj.ignore_rules = ignore_rules or os.environ.get("LYDIA_IGNORE_RULES") == "1"
+        obj.ignore_rules = ignore_rules or os.environ.get("ALICE_IGNORE_RULES") == "1"
         assert obj.ignore_rules is True
 
     def test_neither_flag_nor_env_leaves_rules_enabled(self, monkeypatch):
-        monkeypatch.delenv("LYDIA_IGNORE_RULES", raising=False)
+        monkeypatch.delenv("ALICE_IGNORE_RULES", raising=False)
         import cli
         obj = object.__new__(cli.AliceCLI)
         ignore_rules = False
-        obj.ignore_rules = ignore_rules or os.environ.get("LYDIA_IGNORE_RULES") == "1"
+        obj.ignore_rules = ignore_rules or os.environ.get("ALICE_IGNORE_RULES") == "1"
         assert obj.ignore_rules is False
 
 
@@ -159,13 +159,13 @@ class TestCmdChatWiring:
     def _simulate_cmd_chat_env_setup(self, args):
         """Replicate the exact snippet from cmd_chat in main.py."""
         if getattr(args, "ignore_user_config", False):
-            os.environ["LYDIA_IGNORE_USER_CONFIG"] = "1"
+            os.environ["ALICE_IGNORE_USER_CONFIG"] = "1"
         if getattr(args, "ignore_rules", False):
-            os.environ["LYDIA_IGNORE_RULES"] = "1"
+            os.environ["ALICE_IGNORE_RULES"] = "1"
 
     def test_both_flags_set_both_env_vars(self, monkeypatch):
-        monkeypatch.delenv("LYDIA_IGNORE_USER_CONFIG", raising=False)
-        monkeypatch.delenv("LYDIA_IGNORE_RULES", raising=False)
+        monkeypatch.delenv("ALICE_IGNORE_USER_CONFIG", raising=False)
+        monkeypatch.delenv("ALICE_IGNORE_RULES", raising=False)
 
         class FakeArgs:
             ignore_user_config = True
@@ -173,12 +173,12 @@ class TestCmdChatWiring:
 
         self._simulate_cmd_chat_env_setup(FakeArgs())
 
-        assert os.environ.get("LYDIA_IGNORE_USER_CONFIG") == "1"
-        assert os.environ.get("LYDIA_IGNORE_RULES") == "1"
+        assert os.environ.get("ALICE_IGNORE_USER_CONFIG") == "1"
+        assert os.environ.get("ALICE_IGNORE_RULES") == "1"
 
     def test_only_ignore_user_config(self, monkeypatch):
-        monkeypatch.delenv("LYDIA_IGNORE_USER_CONFIG", raising=False)
-        monkeypatch.delenv("LYDIA_IGNORE_RULES", raising=False)
+        monkeypatch.delenv("ALICE_IGNORE_USER_CONFIG", raising=False)
+        monkeypatch.delenv("ALICE_IGNORE_RULES", raising=False)
 
         class FakeArgs:
             ignore_user_config = True
@@ -186,20 +186,20 @@ class TestCmdChatWiring:
 
         self._simulate_cmd_chat_env_setup(FakeArgs())
 
-        assert os.environ.get("LYDIA_IGNORE_USER_CONFIG") == "1"
-        assert "LYDIA_IGNORE_RULES" not in os.environ
+        assert os.environ.get("ALICE_IGNORE_USER_CONFIG") == "1"
+        assert "ALICE_IGNORE_RULES" not in os.environ
 
     def test_flags_absent_sets_nothing(self, monkeypatch):
-        monkeypatch.delenv("LYDIA_IGNORE_USER_CONFIG", raising=False)
-        monkeypatch.delenv("LYDIA_IGNORE_RULES", raising=False)
+        monkeypatch.delenv("ALICE_IGNORE_USER_CONFIG", raising=False)
+        monkeypatch.delenv("ALICE_IGNORE_RULES", raising=False)
 
         class FakeArgs:
             pass  # no attributes at all — getattr fallback must handle
 
         self._simulate_cmd_chat_env_setup(FakeArgs())
 
-        assert "LYDIA_IGNORE_USER_CONFIG" not in os.environ
-        assert "LYDIA_IGNORE_RULES" not in os.environ
+        assert "ALICE_IGNORE_USER_CONFIG" not in os.environ
+        assert "ALICE_IGNORE_RULES" not in os.environ
 
 
 class TestArgparseFlagsRegistered:
@@ -240,5 +240,5 @@ class TestArgparseFlagsRegistered:
         import inspect
         import alice_cli.main as hm
         src = inspect.getsource(hm)
-        assert "LYDIA_IGNORE_USER_CONFIG" in src
-        assert "LYDIA_IGNORE_RULES" in src
+        assert "ALICE_IGNORE_USER_CONFIG" in src
+        assert "ALICE_IGNORE_RULES" in src

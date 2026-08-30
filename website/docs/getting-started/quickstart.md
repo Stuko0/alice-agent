@@ -48,21 +48,21 @@ Pick the row that matches your goal:
 
 ## 1. Install Alice Agent
 ### With the Alice Desktop installer on macOS or Windows (recommended)
-To easily install the command-line and desktop applications, [download the Alice Desktop installer](https://alice-agent.nousresearch.com/) from our website and run it.
+To easily install the command-line and desktop applications, [download the Alice Desktop installer](https://alice-agent.stuko.dev/) from our website and run it.
 
 ### Without Alice Desktop:
 For a command-line only install without Alice Desktop, run:
 
 #### Linux / macOS / WSL2 / Android (Termux)
 ```bash
-curl -fsSL https://alice-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://alice-agent.stuko.dev/install.sh | bash
 ```
 
 #### Windows (native)
 
 Run in powershell:
 ```powershell
-iex (irm https://alice-agent.nousresearch.com/install.ps1) 
+iex (irm https://alice-agent.stuko.dev/install.ps1) 
 ```
 
 :::tip Android / Termux

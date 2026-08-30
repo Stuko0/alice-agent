@@ -31,7 +31,7 @@ def _make_pconfig(provider_id="deepseek", env_vars=None):
 
 
 @pytest.fixture
-def isolated_lydia_home(tmp_path, monkeypatch):
+def isolated_alice_home(tmp_path, monkeypatch):
     """Point ALICE_HOME at a temp dir and clear known API key env vars.
 
     Also invalidates any cached get_env_value state by patching Path.home().
@@ -63,12 +63,12 @@ class TestCredentialPoolSeedsFromDotEnv:
 
     This is the load-bearing behaviour for the fix: when a user adds a key to
     .env mid-session or via a non-CLI entry point that doesn't run
-    load_lydia_dotenv, the credential pool must still discover it.
+    load_alice_dotenv, the credential pool must still discover it.
     """
 
-    def test_deepseek_key_from_dotenv_only(self, isolated_lydia_home):
+    def test_deepseek_key_from_dotenv_only(self, isolated_alice_home):
         """Key in .env but not os.environ → _seed_from_env adds a pool entry."""
-        _write_env_file(isolated_lydia_home, DEEPSEEK_API_KEY="sk-dotenv-only-12345")
+        _write_env_file(isolated_alice_home, DEEPSEEK_API_KEY="sk-dotenv-only-12345")
         assert "DEEPSEEK_API_KEY" not in os.environ
 
         from agent.credential_pool import _seed_from_env
@@ -83,9 +83,9 @@ class TestCredentialPoolSeedsFromDotEnv:
             for e in entries
         ), f"Expected seeded entry with dotenv key, got: {[(e.source, e.access_token) for e in entries]}"
 
-    def test_openrouter_key_from_dotenv_only(self, isolated_lydia_home):
+    def test_openrouter_key_from_dotenv_only(self, isolated_alice_home):
         """OpenRouter path has its own branch — verify it also reads .env."""
-        _write_env_file(isolated_lydia_home, OPENROUTER_API_KEY="sk-or-dotenv-abc")
+        _write_env_file(isolated_alice_home, OPENROUTER_API_KEY="sk-or-dotenv-abc")
         assert "OPENROUTER_API_KEY" not in os.environ
 
         from agent.credential_pool import _seed_from_env
@@ -98,7 +98,7 @@ class TestCredentialPoolSeedsFromDotEnv:
             e.access_token == "sk-or-dotenv-abc" for e in entries
         )
 
-    def test_empty_dotenv_no_entries(self, isolated_lydia_home):
+    def test_empty_dotenv_no_entries(self, isolated_alice_home):
         """No .env file, no env vars → no entries seeded (and no crash)."""
         from agent.credential_pool import _seed_from_env
         entries = []
@@ -107,13 +107,13 @@ class TestCredentialPoolSeedsFromDotEnv:
         assert active_sources == set()
         assert entries == []
 
-    def test_dotenv_wins_over_stale_os_environ(self, isolated_lydia_home, monkeypatch):
+    def test_dotenv_wins_over_stale_os_environ(self, isolated_alice_home, monkeypatch):
         """Regression for #20591: a fresh key rotated into ~/.alice/.env must
         win over a stale value inherited from os.environ (parent shell export
         from Codex CLI, test runner, login profile, etc.). Without this, key
         rotation produces persistent 401s.
         """
-        _write_env_file(isolated_lydia_home, DEEPSEEK_API_KEY="sk-dotenv-fresh")
+        _write_env_file(isolated_alice_home, DEEPSEEK_API_KEY="sk-dotenv-fresh")
         monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-env-stale-xyz")
 
         from agent.credential_pool import _seed_from_env
@@ -129,9 +129,9 @@ class TestCredentialPoolSeedsFromDotEnv:
 class TestAuthResolvesFromDotEnv:
     """_resolve_api_key_provider_secret must also read from ~/.alice/.env."""
 
-    def test_key_from_dotenv_only(self, isolated_lydia_home):
+    def test_key_from_dotenv_only(self, isolated_alice_home):
         """Key in .env but not os.environ → _resolve returns it with the env var source."""
-        _write_env_file(isolated_lydia_home, DEEPSEEK_API_KEY="sk-dotenv-resolve-789")
+        _write_env_file(isolated_alice_home, DEEPSEEK_API_KEY="sk-dotenv-resolve-789")
         assert "DEEPSEEK_API_KEY" not in os.environ
 
         from alice_cli.auth import _resolve_api_key_provider_secret
@@ -143,7 +143,7 @@ class TestAuthResolvesFromDotEnv:
         assert source == "DEEPSEEK_API_KEY"
 
     def test_dotenv_wins_over_stale_os_environ_on_resolve(
-        self, isolated_lydia_home, monkeypatch
+        self, isolated_alice_home, monkeypatch
     ):
         """Regression for #20591: when both ~/.alice/.env and os.environ define
         the key, the .env value wins. Symmetric with the pool seeding rule —
@@ -151,7 +151,7 @@ class TestAuthResolvesFromDotEnv:
         live request path keeps returning the stale shell export, producing
         persistent 401s after rotation.
         """
-        _write_env_file(isolated_lydia_home, DEEPSEEK_API_KEY="dotenv-fresh-deepseek")
+        _write_env_file(isolated_alice_home, DEEPSEEK_API_KEY="dotenv-fresh-deepseek")
         monkeypatch.setenv("DEEPSEEK_API_KEY", "stale-shell-deepseek")
 
         from alice_cli.auth import _resolve_api_key_provider_secret
@@ -163,7 +163,7 @@ class TestAuthResolvesFromDotEnv:
         assert source == "DEEPSEEK_API_KEY"
 
     def test_get_anthropic_key_prefers_dotenv_over_stale_os_environ(
-        self, isolated_lydia_home, monkeypatch
+        self, isolated_alice_home, monkeypatch
     ):
         """Regression for #20591 (sibling site): get_anthropic_key() must also
         prefer ~/.alice/.env over a stale shell export. This path resolves
@@ -171,7 +171,7 @@ class TestAuthResolvesFromDotEnv:
         identical os.environ-first rotation bug that the api-key resolution
         path did, just for Anthropic.
         """
-        _write_env_file(isolated_lydia_home, ANTHROPIC_API_KEY="dotenv-fresh-anthropic")
+        _write_env_file(isolated_alice_home, ANTHROPIC_API_KEY="dotenv-fresh-anthropic")
         monkeypatch.setenv("ANTHROPIC_API_KEY", "stale-shell-anthropic")
 
         from alice_cli.auth import get_anthropic_key
@@ -181,7 +181,7 @@ class TestAuthResolvesFromDotEnv:
 class TestAuthCredentialPoolFallback:
     """_resolve_api_key_provider_secret falls back to credential pool when env + dotenv are empty."""
 
-    def test_credential_pool_fallback_structure(self, isolated_lydia_home):
+    def test_credential_pool_fallback_structure(self, isolated_alice_home):
         """Empty env + empty .env → auth falls back to credential pool."""
         mock_entry = MagicMock()
         mock_entry.access_token = "test-pool-key-12345"
@@ -200,7 +200,7 @@ class TestAuthCredentialPoolFallback:
         assert "test-pool-key-12345" in key
         assert "credential_pool" in source
 
-    def test_credential_pool_empty_returns_empty(self, isolated_lydia_home):
+    def test_credential_pool_empty_returns_empty(self, isolated_alice_home):
         """Empty env + empty .env + empty pool → empty string."""
         mock_pool = MagicMock()
         mock_pool.has_credentials.return_value = False
@@ -213,7 +213,7 @@ class TestAuthCredentialPoolFallback:
             )
         assert key == ""
 
-    def test_env_var_takes_priority_over_pool(self, isolated_lydia_home, monkeypatch):
+    def test_env_var_takes_priority_over_pool(self, isolated_alice_home, monkeypatch):
         """os.environ key wins — credential pool is NEVER consulted."""
         monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-env-key-first-abc123")
 
@@ -231,9 +231,9 @@ class TestAuthCredentialPoolFallback:
         # Pool should not even have been loaded — env var satisfied the request first
         mp.assert_not_called()
 
-    def test_dotenv_takes_priority_over_pool(self, isolated_lydia_home):
+    def test_dotenv_takes_priority_over_pool(self, isolated_alice_home):
         """Key in .env beats credential pool — pool only fires when both env sources are empty."""
-        _write_env_file(isolated_lydia_home, DEEPSEEK_API_KEY="sk-dotenv-priority-xyz")
+        _write_env_file(isolated_alice_home, DEEPSEEK_API_KEY="sk-dotenv-priority-xyz")
         assert "DEEPSEEK_API_KEY" not in os.environ
 
         mock_pool = MagicMock()
@@ -273,26 +273,26 @@ class TestAnthropicEnvAuthTypeClassification:
         assert matching, f"expected a seeded entry for {env_var}, got {entries}"
         return matching[0]
 
-    def test_oauth_token_classified_as_oauth(self, isolated_lydia_home):
+    def test_oauth_token_classified_as_oauth(self, isolated_alice_home):
         """sk-ant-oat- token from CLAUDE_CODE_OAUTH_TOKEN → AUTH_TYPE_OAUTH."""
         from agent.credential_pool import AUTH_TYPE_OAUTH
-        _write_env_file(isolated_lydia_home, CLAUDE_CODE_OAUTH_TOKEN="sk-ant-oat-fake-12345")
+        _write_env_file(isolated_alice_home, CLAUDE_CODE_OAUTH_TOKEN="sk-ant-oat-fake-12345")
         entry = self._seed("CLAUDE_CODE_OAUTH_TOKEN", "sk-ant-oat-fake-12345")
         assert entry.auth_type == AUTH_TYPE_OAUTH
 
-    def test_admin_key_classified_as_api_key(self, isolated_lydia_home):
+    def test_admin_key_classified_as_api_key(self, isolated_alice_home):
         """sk-ant-admin- key from ANTHROPIC_API_KEY → AUTH_TYPE_API_KEY, not OAuth.
 
         This is the bug the fix targets: previously this was tagged OAuth.
         """
         from agent.credential_pool import AUTH_TYPE_API_KEY
-        _write_env_file(isolated_lydia_home, ANTHROPIC_API_KEY="sk-ant-admin-fake-12345")
+        _write_env_file(isolated_alice_home, ANTHROPIC_API_KEY="sk-ant-admin-fake-12345")
         entry = self._seed("ANTHROPIC_API_KEY", "sk-ant-admin-fake-12345")
         assert entry.auth_type == AUTH_TYPE_API_KEY
 
-    def test_standard_api_key_classified_as_api_key(self, isolated_lydia_home):
+    def test_standard_api_key_classified_as_api_key(self, isolated_alice_home):
         """sk-ant-api- key → AUTH_TYPE_API_KEY (unchanged behaviour)."""
         from agent.credential_pool import AUTH_TYPE_API_KEY
-        _write_env_file(isolated_lydia_home, ANTHROPIC_API_KEY="sk-ant-api-fake-12345")
+        _write_env_file(isolated_alice_home, ANTHROPIC_API_KEY="sk-ant-api-fake-12345")
         entry = self._seed("ANTHROPIC_API_KEY", "sk-ant-api-fake-12345")
         assert entry.auth_type == AUTH_TYPE_API_KEY

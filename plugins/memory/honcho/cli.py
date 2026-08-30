@@ -321,7 +321,7 @@ _IDENTITY_MAPPING_KEYS = (
 
 
 def _resolve_effective_identity_mapping(
-    cfg: dict, lydia_host: dict
+    cfg: dict, alice_host: dict
 ) -> tuple[bool, dict, str, bool, bool]:
     """Resolve the effective identity-mapping state for the active host.
 
@@ -338,8 +338,8 @@ def _resolve_effective_identity_mapping(
     """
     pin = False
     for val in (
-        lydia_host.get("pinUserPeer"),
-        lydia_host.get("pinPeerName"),
+        alice_host.get("pinUserPeer"),
+        alice_host.get("pinPeerName"),
         cfg.get("pinUserPeer"),
         cfg.get("pinPeerName"),
     ):
@@ -347,16 +347,16 @@ def _resolve_effective_identity_mapping(
             pin = bool(val)
             break
 
-    if "userPeerAliases" in lydia_host:
-        aliases_src = lydia_host.get("userPeerAliases")
+    if "userPeerAliases" in alice_host:
+        aliases_src = alice_host.get("userPeerAliases")
         aliases_from_root = False
     else:
         aliases_src = cfg.get("userPeerAliases")
         aliases_from_root = aliases_src is not None
     aliases = aliases_src if isinstance(aliases_src, dict) else {}
 
-    if "runtimePeerPrefix" in lydia_host:
-        prefix_src = lydia_host.get("runtimePeerPrefix")
+    if "runtimePeerPrefix" in alice_host:
+        prefix_src = alice_host.get("runtimePeerPrefix")
         prefix_from_root = False
     else:
         prefix_src = cfg.get("runtimePeerPrefix")
@@ -366,14 +366,14 @@ def _resolve_effective_identity_mapping(
     return pin, aliases, prefix, aliases_from_root, prefix_from_root
 
 
-def _scrub_identity_mapping(lydia_host: dict) -> None:
+def _scrub_identity_mapping(alice_host: dict) -> None:
     """Drop every peer-mapping key from the host block.
 
     Called before the wizard writes a chosen shape so a stale alias, prefix,
     or pin from an earlier run can't bleed into the new mapping.
     """
     for key in _IDENTITY_MAPPING_KEYS:
-        lydia_host.pop(key, None)
+        alice_host.pop(key, None)
 
 
 def _migrate_pin_key(block: dict) -> bool:
@@ -425,27 +425,27 @@ def _collect_operator_aliases(existing: dict, peer_target: str) -> dict:
 
 
 def _apply_runtime_prefix(
-    lydia_host: dict, current_prefix: str, prefix_from_root: bool, label: str
+    alice_host: dict, current_prefix: str, prefix_from_root: bool, label: str
 ) -> None:
     """Write a host-level runtimePeerPrefix only when it diverges from an
     inherited root value; otherwise let the root cascade stand."""
     new_prefix = _prompt(label, default=current_prefix or "").strip()
     if new_prefix and not (prefix_from_root and new_prefix == current_prefix):
-        lydia_host["runtimePeerPrefix"] = new_prefix
+        alice_host["runtimePeerPrefix"] = new_prefix
 
 
-def _echo_identity_mapping(lydia_host: dict) -> None:
+def _echo_identity_mapping(alice_host: dict) -> None:
     """Show the resulting keys so the operator can verify what was written."""
-    aliases = lydia_host.get("userPeerAliases")
-    prefix = lydia_host.get("runtimePeerPrefix")
+    aliases = alice_host.get("userPeerAliases")
+    prefix = alice_host.get("runtimePeerPrefix")
     print("  resolved →")
-    print(f"    pinUserPeer       = {bool(lydia_host.get('pinUserPeer'))}")
+    print(f"    pinUserPeer       = {bool(alice_host.get('pinUserPeer'))}")
     print(f"    userPeerAliases   = {aliases if aliases else '{}'}")
     print(f"    runtimePeerPrefix = {prefix if prefix else '(none)'}")
 
 
 def _configure_raw_identity_mapping(
-    lydia_host: dict,
+    alice_host: dict,
     current_pin: bool,
     current_aliases: dict,
     current_prefix: str,
@@ -459,8 +459,8 @@ def _configure_raw_identity_mapping(
         default=str(bool(current_pin)).lower(),
     ).strip().lower()
     pin = pin_in in {"true", "t", "yes", "y", "1"}
-    _scrub_identity_mapping(lydia_host)
-    lydia_host["pinUserPeer"] = pin
+    _scrub_identity_mapping(alice_host)
+    alice_host["pinUserPeer"] = pin
     if pin:
         return
     aliases = (
@@ -478,9 +478,9 @@ def _configure_raw_identity_mapping(
             if rid and peer:
                 aliases[rid] = peer
     if aliases:
-        lydia_host["userPeerAliases"] = aliases
+        alice_host["userPeerAliases"] = aliases
     _apply_runtime_prefix(
-        lydia_host, current_prefix, prefix_from_root,
+        alice_host, current_prefix, prefix_from_root,
         "runtimePeerPrefix — namespace for unknown IDs (blank for none)",
     )
 
@@ -549,11 +549,11 @@ def cmd_setup(args) -> None:
         return
 
     hosts = cfg.setdefault("hosts", {})
-    lydia_host = hosts.setdefault(_host_key(), {})
+    alice_host = hosts.setdefault(_host_key(), {})
 
     # Canonicalize any legacy pinPeerName before detection/writes.
     _migrate_pin_key(cfg)
-    _migrate_pin_key(lydia_host)
+    _migrate_pin_key(alice_host)
 
     # --- 1. Cloud or local? ---
     print("  Deployment:")
@@ -586,7 +586,7 @@ def cmd_setup(args) -> None:
         # apiKey) so ``get_honcho_client`` recognises it as an explicit
         # local auth opt-in (see ``_host_has_key`` in client.py) and
         # cloud/hybrid switching is unaffected.
-        current_host_key = lydia_host.get("apiKey", "")
+        current_host_key = alice_host.get("apiKey", "")
         masked = (
             f"...{current_host_key[-8:]}"
             if len(current_host_key) > 8
@@ -605,7 +605,7 @@ def cmd_setup(args) -> None:
             secret=True,
         )
         if new_local_key:
-            lydia_host["apiKey"] = new_local_key
+            alice_host["apiKey"] = new_local_key
         elif current_host_key:
             print("  Keeping existing local JWT.")
         else:
@@ -630,7 +630,7 @@ def cmd_setup(args) -> None:
         # Detect an existing OAuth grant so re-running setup reflects it instead
         # of looking like a fresh connect.
         from plugins.memory.honcho.oauth import OAuthCredential
-        existing_oauth = OAuthCredential.from_host_block(lydia_host)
+        existing_oauth = OAuthCredential.from_host_block(alice_host)
 
         print("\n  Auth method:")
         if existing_oauth is not None:
@@ -665,11 +665,11 @@ def cmd_setup(args) -> None:
                 print(f"  OAuth sign-in failed: {e}")
                 print("  Re-run 'alice honcho setup' to retry, or choose an API key instead.\n")
                 return
-            lydia_host["apiKey"] = cred.access_token
-            lydia_host["oauth"] = cred.oauth_block()
+            alice_host["apiKey"] = cred.access_token
+            alice_host["oauth"] = cred.oauth_block()
             # Default the peer prompt to the name entered at consent.
             if cred.consent_peer_name:
-                lydia_host["peerName"] = cred.consent_peer_name
+                alice_host["peerName"] = cred.consent_peer_name
             print("  Authorized — token saved. Let's finish configuring.\n")
         else:
             current_key = cfg.get("apiKey", "")
@@ -685,20 +685,20 @@ def cmd_setup(args) -> None:
                 return
 
     # --- 3. Identity ---
-    current_peer = lydia_host.get("peerName") or cfg.get("peerName", "")
+    current_peer = alice_host.get("peerName") or cfg.get("peerName", "")
     new_peer = _prompt("Your name (user peer)", default=current_peer or os.getenv("USER", "user"))
     if new_peer:
-        lydia_host["peerName"] = new_peer
+        alice_host["peerName"] = new_peer
 
-    current_ai = lydia_host.get("aiPeer") or cfg.get("aiPeer", "alice")
+    current_ai = alice_host.get("aiPeer") or cfg.get("aiPeer", "alice")
     new_ai = _prompt("AI peer name", default=current_ai)
     if new_ai:
-        lydia_host["aiPeer"] = new_ai
+        alice_host["aiPeer"] = new_ai
 
-    current_workspace = lydia_host.get("workspace") or cfg.get("workspace", "alice")
+    current_workspace = alice_host.get("workspace") or cfg.get("workspace", "alice")
     new_workspace = _prompt("Workspace ID", default=current_workspace)
     if new_workspace:
-        lydia_host["workspace"] = new_workspace
+        alice_host["workspace"] = new_workspace
 
     # --- 3b. Gateway identity mapping ---
     # These keys only affect the Alice GATEWAY (Telegram/Discord/Slack/...),
@@ -715,7 +715,7 @@ def cmd_setup(args) -> None:
         current_prefix,
         aliases_from_root,
         prefix_from_root,
-    ) = _resolve_effective_identity_mapping(cfg, lydia_host)
+    ) = _resolve_effective_identity_mapping(cfg, alice_host)
 
     if current_pin:
         current_shape = "single"
@@ -742,7 +742,7 @@ def cmd_setup(args) -> None:
         run_mapping = True
 
     if run_mapping:
-        peer_target = lydia_host.get("peerName") or current_peer or "user"
+        peer_target = alice_host.get("peerName") or current_peer or "user"
         default_choice = {"single": "1", "hybrid": "2", "multi": "3"}.get(current_shape, "3")
         print("\n  How should gateway users map to memory peers?")
         print("    [1] just me — every non-agent user collapses to your peer")
@@ -783,10 +783,10 @@ def cmd_setup(args) -> None:
         # Each branch scrubs every peer-mapping key first so a stale alias,
         # prefix, or pin from an earlier run starts clean.
         if shape == "single":
-            _scrub_identity_mapping(lydia_host)
-            lydia_host["pinUserPeer"] = True
+            _scrub_identity_mapping(alice_host)
+            alice_host["pinUserPeer"] = True
             print(f"  All non-agent gateway users route to '{peer_target}' (pin overrides aliases).")
-            _echo_identity_mapping(lydia_host)
+            _echo_identity_mapping(alice_host)
         elif shape == "multi":
             # Preserve operator-curated host-level aliases across multi → multi
             # re-runs.  Root-sourced aliases cascade naturally and are NOT
@@ -796,51 +796,51 @@ def cmd_setup(args) -> None:
                 if isinstance(current_aliases, dict) and not aliases_from_root
                 else {}
             )
-            _scrub_identity_mapping(lydia_host)
-            lydia_host["pinUserPeer"] = False
+            _scrub_identity_mapping(alice_host)
+            alice_host["pinUserPeer"] = False
             if prior_aliases:
-                lydia_host["userPeerAliases"] = prior_aliases
+                alice_host["userPeerAliases"] = prior_aliases
             _apply_runtime_prefix(
-                lydia_host, current_prefix, prefix_from_root,
+                alice_host, current_prefix, prefix_from_root,
                 "Runtime peer prefix (e.g. 'telegram_', blank for none)",
             )
             print("  Each gateway user → own peer.")
-            _echo_identity_mapping(lydia_host)
+            _echo_identity_mapping(alice_host)
         elif shape == "hybrid":
             existing_aliases = dict(current_aliases) if isinstance(current_aliases, dict) else {}
-            _scrub_identity_mapping(lydia_host)
-            lydia_host["pinUserPeer"] = False
+            _scrub_identity_mapping(alice_host)
+            alice_host["pinUserPeer"] = False
             merged = _collect_operator_aliases(existing_aliases, peer_target)
             if merged:
-                lydia_host["userPeerAliases"] = merged
+                alice_host["userPeerAliases"] = merged
             _apply_runtime_prefix(
-                lydia_host, current_prefix, prefix_from_root,
+                alice_host, current_prefix, prefix_from_root,
                 "Runtime peer prefix for unknown users (e.g. 'telegram_', blank for none)",
             )
             print(f"  Your runtime IDs → '{peer_target}', others → own peer.")
-            _echo_identity_mapping(lydia_host)
+            _echo_identity_mapping(alice_host)
         elif shape == "raw":
             _configure_raw_identity_mapping(
-                lydia_host, current_pin, current_aliases, current_prefix,
+                alice_host, current_pin, current_aliases, current_prefix,
                 aliases_from_root, prefix_from_root,
             )
-            _echo_identity_mapping(lydia_host)
+            _echo_identity_mapping(alice_host)
         else:  # skip
             print("  Identity mapping left untouched.")
 
     # --- 4. Observation mode ---
-    current_obs = lydia_host.get("observationMode") or cfg.get("observationMode", "directional")
+    current_obs = alice_host.get("observationMode") or cfg.get("observationMode", "directional")
     print("\n  Observation mode:")
     print("    directional  -- all observations on, each AI peer builds its own view (default)")
     print("    unified      -- user observes self, AI observes others only")
     new_obs = _prompt("Observation mode", default=current_obs)
     if new_obs in {"unified", "directional"}:
-        lydia_host["observationMode"] = new_obs
+        alice_host["observationMode"] = new_obs
     else:
-        lydia_host["observationMode"] = "directional"
+        alice_host["observationMode"] = "directional"
 
     # --- 5. Write frequency ---
-    current_wf = str(lydia_host.get("writeFrequency") or cfg.get("writeFrequency", "async"))
+    current_wf = str(alice_host.get("writeFrequency") or cfg.get("writeFrequency", "async"))
     print("\n  Write frequency:")
     print("    async   -- background thread, no token cost (recommended)")
     print("    turn    -- sync write after every turn")
@@ -848,12 +848,12 @@ def cmd_setup(args) -> None:
     print("    N       -- write every N turns (e.g. 5)")
     new_wf = _prompt("Write frequency", default=current_wf)
     try:
-        lydia_host["writeFrequency"] = int(new_wf)
+        alice_host["writeFrequency"] = int(new_wf)
     except (ValueError, TypeError):
-        lydia_host["writeFrequency"] = new_wf if new_wf in {"async", "turn", "session"} else "async"
+        alice_host["writeFrequency"] = new_wf if new_wf in {"async", "turn", "session"} else "async"
 
     # --- 6. Recall mode ---
-    _raw_recall = lydia_host.get("recallMode") or cfg.get("recallMode", "hybrid")
+    _raw_recall = alice_host.get("recallMode") or cfg.get("recallMode", "hybrid")
     current_recall = "hybrid" if _raw_recall not in {"hybrid", "context", "tools"} else _raw_recall
     print("\n  Recall mode:")
     print("    hybrid  -- auto-injected context + Honcho tools available (default)")
@@ -861,29 +861,29 @@ def cmd_setup(args) -> None:
     print("    tools   -- Honcho tools only, no auto-injected context")
     new_recall = _prompt("Recall mode", default=current_recall)
     if new_recall in {"hybrid", "context", "tools"}:
-        lydia_host["recallMode"] = new_recall
+        alice_host["recallMode"] = new_recall
 
     # --- 7. Context token budget ---
-    current_ctx_tokens = lydia_host.get("contextTokens") or cfg.get("contextTokens")
+    current_ctx_tokens = alice_host.get("contextTokens") or cfg.get("contextTokens")
     current_display = str(current_ctx_tokens) if current_ctx_tokens else "uncapped"
     print("\n  Context injection per turn (hybrid/context recall modes only):")
     print("    uncapped -- no limit (default)")
     print("    N        -- token limit per turn (e.g. 1200)")
     new_ctx_tokens = _prompt("Context tokens", default=current_display)
     if new_ctx_tokens.strip().lower() in {"none", "uncapped", "no limit"}:
-        lydia_host.pop("contextTokens", None)
+        alice_host.pop("contextTokens", None)
     elif new_ctx_tokens.strip() == "":
         pass  # keep current
     else:
         try:
             val = int(new_ctx_tokens)
             if val >= 0:
-                lydia_host["contextTokens"] = val
+                alice_host["contextTokens"] = val
         except (ValueError, TypeError):
             pass  # keep current
 
     # --- 7b. Dialectic cadence ---
-    current_dialectic = str(lydia_host.get("dialecticCadence") or cfg.get("dialecticCadence") or "2")
+    current_dialectic = str(alice_host.get("dialecticCadence") or cfg.get("dialecticCadence") or "2")
     print("\n  Dialectic cadence:")
     print("    How often Honcho rebuilds its user model (LLM call on Honcho backend).")
     print("    1 = every turn, 2 = every other turn, 3+ = sparser.")
@@ -892,13 +892,13 @@ def cmd_setup(args) -> None:
     try:
         val = int(new_dialectic)
         if val >= 1:
-            lydia_host["dialecticCadence"] = val
+            alice_host["dialecticCadence"] = val
     except (ValueError, TypeError):
-        lydia_host["dialecticCadence"] = 2
+        alice_host["dialecticCadence"] = 2
 
     # --- 7c. Dialectic reasoning level ---
     current_reasoning = (
-        lydia_host.get("dialecticReasoningLevel")
+        alice_host.get("dialecticReasoningLevel")
         or cfg.get("dialecticReasoningLevel")
         or "low"
     )
@@ -911,12 +911,12 @@ def cmd_setup(args) -> None:
     print("    max      -- thorough audit-level analysis")
     new_reasoning = _prompt("Reasoning level", default=current_reasoning)
     if new_reasoning in {"minimal", "low", "medium", "high", "max"}:
-        lydia_host["dialecticReasoningLevel"] = new_reasoning
+        alice_host["dialecticReasoningLevel"] = new_reasoning
     else:
-        lydia_host["dialecticReasoningLevel"] = "low"
+        alice_host["dialecticReasoningLevel"] = "low"
 
     # --- 8. Session strategy ---
-    current_strat = lydia_host.get("sessionStrategy") or cfg.get("sessionStrategy", "per-session")
+    current_strat = alice_host.get("sessionStrategy") or cfg.get("sessionStrategy", "per-session")
     print("\n  Session strategy:")
     print("    per-session   -- each run starts clean, Honcho injects context automatically")
     print("    per-directory -- reuses session per dir, prior context auto-injected each run")
@@ -924,10 +924,10 @@ def cmd_setup(args) -> None:
     print("    global        -- single session across all directories")
     new_strat = _prompt("Session strategy", default=current_strat)
     if new_strat in {"per-session", "per-repo", "per-directory", "global"}:
-        lydia_host["sessionStrategy"] = new_strat
+        alice_host["sessionStrategy"] = new_strat
 
-    lydia_host["enabled"] = True
-    lydia_host.setdefault("saveMessages", True)
+    alice_host["enabled"] = True
+    alice_host.setdefault("saveMessages", True)
 
     _write_config(cfg)
     print(f"\n  Config written to {write_path}")
@@ -935,9 +935,9 @@ def cmd_setup(args) -> None:
     # --- Auto-enable Honcho as memory provider in config.yaml ---
     try:
         from alice_cli.config import load_config, save_config
-        lydia_config = load_config()
-        lydia_config.setdefault("memory", {})["provider"] = "honcho"
-        save_config(lydia_config)
+        alice_config = load_config()
+        alice_config.setdefault("memory", {})["provider"] = "honcho"
+        save_config(alice_config)
         print("  Memory provider set to 'honcho' in config.yaml")
     except Exception as e:
         print(f"  Could not auto-enable in config.yaml: {e}")

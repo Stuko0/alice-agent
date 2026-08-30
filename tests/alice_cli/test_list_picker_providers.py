@@ -261,7 +261,7 @@ def test_current_custom_endpoint_passthrough_marks_current_row(monkeypatch):
     """Interactive picker should preserve current custom endpoint semantics."""
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
     monkeypatch.setattr("agent.models_dev.PROVIDER_TO_MODELS_DEV", {})
-    monkeypatch.setattr("alice_cli.providers.LYDIA_OVERLAYS", {})
+    monkeypatch.setattr("alice_cli.providers.ALICE_OVERLAYS", {})
     monkeypatch.setattr("alice_cli.models.fetch_openrouter_models",
                         lambda *a, **kw: [])
 

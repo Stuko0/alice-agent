@@ -25,7 +25,7 @@ import pytest
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(autouse=True)
-def _isolate_lydia_home(tmp_path, monkeypatch):
+def _isolate_alice_home(tmp_path, monkeypatch):
     """Redirect ALICE_HOME to a temp directory."""
     monkeypatch.setenv("ALICE_HOME", str(tmp_path))
     try:

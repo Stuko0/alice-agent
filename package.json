@@ -24,13 +24,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/__PROT_NR_LYDIA__-Agent.git"
+    "url": "git+https://github.com/__PROT_NR_ALICE__-Agent.git"
   },
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/__PROT_NR_LYDIA__-Agent/issues"
+    "url": "https://github.com/__PROT_NR_ALICE__-Agent/issues"
   },
-  "homepage": "https://github.com/__PROT_NR_LYDIA__-Agent#readme",
+  "homepage": "https://github.com/__PROT_NR_ALICE__-Agent#readme",
   "dependencies": {
     "@streamdown/math": "^1.0.2",
     "agent-browser": "^0.26.0"

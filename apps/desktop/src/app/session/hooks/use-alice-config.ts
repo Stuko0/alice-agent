@@ -1,6 +1,6 @@
 import { type MutableRefObject, useCallback, useState } from 'react'
 
-import { getLydiaConfig, getLydiaConfigDefaults } from '@/alice'
+import { getAliceConfig, getAliceConfigDefaults } from '@/alice'
 import { BUILTIN_PERSONALITIES, normalizePersonalityValue, personalityNamesFromConfig } from '@/lib/chat-runtime'
 import {
   $currentCwd,
@@ -21,18 +21,18 @@ function recordingLimit(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : DEFAULT_VOICE_SECONDS
 }
 
-interface LydiaConfigOptions {
+interface AliceConfigOptions {
   activeSessionIdRef: MutableRefObject<string | null>
   refreshProjectBranch: (cwd: string) => Promise<void>
 }
 
-export function useLydiaConfig({ activeSessionIdRef, refreshProjectBranch }: LydiaConfigOptions) {
+export function useAliceConfig({ activeSessionIdRef, refreshProjectBranch }: AliceConfigOptions) {
   const [voiceMaxRecordingSeconds, setVoiceMaxRecordingSeconds] = useState(DEFAULT_VOICE_SECONDS)
   const [sttEnabled, setSttEnabled] = useState(true)
 
-  const refreshLydiaConfig = useCallback(async () => {
+  const refreshAliceConfig = useCallback(async () => {
     try {
-      const [config, defaults] = await Promise.all([getLydiaConfig(), getLydiaConfigDefaults().catch(() => ({}))])
+      const [config, defaults] = await Promise.all([getAliceConfig(), getAliceConfigDefaults().catch(() => ({}))])
 
       const personality = normalizePersonalityValue(
         typeof config.display?.personality === 'string' ? config.display.personality : ''
@@ -72,5 +72,5 @@ export function useLydiaConfig({ activeSessionIdRef, refreshProjectBranch }: Lyd
     }
   }, [activeSessionIdRef, refreshProjectBranch])
 
-  return { refreshLydiaConfig, sttEnabled, voiceMaxRecordingSeconds }
+  return { refreshAliceConfig, sttEnabled, voiceMaxRecordingSeconds }
 }

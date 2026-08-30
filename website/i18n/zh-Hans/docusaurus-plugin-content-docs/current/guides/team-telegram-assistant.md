@@ -42,7 +42,7 @@ description: "逐步指南：为整个团队搭建一个 Telegram 机器人，�
 
 2. **发送 `/newbot`**——BotFather 会询问两件事：
    - **显示名称**——用户看到的名字（例如 `Team Alice Assistant`）
-   - **用户名**——必须以 `bot` 结尾（例如 `myteam_lydia_bot`）
+   - **用户名**——必须以 `bot` 结尾（例如 `myteam_alice_bot`）
 
 3. **复制机器人 token**——BotFather 会回复类似内容：
    ```

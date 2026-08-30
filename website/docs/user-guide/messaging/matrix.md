@@ -452,7 +452,7 @@ Alice includes an opt-in Synapse harness for local validation:
 
 ```bash
 docker compose -f tests/e2e/matrix_synapse_gateway/docker-compose.yml up -d
-LYDIA_MATRIX_SYNAPSE_INTEGRATION=1 \
+ALICE_MATRIX_SYNAPSE_INTEGRATION=1 \
   scripts/run_tests.sh -m "integration and matrix_synapse" \
   tests/e2e/matrix_synapse_gateway/test_gateway.py
 docker compose -f tests/e2e/matrix_synapse_gateway/docker-compose.yml down -v
@@ -504,7 +504,7 @@ Alice detects this condition on startup and refuses to enable E2EE, logging: `de
    Or via the Synapse admin API (note the URL-encoded user ID):
    ```bash
    curl -X DELETE -H "Authorization: Bearer ADMIN_TOKEN" \
-     'https://your-server/_synapse/admin/v2/users/%40lydia%3Ayour-server/devices/DEVICE_ID'
+     'https://your-server/_synapse/admin/v2/users/%40alice%3Ayour-server/devices/DEVICE_ID'
    ```
    Note: deleting a device via the admin API may also invalidate the associated access token. You may need to generate a new token afterward.
 
@@ -603,7 +603,7 @@ such as `!important` remain normal chat messages.
 
 ### Bot joins rooms but silently drops every message (clock skew)
 
-**Cause**: The host's system clock is set ahead of real time. The Matrix adapter applies a 5-second startup-grace filter (`event_ts < startup_ts - 5`) to ignore events replayed from initial sync. When the wall clock is ahead, every incoming event looks "older than startup" and is dropped before reaching the message handler — the bot appears connected but never replies. See [#12614](https://github.com/NousResearch/alice-agent/issues/12614).
+**Cause**: The host's system clock is set ahead of real time. The Matrix adapter applies a 5-second startup-grace filter (`event_ts < startup_ts - 5`) to ignore events replayed from initial sync. When the wall clock is ahead, every incoming event looks "older than startup" and is dropped before reaching the message handler — the bot appears connected but never replies. See [#12614](https://github.com/Stuko0/alice-agent/issues/12614).
 
 **Symptom**: Gateway log shows `Matrix: dropped N live events as 'too old' more than 30s after startup`.
 
@@ -809,7 +809,7 @@ services:
       MATRIX_ACCESS_TOKEN: "syt_..."
       MATRIX_ALLOWED_USERS: "@you:matrix.example.org"
       MATRIX_ENCRYPTION: "true"
-      MATRIX_DEVICE_ID: "LYDIA_BOT"
+      MATRIX_DEVICE_ID: "ALICE_BOT"
 
       # Proxy mode — forward to host agent
       GATEWAY_PROXY_URL: "http://192.168.1.100:8642"

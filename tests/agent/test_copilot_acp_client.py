@@ -155,7 +155,7 @@ class CopilotACPClientSafetyTests(unittest.TestCase):
         outcome = (((response.get("result") or {}).get("outcome") or {}).get("outcome"))
         self.assertEqual(outcome, "cancelled")
 
-    def test_read_text_file_blocks_internal_lydia_hub_files(self) -> None:
+    def test_read_text_file_blocks_internal_alice_hub_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir) / "home"
             blocked = home / ".alice" / "skills" / ".hub" / "index-cache" / "entry.json"
@@ -185,7 +185,7 @@ class CopilotACPClientSafetyTests(unittest.TestCase):
             secret_file = root / "config.env"
             secret_file.write_text("OPENAI_API_KEY=sk-proj-abc123def456ghi789jkl012")
 
-            # agent.redact snapshots LYDIA_REDACT_SECRETS at import time into
+            # agent.redact snapshots ALICE_REDACT_SECRETS at import time into
             # _REDACT_ENABLED, so patching os.environ is a no-op. Flip the
             # module-level constant directly for the duration of the call.
             with patch("agent.redact._REDACT_ENABLED", True):
@@ -233,7 +233,7 @@ class CopilotACPClientSafetyTests(unittest.TestCase):
             safe_root.mkdir()
             outside = root / "outside.txt"
 
-            with patch.dict(os.environ, {"LYDIA_WRITE_SAFE_ROOT": str(safe_root)}, clear=False):
+            with patch.dict(os.environ, {"ALICE_WRITE_SAFE_ROOT": str(safe_root)}, clear=False):
                 response = self._dispatch(
                     {
                         "jsonrpc": "2.0",
@@ -280,13 +280,13 @@ def _fake_popen_capture(captured):
 
 
 def test_run_prompt_preserves_real_home_when_profile_home_available(monkeypatch, tmp_path):
-    lydia_home = tmp_path / "alice"
-    (lydia_home / "home").mkdir(parents=True)
+    alice_home = tmp_path / "alice"
+    (alice_home / "home").mkdir(parents=True)
     real_home = tmp_path / "real-home"
     real_home.mkdir()
 
     monkeypatch.setenv("HOME", str(real_home))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     captured = {}
     client = _make_home_client(tmp_path)
@@ -296,7 +296,7 @@ def test_run_prompt_preserves_real_home_when_profile_home_available(monkeypatch,
             client._run_prompt("hello", timeout_seconds=1)
 
     assert captured["kwargs"]["env"]["HOME"] == str(real_home)
-    assert captured["kwargs"]["env"]["LYDIA_REAL_HOME"] == str(real_home)
+    assert captured["kwargs"]["env"]["ALICE_REAL_HOME"] == str(real_home)
 
 
 def test_run_prompt_passes_home_when_parent_env_is_clean(monkeypatch, tmp_path):

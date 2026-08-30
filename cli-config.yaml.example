@@ -1,4 +1,4 @@
-# Lydia Agent CLI Configuration
+# Alice Agent CLI Configuration
 # Copy this file to cli-config.yaml and customize as needed.
 # This file configures the CLI behavior. Environment variables in .env take precedence.
 
@@ -13,10 +13,10 @@ model:
   # Inference provider selection:
   #   "auto"         - Auto-detect from credentials (default)
   #   "openrouter"   - OpenRouter (requires: OPENROUTER_API_KEY or OPENAI_API_KEY)
-  #   "nous"         - Nous Portal OAuth (requires: lydia auth add nous)
+  #   "nous"         - Nous Portal OAuth (requires: alice auth add nous)
   #   "nous-api"     - Nous Portal API key (requires: NOUS_API_KEY)
   #   "anthropic"    - Direct Anthropic API (requires: ANTHROPIC_API_KEY)
-  #   "openai-codex" - OpenAI Codex (requires: lydia auth)
+  #   "openai-codex" - OpenAI Codex (requires: alice auth)
   #   "copilot"      - GitHub Copilot / GitHub Models (requires: GITHUB_TOKEN)
   #   "gemini"      - Use Google AI Studio direct (requires: GOOGLE_API_KEY or GEMINI_API_KEY)
   #   "zai"         - Use z.ai / ZhipuAI GLM models (requires: GLM_API_KEY)
@@ -56,8 +56,8 @@ model:
   # ── Token limits — two settings, easy to confuse ──────────────────────────
   #
   # context_length: TOTAL context window (input + output tokens combined).
-  #   Controls when Lydia compresses history and validates requests.
-  #   Leave unset — Lydia auto-detects the correct value from the provider.
+  #   Controls when Alice compresses history and validates requests.
+  #   Leave unset — Alice auto-detects the correct value from the provider.
   #   Set manually only when auto-detection is wrong (e.g. a local server with
   #   a custom num_ctx, or a proxy that doesn't expose /v1/models).
   #
@@ -94,11 +94,11 @@ model:
 # client rebuilds during credential rotation.  For OpenAI-wire chat
 # completions (streaming and non-streaming) the configured value is also
 # used as the per-request ``timeout=`` kwarg so it wins over the legacy
-# LYDIA_API_TIMEOUT env var (which still applies when no config is set).
+# ALICE_API_TIMEOUT env var (which still applies when no config is set).
 # ``stale_timeout_seconds`` controls the non-streaming stale-call detector and
-# wins over the legacy LYDIA_API_CALL_STALE_TIMEOUT env var. Leaving these
-# unset keeps the legacy defaults (LYDIA_API_TIMEOUT=1800s,
-# LYDIA_API_CALL_STALE_TIMEOUT=90s, native Anthropic 900s). The
+# wins over the legacy ALICE_API_CALL_STALE_TIMEOUT env var. Leaving these
+# unset keeps the legacy defaults (ALICE_API_TIMEOUT=1800s,
+# ALICE_API_CALL_STALE_TIMEOUT=90s, native Anthropic 900s). The
 # implicit non-stream stale detector is auto-disabled for local endpoints
 # and can scale upward for very large contexts.
 #
@@ -188,16 +188,16 @@ model:
 # Commands run directly on your machine in the current directory
 # -----------------------------------------------------------------------------
 # Working directory behavior:
-#   - CLI (`lydia` command): Uses "." (current directory where you run lydia)
+#   - CLI (`alice` command): Uses "." (current directory where you run alice)
 #   - Gateway/messaging/cron: Uses terminal.cwd here; legacy .env cwd values are deprecated
 terminal:
   backend: "local"
   cwd: "."  # For local backend: "." = current directory. Ignored for remote backends unless a backend documents otherwise.
   timeout: 180
   # HOME policy for tool subprocesses:
-  #   auto    - default: host uses your real HOME; containers use LYDIA_HOME/home
+  #   auto    - default: host uses your real HOME; containers use ALICE_HOME/home
   #   real    - force your real OS-user HOME
-  #   profile - force LYDIA_HOME/home for strict per-profile CLI config isolation
+  #   profile - force ALICE_HOME/home for strict per-profile CLI config isolation
   home_mode: "auto"
   docker_mount_cwd_to_workspace: false  # SECURITY: off by default. Opt in to mount the launch cwd into Docker /workspace.
   lifetime_seconds: 300
@@ -237,7 +237,7 @@ terminal:
 #   # chosen docker_image expects to start as root.
 #   docker_run_as_host_user: true
 #   # Optional: explicitly forward selected env vars into Docker.
-#   # These values come from your current shell first, then ~/.lydia/.env.
+#   # These values come from your current shell first, then ~/.alice/.env.
 #   # Warning: anything forwarded here is visible to commands run in the container.
 #   docker_forward_env:
 #     - "GITHUB_TOKEN"
@@ -312,7 +312,7 @@ terminal:
 # - Password is cached for the session
 #
 # EMPTY PASSWORDS: Setting sudo_password to an explicit empty string is different
-# from leaving it unset. Lydia will try an empty password via `sudo -S` and
+# from leaving it unset. Alice will try an empty password via `sudo -S` and
 # will not open the interactive prompt. This is useful for passwordless sudo,
 # Touch ID sudo setups, and environments where prompting is just noise.
 #
@@ -431,7 +431,7 @@ prompt_caching:
 # =============================================================================
 # Auxiliary Models (Advanced — Experimental)
 # =============================================================================
-# Lydia uses lightweight "auxiliary" models for side tasks: image analysis,
+# Alice uses lightweight "auxiliary" models for side tasks: image analysis,
 # browser screenshot analysis, web page summarization, TTS audio-tag insertion,
 # and context compression.
 #
@@ -451,10 +451,10 @@ prompt_caching:
 # Provider options:
 #   "auto"       - Best available: OpenRouter → Nous Portal → main endpoint (default)
 #   "openrouter" - Force OpenRouter (requires OPENROUTER_API_KEY)
-#   "nous"       - Force Nous Portal (requires: lydia auth add nous)
+#   "nous"       - Force Nous Portal (requires: alice auth add nous)
 #   "gemini"      - Force Google AI Studio direct (requires: GOOGLE_API_KEY or GEMINI_API_KEY)
 #   "ollama-cloud" - Ollama Cloud (requires: OLLAMA_API_KEY)
-#   "codex"       - Force Codex OAuth (requires: lydia model → Codex).
+#   "codex"       - Force Codex OAuth (requires: alice model → Codex).
 #                  Uses gpt-5.3-codex which supports vision.
 #   "main"       - Use your custom endpoint (OPENAI_BASE_URL + OPENAI_API_KEY).
 #                  Works with OpenAI API, local models, or any OpenAI-compatible
@@ -561,7 +561,7 @@ session_reset:
 # unlimited concurrent sessions. When the limit is reached, new sessions get a
 # clean error while existing active sessions keep their normal behavior. This
 # top-level key takes precedence over gateway.max_concurrent_sessions. The cap
-# is a best-effort single-host/profile runtime guard; Lydia fails open if the
+# is a best-effort single-host/profile runtime guard; Alice fails open if the
 # local runtime lease registry cannot be read or locked.
 max_concurrent_sessions: null
 
@@ -598,9 +598,9 @@ skills:
   creation_nudge_interval: 15
 
   # External skill directories — share skills across tools/agents without
-  # copying them into ~/.lydia/skills/.  Each path is expanded (~ and ${VAR})
+  # copying them into ~/.alice/skills/.  Each path is expanded (~ and ${VAR})
   # and resolved to an absolute path.  External dirs are read-only: skill
-  # creation always writes to ~/.lydia/skills/.  Local skills take precedence
+  # creation always writes to ~/.alice/skills/.  Local skills take precedence
   # when names collide.
   # external_dirs:
   #   - ~/.agents/skills
@@ -635,7 +635,7 @@ agent:
   # timeouts, 5xx, etc.) before the agent surfaces the failure. Lower this
   # to 1 if you use fallback providers and want fast failover on flaky
   # primaries (default 3). The OpenAI SDK does its own low-level retries
-  # underneath this wrapper — this is the Lydia-level loop.
+  # underneath this wrapper — this is the Alice-level loop.
   # api_max_retries: 3
 
   # After the agent edits code without fresh passing verification, nudge it to
@@ -643,10 +643,10 @@ agent:
   # coding surfaces (CLI, TUI, desktop) and programmatic callers, and disables
   # it on conversational messaging surfaces (Telegram, Discord, etc.) where the
   # verification summary would reach a human as chat noise. Set true or false to
-  # force it on or off; the LYDIA_VERIFY_ON_STOP env var (1/0) takes precedence.
+  # force it on or off; the ALICE_VERIFY_ON_STOP env var (1/0) takes precedence.
   # verify_on_stop: auto
 
-  # Standing operator instructions for the coding posture (when Lydia is in a
+  # Standing operator instructions for the coding posture (when Alice is in a
   # code workspace). Appended to the coding brief as an extra system block, so
   # you can pin project-wide workflow rules without editing the shipped brief.
   # Accepts a string or a list of strings. Takes effect next session.
@@ -682,10 +682,10 @@ agent:
     teacher: "You are a patient teacher. Explain concepts clearly with examples."
     kawaii: "You are a kawaii assistant! Use cute expressions like (◕‿◕), ★, ♪, and ~! Add sparkles and be super enthusiastic about everything! Every response should feel warm and adorable desu~! ヽ(>∀<☆)ノ"
     catgirl: "You are Neko-chan, an anime catgirl AI assistant, nya~! Add 'nya' and cat-like expressions to your speech. Use kaomoji like (=^･ω･^=) and ฅ^•ﻌ•^ฅ. Be playful and curious like a cat, nya~!"
-    pirate: "Arrr! Ye be talkin' to Captain Lydia, the most tech-savvy pirate to sail the digital seas! Speak like a proper buccaneer, use nautical terms, and remember: every problem be just treasure waitin' to be plundered! Yo ho ho!"
+    pirate: "Arrr! Ye be talkin' to Captain Alice, the most tech-savvy pirate to sail the digital seas! Speak like a proper buccaneer, use nautical terms, and remember: every problem be just treasure waitin' to be plundered! Yo ho ho!"
     shakespeare: "Hark! Thou speakest with an assistant most versed in the bardic arts. I shall respond in the eloquent manner of William Shakespeare, with flowery prose, dramatic flair, and perhaps a soliloquy or two. What light through yonder terminal breaks?"
     surfer: "Duuude! You're chatting with the chillest AI on the web, bro! Everything's gonna be totally rad. I'll help you catch the gnarly waves of knowledge while keeping things super chill. Cowabunga! 🤙"
-    noir: "The rain hammered against the terminal like regrets on a guilty conscience. They call me Lydia - I solve problems, find answers, dig up the truth that hides in the shadows of your codebase. In this city of silicon and secrets, everyone's got something to hide. What's your story, pal?"
+    noir: "The rain hammered against the terminal like regrets on a guilty conscience. They call me Alice - I solve problems, find answers, dig up the truth that hides in the shadows of your codebase. In this city of silicon and secrets, everyone's got something to hide. What's your story, pal?"
     uwu: "hewwo! i'm your fwiendwy assistant uwu~ i wiww twy my best to hewp you! *nuzzles your code* OwO what's this? wet me take a wook! i pwomise to be vewy hewpful >w<"
     philosopher: "Greetings, seeker of wisdom. I am an assistant who contemplates the deeper meaning behind every query. Let us examine not just the 'how' but the 'why' of your questions. Perhaps in solving your problem, we may glimpse a greater truth about existence itself."
     hype: "YOOO LET'S GOOOO!!! 🔥🔥🔥 I am SO PUMPED to help you today! Every question is AMAZING and we're gonna CRUSH IT together! This is gonna be LEGENDARY! ARE YOU READY?! LET'S DO THIS! 💪😤🚀"
@@ -694,7 +694,7 @@ agent:
 # Toolsets
 # =============================================================================
 # Control which tools the agent has access to.
-# Use `lydia native` to interactively enable/disable tools per platform.
+# Use `alice native` to interactively enable/disable tools per platform.
 
 # =============================================================================
 # Platform Toolsets (per-platform tool configuration)
@@ -703,7 +703,7 @@ agent:
 # If a platform isn't listed here, its built-in default is used.
 #
 # You can use EITHER:
-#   - A preset like "lydia-cli" or "lydia-telegram" (curated tool set)
+#   - A preset like "alice-cli" or "alice-telegram" (curated tool set)
 #   - A list of individual toolsets to compose your own (see list below)
 #
 # Supported platform keys: cli, telegram, discord, whatsapp, slack, qqbot, teams, google_chat
@@ -712,8 +712,8 @@ agent:
 #
 #   # Use presets (same as defaults):
 #   platform_toolsets:
-#     cli: [lydia-cli]
-#     telegram: [lydia-telegram]
+#     cli: [alice-cli]
+#     telegram: [alice-telegram]
 #
 #   # Custom: give Telegram only web + terminal + file + planning:
 #   platform_toolsets:
@@ -728,29 +728,29 @@ agent:
 #     discord: [web, vision, skills, todo]
 #
 # If not set, defaults are:
-#   cli:           lydia-cli            (everything + cronjob management)
-#   telegram:      lydia-telegram       (terminal, file, web, vision, image, tts, browser, skills, todo, cronjob, messaging)
-#   discord:       lydia-discord        (same as telegram)
-#   whatsapp:      lydia-whatsapp       (same as telegram)
-#   slack:         lydia-slack          (same as telegram)
-#   signal:        lydia-signal         (same as telegram)
-#   homeassistant: lydia-homeassistant  (same as telegram)
-#   qqbot:            lydia-qqbot            (same as telegram)
-#   teams:            lydia-teams            (same as telegram)
-#   google_chat:      lydia-google_chat      (same as telegram)
+#   cli:           alice-cli            (everything + cronjob management)
+#   telegram:      alice-telegram       (terminal, file, web, vision, image, tts, browser, skills, todo, cronjob, messaging)
+#   discord:       alice-discord        (same as telegram)
+#   whatsapp:      alice-whatsapp       (same as telegram)
+#   slack:         alice-slack          (same as telegram)
+#   signal:        alice-signal         (same as telegram)
+#   homeassistant: alice-homeassistant  (same as telegram)
+#   qqbot:            alice-qqbot            (same as telegram)
+#   teams:            alice-teams            (same as telegram)
+#   google_chat:      alice-google_chat      (same as telegram)
 #
 platform_toolsets:
-  cli: [lydia-cli]
-  telegram: [lydia-telegram]
-  discord: [lydia-discord]
-  whatsapp: [lydia-whatsapp]
-  slack: [lydia-slack]
-  signal: [lydia-signal]
-  homeassistant: [lydia-homeassistant]
-  qqbot: [lydia-qqbot]
-  yuanbao: [lydia-yuanbao]
-  teams: [lydia-teams]
-  google_chat: [lydia-google_chat]
+  cli: [alice-cli]
+  telegram: [alice-telegram]
+  discord: [alice-discord]
+  whatsapp: [alice-whatsapp]
+  slack: [alice-slack]
+  signal: [alice-signal]
+  homeassistant: [alice-homeassistant]
+  qqbot: [alice-qqbot]
+  yuanbao: [alice-yuanbao]
+  teams: [alice-teams]
+  google_chat: [alice-google_chat]
 
 # =============================================================================
 # Gateway Platform Settings
@@ -770,12 +770,12 @@ platform_toolsets:
 #       rich_messages: false          # Bot API 10.1 rich messages (tables/task lists/details/math); default false for copyable legacy MarkdownV2, set true to opt in
 #       rich_drafts: false            # Experimental rich draft previews during Telegram DM streaming; default false because Telegram Desktop/macOS can visually overlay draft frames
 #       command_menu:
-#         # Telegram allows up to 100 BotCommands; Lydia defaults to 60 so
+#         # Telegram allows up to 100 BotCommands; Alice defaults to 60 so
 #         # all built-in commands plus common skill commands stay visible
 #         # while remaining under Telegram's payload-size limit. Clamped 1..100.
 #         max_commands: 60
-#         # prepend = user priority first, then Lydia defaults
-#         # append  = Lydia defaults first, then user priority
+#         # prepend = user priority first, then Alice defaults
+#         # append  = Alice defaults first, then user priority
 #         # replace = only the list below defines priority
 #         priority_mode: prepend
 #         priority:
@@ -794,8 +794,8 @@ platform_toolsets:
 # ─────────────────────────────────────────────────────────────────────────────
 # Available toolsets (use these names in platform_toolsets or the toolsets list)
 #
-# Run `lydia chat --list-toolsets` to see all toolsets and their tools.
-# Run `lydia chat --list-tools` to see every individual tool with descriptions.
+# Run `alice chat --list-toolsets` to see all toolsets and their tools.
+# Run `alice chat --list-tools` to see every individual tool with descriptions.
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # INDIVIDUAL TOOLSETS (compose your own):
@@ -815,12 +815,12 @@ platform_toolsets:
 #   cronjob      - cronjob (create/list/update/pause/resume/run/remove scheduled tasks)
 #
 # PRESETS (curated bundles):
-#   lydia-cli       - All of the above except send_message
-#   lydia-telegram  - terminal, file, web, vision, image_gen, tts, browser,
+#   alice-cli       - All of the above except send_message
+#   alice-telegram  - terminal, file, web, vision, image_gen, tts, browser,
 #                      skills, todo, cronjob, send_message
-#   lydia-discord   - Same as lydia-telegram
-#   lydia-whatsapp  - Same as lydia-telegram
-#   lydia-slack     - Same as lydia-telegram
+#   alice-discord   - Same as alice-telegram
+#   alice-whatsapp  - Same as alice-telegram
+#   alice-slack     - Same as alice-telegram
 #
 # COMPOSITE:
 #   debugging    - terminal + web + file
@@ -847,9 +847,9 @@ platform_toolsets:
 
 # NOTE: The top-level "toolsets" key is deprecated and ignored.
 # Tool configuration is managed per-platform via platform_toolsets above.
-# Use `lydia native` to configure interactively, or edit platform_toolsets directly.
+# Use `alice native` to configure interactively, or edit platform_toolsets directly.
 #
-# CLI override: lydia chat --toolsets terminal,web,file
+# CLI override: alice chat --toolsets terminal,web,file
 
 # =============================================================================
 # MCP (Model Context Protocol) Servers
@@ -908,7 +908,7 @@ platform_toolsets:
 # =============================================================================
 # Text-to-Speech
 # =============================================================================
-# TTS defaults to Edge TTS unless changed in ~/.lydia/config.yaml.
+# TTS defaults to Edge TTS unless changed in ~/.alice/config.yaml.
 # Gemini TTS supports persona/director prompt files, and Gemini 3.1 Flash TTS
 # can use a hidden auxiliary rewrite pass to insert expressive square-bracket
 # audio tags into the TTS script without showing tags in chat.
@@ -919,7 +919,7 @@ platform_toolsets:
 #     model: "gemini-3.1-flash-tts-preview"
 #     voice: "Kore"
 #     audio_tags: false
-#     persona_prompt_file: ""  # e.g. ~/.lydia/tts/radio-host.md
+#     persona_prompt_file: ""  # e.g. ~/.alice/tts/radio-host.md
 
 # =============================================================================
 # Voice Transcription (Speech-to-Text)
@@ -965,7 +965,7 @@ stt:
 # =============================================================================
 # Code Execution Sandbox (Programmatic Tool Calling)
 # =============================================================================
-# The execute_code tool runs Python scripts that call Lydia native via RPC.
+# The execute_code tool runs Python scripts that call Alice native via RPC.
 # Intermediate tool results stay out of the LLM's context window.
 code_execution:
   timeout: 300         # Max seconds per script before kill (default: 300 = 5 min)
@@ -1003,9 +1003,9 @@ delegation:
 #
 # Requires: pip install honcho-ai
 # Config: ~/.honcho/config.json (shared with Claude Code, Cursor, etc.)
-# API key: HONCHO_API_KEY in ~/.lydia/.env or ~/.honcho/config.json
+# API key: HONCHO_API_KEY in ~/.alice/.env or ~/.honcho/config.json
 #
-# Lydia-specific overrides (optional — most config comes from ~/.honcho/config.json):
+# Alice-specific overrides (optional — most config comes from ~/.honcho/config.json):
 # honcho: {}
 
 # =============================================================================
@@ -1073,8 +1073,8 @@ display:
   # terse: "Interrupting current task" and "⏳ Working — 12 min, terminal".
   busy_ack_detail: true
 
-  # What Enter does when Lydia is already busy (CLI and gateway platforms).
-  #   interrupt: Interrupt the current run and redirect Lydia (default)
+  # What Enter does when Alice is already busy (CLI and gateway platforms).
+  #   interrupt: Interrupt the current run and redirect Alice (default)
   #   queue:     Queue your message for the next turn
   #   steer:     Inject your message mid-run via /steer, arriving at the agent
   #              after the next tool call — no interrupt, no role violation.
@@ -1125,7 +1125,7 @@ display:
   # response box label, and branding text. Change at runtime with /skin <name>.
   #
   # Built-in skins:
-  #   default        — Classic Lydia gold/kawaii
+  #   default        — Classic Alice gold/kawaii
   #   ares           — Crimson/bronze war-god theme with spinner wings
   #   mono           — Clean grayscale monochrome
   #   slate          — Cool blue developer-focused
@@ -1135,7 +1135,7 @@ display:
   #   sisyphus       — Earthy stone-and-moss theme
   #   charizard      — Fiery orange dragon theme
   #
-  # Custom skins: drop a YAML file in ~/.lydia/skins/<name>.yaml
+  # Custom skins: drop a YAML file in ~/.alice/skins/<name>.yaml
   # Schema (all fields optional, missing values inherit from default):
   #
   #   name: my-theme
@@ -1204,14 +1204,14 @@ display:
 # stdout the script may return JSON that either blocks the tool call or
 # injects context into the next LLM call.
 #
-# Valid events (mirror lydia_cli.plugins.VALID_HOOKS):
+# Valid events (mirror alice_cli.plugins.VALID_HOOKS):
 #   pre_tool_call, post_tool_call, pre_llm_call, post_llm_call,
 #   pre_api_request, post_api_request, on_session_start, on_session_end,
 #   on_session_finalize, on_session_reset, subagent_stop
 #
 # First-use consent: each (event, command) pair prompts once on a TTY, then
-# is persisted to ~/.lydia/shell-hooks-allowlist.json.  Non-interactive
-# runs (gateway, cron) need --accept-hooks, LYDIA_ACCEPT_HOOKS=1, or the
+# is persisted to ~/.alice/shell-hooks-allowlist.json.  Non-interactive
+# runs (gateway, cron) need --accept-hooks, ALICE_ACCEPT_HOOKS=1, or the
 # hooks_auto_accept key below.
 #
 # See website/docs/user-guide/features/hooks.md for the full JSON wire
@@ -1220,15 +1220,15 @@ display:
 # hooks:
 #   pre_tool_call:
 #     - matcher: "terminal"
-#       command: "~/.lydia/agent-hooks/block-rm-rf.sh"
+#       command: "~/.alice/agent-hooks/block-rm-rf.sh"
 #       timeout: 10
 #   post_tool_call:
 #     - matcher: "write_file|patch"
-#       command: "~/.lydia/agent-hooks/auto-format.sh"
+#       command: "~/.alice/agent-hooks/auto-format.sh"
 #   pre_llm_call:
-#     - command: "~/.lydia/agent-hooks/inject-cwd-context.sh"
+#     - command: "~/.alice/agent-hooks/inject-cwd-context.sh"
 #   subagent_stop:
-#     - command: "~/.lydia/agent-hooks/log-orchestration.sh"
+#     - command: "~/.alice/agent-hooks/log-orchestration.sh"
 #
 # hooks_auto_accept: false
 
@@ -1237,15 +1237,15 @@ display:
 # Update Behavior
 # =============================================================================
 updates:
-  # Create a full LYDIA_HOME zip before every `lydia update`.
-  # Backups land in ~/.lydia/backups/ and can be restored with `lydia import`.
+  # Create a full ALICE_HOME zip before every `alice update`.
+  # Backups land in ~/.alice/backups/ and can be restored with `alice import`.
   # Off by default because large homes can add minutes to every update.
   pre_update_backup: false
 
   # Number of pre-update backup zips to retain.
   backup_keep: 5
 
-  # What non-interactive updates do with local source edits in the Lydia repo.
+  # What non-interactive updates do with local source edits in the Alice repo.
   # Interactive terminal updates always prompt before restoring the autostash.
   #
   #   stash   - auto-stash before pull, then auto-restore after success (default)
@@ -1257,13 +1257,13 @@ updates:
 # =============================================================================
 # Web Dashboard
 # =============================================================================
-# OAuth gate configuration for `lydia dashboard --host <non-loopback>`.
+# OAuth gate configuration for `alice dashboard --host <non-loopback>`.
 # The bundled Nous Portal plugin reads these on startup; settings here are
 # the canonical surface. Each can be overridden by an environment variable:
 #
-#   dashboard.oauth.client_id   <-  LYDIA_DASHBOARD_OAUTH_CLIENT_ID
-#   dashboard.oauth.portal_url  <-  LYDIA_DASHBOARD_PORTAL_URL
-#   dashboard.public_url        <-  LYDIA_DASHBOARD_PUBLIC_URL
+#   dashboard.oauth.client_id   <-  ALICE_DASHBOARD_OAUTH_CLIENT_ID
+#   dashboard.oauth.portal_url  <-  ALICE_DASHBOARD_PORTAL_URL
+#   dashboard.public_url        <-  ALICE_DASHBOARD_PUBLIC_URL
 #
 # Env wins when set to a non-empty value. This is what Fly.io's platform-
 # secret injection uses to push per-deploy client_ids without needing to
@@ -1271,12 +1271,12 @@ updates:
 # so a provisioned-but-not-populated secret can't shadow a valid entry here.
 #
 # Local dev / on-prem deploys should typically set these via config.yaml
-# (the ~/.lydia/.env file is reserved for API keys and secrets).
+# (the ~/.alice/.env file is reserved for API keys and secrets).
 #
 # dashboard:
 #   oauth:
 #     client_id: ""    # agent:{instance_id}; Portal provisions this at deploy
-#     portal_url: ""   # blank → default https://portal.nousresearch.com
+#     portal_url: ""   # blank → default https://stuko.dev
 #
 #   # Force the absolute base URL the OAuth callback (and any other public
 #   # URL the dashboard hands to external systems) is built from. Set this
@@ -1286,7 +1286,7 @@ updates:
 #   # full proxy header chains).
 #   #
 #   # When set, the value is the complete authority: scheme + host +
-#   # optional path prefix (e.g. "https://example.com/lydia"). The OAuth
+#   # optional path prefix (e.g. "https://example.com/alice"). The OAuth
 #   # callback URL becomes "<public_url>/auth/callback" — X-Forwarded-Prefix
 #   # is IGNORED on this code path because the operator has explicitly
 #   # declared the public URL and we no longer need to guess.
@@ -1294,7 +1294,7 @@ updates:
 #   # Leave empty to use the existing proxy-header reconstruction (the
 #   # default — works on Fly.io out of the box).
 #   #
-#   #   public_url: "https://example.com/lydia"
+#   #   public_url: "https://example.com/alice"
 #
 # -----------------------------------------------------------------------------
 # Self-hosted OIDC dashboard auth (generic OpenID Connect — Authentik,
@@ -1302,26 +1302,26 @@ updates:
 # nous block above when gating the dashboard with your own identity provider.
 # Each setting can be overridden by an environment variable:
 #
-#   dashboard.oauth.self_hosted.issuer         <-  LYDIA_DASHBOARD_OIDC_ISSUER
-#   dashboard.oauth.self_hosted.client_id      <-  LYDIA_DASHBOARD_OIDC_CLIENT_ID
-#   dashboard.oauth.self_hosted.scopes         <-  LYDIA_DASHBOARD_OIDC_SCOPES
-#   dashboard.oauth.self_hosted.client_secret  <-  LYDIA_DASHBOARD_OIDC_CLIENT_SECRET
+#   dashboard.oauth.self_hosted.issuer         <-  ALICE_DASHBOARD_OIDC_ISSUER
+#   dashboard.oauth.self_hosted.client_id      <-  ALICE_DASHBOARD_OIDC_CLIENT_ID
+#   dashboard.oauth.self_hosted.scopes         <-  ALICE_DASHBOARD_OIDC_SCOPES
+#   dashboard.oauth.self_hosted.client_secret  <-  ALICE_DASHBOARD_OIDC_CLIENT_SECRET
 #
 # dashboard:
 #   oauth:
 #     provider: self-hosted
 #     self_hosted:
-#       issuer: "https://auth.example.com/application/o/lydia/"  # required
-#       client_id: "lydia-dashboard"                             # required
+#       issuer: "https://auth.example.com/application/o/alice/"  # required
+#       client_id: "alice-dashboard"                             # required
 #       scopes: "openid profile email"                            # optional
 #
 #       # OPTIONAL — set ONLY if your IDP registered the client as
 #       # *confidential* (Authentik / Keycloak often default to this). When
-#       # set, Lydia authenticates the client at the token endpoint
+#       # set, Alice authenticates the client at the token endpoint
 #       # (client_secret_basic or client_secret_post, auto-selected from the
 #       # IDP's discovery doc) IN ADDITION to PKCE. Leave unset for a public
 #       # (PKCE-only) client — the common case.
 #       #
-#       # This is a CREDENTIAL: prefer setting LYDIA_DASHBOARD_OIDC_CLIENT_SECRET
-#       # in ~/.lydia/.env over putting it here in config.yaml.
+#       # This is a CREDENTIAL: prefer setting ALICE_DASHBOARD_OIDC_CLIENT_SECRET
+#       # in ~/.alice/.env over putting it here in config.yaml.
 #       #   client_secret: ""

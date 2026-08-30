@@ -26,8 +26,8 @@ def test_writable_install_returns_install_dir(tmp_path, monkeypatch):
     install_bridge = install_root / "scripts" / "whatsapp-bridge"
     _seed_install_tree(install_bridge)
 
-    lydia_home = tmp_path / "lydia_home"
-    lydia_home.mkdir()
+    alice_home = tmp_path / "alice_home"
+    alice_home.mkdir()
 
     # Point the resolver's two anchors at our temp dirs.
     monkeypatch.setattr(
@@ -35,30 +35,30 @@ def test_writable_install_returns_install_dir(tmp_path, monkeypatch):
         str(install_root / "gateway" / "platforms" / "whatsapp_common.py"),
     )
     monkeypatch.setattr(
-        "alice_constants.get_alice_home", lambda: lydia_home
+        "alice_constants.get_alice_home", lambda: alice_home
     )
 
     resolved = whatsapp_common.resolve_whatsapp_bridge_dir()
     assert resolved == install_bridge
     # Nothing mirrored into ALICE_HOME.
-    assert not (lydia_home / "scripts" / "whatsapp-bridge").exists()
+    assert not (alice_home / "scripts" / "whatsapp-bridge").exists()
 
 
-def test_readonly_install_mirrors_to_lydia_home(tmp_path, monkeypatch):
+def test_readonly_install_mirrors_to_alice_home(tmp_path, monkeypatch):
     """A read-only install tree is mirrored into a writable ALICE_HOME."""
     install_root = tmp_path / "install"
     install_bridge = install_root / "scripts" / "whatsapp-bridge"
     _seed_install_tree(install_bridge)
 
-    lydia_home = tmp_path / "lydia_home"
-    lydia_home.mkdir()
+    alice_home = tmp_path / "alice_home"
+    alice_home.mkdir()
 
     monkeypatch.setattr(
         whatsapp_common, "__file__",
         str(install_root / "gateway" / "platforms" / "whatsapp_common.py"),
     )
     monkeypatch.setattr(
-        "alice_constants.get_alice_home", lambda: lydia_home
+        "alice_constants.get_alice_home", lambda: alice_home
     )
 
     # Simulate a read-only install tree. chmod(0o555) is unreliable under
@@ -75,7 +75,7 @@ def test_readonly_install_mirrors_to_lydia_home(tmp_path, monkeypatch):
 
     resolved = whatsapp_common.resolve_whatsapp_bridge_dir()
 
-    expected = lydia_home / "scripts" / "whatsapp-bridge"
+    expected = alice_home / "scripts" / "whatsapp-bridge"
     assert resolved == expected
     # Source was mirrored, not symlinked.
     assert (expected / "bridge.js").read_text() == "// bridge\n"
@@ -88,8 +88,8 @@ def test_readonly_install_reuses_existing_mirror(tmp_path, monkeypatch):
     install_bridge = install_root / "scripts" / "whatsapp-bridge"
     _seed_install_tree(install_bridge)
 
-    lydia_home = tmp_path / "lydia_home"
-    mirror = lydia_home / "scripts" / "whatsapp-bridge"
+    alice_home = tmp_path / "alice_home"
+    mirror = alice_home / "scripts" / "whatsapp-bridge"
     mirror.mkdir(parents=True)
     # A sentinel file proves the resolver returned the EXISTING mirror
     # rather than wiping/recopying it.
@@ -101,7 +101,7 @@ def test_readonly_install_reuses_existing_mirror(tmp_path, monkeypatch):
         str(install_root / "gateway" / "platforms" / "whatsapp_common.py"),
     )
     monkeypatch.setattr(
-        "alice_constants.get_alice_home", lambda: lydia_home
+        "alice_constants.get_alice_home", lambda: alice_home
     )
 
     _real_touch = Path.touch

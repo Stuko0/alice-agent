@@ -2,7 +2,7 @@
 
 In runtimes that serve every profile from one OS process (the desktop
 ``tui_gateway``), the profile boundary is the context-local
-``_LYDIA_HOME_OVERRIDE`` ContextVar, not the process environment.  State that
+``_ALICE_HOME_OVERRIDE`` ContextVar, not the process environment.  State that
 escapes the request call stack — import-time-frozen path constants, direct
 ``os.environ`` reads, or worker threads that don't inherit the request context —
 silently reverts to the launch/default profile and leaks one profile's data
@@ -21,8 +21,8 @@ import pytest
 
 from alice_constants import (
     get_alice_home,
-    reset_lydia_home_override,
-    set_lydia_home_override,
+    reset_alice_home_override,
+    set_alice_home_override,
 )
 
 
@@ -40,11 +40,11 @@ def two_profiles(tmp_path):
 
 def _under_override(home: Path, fn):
     """Run ``fn`` with the profile override set to ``home`` and reset after."""
-    token = set_lydia_home_override(str(home))
+    token = set_alice_home_override(str(home))
     try:
         return fn()
     finally:
-        reset_lydia_home_override(token)
+        reset_alice_home_override(token)
 
 
 # ---------------------------------------------------------------------------

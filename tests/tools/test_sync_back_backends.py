@@ -355,18 +355,18 @@ class TestDaytonaBulkDownload:
         tar_cmd = env._sandbox.process.exec.call_args_list[0][0][0]
         assert "tar cf" in tar_cmd
         # PID-suffixed temp path avoids collisions on sync_back retry
-        assert "/tmp/.lydia_sync." in tar_cmd
+        assert "/tmp/.alice_sync." in tar_cmd
         assert ".tar" in tar_cmd
         assert ".alice" in tar_cmd
 
         cleanup_cmd = env._sandbox.process.exec.call_args_list[1][0][0]
         assert "rm -f" in cleanup_cmd
-        assert "/tmp/.lydia_sync." in cleanup_cmd
+        assert "/tmp/.alice_sync." in cleanup_cmd
 
         # download_file called once with the same PID-suffixed path
         env._sandbox.fs.download_file.assert_called_once()
         download_args = env._sandbox.fs.download_file.call_args[0]
-        assert download_args[0].startswith("/tmp/.lydia_sync.")
+        assert download_args[0].startswith("/tmp/.alice_sync.")
         assert download_args[0].endswith(".tar")
         assert download_args[1] == str(dest)
 

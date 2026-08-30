@@ -2,7 +2,7 @@ import { atom, computed } from 'nanostores'
 
 import { SIDEBAR_COLLAPSE_MEDIA_QUERY } from '@/app/layout-constants'
 import { PANE_TOGGLE_REVEAL_EVENT } from '@/components/pane-shell'
-import type { LydiaReviewFile, LydiaReviewShipInfo } from '@/global'
+import type { AliceReviewFile, AliceReviewShipInfo } from '@/global'
 import { matchesQuery } from '@/hooks/use-media-query'
 import { desktopGit } from '@/lib/desktop-git'
 import { isExcludedPath } from '@/lib/excluded-paths'
@@ -56,7 +56,7 @@ export function toggleReviewTreeMode(): void {
   $reviewTreeMode.set($reviewTreeMode.get() === 'tree' ? 'list' : 'tree')
 }
 
-export const $reviewFiles = atom<LydiaReviewFile[]>([])
+export const $reviewFiles = atom<AliceReviewFile[]>([])
 export const $reviewLoading = atom(false)
 // False when the active session isn't in a local git repo (detached/fresh chat,
 // remote backend). Lets the pane say "not a repo" instead of stranding on a
@@ -88,7 +88,7 @@ export const $reviewRemoteInfo = atom<null | {
 
 // Ship state: gh availability + this branch's PR, and a busy flag for the
 // commit/push/PR action bar (disables buttons + shows progress).
-export const $reviewShipInfo = atom<LydiaReviewShipInfo>({ ghReady: false, pr: null })
+export const $reviewShipInfo = atom<AliceReviewShipInfo>({ ghReady: false, pr: null })
 export const $reviewShipBusy = atom(false)
 
 // True while a commit message is being generated (drives the input's spinner).
@@ -96,7 +96,7 @@ export const $reviewCommitMsgBusy = atom(false)
 
 const repoCwd = (): null | string => $currentCwd.get()?.trim() || null
 
-type ReviewBridge = NonNullable<NonNullable<NonNullable<Window['lydiaDesktop']>['git']>['review']>
+type ReviewBridge = NonNullable<NonNullable<NonNullable<Window['aliceDesktop']>['git']>['review']>
 let reviewRefreshSeq = 0
 let reviewRefreshTimer: ReturnType<typeof setTimeout> | null = null
 let shipInfoSeq = 0
@@ -189,7 +189,7 @@ function scheduleReviewRefresh(): void {
   }, REVIEW_REFRESH_DEBOUNCE_MS)
 }
 
-export async function selectReviewFile(file: LydiaReviewFile): Promise<void> {
+export async function selectReviewFile(file: AliceReviewFile): Promise<void> {
   $reviewSelectedPath.set(file.path)
 
   const ctx = reviewCtx()
@@ -487,7 +487,7 @@ export async function createOrOpenPr(): Promise<void> {
   const existing = $reviewShipInfo.get().pr
 
   if (existing?.url) {
-    void window.lydiaDesktop?.openExternal?.(existing.url)
+    void window.aliceDesktop?.openExternal?.(existing.url)
 
     return
   }
@@ -496,7 +496,7 @@ export async function createOrOpenPr(): Promise<void> {
     const { url } = await ctx.review.createPr(ctx.cwd)
 
     if (url) {
-      void window.lydiaDesktop?.openExternal?.(url)
+      void window.aliceDesktop?.openExternal?.(url)
     }
 
     void refreshShipInfo()

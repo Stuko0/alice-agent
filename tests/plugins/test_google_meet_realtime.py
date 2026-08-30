@@ -15,10 +15,10 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _isolate_home(tmp_path, monkeypatch):
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
-    yield lydia_home
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
+    yield alice_home
 
 
 # ---------------------------------------------------------------------------

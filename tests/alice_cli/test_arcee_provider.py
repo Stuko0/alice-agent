@@ -177,9 +177,9 @@ class TestArceeURLMapping:
 
 class TestArceeProvidersModule:
     def test_overlay_exists(self):
-        from alice_cli.providers import LYDIA_OVERLAYS
-        assert "arcee" in LYDIA_OVERLAYS
-        overlay = LYDIA_OVERLAYS["arcee"]
+        from alice_cli.providers import ALICE_OVERLAYS
+        assert "arcee" in ALICE_OVERLAYS
+        overlay = ALICE_OVERLAYS["arcee"]
         assert overlay.transport == "openai_chat"
         assert overlay.base_url_env_var == "ARCEE_BASE_URL"
         assert not overlay.is_aggregator

@@ -24,9 +24,9 @@ API_PATH = (
 
 @pytest.fixture
 def bridge_module(monkeypatch, tmp_path):
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     spec = importlib.util.spec_from_file_location("gws_bridge_test", BRIDGE_PATH)
     module = importlib.util.module_from_spec(spec)
@@ -37,9 +37,9 @@ def bridge_module(monkeypatch, tmp_path):
 
 @pytest.fixture
 def api_module(monkeypatch, tmp_path):
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     spec = importlib.util.spec_from_file_location("gws_api_test", API_PATH)
     module = importlib.util.module_from_spec(spec)

@@ -33,7 +33,7 @@ def _load_plugin_router():
     plugin_file = repo_root / "plugins" / "kanban" / "dashboard" / "plugin_api.py"
     assert plugin_file.exists(), f"plugin file missing: {plugin_file}"
     spec = importlib.util.spec_from_file_location(
-        "lydia_dashboard_plugin_kanban_attach_test", plugin_file,
+        "alice_dashboard_plugin_kanban_attach_test", plugin_file,
     )
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
@@ -147,14 +147,14 @@ def test_attachments_root_is_per_board(kanban_home, monkeypatch):
     default_root = kb.attachments_root(board="default")
     assert default_root.name == "attachments"
     # a named board nests under its board dir
-    monkeypatch.delenv("LYDIA_KANBAN_ATTACHMENTS_ROOT", raising=False)
+    monkeypatch.delenv("ALICE_KANBAN_ATTACHMENTS_ROOT", raising=False)
     named = kb.attachments_root(board="default")
     assert named == default_root
 
 
 def test_attachments_root_env_override(kanban_home, monkeypatch, tmp_path):
     override = tmp_path / "custom-attach"
-    monkeypatch.setenv("LYDIA_KANBAN_ATTACHMENTS_ROOT", str(override))
+    monkeypatch.setenv("ALICE_KANBAN_ATTACHMENTS_ROOT", str(override))
     assert kb.attachments_root() == override
     assert kb.task_attachments_dir("t_abc") == override / "t_abc"
 

@@ -180,12 +180,12 @@ def test_asyncio_create_subprocess_shell_systemctl_blocked():
 # ──────────────────── pkill / killall / taskkill ───────────────
 
 
-def test_subprocess_pkill_lydia_blocked():
+def test_subprocess_pkill_alice_blocked():
     with pytest.raises(RuntimeError, match="live-system guard"):
         subprocess.run(["pkill", "-f", "alice"])
 
 
-def test_subprocess_pkill_lydia_gateway_blocked():
+def test_subprocess_pkill_alice_gateway_blocked():
     with pytest.raises(RuntimeError, match="live-system guard"):
         subprocess.run(["pkill", "-f", "alice-gateway"])
 
@@ -196,7 +196,7 @@ def test_subprocess_pkill_python_dash_f_blocked():
         subprocess.run(["pkill", "-f", "python"])
 
 
-def test_subprocess_killall_lydia_blocked():
+def test_subprocess_killall_alice_blocked():
     with pytest.raises(RuntimeError, match="live-system guard"):
         subprocess.run(["killall", "alice"])
 

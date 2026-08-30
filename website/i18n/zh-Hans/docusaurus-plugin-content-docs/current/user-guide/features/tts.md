@@ -9,7 +9,7 @@ description: "跨所有平台的文字转语音与语音消息转录"
 Alice Agent 支持跨所有消息平台的文字转语音（TTS）输出和语音消息转录（STT）。
 
 :::tip Nous 订阅用户
-如果你拥有付费的 [Nous Portal](https://portal.stuko.dev) 订阅，OpenAI TTS 可通过 **[Tool Gateway](tool-gateway.md)** 使用，无需单独的 OpenAI API 密钥。新安装可运行 `alice setup --portal` 登录并一次性开启所有 gateway 工具；已有安装可通过 `alice model` 或 `alice native` 选择 **Nous Subscription** 仅启用 TTS。
+如果你拥有付费的 [Nous Portal](https://stuko.dev) 订阅，OpenAI TTS 可通过 **[Tool Gateway](tool-gateway.md)** 使用，无需单独的 OpenAI API 密钥。新安装可运行 `alice setup --portal` 登录并一次性开启所有 gateway 工具；已有安装可通过 `alice model` 或 `alice native` 选择 **Nous Subscription** 仅启用 TTS。
 :::
 
 ## 文字转语音（TTS）
@@ -387,7 +387,7 @@ def register(ctx):
 | **OpenAI Whisper API** | 良好至最佳 | 付费 | `VOICE_TOOLS_OPENAI_KEY` 或 `OPENAI_API_KEY` |
 
 :::info 零配置
-安装了 `faster-whisper` 后，本地转录即可开箱即用。若不可用，Alice 也可使用常见安装位置（如 `/opt/homebrew/bin`）的本地 `whisper` CLI，或通过 `LYDIA_LOCAL_STT_COMMAND` 指定的自定义命令。
+安装了 `faster-whisper` 后，本地转录即可开箱即用。若不可用，Alice 也可使用常见安装位置（如 `/opt/homebrew/bin`）的本地 `whisper` CLI，或通过 `ALICE_LOCAL_STT_COMMAND` 指定的自定义命令。
 :::
 
 ### 配置
@@ -426,7 +426,7 @@ stt:
 
 **xAI Grok STT** — 需要 `XAI_API_KEY`。以 multipart/form-data 格式发送至 `https://api.x.ai/v1/stt`。如果你已在使用 xAI 进行聊天或 TTS 并希望一个 API 密钥搞定一切，这是个好选择。自动检测顺序将其排在 Groq 之后——显式设置 `stt.provider: xai` 可强制使用。
 
-**自定义本地 CLI 回退** — 若你希望 Alice 直接调用本地转录命令，请设置 `LYDIA_LOCAL_STT_COMMAND`。命令模板支持 `{input_path}`、`{output_dir}`、`{language}` 和 `{model}` 占位符。你的命令必须在 `{output_dir}` 下某处写入 `.txt` 转录文件。
+**自定义本地 CLI 回退** — 若你希望 Alice 直接调用本地转录命令，请设置 `ALICE_LOCAL_STT_COMMAND`。命令模板支持 `{input_path}`、`{output_dir}`、`{language}` 和 `{model}` 占位符。你的命令必须在 `{output_dir}` 下某处写入 `.txt` 转录文件。
 
 #### 示例：Doubao / Volcengine ASR
 
@@ -436,7 +436,7 @@ stt:
 pip install doubao-speech
 export VOLCENGINE_APP_ID="your-app-id"
 export VOLCENGINE_ACCESS_TOKEN="your-access-token"
-export LYDIA_LOCAL_STT_COMMAND='doubao-speech transcribe {input_path} --out {output_dir}/transcript.txt'
+export ALICE_LOCAL_STT_COMMAND='doubao-speech transcribe {input_path} --out {output_dir}/transcript.txt'
 ```
 
 ```yaml
@@ -449,7 +449,7 @@ Alice 将传入的语音消息写入 `{input_path}`，运行命令，并读取 `
 ### 回退行为
 
 若配置的提供商不可用，Alice 会自动回退：
-- **本地 faster-whisper 不可用** → 在云端提供商之前尝试本地 `whisper` CLI 或 `LYDIA_LOCAL_STT_COMMAND`
+- **本地 faster-whisper 不可用** → 在云端提供商之前尝试本地 `whisper` CLI 或 `ALICE_LOCAL_STT_COMMAND`
 - **未设置 Groq 密钥** → 回退至本地转录，然后是 OpenAI
 - **未设置 OpenAI 密钥** → 回退至本地转录，然后是 Groq
 - **未设置 Mistral 密钥/SDK** → 在自动检测中跳过；回退至下一个可用提供商

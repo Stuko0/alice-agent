@@ -1658,7 +1658,7 @@ class TestAdapterBehavior(unittest.TestCase):
     @patch.dict(
         os.environ,
         {
-            "LYDIA_FEISHU_TEXT_BATCH_MAX_MESSAGES": "2",
+            "ALICE_FEISHU_TEXT_BATCH_MAX_MESSAGES": "2",
         },
         clear=True,
     )
@@ -2867,7 +2867,7 @@ class TestHydrateBotIdentity(unittest.TestCase):
                 "code": 0,
                 "bot": {
                     "bot_name": "Alice Bot",
-                    "open_id": "ou_lydia_hydrated",
+                    "open_id": "ou_alice_hydrated",
                 },
             }
         ).encode("utf-8")
@@ -2876,7 +2876,7 @@ class TestHydrateBotIdentity(unittest.TestCase):
 
         asyncio.run(adapter._hydrate_bot_identity())
 
-        self.assertEqual(adapter._bot_open_id, "ou_lydia_hydrated")
+        self.assertEqual(adapter._bot_open_id, "ou_alice_hydrated")
         self.assertEqual(adapter._bot_name, "Alice Bot")
 
     @patch.dict(

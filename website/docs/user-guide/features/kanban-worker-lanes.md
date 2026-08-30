@@ -7,7 +7,7 @@ This page is the contract. It exists for two audiences:
 - **Operators** picking which lanes to wire into a board (which profiles to create, which assignees to use).
 - **Plugin / integration authors** wanting to add a new lane shape (a CLI worker that wraps Codex / Claude Code / OpenCode, a containerised review worker, a non-Alice service that pulls tasks via the API).
 
-If you're writing the worker code itself — the agent that runs *inside* a lane — the kanban lifecycle and reference details are injected into the worker's system prompt automatically (the `KANBAN_GUIDANCE` block in [`agent/prompt_builder.py`](https://github.com/NousResearch/alice-agent/blob/main/agent/prompt_builder.py)).
+If you're writing the worker code itself — the agent that runs *inside* a lane — the kanban lifecycle and reference details are injected into the worker's system prompt automatically (the `KANBAN_GUIDANCE` block in [`agent/prompt_builder.py`](https://github.com/Stuko0/alice-agent/blob/main/agent/prompt_builder.py)).
 
 ## The hierarchy
 
@@ -34,15 +34,15 @@ For Alice profile lanes, the dispatcher's `_default_spawn` runs `alice -p <assig
 
 | Variable | Carries |
 |---|---|
-| `LYDIA_KANBAN_TASK` | the task id the worker is operating on |
-| `LYDIA_KANBAN_DB` | absolute path to the per-board SQLite file |
-| `LYDIA_KANBAN_BOARD` | board slug |
-| `LYDIA_KANBAN_WORKSPACES_ROOT` | root of the board's workspace tree |
-| `LYDIA_KANBAN_WORKSPACE` | absolute path to *this* task's workspace |
-| `LYDIA_KANBAN_RUN_ID` | the current run's id (for the lifecycle gate) |
-| `LYDIA_KANBAN_CLAIM_LOCK` | the claim lock string (`<host>:<pid>:<uuid>`) |
-| `LYDIA_PROFILE` | the worker's own profile name (for `kanban_comment` author attribution) |
-| `LYDIA_TENANT` | tenant namespace, if the task has one |
+| `ALICE_KANBAN_TASK` | the task id the worker is operating on |
+| `ALICE_KANBAN_DB` | absolute path to the per-board SQLite file |
+| `ALICE_KANBAN_BOARD` | board slug |
+| `ALICE_KANBAN_WORKSPACES_ROOT` | root of the board's workspace tree |
+| `ALICE_KANBAN_WORKSPACE` | absolute path to *this* task's workspace |
+| `ALICE_KANBAN_RUN_ID` | the current run's id (for the lifecycle gate) |
+| `ALICE_KANBAN_CLAIM_LOCK` | the claim lock string (`<host>:<pid>:<uuid>`) |
+| `ALICE_PROFILE` | the worker's own profile name (for `kanban_comment` author attribution) |
+| `ALICE_TENANT` | tenant namespace, if the task has one |
 
 For non-Alice lanes (registered via a plugin), the plugin supplies its own `spawn_fn` callable that gets `task`, `workspace`, and `board` and returns an optional pid for crash detection.
 
@@ -90,11 +90,11 @@ A specialisation of the profile lane: an orchestrator is a Alice profile whose t
 
 ## Adding an external CLI worker lane
 
-Wiring a non-Alice CLI tool (Codex CLI, Claude Code CLI, OpenCode CLI, a local coding-model runner, etc.) as a kanban worker lane is *not yet a paved path*. The dispatcher's spawn function is pluggable (`spawn_fn` is a parameter on `dispatch_once`), and a plugin could register its own `spawn_fn` for a non-Alice assignee, but the surrounding integration work — wrapping the CLI's exit code into `kanban_complete` / `kanban_block` calls, mapping the CLI's workspace/sandbox conventions onto the dispatcher's `LYDIA_KANBAN_WORKSPACE` env, handling auth and per-CLI policy — is still per-integration design work.
+Wiring a non-Alice CLI tool (Codex CLI, Claude Code CLI, OpenCode CLI, a local coding-model runner, etc.) as a kanban worker lane is *not yet a paved path*. The dispatcher's spawn function is pluggable (`spawn_fn` is a parameter on `dispatch_once`), and a plugin could register its own `spawn_fn` for a non-Alice assignee, but the surrounding integration work — wrapping the CLI's exit code into `kanban_complete` / `kanban_block` calls, mapping the CLI's workspace/sandbox conventions onto the dispatcher's `ALICE_KANBAN_WORKSPACE` env, handling auth and per-CLI policy — is still per-integration design work.
 
 If you're considering adding a CLI lane, open an issue describing the specific CLI and the workflow you're trying to enable. The contract above is the constraints any such lane must satisfy; the implementation shape (one plugin per CLI vs a generic CLI-runner plugin parameterised by config) is open.
 
-The historical issue for this is [#19931](https://github.com/NousResearch/alice-agent/issues/19931) and the closed-not-merged Codex-specific PR [#19924](https://github.com/NousResearch/alice-agent/pull/19924) — those describe the original architecture proposal but didn't land a runner.
+The historical issue for this is [#19931](https://github.com/Stuko0/alice-agent/issues/19931) and the closed-not-merged Codex-specific PR [#19924](https://github.com/Stuko0/alice-agent/pull/19924) — those describe the original architecture proposal but didn't land a runner.
 
 ## Failure modes the dispatcher handles
 
@@ -110,4 +110,4 @@ So lane authors don't have to reimplement these:
 
 - [Kanban overview](./kanban) — the user-facing intro.
 - [Kanban tutorial](./kanban-tutorial) — walkthrough with the dashboard open.
-- [`KANBAN_GUIDANCE`](https://github.com/NousResearch/alice-agent/blob/main/agent/prompt_builder.py) — the worker + orchestrator lifecycle injected into every kanban worker's system prompt.
+- [`KANBAN_GUIDANCE`](https://github.com/Stuko0/alice-agent/blob/main/agent/prompt_builder.py) — the worker + orchestrator lifecycle injected into every kanban worker's system prompt.

@@ -61,19 +61,19 @@ class TestDoctorEnvFileEncoding:
     ):
         import pathlib
 
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
         # Write a UTF-8 .env containing an em dash (U+2014 = e2 80 94). The
         # 0x94 byte is exactly the one the issue reporter hit: it's invalid
         # as a GBK trailing byte in this position, so locale-default reads
         # raise UnicodeDecodeError on Chinese Windows.
-        env_path = lydia_home / ".env"
+        env_path = alice_home / ".env"
         env_path.write_text(
             "OPENAI_API_KEY=sk-test  # em-dash here — should not crash\n",
             encoding="utf-8",
         )
 
-        monkeypatch.setattr(doctor_mod, "ALICE_HOME", lydia_home)
+        monkeypatch.setattr(doctor_mod, "ALICE_HOME", alice_home)
 
         orig_read_text = pathlib.Path.read_text
 
@@ -128,7 +128,7 @@ class TestDoctorToolAvailabilityOverrides:
 
     def test_marks_kanban_available_only_when_missing_worker_env_gate(self, monkeypatch):
         monkeypatch.setattr(doctor, "_honcho_is_configured_for_doctor", lambda: False)
-        monkeypatch.delenv("LYDIA_KANBAN_TASK", raising=False)
+        monkeypatch.delenv("ALICE_KANBAN_TASK", raising=False)
 
         available, unavailable = doctor._apply_doctor_tool_availability_overrides(
             [],
@@ -139,7 +139,7 @@ class TestDoctorToolAvailabilityOverrides:
         assert unavailable == []
 
     def test_leaves_kanban_unavailable_when_worker_env_is_set(self, monkeypatch):
-        monkeypatch.setenv("LYDIA_KANBAN_TASK", "probe")
+        monkeypatch.setenv("ALICE_KANBAN_TASK", "probe")
         kanban_entry = {"name": "kanban", "env_vars": [], "tools": ["kanban_show"]}
 
         available, unavailable = doctor._apply_doctor_tool_availability_overrides(
@@ -151,7 +151,7 @@ class TestDoctorToolAvailabilityOverrides:
         assert unavailable == [kanban_entry]
 
     def test_leaves_non_worker_kanban_failure_unavailable(self, monkeypatch):
-        monkeypatch.delenv("LYDIA_KANBAN_TASK", raising=False)
+        monkeypatch.delenv("ALICE_KANBAN_TASK", raising=False)
         kanban_entry = {"name": "kanban", "env_vars": [], "tools": ["kanban_show", "not_a_kanban_tool"]}
 
         available, unavailable = doctor._apply_doctor_tool_availability_overrides(
@@ -163,7 +163,7 @@ class TestDoctorToolAvailabilityOverrides:
         assert unavailable == [kanban_entry]
 
     def test_kanban_doctor_detail_explains_worker_gate(self, monkeypatch):
-        monkeypatch.delenv("LYDIA_KANBAN_TASK", raising=False)
+        monkeypatch.delenv("ALICE_KANBAN_TASK", raising=False)
 
         assert doctor._doctor_tool_availability_detail("kanban") == "(runtime-gated; loaded only for dispatcher-spawned workers)"
 
@@ -193,18 +193,18 @@ class TestHonchoDoctorConfigDetection:
 def test_run_doctor_sets_interactive_env_for_tool_checks(monkeypatch, tmp_path):
     """Doctor should present CLI-gated tools as available in CLI context."""
     project_root = tmp_path / "project"
-    lydia_home = tmp_path / ".alice"
+    alice_home = tmp_path / ".alice"
     project_root.mkdir()
-    lydia_home.mkdir()
+    alice_home.mkdir()
 
     monkeypatch.setattr(doctor_mod, "PROJECT_ROOT", project_root)
-    monkeypatch.setattr(doctor_mod, "ALICE_HOME", lydia_home)
-    monkeypatch.delenv("LYDIA_INTERACTIVE", raising=False)
+    monkeypatch.setattr(doctor_mod, "ALICE_HOME", alice_home)
+    monkeypatch.delenv("ALICE_INTERACTIVE", raising=False)
 
     seen = {}
 
     def fake_check_tool_availability(*args, **kwargs):
-        seen["interactive"] = os.getenv("LYDIA_INTERACTIVE")
+        seen["interactive"] = os.getenv("ALICE_INTERACTIVE")
         raise SystemExit(0)
 
     fake_model_tools = types.SimpleNamespace(
@@ -259,7 +259,7 @@ def test_check_gateway_service_linger_skips_when_service_not_installed(monkeypat
 class TestDoctorMemoryProviderSection:
     """The ◆ Memory Provider section should respect memory.provider config."""
 
-    def _make_lydia_home(self, tmp_path, provider=""):
+    def _make_alice_home(self, tmp_path, provider=""):
         """Create a minimal ALICE_HOME with config.yaml."""
         home = tmp_path / ".alice"
         home.mkdir(parents=True, exist_ok=True)
@@ -270,7 +270,7 @@ class TestDoctorMemoryProviderSection:
 
     def _run_doctor_and_capture(self, monkeypatch, tmp_path, provider=""):
         """Run doctor and capture stdout."""
-        home = self._make_lydia_home(tmp_path, provider)
+        home = self._make_alice_home(tmp_path, provider)
         monkeypatch.setattr(doctor_mod, "ALICE_HOME", home)
         monkeypatch.setattr(doctor_mod, "PROJECT_ROOT", tmp_path / "project")
         monkeypatch.setattr(doctor_mod, "_DHH", str(home))
@@ -495,7 +495,7 @@ def test_run_doctor_flags_missing_credentials_for_active_openrouter_provider(mon
         ("nvidia", "qwen/qwen3.5-122b-a10b"),
     ],
 )
-def test_run_doctor_accepts_lydia_provider_ids_that_catalog_aliases(
+def test_run_doctor_accepts_alice_provider_ids_that_catalog_aliases(
     monkeypatch, tmp_path, provider, default_model
 ):
     home = tmp_path / ".alice"
@@ -1300,7 +1300,7 @@ class TestDoctorCodexCliHintPlacement:
 
 
 class TestDoctorStaleMaxIterationsDrift:
-    """Regression for #17534: a stale LYDIA_MAX_ITERATIONS in .env shadows
+    """Regression for #17534: a stale ALICE_MAX_ITERATIONS in .env shadows
     agent.max_turns in config.yaml. The repro symptom is config.yaml saying
     400 while the gateway activity line reads N/90. Doctor must detect the
     drift, and `--fix` must remove the .env ghost (config.yaml wins).
@@ -1317,25 +1317,25 @@ class TestDoctorStaleMaxIterationsDrift:
         import io
         from argparse import Namespace
 
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir(parents=True)
-        (lydia_home / "config.yaml").write_text(
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir(parents=True)
+        (alice_home / "config.yaml").write_text(
             f"agent:\n  max_turns: {cfg_turns}\n", encoding="utf-8"
         )
         env_lines = ["OPENAI_API_KEY=sk-test\n"]
         if ghost is not None:
-            env_lines.append(f"LYDIA_MAX_ITERATIONS={ghost}\n")
-        (lydia_home / ".env").write_text("".join(env_lines), encoding="utf-8")
+            env_lines.append(f"ALICE_MAX_ITERATIONS={ghost}\n")
+        (alice_home / ".env").write_text("".join(env_lines), encoding="utf-8")
 
-        monkeypatch.setattr(doctor_mod, "ALICE_HOME", lydia_home)
-        monkeypatch.setattr(doctor_mod, "get_alice_home", lambda: lydia_home)
+        monkeypatch.setattr(doctor_mod, "ALICE_HOME", alice_home)
+        monkeypatch.setattr(doctor_mod, "get_alice_home", lambda: alice_home)
         # Point the config helpers at the temp home.
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         if os_environ_value is not None:
             # Simulate the gateway bridge having already overridden os.environ.
-            monkeypatch.setenv("LYDIA_MAX_ITERATIONS", str(os_environ_value))
+            monkeypatch.setenv("ALICE_MAX_ITERATIONS", str(os_environ_value))
         else:
-            monkeypatch.delenv("LYDIA_MAX_ITERATIONS", raising=False)
+            monkeypatch.delenv("ALICE_MAX_ITERATIONS", raising=False)
 
         # Short-circuit at the Tool Availability stage — the drift check runs
         # well before it in the Configuration Files section.
@@ -1348,26 +1348,26 @@ class TestDoctorStaleMaxIterationsDrift:
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf), pytest.raises(SystemExit):
             doctor_mod.run_doctor(Namespace(fix=fix))
-        return buf.getvalue(), lydia_home
+        return buf.getvalue(), alice_home
 
     def test_detects_drift_warn_only(self, monkeypatch, tmp_path):
-        out, lydia_home = self._run_config_section(
+        out, alice_home = self._run_config_section(
             monkeypatch, tmp_path, fix=False, ghost=90, cfg_turns=400,
             os_environ_value=400,  # bridge contaminated os.environ
         )
-        assert "LYDIA_MAX_ITERATIONS=90" in out
+        assert "ALICE_MAX_ITERATIONS=90" in out
         assert "shadows" in out
         # Warn-only must NOT mutate .env.
-        assert "LYDIA_MAX_ITERATIONS=90" in (lydia_home / ".env").read_text(encoding="utf-8")
+        assert "ALICE_MAX_ITERATIONS=90" in (alice_home / ".env").read_text(encoding="utf-8")
 
     def test_fix_removes_ghost(self, monkeypatch, tmp_path):
-        out, lydia_home = self._run_config_section(
+        out, alice_home = self._run_config_section(
             monkeypatch, tmp_path, fix=True, ghost=90, cfg_turns=400,
             os_environ_value=400,
         )
-        assert "Removed stale LYDIA_MAX_ITERATIONS" in out
-        env_after = (lydia_home / ".env").read_text(encoding="utf-8")
-        assert "LYDIA_MAX_ITERATIONS" not in env_after
+        assert "Removed stale ALICE_MAX_ITERATIONS" in out
+        env_after = (alice_home / ".env").read_text(encoding="utf-8")
+        assert "ALICE_MAX_ITERATIONS" not in env_after
         assert "OPENAI_API_KEY=sk-test" in env_after  # other keys preserved
 
     def test_no_drift_when_values_match(self, monkeypatch, tmp_path):

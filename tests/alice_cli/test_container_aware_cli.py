@@ -24,20 +24,20 @@ from alice_cli.config import (
 @pytest.fixture
 def container_env(tmp_path, monkeypatch):
     """Set up a fake ALICE_HOME with .container-mode file."""
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
-    monkeypatch.delenv("LYDIA_DEV", raising=False)
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
+    monkeypatch.delenv("ALICE_DEV", raising=False)
 
-    container_mode = lydia_home / ".container-mode"
+    container_mode = alice_home / ".container-mode"
     container_mode.write_text(
         "# Written by NixOS activation script. Do not edit manually.\n"
         "backend=podman\n"
         "container_name=alice-agent\n"
         "exec_user=alice\n"
-        "lydia_bin=/data/current-package/bin/alice\n"
+        "alice_bin=/data/current-package/bin/alice\n"
     )
-    return lydia_home
+    return alice_home
 
 
 def test_get_container_exec_info_returns_metadata(container_env):
@@ -49,7 +49,7 @@ def test_get_container_exec_info_returns_metadata(container_env):
     assert info["backend"] == "podman"
     assert info["container_name"] == "alice-agent"
     assert info["exec_user"] == "alice"
-    assert info["lydia_bin"] == "/data/current-package/bin/alice"
+    assert info["alice_bin"] == "/data/current-package/bin/alice"
 
 
 def test_get_container_exec_info_none_inside_container(container_env):
@@ -62,10 +62,10 @@ def test_get_container_exec_info_none_inside_container(container_env):
 
 def test_get_container_exec_info_none_without_file(tmp_path, monkeypatch):
     """Returns None when .container-mode doesn't exist (native mode)."""
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
-    monkeypatch.delenv("LYDIA_DEV", raising=False)
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
+    monkeypatch.delenv("ALICE_DEV", raising=False)
 
     with patch("alice_constants.is_container", return_value=False):
         info = get_container_exec_info()
@@ -73,9 +73,9 @@ def test_get_container_exec_info_none_without_file(tmp_path, monkeypatch):
     assert info is None
 
 
-def test_get_container_exec_info_skipped_when_lydia_dev(container_env, monkeypatch):
-    """Returns None when LYDIA_DEV=1 is set (dev mode bypass)."""
-    monkeypatch.setenv("LYDIA_DEV", "1")
+def test_get_container_exec_info_skipped_when_alice_dev(container_env, monkeypatch):
+    """Returns None when ALICE_DEV=1 is set (dev mode bypass)."""
+    monkeypatch.setenv("ALICE_DEV", "1")
 
     with patch("alice_constants.is_container", return_value=False):
         info = get_container_exec_info()
@@ -83,9 +83,9 @@ def test_get_container_exec_info_skipped_when_lydia_dev(container_env, monkeypat
     assert info is None
 
 
-def test_get_container_exec_info_not_skipped_when_lydia_dev_zero(container_env, monkeypatch):
-    """LYDIA_DEV=0 does NOT trigger bypass — only '1' does."""
-    monkeypatch.setenv("LYDIA_DEV", "0")
+def test_get_container_exec_info_not_skipped_when_alice_dev_zero(container_env, monkeypatch):
+    """ALICE_DEV=0 does NOT trigger bypass — only '1' does."""
+    monkeypatch.setenv("ALICE_DEV", "0")
 
     with patch("alice_constants.is_container", return_value=False):
         info = get_container_exec_info()
@@ -98,23 +98,23 @@ def test_get_container_exec_info_defaults():
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        lydia_home = Path(tmpdir) / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / ".container-mode").write_text(
+        alice_home = Path(tmpdir) / ".alice"
+        alice_home.mkdir()
+        (alice_home / ".container-mode").write_text(
             "# minimal file with no keys\n"
         )
 
         with patch("alice_constants.is_container", return_value=False), \
-             patch.dict(get_container_exec_info.__globals__, {"get_alice_home": lambda: lydia_home}), \
+             patch.dict(get_container_exec_info.__globals__, {"get_alice_home": lambda: alice_home}), \
              patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("LYDIA_DEV", None)
+            os.environ.pop("ALICE_DEV", None)
             info = get_container_exec_info()
 
         assert info is not None
         assert info["backend"] == "docker"
         assert info["container_name"] == "alice-agent"
         assert info["exec_user"] == "alice"
-        assert info["lydia_bin"] == "/data/current-package/bin/alice"
+        assert info["alice_bin"] == "/data/current-package/bin/alice"
 
 
 def test_get_container_exec_info_docker_backend(container_env):
@@ -123,7 +123,7 @@ def test_get_container_exec_info_docker_backend(container_env):
         "backend=docker\n"
         "container_name=alice-custom\n"
         "exec_user=myuser\n"
-        "lydia_bin=/opt/alice/bin/alice\n"
+        "alice_bin=/opt/alice/bin/alice\n"
     )
 
     with patch("alice_constants.is_container", return_value=False):
@@ -132,7 +132,7 @@ def test_get_container_exec_info_docker_backend(container_env):
     assert info["backend"] == "docker"
     assert info["container_name"] == "alice-custom"
     assert info["exec_user"] == "myuser"
-    assert info["lydia_bin"] == "/opt/alice/bin/alice"
+    assert info["alice_bin"] == "/opt/alice/bin/alice"
 
 
 def test_get_container_exec_info_crashes_on_permission_error(container_env):
@@ -154,7 +154,7 @@ def docker_container_info():
         "backend": "docker",
         "container_name": "alice-agent",
         "exec_user": "alice",
-        "lydia_bin": "/data/current-package/bin/alice",
+        "alice_bin": "/data/current-package/bin/alice",
     }
 
 
@@ -164,7 +164,7 @@ def podman_container_info():
         "backend": "podman",
         "container_name": "alice-agent",
         "exec_user": "alice",
-        "lydia_bin": "/data/current-package/bin/alice",
+        "alice_bin": "/data/current-package/bin/alice",
     }
 
 

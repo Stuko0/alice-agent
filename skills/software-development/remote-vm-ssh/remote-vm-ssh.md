@@ -16,10 +16,10 @@ Alice supports executing all its core tools (terminal, file reading/writing, bas
 If you only have a password for the remote VM, you must first copy your local public key to the VM:
 ```bash
 # Generate a key if you don't have one
-ssh-keygen -t ed25519 -C "alice-agent" -f ~/.ssh/id_ed25519_lydia -N ""
+ssh-keygen -t ed25519 -C "alice-agent" -f ~/.ssh/id_ed25519_alice -N ""
 
 # Copy it to the remote VM (you will be prompted for the password once)
-ssh-copy-id -i ~/.ssh/id_ed25519_lydia.pub user@10.1.200.142
+ssh-copy-id -i ~/.ssh/id_ed25519_alice.pub user@10.1.200.142
 ```
 
 ## 2. Configuring Alice
@@ -34,7 +34,7 @@ terminal:
   ssh_host: "10.1.200.142"
   ssh_user: "username"
   ssh_port: 22
-  ssh_key: "/home/user/.ssh/id_ed25519_lydia"
+  ssh_key: "/home/user/.ssh/id_ed25519_alice"
 ```
 
 ### Option B: Environment Variables
@@ -44,7 +44,7 @@ TERMINAL_ENV=ssh \
 TERMINAL_SSH_HOST="10.1.200.142" \
 TERMINAL_SSH_USER="username" \
 TERMINAL_SSH_PORT="22" \
-TERMINAL_SSH_KEY="/home/user/.ssh/id_ed25519_lydia" \
+TERMINAL_SSH_KEY="/home/user/.ssh/id_ed25519_alice" \
 alice
 ```
 

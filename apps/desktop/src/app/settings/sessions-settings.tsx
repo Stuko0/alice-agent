@@ -186,11 +186,11 @@ function DefaultProjectDirSetting() {
 
   useEffect(() => {
     // The bridge is only present when running inside Electron. In a Vitest
-    // / Storybook / non-Electron context `window.lydiaDesktop` is
+    // / Storybook / non-Electron context `window.aliceDesktop` is
     // undefined, so guard the WHOLE call chain rather than chaining
     // `?.settings.getDefaultProjectDir().then(...)` (the latter would
     // short-circuit to `undefined.then(...)` and throw at runtime).
-    const settings = window.lydiaDesktop?.settings
+    const settings = window.aliceDesktop?.settings
 
     if (!settings) {
       return
@@ -214,7 +214,7 @@ function DefaultProjectDirSetting() {
   }, [])
 
   const choose = useCallback(async () => {
-    const settings = window.lydiaDesktop?.settings
+    const settings = window.aliceDesktop?.settings
 
     if (!settings) {
       return
@@ -241,7 +241,7 @@ function DefaultProjectDirSetting() {
   }, [s])
 
   const clear = useCallback(async () => {
-    const settings = window.lydiaDesktop?.settings
+    const settings = window.aliceDesktop?.settings
 
     if (!settings) {
       return

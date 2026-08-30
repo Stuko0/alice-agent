@@ -18,10 +18,10 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _isolate_home(tmp_path, monkeypatch):
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
-    yield lydia_home
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
+    yield alice_home
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +211,7 @@ def test_registry_resolve_by_name(tmp_path):
     assert r.resolve("ghost") is None
 
 
-def test_registry_defaults_to_lydia_home(tmp_path, monkeypatch):
+def test_registry_defaults_to_alice_home(tmp_path, monkeypatch):
     from plugins.google_meet.node.registry import NodeRegistry
 
     # _isolate_home already set ALICE_HOME to tmp_path/.alice; the

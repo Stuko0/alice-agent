@@ -290,7 +290,7 @@ class TestJsonOutput:
         assert parsed == _ok_report()
 
 
-# ── LYDIA_CUA_DRIVER_CMD resolution ───────────────────────────────────────
+# ── ALICE_CUA_DRIVER_CMD resolution ───────────────────────────────────────
 
 
 class TestDriverCmdResolution:
@@ -312,7 +312,7 @@ class TestDriverCmdResolution:
     def test_env_var_used_when_no_arg_given(self, monkeypatch):
         from tools.computer_use import doctor
 
-        monkeypatch.setenv("LYDIA_CUA_DRIVER_CMD", "/env/path/cua-driver")
+        monkeypatch.setenv("ALICE_CUA_DRIVER_CMD", "/env/path/cua-driver")
         proc = _fake_proc_with_responses(
             {"jsonrpc": "2.0", "id": 1, "result": {}},
             {"jsonrpc": "2.0", "id": 2, "result": {"structuredContent": _ok_report()}},

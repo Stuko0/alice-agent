@@ -166,24 +166,24 @@ class TestBranchCommandCLI:
 
         assert cli_instance._resumed is True
 
-    def test_branch_rotates_lydia_session_id_env_and_context(self, cli_instance, session_db):
+    def test_branch_rotates_alice_session_id_env_and_context(self, cli_instance, session_db):
         """Branching must update process-local session-id readers too."""
         from cli import AliceCLI
         from gateway.session_context import _UNSET, _VAR_MAP, get_session_env
 
         old_session_id = cli_instance.session_id
-        os.environ["LYDIA_SESSION_ID"] = old_session_id
-        _VAR_MAP["LYDIA_SESSION_ID"].set(old_session_id)
+        os.environ["ALICE_SESSION_ID"] = old_session_id
+        _VAR_MAP["ALICE_SESSION_ID"].set(old_session_id)
 
         try:
             AliceCLI._handle_branch_command(cli_instance, "/branch")
 
             assert cli_instance.session_id != old_session_id
-            assert os.environ["LYDIA_SESSION_ID"] == cli_instance.session_id
-            assert get_session_env("LYDIA_SESSION_ID") == cli_instance.session_id
+            assert os.environ["ALICE_SESSION_ID"] == cli_instance.session_id
+            assert get_session_env("ALICE_SESSION_ID") == cli_instance.session_id
         finally:
-            os.environ.pop("LYDIA_SESSION_ID", None)
-            _VAR_MAP["LYDIA_SESSION_ID"].set(_UNSET)
+            os.environ.pop("ALICE_SESSION_ID", None)
+            _VAR_MAP["ALICE_SESSION_ID"].set(_UNSET)
 
     def test_branch_fires_on_session_switch_hook(self, cli_instance, session_db):
         """The /branch command must notify memory providers of the rotation.

@@ -1,7 +1,7 @@
 # nix/web.nix — Alice Web Dashboard (Vite/React) frontend build
-{ pkgs, lydiaNpmLib, ... }:
+{ pkgs, aliceNpmLib, ... }:
 let
-  npm = lydiaNpmLib.mkNpmPassthru { folder = "web"; attr = "web"; pname = "alice-web"; };
+  npm = aliceNpmLib.mkNpmPassthru { folder = "web"; attr = "web"; pname = "alice-web"; };
 
   packageJson = builtins.fromJSON (builtins.readFile (npm.src + "/web/package.json"));
   version = packageJson.version;
@@ -17,7 +17,7 @@ pkgs.buildNpmPackage (npm // {
     # The workspace root's node_modules/ is at ../node_modules/.
     cd web
     node ../node_modules/typescript/bin/tsc -b
-    # outDir in vite.config.ts points to ../lydia_cli/web_dist for the
+    # outDir in vite.config.ts points to ../alice_cli/web_dist for the
     # monorepo layout.  Override with --outDir dist for the nix build.
     node ../node_modules/vite/bin/vite.js build --outDir dist
 

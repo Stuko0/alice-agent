@@ -18,7 +18,7 @@ Plugin HTTP routes go through the dashboard's session-token auth middleware
 ``/api/plugins/...`` request must present the session bearer token (or the
 session cookie set when you load the dashboard HTML). The token is the
 random per-process ``_SESSION_TOKEN`` printed at startup; the dashboard's
-own pages inject it via ``window.__LYDIA_SESSION_TOKEN__`` so logged-in
+own pages inject it via ``window.__ALICE_SESSION_TOKEN__`` so logged-in
 browsers don't have to handle it manually.
 
 For the ``/events`` WebSocket we still require the session token as a
@@ -393,7 +393,7 @@ def get_board(
     install doesn't surface a "failed to load" error on the plugin tab.
 
     ``board`` selects which board to read from. Omitting it falls
-    through to the active board (``LYDIA_KANBAN_BOARD`` env → on-disk
+    through to the active board (``ALICE_KANBAN_BOARD`` env → on-disk
     ``current`` pointer → ``default``).
     """
     board = _resolve_board(board)
@@ -1621,7 +1621,7 @@ def specify_task_endpoint(
     # Pin the board for the duration of this call so the specifier module
     # (which calls ``kb.connect()`` with no args) hits the right DB. Use a
     # context-local override rather than mutating the process-global
-    # LYDIA_KANBAN_BOARD env var — this endpoint runs in FastAPI's
+    # ALICE_KANBAN_BOARD env var — this endpoint runs in FastAPI's
     # threadpool, so two concurrent requests for different boards would
     # otherwise race on the shared env var and cross-write (issue #38323).
     with kanban_db.scoped_current_board(board or kanban_db.DEFAULT_BOARD):
@@ -2231,7 +2231,7 @@ def decompose_task_endpoint(
     board = _resolve_board(board)
     # Context-local board pin (see specify endpoint above): this sync
     # endpoint runs in FastAPI's threadpool, so mutating the process-global
-    # LYDIA_KANBAN_BOARD env var would let concurrent requests for
+    # ALICE_KANBAN_BOARD env var would let concurrent requests for
     # different boards race and cross-write (issue #38323).
     with kanban_db.scoped_current_board(board or kanban_db.DEFAULT_BOARD):
         from alice_cli import kanban_decompose  # noqa: WPS433 (intentional)

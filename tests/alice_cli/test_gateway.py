@@ -85,7 +85,7 @@ def test_run_gateway_refuses_root_in_official_docker(monkeypatch, tmp_path, caps
 
     monkeypatch.setattr(gateway, "PROJECT_ROOT", project_root)
     monkeypatch.setattr(gateway.os, "geteuid", lambda: 0)
-    monkeypatch.delenv("LYDIA_ALLOW_ROOT_GATEWAY", raising=False)
+    monkeypatch.delenv("ALICE_ALLOW_ROOT_GATEWAY", raising=False)
     monkeypatch.setattr(gateway, "_is_official_docker_checkout", lambda: True)
 
     with pytest.raises(SystemExit) as exc_info:
@@ -108,7 +108,7 @@ def test_run_gateway_root_guard_has_escape_hatch(monkeypatch):
     monkeypatch.setattr(gateway.asyncio, "run", lambda coro: True)
     monkeypatch.setattr(gateway.os, "geteuid", lambda: 0)
     monkeypatch.setattr(gateway, "_is_official_docker_checkout", lambda: True)
-    monkeypatch.setenv("LYDIA_ALLOW_ROOT_GATEWAY", "1")
+    monkeypatch.setenv("ALICE_ALLOW_ROOT_GATEWAY", "1")
 
     gateway.run_gateway(verbose=2, replace=True)
 
@@ -118,7 +118,7 @@ def test_run_gateway_root_guard_has_escape_hatch(monkeypatch):
 def _clear_supervisor_markers(monkeypatch):
     """Make ``_running_under_gateway_supervisor()`` report a plain shell."""
     monkeypatch.delenv("INVOCATION_ID", raising=False)
-    monkeypatch.delenv("LYDIA_S6_SUPERVISED_CHILD", raising=False)
+    monkeypatch.delenv("ALICE_S6_SUPERVISED_CHILD", raising=False)
     # Interactive macOS shells inherit XPC_SERVICE_NAME="0"; launchd jobs get
     # the real label. Default to the shell sentinel so the guard can fire.
     monkeypatch.setenv("XPC_SERVICE_NAME", "0")
@@ -292,7 +292,7 @@ def test_running_under_gateway_supervisor_markers(monkeypatch):
     assert gateway._running_under_gateway_supervisor() is True
 
     monkeypatch.delenv("INVOCATION_ID", raising=False)
-    monkeypatch.setenv("LYDIA_S6_SUPERVISED_CHILD", "1")
+    monkeypatch.setenv("ALICE_S6_SUPERVISED_CHILD", "1")
     assert gateway._running_under_gateway_supervisor() is True
 
 
@@ -334,7 +334,7 @@ def test_run_gateway_windows_foreground_keeps_ctrl_c_enabled(monkeypatch):
     monkeypatch.setattr(gateway, "is_windows", lambda: True)
     monkeypatch.setattr(gateway, "supports_systemd_services", lambda: False)
     monkeypatch.setattr(gateway.sys, "stdin", _TTY())
-    monkeypatch.delenv("LYDIA_GATEWAY_DETACHED", raising=False)
+    monkeypatch.delenv("ALICE_GATEWAY_DETACHED", raising=False)
     monkeypatch.setattr(gateway.signal, "signal", fake_signal)
     monkeypatch.setattr(gateway.asyncio, "run", lambda coro: True)
 
@@ -364,7 +364,7 @@ def test_run_gateway_windows_detached_absorbs_console_controls(monkeypatch):
     monkeypatch.setattr(gateway, "is_windows", lambda: True)
     monkeypatch.setattr(gateway, "supports_systemd_services", lambda: False)
     monkeypatch.setattr(gateway.sys, "stdin", _TTY())
-    monkeypatch.setenv("LYDIA_GATEWAY_DETACHED", "1")
+    monkeypatch.setenv("ALICE_GATEWAY_DETACHED", "1")
     monkeypatch.setattr(gateway.signal, "signal", fake_signal)
     monkeypatch.setattr(gateway.asyncio, "run", lambda coro: True)
 
@@ -906,7 +906,7 @@ def test_gateway_install_noninteractive_skips_legacy_unit_prompt(monkeypatch, tm
     Covers the second hidden prompt that --start-now/--start-on-login do not
     guard. Originally contributed via PR #42124 (kyssta-exe).
     """
-    monkeypatch.setattr(gateway, "has_legacy_lydia_units", lambda: True)
+    monkeypatch.setattr(gateway, "has_legacy_alice_units", lambda: True)
 
     calls = []
     monkeypatch.setattr(
@@ -914,7 +914,7 @@ def test_gateway_install_noninteractive_skips_legacy_unit_prompt(monkeypatch, tm
         "prompt_yes_no",
         lambda question, default=True: calls.append(("prompt", question)) or True,
     )
-    monkeypatch.setattr(gateway, "remove_legacy_lydia_units", lambda interactive=False: calls.append(("remove_legacy",)))
+    monkeypatch.setattr(gateway, "remove_legacy_alice_units", lambda interactive=False: calls.append(("remove_legacy",)))
     monkeypatch.setattr(gateway, "print_legacy_unit_warning", lambda: None)
 
     fake_path = tmp_path / "alice-gateway.service"
@@ -1024,7 +1024,7 @@ def test_reap_unsupervised_orphans_returns_false_when_none_found(monkeypatch):
     assert killed == []
 
 
-def test_scan_gateway_pids_detects_windows_lydia_exe_case_variants(monkeypatch):
+def test_scan_gateway_pids_detects_windows_alice_exe_case_variants(monkeypatch):
     monkeypatch.setattr(gateway, "is_windows", lambda: True)
     monkeypatch.setattr(gateway, "_get_ancestor_pids", lambda: set())
     monkeypatch.setattr(gateway.shutil, "which", lambda name: "wmic.exe" if name == "wmic" else None)

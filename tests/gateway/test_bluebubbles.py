@@ -137,14 +137,14 @@ class TestBlueBubblesHelpers:
         adapter = _make_adapter(monkeypatch, server_url="localhost:1234")
         assert adapter.server_url == "http://localhost:1234"
 
-    def test_default_mention_patterns_match_lydia_variants(self, monkeypatch):
+    def test_default_mention_patterns_match_alice_variants(self, monkeypatch):
         adapter = _make_adapter(monkeypatch, require_mention=True)
 
         assert adapter.require_mention is True
         assert adapter._message_matches_mention_patterns("Alice, summarize this")
         assert adapter._message_matches_mention_patterns("@Alice Agent help")
         assert not adapter._message_matches_mention_patterns("casual family chatter")
-        assert not adapter._message_matches_mention_patterns("antilydia should not match")
+        assert not adapter._message_matches_mention_patterns("antialice should not match")
 
     def test_custom_mention_patterns_override_defaults(self, monkeypatch):
         adapter = _make_adapter(

@@ -24,10 +24,10 @@ A quick search before you build saves your time and keeps the PR queue clean —
 
 - **Search both open *and* merged PRs and issues** for your topic or error symptom — the duplicate-check in the PR template fires at review time, after you've already done the work:
   ```bash
-  gh search issues --repo arquant-admin/NewLydia "<your terms>"
-  gh search prs --repo arquant-admin/NewLydia --state all "<your terms>"
+  gh search issues --repo arquant-admin/NewAlice "<your terms>"
+  gh search prs --repo arquant-admin/NewAlice --state all "<your terms>"
   ```
-  Or use the web UI: [issues](https://10.1.200.116:3000/arquant-admin/NewLydia/issues?q=) · [PRs (all states)](https://10.1.200.116:3000/arquant-admin/NewLydia/pulls?q=is%3Apr).
+  Or use the web UI: [issues](https://10.1.200.116:3000/arquant-admin/NewAlice/issues?q=) · [PRs (all states)](https://10.1.200.116:3000/arquant-admin/NewAlice/pulls?q=is%3Apr).
 - **The issue tracker can lag the code.** Many requested features are already implemented in-tree, so also search the source (`search_files`, or your editor's grep) for the capability before proposing it.
 - **If an open PR already addresses it**, consider reviewing or improving that one instead of opening a competing duplicate.
 - **For larger work**, comment on the issue to signal you're working on it, so others don't start the same thing.
@@ -63,7 +63,7 @@ Bundled skills (in `skills/`) ship with every Alice install. They should be **br
 
 If your skill is official and useful but not universally needed (e.g., a paid service integration, a heavyweight dependency), put it in **`optional-skills/`** — it ships with the repo but isn't activated by default. Users can discover it via `alice skills browse` (labeled "official") and install it with `alice skills install` (no third-party warning, built-in trust).
 
-If your skill is specialized, community-contributed, or niche, it's better suited for a **Skills Hub** — upload it to a skills registry and share it in the [Nous Research Discord](https://discord.gg/NousResearch). Users can install it with `alice skills install`.
+If your skill is specialized, community-contributed, or niche, it's better suited for a **Skills Hub** — upload it to a skills registry and share it in the [Stuko Discord](https://stuko.dev). Users can install it with `alice skills install`.
 
 ---
 
@@ -73,7 +73,7 @@ If your skill is specialized, community-contributed, or niche, it's better suite
 
 Standalone memory plugins:
 
-- Implement the same `MemoryProvider` ABC (`agent/memory_provider.py`) — `sync_turn`, `prefetch`, `shutdown`, and optionally `post_setup(lydia_home, config)` for setup-wizard integration
+- Implement the same `MemoryProvider` ABC (`agent/memory_provider.py`) — `sync_turn`, `prefetch`, `shutdown`, and optionally `post_setup(alice_home, config)` for setup-wizard integration
 - Use the same discovery system — `discover_memory_providers()` picks them up from user/project plugin directories and pip entry points
 - Integrate with `alice memory setup` via `post_setup()` — no need to touch core code
 - Can register their own CLI subcommands via `register_cli(subparser)` in a `cli.py` file
@@ -93,10 +93,10 @@ The reason is maintenance load, not quality. Every external product absorbed int
 
 Publish these as a **standalone plugin repo** instead:
 
-- Implement the relevant ABC and use the existing plugin discovery path (`~/.alice/plugins/`, project `.alice/plugins/`, or a pip entry point) — see [Build a Alice Plugin](https://alice-agent.nousresearch.com/docs/guides/build-a-alice-plugin)
+- Implement the relevant ABC and use the existing plugin discovery path (`~/.alice/plugins/`, project `.alice/plugins/`, or a pip entry point) — see [Build a Alice Plugin](https://alice-agent.stuko.dev/docs/guides/build-a-alice-plugin)
 - Register lifecycle hooks (`pre_tool_call`, `post_tool_call`, `pre_llm_call`, `post_llm_call`, `on_session_start`, `on_session_end`), tools (`ctx.register_tool`), and CLI subcommands (`ctx.register_cli_command`) through the surface we already expose — no core changes needed
 - If your plugin needs a capability the framework doesn't expose, that's a feature request to **widen the generic plugin surface** (a new hook or `ctx` method) — never special-case your plugin in core
-- Promote it in the [Nous Research Discord](https://discord.gg/NousResearch) `#plugins-skills-and-skins` channel so users can find and install it
+- Promote it in the [Stuko Discord](https://stuko.dev) `#plugins-skills-and-skins` channel so users can find and install it
 
 A well-built third-party-product plugin can clear automated review and still be closed for this reason — it's a placement decision, not a verdict on the code. PRs that add such a directory under `plugins/` will be closed with a pointer to publish it as its own repo.
 
@@ -124,7 +124,7 @@ development environment on the same layout the CLI, updater, lazy dependency
 installer, gateway, and docs assume.
 
 ```bash
-curl -fsSL https://alice-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://alice-agent.stuko.dev/install.sh | bash
 cd "${ALICE_HOME:-$HOME/.alice}/alice-agent"
 
 # Add dev/test extras on top of the standard install.
@@ -156,7 +156,7 @@ which silently destroys the running runtime mid-session. Keeping it outside the
 tree means no relative path from the workspace resolves to it.
 
 ```bash
-git clone https://10.1.200.116:3000/arquant-admin/NewLydia.git
+git clone https://10.1.200.116:3000/arquant-admin/NewAlice.git
 cd alice-agent
 
 # Create venv with Python 3.11, OUTSIDE the source tree
@@ -234,7 +234,7 @@ alice-agent/
 │   ├── main.py                   # Entry point, argument parsing, command dispatch
 │   ├── config.py                 # Config management, migration, env var definitions
 │   ├── setup.py                  # Interactive setup wizard
-│   ├── auth.py                   # Provider resolution, OAuth, Nous Portal
+│   ├── auth.py                   # Provider resolution, OAuth, API key validation
 │   ├── models.py                 # OpenRouter model selection lists
 │   ├── banner.py                 # Welcome banner, ASCII art
 │   ├── commands.py               # Central slash command registry (CommandDef), autocomplete, gateway helpers
@@ -274,7 +274,7 @@ alice-agent/
 ├── skills/                   # Bundled skills (copied to ~/.alice/skills/ on install)
 ├── optional-skills/          # Official optional skills (discoverable via hub, not activated by default)
 ├── tests/                    # Test suite
-├── website/                  # Documentation site (alice-agent.nousresearch.com)
+├── website/                  # Documentation site (alice-agent.stuko.dev)
 │
 ├── cli-config.yaml.example   # Example configuration (copied to ~/.alice/config.yaml)
 └── AGENTS.md                 # Development guide for AI coding assistants
@@ -286,7 +286,7 @@ alice-agent/
 |------|---------|
 | `~/.alice/config.yaml` | Settings (model, terminal, toolsets, compression, etc.) |
 | `~/.alice/.env` | API keys and secrets |
-| `~/.alice/auth.json` | OAuth credentials (Nous Portal) |
+| `~/.alice/auth.json` | OAuth credentials |
 | `~/.alice/skills/` | All active skills (bundled + hub-installed + agent-created) |
 | `~/.alice/memories/` | Persistent memory (MEMORY.md, USER.md) |
 | `~/.alice/state.db` | SQLite session database |
@@ -321,7 +321,7 @@ User message → AIAgent._run_agent_loop()
 - **Toolset grouping**: Tools are grouped into toolsets (`web`, `terminal`, `file`, `browser`, etc.) that can be enabled/disabled per platform.
 - **Session persistence**: All conversations are stored in SQLite (`alice_state.py`) with full-text search and unique session titles. Per-session JSON snapshots in `~/.alice/sessions/` were superseded by the SQLite store and are off by default; opt back in with `sessions.write_json_snapshots: true` if you have external tooling that consumes the JSON files directly.
 - **Ephemeral injection**: System prompts and prefill messages are injected at API call time, never persisted to the database or logs.
-- **Provider abstraction**: The agent works with any OpenAI-compatible API. Provider resolution happens at init time (Nous Portal OAuth, OpenRouter API key, or custom endpoint).
+- **Provider abstraction**: The agent works with any OpenAI-compatible API. Provider resolution happens at init time (OpenRouter API key or custom endpoint).
 - **Provider routing**: When using OpenRouter, `provider_routing` in config.yaml controls provider selection (sort by throughput/latency/price, allow/ignore specific providers, data retention policies). These are injected as `extra_body.provider` in API requests.
 
 ---
@@ -391,7 +391,7 @@ imported by `discover_builtin_tools()` in `tools/registry.py` when `model_tools`
 loads. There is **no** manual import list in `model_tools.py` to maintain.
 
 You must still add the tool name to the appropriate list in `toolsets.py`
-(for example `_LYDIA_CORE_TOOLS` or a dedicated toolset); otherwise the tool
+(for example `_ALICE_CORE_TOOLS` or a dedicated toolset); otherwise the tool
 registers but is never exposed to the agent. If you introduce a new toolset,
 add it in `toolsets.py` and wire it into the relevant platform presets.
 
@@ -987,7 +987,7 @@ test(tools): add unit tests for file_operations
 
 ## Reporting Issues
 
-- Use [GitHub Issues](https://10.1.200.116:3000/arquant-admin/NewLydia/issues)
+- Use [GitHub Issues](https://10.1.200.116:3000/arquant-admin/NewAlice/issues)
 - Include: OS, Python version, Alice version (`alice version`), full error traceback
 - Include steps to reproduce
 - Check existing issues before creating duplicates
@@ -997,7 +997,7 @@ test(tools): add unit tests for file_operations
 
 ## Community
 
-- **Discord**: [discord.gg/NousResearch](https://discord.gg/NousResearch) — for questions, showcasing projects, and sharing skills
+- **Discord**: [stuko.dev](https://stuko.dev) — for questions, showcasing projects, and sharing skills
 - **GitHub Discussions**: For design proposals and architecture discussions
 - **Skills Hub**: Upload specialized skills to a registry and share them with the community
 

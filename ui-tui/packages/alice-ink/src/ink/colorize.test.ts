@@ -41,7 +41,7 @@ describe('shouldUseRichEightBitDowngradeForLegacyAppleTerminal', () => {
     ).toBe(false)
     expect(
       shouldUseRichEightBitDowngradeForLegacyAppleTerminal(
-        { LYDIA_TUI_TRUECOLOR: '1', TERM_PROGRAM: 'Apple_Terminal' } as NodeJS.ProcessEnv,
+        { ALICE_TUI_TRUECOLOR: '1', TERM_PROGRAM: 'Apple_Terminal' } as NodeJS.ProcessEnv,
         3
       )
     ).toBe(false)

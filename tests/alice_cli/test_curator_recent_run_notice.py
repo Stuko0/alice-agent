@@ -31,12 +31,12 @@ def curator_env(tmp_path, monkeypatch, capsys):
     importlib.reload(alice_constants)
     from agent import curator
     importlib.reload(curator)
-    from alice_cli import main as lydia_main
-    importlib.reload(lydia_main)
+    from alice_cli import main as alice_main
+    importlib.reload(alice_main)
 
     yield {
         "curator": curator,
-        "main": lydia_main,
+        "main": alice_main,
         "capsys": capsys,
     }
 

@@ -24,7 +24,7 @@ from agent.skill_utils import (
 
 
 @pytest.fixture
-def lydia_home_with_config(tmp_path, monkeypatch):
+def alice_home_with_config(tmp_path, monkeypatch):
     """Isolated ``~/.alice/`` with a config.yaml referencing one external dir."""
     home = tmp_path / ".alice"
     home.mkdir()
@@ -46,15 +46,15 @@ def lydia_home_with_config(tmp_path, monkeypatch):
     _external_dirs_cache_clear()
 
 
-def test_returns_configured_external_dir(lydia_home_with_config):
-    _home, external, _cfg = lydia_home_with_config
+def test_returns_configured_external_dir(alice_home_with_config):
+    _home, external, _cfg = alice_home_with_config
     result = get_external_skills_dirs()
     assert result == [external.resolve()]
 
 
-def test_cache_reuses_result_without_reparsing(lydia_home_with_config):
+def test_cache_reuses_result_without_reparsing(alice_home_with_config):
     """Subsequent calls hit the cache and skip YAML parsing entirely."""
-    _home, _external, _cfg = lydia_home_with_config
+    _home, _external, _cfg = alice_home_with_config
 
     # Prime cache
     get_external_skills_dirs()
@@ -70,9 +70,9 @@ def test_cache_reuses_result_without_reparsing(lydia_home_with_config):
             get_external_skills_dirs()
 
 
-def test_cache_invalidates_on_mtime_change(lydia_home_with_config):
+def test_cache_invalidates_on_mtime_change(alice_home_with_config):
     """A config.yaml edit invalidates the cache on the next call."""
-    _home, external, config = lydia_home_with_config
+    _home, external, config = alice_home_with_config
     other = external.parent / "other_skills"
     other.mkdir()
 
@@ -108,7 +108,7 @@ def test_returns_empty_when_config_missing(tmp_path, monkeypatch):
     assert get_external_skills_dirs() == []
 
 
-def test_returned_list_is_a_copy(lydia_home_with_config):
+def test_returned_list_is_a_copy(alice_home_with_config):
     """Callers can't poison the cache by mutating the returned list."""
     first = get_external_skills_dirs()
     first.append(Path("/tmp/should-not-persist"))
@@ -118,7 +118,7 @@ def test_returned_list_is_a_copy(lydia_home_with_config):
 
 
 def test_cache_key_is_per_config_path(tmp_path, monkeypatch):
-    """Two different LYDIA_HOMEs keep separate cache entries."""
+    """Two different ALICE_HOMEs keep separate cache entries."""
     home_a = tmp_path / "home_a" / ".alice"
     home_a.mkdir(parents=True)
     ext_a = tmp_path / "ext_a"

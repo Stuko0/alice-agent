@@ -571,7 +571,7 @@ Five touchpoints:
 
 ### 8. Toolsets
 
-1. **`toolsets.py`** — Add `"alice-newplat"` toolset definition with `_LYDIA_CORE_TOOLS`
+1. **`toolsets.py`** — Add `"alice-newplat"` toolset definition with `_ALICE_CORE_TOOLS`
 2. **`toolsets.py`** — Add `"alice-newplat"` to the `"alice-gateway"` includes list
 
 ### 9. Optional: Platform Hints

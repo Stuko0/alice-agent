@@ -211,10 +211,10 @@ def test_make_agent_honors_tui_launch_env_flags():
         patch.dict(
             os.environ,
             {
-                "LYDIA_TUI_MAX_TURNS": "7",
-                "LYDIA_TUI_CHECKPOINTS": "1",
-                "LYDIA_TUI_PASS_SESSION_ID": "1",
-                "LYDIA_IGNORE_RULES": "1",
+                "ALICE_TUI_MAX_TURNS": "7",
+                "ALICE_TUI_CHECKPOINTS": "1",
+                "ALICE_TUI_PASS_SESSION_ID": "1",
+                "ALICE_IGNORE_RULES": "1",
             },
         ),
         patch("tui_gateway.server._load_cfg", return_value=fake_cfg),
@@ -381,10 +381,10 @@ def test_make_agent_honors_per_session_model_override():
         patch("run_agent.AIAgent") as mock_agent,
     ):
         for var in (
-            "LYDIA_MODEL",
-            "LYDIA_INFERENCE_MODEL",
-            "LYDIA_TUI_PROVIDER",
-            "LYDIA_INFERENCE_PROVIDER",
+            "ALICE_MODEL",
+            "ALICE_INFERENCE_MODEL",
+            "ALICE_TUI_PROVIDER",
+            "ALICE_INFERENCE_PROVIDER",
         ):
             os.environ.pop(var, None)
 
@@ -432,10 +432,10 @@ def test_apply_model_switch_does_not_leak_process_env():
             self.provider = kw["new_provider"]
 
     env_keys = (
-        "LYDIA_MODEL",
-        "LYDIA_INFERENCE_MODEL",
-        "LYDIA_TUI_PROVIDER",
-        "LYDIA_INFERENCE_PROVIDER",
+        "ALICE_MODEL",
+        "ALICE_INFERENCE_MODEL",
+        "ALICE_TUI_PROVIDER",
+        "ALICE_INFERENCE_PROVIDER",
     )
 
     sess_b = {"agent": _FakeAgent(), "session_key": "k-B", "model_override": None}

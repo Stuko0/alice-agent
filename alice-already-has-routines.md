@@ -127,7 +127,7 @@ A nightly backlog triage on Sonnet costs roughly $0.02-0.05. A monitoring check 
 Alice Agent is open source and free. The automation infrastructure — cron scheduler, webhook platform, skill system, multi-platform delivery — is built in.
 
 ```bash
-curl -fsSL https://alice-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://alice-agent.stuko.dev/install.sh | bash
 alice setup
 ```
 
@@ -149,12 +149,12 @@ alice webhook subscribe pr-review \
   --deliver github_comment
 ```
 
-Full automation blueprints gallery: [alice-agent.nousresearch.com/docs/reference/automation-blueprints-catalog](https://alice-agent.nousresearch.com/docs/reference/automation-blueprints-catalog)
+Full automation blueprints gallery: [alice-agent.stuko.dev/docs/reference/automation-blueprints-catalog](https://alice-agent.stuko.dev/docs/reference/automation-blueprints-catalog)
 
-Documentation: [alice-agent.nousresearch.com](https://alice-agent.nousresearch.com)
+Documentation: [alice-agent.stuko.dev](https://alice-agent.stuko.dev)
 
-GitHub: [github.com/NousResearch/alice-agent](https://github.com/NousResearch/alice-agent)
+GitHub: [github.com/Stuko0/alice-agent](https://github.com/Stuko0/alice-agent)
 
 ---
 
-*Alice Agent is built by [Nous Research](https://nousresearch.com). Open source, model-agnostic, runs on your infrastructure.*
+*Alice Agent is built by [Stuko](https://stuko.dev). Open source, model-agnostic, runs on your infrastructure.*

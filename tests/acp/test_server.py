@@ -1,4 +1,4 @@
-"""Tests for acp_adapter.server — LydiaACPAgent ACP server."""
+"""Tests for acp_adapter.server — AliceACPAgent ACP server."""
 
 import asyncio
 import os
@@ -36,7 +36,7 @@ from acp.schema import (
     UserMessageChunk,
 )
 from acp_adapter.auth import TERMINAL_SETUP_AUTH_METHOD_ID
-from acp_adapter.server import LydiaACPAgent, LYDIA_VERSION
+from acp_adapter.server import AliceACPAgent, ALICE_VERSION
 from acp_adapter.session import SessionManager
 from alice_state import SessionDB
 
@@ -49,8 +49,8 @@ def mock_manager():
 
 @pytest.fixture()
 def agent(mock_manager):
-    """LydiaACPAgent backed by a mock session manager."""
-    return LydiaACPAgent(session_manager=mock_manager)
+    """AliceACPAgent backed by a mock session manager."""
+    return AliceACPAgent(session_manager=mock_manager)
 
 
 @pytest.mark.asyncio
@@ -100,7 +100,7 @@ class TestInitialize:
         assert resp.agent_info is not None
         assert isinstance(resp.agent_info, Implementation)
         assert resp.agent_info.name == "alice-agent"
-        assert resp.agent_info.version == LYDIA_VERSION
+        assert resp.agent_info.version == ALICE_VERSION
 
     @pytest.mark.asyncio
     async def test_initialize_returns_capabilities(self, agent):
@@ -242,7 +242,7 @@ class TestSessionOps:
         manager = SessionManager(
             agent_factory=lambda: SimpleNamespace(model="gpt-5.4", provider="openai-codex")
         )
-        acp_agent = LydiaACPAgent(session_manager=manager)
+        acp_agent = AliceACPAgent(session_manager=manager)
 
         with patch(
             "alice_cli.models.curated_models_for_provider",
@@ -367,7 +367,7 @@ class TestSessionOps:
         state.history = [
             {"role": "system", "content": "hidden system"},
             {"role": "user", "content": "what controls the / slash commands?"},
-            {"role": "assistant", "content": "LydiaACPAgent._ADVERTISED_COMMANDS controls them."},
+            {"role": "assistant", "content": "AliceACPAgent._ADVERTISED_COMMANDS controls them."},
             {
                 "role": "assistant",
                 "content": "",
@@ -405,7 +405,7 @@ class TestSessionOps:
         assert isinstance(replay_calls[0].kwargs["update"], UserMessageChunk)
         assert replay_calls[0].kwargs["update"].content.text == "what controls the / slash commands?"
         assert isinstance(replay_calls[1].kwargs["update"], AgentMessageChunk)
-        assert replay_calls[1].kwargs["update"].content.text.startswith("LydiaACPAgent")
+        assert replay_calls[1].kwargs["update"].content.text.startswith("AliceACPAgent")
 
         tool_updates = [
             call.kwargs["update"]
@@ -984,7 +984,7 @@ class TestSessionConfiguration:
         manager = SessionManager(db=SessionDB(tmp_path / "state.db"))
 
         with patch("run_agent.AIAgent", side_effect=fake_agent):
-            acp_agent = LydiaACPAgent(session_manager=manager)
+            acp_agent = AliceACPAgent(session_manager=manager)
             state = manager.create_session(cwd="/tmp")
             result = await acp_agent.set_session_model(
                 model_id="anthropic:claude-sonnet-4-6",
@@ -1177,15 +1177,15 @@ class TestPrompt:
         assert final_text in agent_texts
 
     @pytest.mark.asyncio
-    async def test_prompt_propagates_lydia_session_id_env(self, agent, monkeypatch):
+    async def test_prompt_propagates_alice_session_id_env(self, agent, monkeypatch):
         """ACP must propagate the originating session id to the agent loop
-        via ``LYDIA_SESSION_ID`` so tools that want to stamp side-effects
+        via ``ALICE_SESSION_ID`` so tools that want to stamp side-effects
         with it (e.g. ``kanban_create``) can read the env var inside
         ``run_conversation``. The variable must be visible during the
         agent call AND restored afterwards so a re-used executor thread
         doesn't leak one session's id into another."""
         # Pre-condition: env is clean.
-        monkeypatch.delenv("LYDIA_SESSION_ID", raising=False)
+        monkeypatch.delenv("ALICE_SESSION_ID", raising=False)
 
         new_resp = await agent.new_session(cwd=".")
         state = agent.session_manager.get_session(new_resp.session_id)
@@ -1196,7 +1196,7 @@ class TestPrompt:
             # Inside the agent loop the env var must reflect the active
             # ACP session id. ``task_id`` is also the session id at this
             # boundary; assert both for symmetry.
-            captured["env"] = os.environ.get("LYDIA_SESSION_ID")
+            captured["env"] = os.environ.get("ALICE_SESSION_ID")
             captured["task_id"] = task_id
             return {"final_response": "ok", "messages": []}
 
@@ -1210,23 +1210,23 @@ class TestPrompt:
         await agent.prompt(prompt=prompt, session_id=new_resp.session_id)
 
         assert captured["env"] == new_resp.session_id, (
-            "LYDIA_SESSION_ID must be set to the originating ACP session id "
+            "ALICE_SESSION_ID must be set to the originating ACP session id "
             "while the agent loop is running"
         )
         assert captured["task_id"] == new_resp.session_id
         # Post-condition: must be restored to the prior value (None here).
-        assert os.environ.get("LYDIA_SESSION_ID") is None, (
-            "LYDIA_SESSION_ID must be restored after the agent call so "
+        assert os.environ.get("ALICE_SESSION_ID") is None, (
+            "ALICE_SESSION_ID must be restored after the agent call so "
             "a re-used executor thread doesn't leak the id into the next "
             "session's tools"
         )
 
     @pytest.mark.asyncio
-    async def test_prompt_restores_prior_lydia_session_id(self, agent, monkeypatch):
-        """If the env already had LYDIA_SESSION_ID set (e.g. nested
+    async def test_prompt_restores_prior_alice_session_id(self, agent, monkeypatch):
+        """If the env already had ALICE_SESSION_ID set (e.g. nested
         agent loops), the prior value must be restored after the inner
         prompt completes — not popped, not left at the inner id."""
-        monkeypatch.setenv("LYDIA_SESSION_ID", "outer-sess")
+        monkeypatch.setenv("ALICE_SESSION_ID", "outer-sess")
 
         new_resp = await agent.new_session(cwd=".")
         state = agent.session_manager.get_session(new_resp.session_id)
@@ -1234,7 +1234,7 @@ class TestPrompt:
         captured: dict[str, str | None] = {}
 
         def mock_run(*args, **kwargs):
-            captured["inner"] = os.environ.get("LYDIA_SESSION_ID")
+            captured["inner"] = os.environ.get("ALICE_SESSION_ID")
             return {"final_response": "ok", "messages": []}
 
         state.agent.run_conversation = mock_run
@@ -1248,7 +1248,7 @@ class TestPrompt:
 
         assert captured["inner"] == new_resp.session_id
         # Outer scope must be restored.
-        assert os.environ.get("LYDIA_SESSION_ID") == "outer-sess"
+        assert os.environ.get("ALICE_SESSION_ID") == "outer-sess"
 
     @pytest.mark.asyncio
     async def test_prompt_does_not_duplicate_streamed_final_message(self, agent):
@@ -1544,7 +1544,7 @@ class TestSlashCommands:
     def test_version(self, agent, mock_manager):
         state = self._make_state(mock_manager)
         result = agent._handle_slash_command("/version", state)
-        assert LYDIA_VERSION in result
+        assert ALICE_VERSION in result
 
     def test_compact_compresses_context(self, agent, mock_manager):
         state = self._make_state(mock_manager)
@@ -1688,7 +1688,7 @@ class TestSlashCommands:
         manager = SessionManager(db=SessionDB(tmp_path / "state.db"))
 
         with patch("run_agent.AIAgent", side_effect=fake_agent):
-            acp_agent = LydiaACPAgent(session_manager=manager)
+            acp_agent = AliceACPAgent(session_manager=manager)
             state = manager.create_session(cwd="/tmp")
             result = acp_agent._cmd_model("anthropic:claude-sonnet-4-6", state)
 

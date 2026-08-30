@@ -20,7 +20,7 @@ async function waitForBackend(maxMs = 30_000): Promise<boolean> {
   const start = Date.now()
   while (Date.now() - start < maxMs) {
     try {
-      const conn = await window.lydiaDesktop.getConnection()
+      const conn = await window.aliceDesktop.getConnection()
       if (conn?.baseUrl) return true
     } catch { /* not ready yet */ }
     await new Promise(r => setTimeout(r, 500))
@@ -32,7 +32,7 @@ export async function fetchSetupStatus(): Promise<SetupStatus | null> {
   const ready = await waitForBackend()
   if (!ready) return null
   try {
-    return await window.lydiaDesktop.api<SetupStatus>({ path: '/api/setup/status' })
+    return await window.aliceDesktop.api<SetupStatus>({ path: '/api/setup/status' })
   } catch {
     return null
   }
@@ -40,7 +40,7 @@ export async function fetchSetupStatus(): Promise<SetupStatus | null> {
 
 async function _post<T>(path: string, body: unknown): Promise<T | null> {
   try {
-    return await window.lydiaDesktop.api<T>({
+    return await window.aliceDesktop.api<T>({
       path,
       method: 'POST',
       body: JSON.stringify(body),

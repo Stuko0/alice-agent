@@ -15,7 +15,7 @@ import {
   DropdownMenuSubTrigger
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { LydiaGateway } from '@/alice'
+import type { AliceGateway } from '@/alice'
 import { getGlobalModelOptions, getMoaModels } from '@/alice'
 import { useI18n } from '@/i18n'
 import {
@@ -52,7 +52,7 @@ import { ModelEditSubmenu, resolveFastControl } from './model-edit-submenu'
 export const ModelMenuCloseContext = createContext<() => void>(() => {})
 
 interface ModelMenuPanelProps {
-  gateway?: LydiaGateway
+  gateway?: AliceGateway
   onSelectModel: (selection: { model: string; provider: string }) => Promise<boolean> | void
   requestGateway: <T>(method: string, params?: Record<string, unknown>) => Promise<T>
 }

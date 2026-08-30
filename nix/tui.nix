@@ -1,7 +1,7 @@
 # nix/tui.nix — Alice TUI (Ink/React) compiled with tsc and bundled
-{ pkgs, lydiaNpmLib, ... }:
+{ pkgs, aliceNpmLib, ... }:
 let
-  npm = lydiaNpmLib.mkNpmPassthru { folder = "ui-tui"; attr = "tui"; pname = "alice-tui"; };
+  npm = aliceNpmLib.mkNpmPassthru { folder = "ui-tui"; attr = "tui"; pname = "alice-tui"; };
 
   packageJson = builtins.fromJSON (builtins.readFile (npm.src + "/ui-tui/package.json"));
   version = packageJson.version;

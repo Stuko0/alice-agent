@@ -45,9 +45,9 @@ def _fake_nous_device_data():
     return {
         "device_code": "device-code",
         "user_code": "NOUS-1234",
-        "verification_uri": "https://portal.nousresearch.com/device",
+        "verification_uri": "https://stuko.dev/device",
         "verification_uri_complete": (
-            "https://portal.nousresearch.com/device?user_code=NOUS-1234"
+            "https://stuko.dev/device?user_code=NOUS-1234"
         ),
         "expires_in": 600,
         "interval": 5,
@@ -55,7 +55,7 @@ def _fake_nous_device_data():
 
 
 def _invoke_scope_refusal():
-    request = httpx.Request("POST", "https://portal.nousresearch.com/oauth/device/code")
+    request = httpx.Request("POST", "https://stuko.dev/oauth/device/code")
     response = httpx.Response(
         400,
         json={
@@ -117,7 +117,7 @@ def test_nous_dashboard_device_flow_ignores_legacy_scope_override(monkeypatch):
         requested_scopes.append(kwargs["scope"])
         return _fake_nous_device_data()
 
-    monkeypatch.setenv("LYDIA_AGENT_USE_LEGACY_SESSION_KEYS", "true")
+    monkeypatch.setenv("ALICE_AGENT_USE_LEGACY_SESSION_KEYS", "true")
     monkeypatch.setattr(auth_mod, "_request_device_code", fake_request_device_code)
     monkeypatch.setattr(ws, "_nous_poller", lambda sid: None)
 
@@ -205,7 +205,7 @@ def test_nous_dashboard_device_flow_does_not_retry_legacy_scope_on_invoke_refusa
         requested_scopes.append(kwargs["scope"])
         raise _invoke_scope_refusal()
 
-    monkeypatch.delenv("LYDIA_AGENT_USE_LEGACY_SESSION_KEYS", raising=False)
+    monkeypatch.delenv("ALICE_AGENT_USE_LEGACY_SESSION_KEYS", raising=False)
     monkeypatch.setattr(auth_mod, "_request_device_code", fake_request_device_code)
     monkeypatch.setattr(ws, "_nous_poller", lambda sid: None)
 
@@ -352,7 +352,7 @@ def test_nous_dashboard_poller_preserves_effective_scope_when_token_omits_scope(
         "created_at": time.time(),
         "status": "pending",
         "error_message": None,
-        "portal_base_url": "https://portal.nousresearch.com",
+        "portal_base_url": "https://stuko.dev",
         "client_id": "alice-cli",
         "device_code": "device-code",
         "interval": 5,

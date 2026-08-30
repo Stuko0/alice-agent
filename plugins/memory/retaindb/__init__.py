@@ -496,8 +496,8 @@ class RetainDBMemoryProvider(MemoryProvider):
         if explicit:
             project = explicit
         else:
-            lydia_home = str(kwargs.get("lydia_home", ""))
-            profile_name = os.path.basename(lydia_home) if lydia_home else ""
+            alice_home = str(kwargs.get("alice_home", ""))
+            profile_name = os.path.basename(alice_home) if alice_home else ""
             project = f"alice-{profile_name}" if (profile_name and profile_name not in {"", ".alice"}) else "default"
 
         self._client = _Client(api_key, base_url, project)
@@ -506,12 +506,12 @@ class RetainDBMemoryProvider(MemoryProvider):
         self._agent_id = kwargs.get("agent_id", "alice") or "alice"
 
         from alice_constants import get_alice_home
-        lydia_home_path = get_alice_home()
-        db_path = lydia_home_path / "retaindb_queue.db"
+        alice_home_path = get_alice_home()
+        db_path = alice_home_path / "retaindb_queue.db"
         self._queue = _WriteQueue(self._client, db_path)
 
         # Seed agent identity from SOUL.md in background
-        soul_path = lydia_home_path / "SOUL.md"
+        soul_path = alice_home_path / "SOUL.md"
         if soul_path.exists():
             soul_content = soul_path.read_text(encoding="utf-8", errors="replace").strip()
             if soul_content:

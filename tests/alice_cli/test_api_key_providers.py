@@ -145,8 +145,8 @@ PROVIDER_ENV_VARS = (
     "GMI_API_KEY", "GMI_BASE_URL",
     "DASHSCOPE_API_KEY", "OPENCODE_ZEN_API_KEY", "OPENCODE_GO_API_KEY",
     "NOUS_API_KEY", "GITHUB_TOKEN", "GH_TOKEN",
-    "OPENAI_BASE_URL", "LYDIA_COPILOT_ACP_COMMAND", "COPILOT_CLI_PATH",
-    "LYDIA_COPILOT_ACP_ARGS", "COPILOT_ACP_BASE_URL",
+    "OPENAI_BASE_URL", "ALICE_COPILOT_ACP_COMMAND", "COPILOT_CLI_PATH",
+    "ALICE_COPILOT_ACP_ARGS", "COPILOT_ACP_BASE_URL",
 )
 
 
@@ -361,7 +361,7 @@ class TestApiKeyProviderStatus:
         assert status["provider"] == "minimax"
 
     def test_copilot_acp_status_detects_local_cli(self, monkeypatch):
-        monkeypatch.setenv("LYDIA_COPILOT_ACP_ARGS", "--acp --stdio --debug")
+        monkeypatch.setenv("ALICE_COPILOT_ACP_ARGS", "--acp --stdio --debug")
         monkeypatch.setattr("alice_cli.auth.shutil.which", lambda command: f"/usr/local/bin/{command}")
 
         status = get_external_process_provider_status("copilot-acp")
@@ -476,7 +476,7 @@ class TestResolveApiKeyProviderCredentials:
         assert calls == [["/opt/homebrew/bin/gh", "auth", "token"]]
 
     def test_resolve_copilot_acp_with_local_cli(self, monkeypatch):
-        monkeypatch.setenv("LYDIA_COPILOT_ACP_ARGS", "--acp --stdio")
+        monkeypatch.setenv("ALICE_COPILOT_ACP_ARGS", "--acp --stdio")
         monkeypatch.setattr("alice_cli.auth.shutil.which", lambda command: f"/usr/local/bin/{command}")
 
         creds = resolve_external_process_provider_credentials("copilot-acp")
@@ -680,7 +680,7 @@ class TestRuntimeProviderResolution:
 
     def test_runtime_copilot_acp_uses_process_runtime(self, monkeypatch):
         monkeypatch.setattr("alice_cli.auth.shutil.which", lambda command: f"/usr/local/bin/{command}")
-        monkeypatch.setenv("LYDIA_COPILOT_ACP_ARGS", "--acp --stdio --debug")
+        monkeypatch.setenv("ALICE_COPILOT_ACP_ARGS", "--acp --stdio --debug")
 
         from alice_cli.runtime_provider import resolve_runtime_provider
 
@@ -703,30 +703,30 @@ class TestHasAnyProviderConfigured:
     def test_glm_key_counts(self, monkeypatch, tmp_path):
         from alice_cli import config as config_module
         monkeypatch.setenv("GLM_API_KEY", "test-key")
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setattr(config_module, "get_env_path", lambda: lydia_home / ".env")
-        monkeypatch.setattr(config_module, "get_alice_home", lambda: lydia_home)
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setattr(config_module, "get_env_path", lambda: alice_home / ".env")
+        monkeypatch.setattr(config_module, "get_alice_home", lambda: alice_home)
         from alice_cli.main import _has_any_provider_configured
         assert _has_any_provider_configured() is True
 
     def test_minimax_key_counts(self, monkeypatch, tmp_path):
         from alice_cli import config as config_module
         monkeypatch.setenv("MINIMAX_API_KEY", "test-key")
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setattr(config_module, "get_env_path", lambda: lydia_home / ".env")
-        monkeypatch.setattr(config_module, "get_alice_home", lambda: lydia_home)
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setattr(config_module, "get_env_path", lambda: alice_home / ".env")
+        monkeypatch.setattr(config_module, "get_alice_home", lambda: alice_home)
         from alice_cli.main import _has_any_provider_configured
         assert _has_any_provider_configured() is True
 
     def test_gh_cli_token_counts(self, monkeypatch, tmp_path):
         from alice_cli import config as config_module
         monkeypatch.setattr("alice_cli.copilot_auth._try_gh_cli_token", lambda: "gho_cli_secret")
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setattr(config_module, "get_env_path", lambda: lydia_home / ".env")
-        monkeypatch.setattr(config_module, "get_alice_home", lambda: lydia_home)
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setattr(config_module, "get_env_path", lambda: alice_home / ".env")
+        monkeypatch.setattr(config_module, "get_alice_home", lambda: alice_home)
         from alice_cli.main import _has_any_provider_configured
         assert _has_any_provider_configured() is True
 
@@ -734,10 +734,10 @@ class TestHasAnyProviderConfigured:
         """Claude Code credentials should NOT skip the wizard when Alice is unconfigured."""
         from alice_cli import config as config_module
         from alice_cli.auth import PROVIDER_REGISTRY
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setattr(config_module, "get_env_path", lambda: lydia_home / ".env")
-        monkeypatch.setattr(config_module, "get_alice_home", lambda: lydia_home)
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setattr(config_module, "get_env_path", lambda: alice_home / ".env")
+        monkeypatch.setattr(config_module, "get_alice_home", lambda: alice_home)
         monkeypatch.setattr("alice_cli.copilot_auth.resolve_copilot_token", lambda: ("", ""))
         # Clear all provider env vars so earlier checks don't short-circuit
         _all_vars = {"OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
@@ -765,15 +765,15 @@ class TestHasAnyProviderConfigured:
         """config.yaml with model.provider set should count as configured."""
         import yaml
         from alice_cli import config as config_module
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        config_file = lydia_home / "config.yaml"
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        config_file = alice_home / "config.yaml"
         config_file.write_text(yaml.dump({
             "model": {"default": "anthropic/claude-opus-4.6", "provider": "openrouter"},
         }))
-        monkeypatch.setattr(config_module, "get_env_path", lambda: lydia_home / ".env")
-        monkeypatch.setattr(config_module, "get_alice_home", lambda: lydia_home)
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setattr(config_module, "get_env_path", lambda: alice_home / ".env")
+        monkeypatch.setattr(config_module, "get_alice_home", lambda: alice_home)
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         # Clear all provider env vars
         for var in ("OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
                      "ANTHROPIC_TOKEN", "OPENAI_BASE_URL"):
@@ -785,15 +785,15 @@ class TestHasAnyProviderConfigured:
         """config.yaml with model.base_url set (custom endpoint) should count."""
         import yaml
         from alice_cli import config as config_module
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        config_file = lydia_home / "config.yaml"
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        config_file = alice_home / "config.yaml"
         config_file.write_text(yaml.dump({
             "model": {"default": "my-model", "base_url": "http://localhost:11434/v1"},
         }))
-        monkeypatch.setattr(config_module, "get_env_path", lambda: lydia_home / ".env")
-        monkeypatch.setattr(config_module, "get_alice_home", lambda: lydia_home)
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setattr(config_module, "get_env_path", lambda: alice_home / ".env")
+        monkeypatch.setattr(config_module, "get_alice_home", lambda: alice_home)
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         for var in ("OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
                      "ANTHROPIC_TOKEN", "OPENAI_BASE_URL"):
             monkeypatch.delenv(var, raising=False)
@@ -804,15 +804,15 @@ class TestHasAnyProviderConfigured:
         """config.yaml with model.api_key set should count."""
         import yaml
         from alice_cli import config as config_module
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        config_file = lydia_home / "config.yaml"
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        config_file = alice_home / "config.yaml"
         config_file.write_text(yaml.dump({
             "model": {"default": "my-model", "api_key": "sk-test-key"},
         }))
-        monkeypatch.setattr(config_module, "get_env_path", lambda: lydia_home / ".env")
-        monkeypatch.setattr(config_module, "get_alice_home", lambda: lydia_home)
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setattr(config_module, "get_env_path", lambda: alice_home / ".env")
+        monkeypatch.setattr(config_module, "get_alice_home", lambda: alice_home)
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         for var in ("OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
                      "ANTHROPIC_TOKEN", "OPENAI_BASE_URL"):
             monkeypatch.delenv(var, raising=False)
@@ -824,15 +824,15 @@ class TestHasAnyProviderConfigured:
         import yaml
         from alice_cli import config as config_module
         from alice_cli.auth import PROVIDER_REGISTRY
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        config_file = lydia_home / "config.yaml"
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        config_file = alice_home / "config.yaml"
         config_file.write_text(yaml.dump({
             "model": {"default": ""},
         }))
-        monkeypatch.setattr(config_module, "get_env_path", lambda: lydia_home / ".env")
-        monkeypatch.setattr(config_module, "get_alice_home", lambda: lydia_home)
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setattr(config_module, "get_env_path", lambda: alice_home / ".env")
+        monkeypatch.setattr(config_module, "get_alice_home", lambda: alice_home)
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr("alice_cli.copilot_auth.resolve_copilot_token", lambda: ("", ""))
         _all_vars = {"OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
                       "ANTHROPIC_TOKEN", "OPENAI_BASE_URL"}
@@ -846,18 +846,18 @@ class TestHasAnyProviderConfigured:
         from alice_cli.main import _has_any_provider_configured
         assert _has_any_provider_configured() is False
 
-    def test_claude_code_creds_counted_when_lydia_configured(self, monkeypatch, tmp_path):
+    def test_claude_code_creds_counted_when_alice_configured(self, monkeypatch, tmp_path):
         """Claude Code credentials should count when Alice has been explicitly configured."""
         import yaml
         from alice_cli import config as config_module
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
         # Write a config with a non-default model to simulate explicit configuration
-        config_file = lydia_home / "config.yaml"
+        config_file = alice_home / "config.yaml"
         config_file.write_text(yaml.dump({"model": {"default": "my-local-model"}}))
-        monkeypatch.setattr(config_module, "get_env_path", lambda: lydia_home / ".env")
-        monkeypatch.setattr(config_module, "get_alice_home", lambda: lydia_home)
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setattr(config_module, "get_env_path", lambda: alice_home / ".env")
+        monkeypatch.setattr(config_module, "get_alice_home", lambda: alice_home)
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         # Clear all provider env vars
         for var in ("OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
                      "ANTHROPIC_TOKEN", "OPENAI_BASE_URL"):

@@ -11,7 +11,7 @@
  *              ▼                                                          .
  *     WebSocket /api/pty?token=<session>                                  .
  *          ▼                                                              .
- *     FastAPI pty_ws  (lydia_cli/web_server.py)                          .
+ *     FastAPI pty_ws  (alice_cli/web_server.py)                          .
  *          ▼                                                              .
  *     POSIX PTY → `node ui-tui/dist/entry.js` → tui_gateway + AIAgent     .
  */
@@ -122,8 +122,8 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
   // so a missing token there is expected, not an error.
   const [banner, setBanner] = useState<string | null>(() =>
     typeof window !== "undefined" &&
-    !window.__LYDIA_SESSION_TOKEN__ &&
-    !window.__LYDIA_AUTH_REQUIRED__
+    !window.__ALICE_SESSION_TOKEN__ &&
+    !window.__ALICE_AUTH_REQUIRED__
       ? "Session token unavailable. Open this page through `alice dashboard`, not directly."
       : null,
   );
@@ -369,8 +369,8 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
     const host = hostRef.current;
     if (!host) return;
 
-    const token = window.__LYDIA_SESSION_TOKEN__;
-    const gated = !!window.__LYDIA_AUTH_REQUIRED__;
+    const token = window.__ALICE_SESSION_TOKEN__;
+    const gated = !!window.__ALICE_AUTH_REQUIRED__;
     // Banner already initialised above; just bail before wiring xterm/WS.
     // In gated mode the token is absent by design — api.buildWsUrl() mints
     // a WS ticket instead, so don't bail; let the effect reach that path.
@@ -647,7 +647,7 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
       });
     });
 
-    // WebSocket. In gated mode (``window.__LYDIA_AUTH_REQUIRED__``) this
+    // WebSocket. In gated mode (``window.__ALICE_AUTH_REQUIRED__``) this
     // awaits a single-use ticket via /api/auth/ws-ticket before opening;
     // in loopback mode it resolves synchronously against the injected
     // session token. The IIFE keeps the outer effect synchronous so its
@@ -679,7 +679,7 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
       const params: Record<string, string> = { channel };
       if (resumeParam) params.resume = resumeParam;
       if (forceFresh) params.fresh = "1";
-      // Profile-scoped chat: the PTY child gets LYDIA_HOME pointed at the
+      // Profile-scoped chat: the PTY child gets ALICE_HOME pointed at the
       // selected profile, so the conversation runs with that profile's model,
       // skills, memory, and sessions (see web_server._resolve_chat_argv).
       if (scopedProfile) params.profile = scopedProfile;
@@ -1117,7 +1117,7 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
 
 declare global {
   interface Window {
-    __LYDIA_SESSION_TOKEN__?: string;
-    __LYDIA_AUTH_REQUIRED__?: boolean;
+    __ALICE_SESSION_TOKEN__?: string;
+    __ALICE_AUTH_REQUIRED__?: boolean;
   }
 }

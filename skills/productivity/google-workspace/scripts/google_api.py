@@ -31,12 +31,12 @@ from datetime import datetime, timedelta, timezone
 from email.mime.text import MIMEText
 from pathlib import Path
 
-# Ensure sibling modules (_lydia_home) are importable when run standalone.
+# Ensure sibling modules (_alice_home) are importable when run standalone.
 _SCRIPTS_DIR = str(Path(__file__).resolve().parent)
 if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 
-from _lydia_home import get_alice_home
+from _alice_home import get_alice_home
 
 ALICE_HOME = get_alice_home()
 TOKEN_PATH = ALICE_HOME / "google_token.json"
@@ -80,7 +80,7 @@ def _stored_token_scopes() -> list[str]:
 
 
 def _gws_binary() -> str | None:
-    override = os.getenv("LYDIA_GWS_BIN")
+    override = os.getenv("ALICE_GWS_BIN")
     if override:
         return override
     return shutil.which("gws")

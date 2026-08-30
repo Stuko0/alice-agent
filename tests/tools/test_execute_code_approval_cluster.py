@@ -9,7 +9,7 @@ Covers the canonical fix for issues #4146, #27303, #30882, #33057:
   3. tools.approval.check_execute_code_guard — the entry-point guard decision
      matrix (isolated backends, yolo/off, cron-deny, headless-local,
      gateway approve/deny/timeout/missing-notify, smart mode).
-  4. tools.code_execution_tool._scrub_child_env — broad LYDIA_ prefix dropped,
+  4. tools.code_execution_tool._scrub_child_env — broad ALICE_ prefix dropped,
      operational allowlist kept, DSN/WEBHOOK blocked, passthrough precedence.
 """
 
@@ -105,12 +105,12 @@ def test_both_rpc_threads_use_propagation_helper():
 
 @pytest.fixture
 def gw_session(monkeypatch):
-    """A clean gateway session: LYDIA_GATEWAY_SESSION set, a bound session
+    """A clean gateway session: ALICE_GATEWAY_SESSION set, a bound session
     key, and isolated gateway queues/callbacks. Yields the session_key."""
-    monkeypatch.setenv("LYDIA_GATEWAY_SESSION", "1")
-    monkeypatch.delenv("LYDIA_INTERACTIVE", raising=False)
-    monkeypatch.delenv("LYDIA_CRON_SESSION", raising=False)
-    monkeypatch.delenv("LYDIA_EXEC_ASK", raising=False)
+    monkeypatch.setenv("ALICE_GATEWAY_SESSION", "1")
+    monkeypatch.delenv("ALICE_INTERACTIVE", raising=False)
+    monkeypatch.delenv("ALICE_CRON_SESSION", raising=False)
+    monkeypatch.delenv("ALICE_EXEC_ASK", raising=False)
     # Force manual mode regardless of host config.
     monkeypatch.setattr(A, "_get_approval_mode", lambda: "manual")
 
@@ -149,17 +149,17 @@ def test_guard_isolated_backend_approved():
 
 def test_guard_headless_local_approved(monkeypatch):
     # Documented #30882 limitation: no approval surface → preserve auto-run.
-    monkeypatch.delenv("LYDIA_GATEWAY_SESSION", raising=False)
-    monkeypatch.delenv("LYDIA_INTERACTIVE", raising=False)
-    monkeypatch.delenv("LYDIA_CRON_SESSION", raising=False)
-    monkeypatch.delenv("LYDIA_EXEC_ASK", raising=False)
+    monkeypatch.delenv("ALICE_GATEWAY_SESSION", raising=False)
+    monkeypatch.delenv("ALICE_INTERACTIVE", raising=False)
+    monkeypatch.delenv("ALICE_CRON_SESSION", raising=False)
+    monkeypatch.delenv("ALICE_EXEC_ASK", raising=False)
     monkeypatch.setattr(A, "_get_approval_mode", lambda: "manual")
     assert A.check_execute_code_guard("import os", "local")["approved"] is True
 
 
 def test_guard_cron_deny_blocks(monkeypatch):
-    monkeypatch.setenv("LYDIA_CRON_SESSION", "1")
-    monkeypatch.delenv("LYDIA_GATEWAY_SESSION", raising=False)
+    monkeypatch.setenv("ALICE_CRON_SESSION", "1")
+    monkeypatch.delenv("ALICE_GATEWAY_SESSION", raising=False)
     monkeypatch.setattr(A, "_get_approval_mode", lambda: "manual")
     monkeypatch.setattr(A, "_get_cron_approval_mode", lambda: "deny")
     res = A.check_execute_code_guard("import os", "local")
@@ -280,16 +280,16 @@ def test_guard_session_yolo_bypasses(gw_session):
 # 4. Env scrubbing (#27303)
 # ---------------------------------------------------------------------------
 
-def test_env_scrub_lydia_allowlist_and_secret_blocks():
+def test_env_scrub_alice_allowlist_and_secret_blocks():
     from tools.code_execution_tool import _scrub_child_env
 
     env = {
         # operational allowlist → kept
-        "ALICE_HOME": "/h", "LYDIA_PROFILE": "p",
-        "LYDIA_CONFIG": "/c.yaml", "LYDIA_ENV": "/e",
-        # other LYDIA_* → dropped (broad prefix removed)
-        "LYDIA_BASE_URL": "https://x", "LYDIA_INTERACTIVE": "1",
-        "LYDIA_KANBAN_DB": "postgres://u:p@h/db",
+        "ALICE_HOME": "/h", "ALICE_PROFILE": "p",
+        "ALICE_CONFIG": "/c.yaml", "ALICE_ENV": "/e",
+        # other ALICE_* → dropped (broad prefix removed)
+        "ALICE_BASE_URL": "https://x", "ALICE_INTERACTIVE": "1",
+        "ALICE_KANBAN_DB": "postgres://u:p@h/db",
         # secret substrings (incl. new DSN/WEBHOOK) → dropped
         "SENTRY_DSN": "https://a@s.io/1", "SLACK_WEBHOOK": "https://h/x",
         "OPENAI_API_KEY": "sk", "GITHUB_TOKEN": "ghp",
@@ -298,10 +298,10 @@ def test_env_scrub_lydia_allowlist_and_secret_blocks():
     }
     out = _scrub_child_env(env, is_passthrough=lambda _: False, is_windows=False)
 
-    for kept in ("ALICE_HOME", "LYDIA_PROFILE", "LYDIA_CONFIG", "LYDIA_ENV", "PATH"):
+    for kept in ("ALICE_HOME", "ALICE_PROFILE", "ALICE_CONFIG", "ALICE_ENV", "PATH"):
         assert kept in out, f"{kept} should be kept"
     for dropped in (
-        "LYDIA_BASE_URL", "LYDIA_INTERACTIVE", "LYDIA_KANBAN_DB",
+        "ALICE_BASE_URL", "ALICE_INTERACTIVE", "ALICE_KANBAN_DB",
         "SENTRY_DSN", "SLACK_WEBHOOK", "OPENAI_API_KEY", "GITHUB_TOKEN",
         "RANDOM_X",
     ):
@@ -333,9 +333,9 @@ def test_execute_code_entry_blocks_before_spawn_when_guard_denies(monkeypatch, t
     from tools import terminal_tool as TT
 
     marker = tmp_path / "child-ran.marker"
-    monkeypatch.setenv("LYDIA_CRON_SESSION", "1")
-    monkeypatch.delenv("LYDIA_GATEWAY_SESSION", raising=False)
-    monkeypatch.delenv("LYDIA_INTERACTIVE", raising=False)
+    monkeypatch.setenv("ALICE_CRON_SESSION", "1")
+    monkeypatch.delenv("ALICE_GATEWAY_SESSION", raising=False)
+    monkeypatch.delenv("ALICE_INTERACTIVE", raising=False)
     monkeypatch.setattr(A, "_get_approval_mode", lambda: "manual")
     monkeypatch.setattr(A, "_get_cron_approval_mode", lambda: "deny")
     monkeypatch.setattr(TT, "_get_env_config", lambda: {"env_type": "local"})
@@ -352,37 +352,37 @@ def test_execute_code_entry_blocks_before_spawn_when_guard_denies(monkeypatch, t
 # 6. Env-scrub diagnosability mitigation (#27303 follow-up)
 # ---------------------------------------------------------------------------
 
-def test_env_scrub_logs_dropped_lydia_vars(caplog):
-    """Dropping a non-allowlisted, non-secret LYDIA_* var must be diagnosable:
+def test_env_scrub_logs_dropped_alice_vars(caplog):
+    """Dropping a non-allowlisted, non-secret ALICE_* var must be diagnosable:
     the scrub emits a one-shot debug log naming the dropped vars and pointing at
     the env_passthrough opt-in, so the silent behavior change (#27303) doesn't
-    leave users guessing why a sandbox script sees an unset LYDIA_* var."""
+    leave users guessing why a sandbox script sees an unset ALICE_* var."""
     import logging
 
     from tools.code_execution_tool import _scrub_child_env
 
     env = {
         "ALICE_HOME": "/h",          # allowlisted → kept, not logged
-        "LYDIA_BASE_URL": "https://x",   # dropped → logged
-        "LYDIA_KANBAN_DB": "postgres://u:p@h/db",  # dropped → logged
-        "LYDIA_API_KEY": "sk",       # secret → dropped silently (not logged)
+        "ALICE_BASE_URL": "https://x",   # dropped → logged
+        "ALICE_KANBAN_DB": "postgres://u:p@h/db",  # dropped → logged
+        "ALICE_API_KEY": "sk",       # secret → dropped silently (not logged)
         "PATH": "/usr/bin",           # safe prefix → kept
     }
     with caplog.at_level(logging.DEBUG, logger="tools.code_execution_tool"):
         out = _scrub_child_env(env, is_passthrough=lambda _: False, is_windows=False)
 
     assert "ALICE_HOME" in out and "PATH" in out
-    assert "LYDIA_BASE_URL" not in out and "LYDIA_KANBAN_DB" not in out
+    assert "ALICE_BASE_URL" not in out and "ALICE_KANBAN_DB" not in out
 
     msgs = "\n".join(r.getMessage() for r in caplog.records)
-    assert "LYDIA_BASE_URL" in msgs and "LYDIA_KANBAN_DB" in msgs
+    assert "ALICE_BASE_URL" in msgs and "ALICE_KANBAN_DB" in msgs
     assert "env_passthrough" in msgs
     # Secret vars are dropped but must NOT be named in the diagnostic log.
-    assert "LYDIA_API_KEY" not in msgs
+    assert "ALICE_API_KEY" not in msgs
 
 
 def test_env_scrub_no_log_when_nothing_dropped(caplog):
-    """No diagnostic noise when there are no dropped LYDIA_* vars."""
+    """No diagnostic noise when there are no dropped ALICE_* vars."""
     import logging
 
     from tools.code_execution_tool import _scrub_child_env

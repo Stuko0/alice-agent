@@ -36,7 +36,7 @@ _EXAMPLE_PLUGIN_FIXTURE = (
 
 
 @pytest.fixture
-def _install_example_plugin(_isolate_lydia_home):
+def _install_example_plugin(_isolate_alice_home):
     """Drop the example-dashboard fixture into the per-test ALICE_HOME
     user-plugins directory and force the web_server's dashboard plugin
     cache + API mount to rediscover it.
@@ -49,7 +49,7 @@ def _install_example_plugin(_isolate_lydia_home):
     isolated ``ALICE_HOME``.
 
     The user-plugin source is preferred over a transient
-    ``LYDIA_BUNDLED_PLUGINS`` override because the bundled dir is
+    ``ALICE_BUNDLED_PLUGINS`` override because the bundled dir is
     resolved per-call (other tests in the suite implicitly rely on the
     real bundled plugins — kanban, alice-achievements, model providers
     — being available, and globally swapping that root would yank them
@@ -187,7 +187,7 @@ class TestRedactKey:
 
 
 class TestSessionTokenInjection:
-    """The desktop shell mints LYDIA_DASHBOARD_SESSION_TOKEN and signs its
+    """The desktop shell mints ALICE_DASHBOARD_SESSION_TOKEN and signs its
     /api + /api/ws calls with it. The backend must adopt that token, else every
     desktop request 401s ("gateway is offline"). A main-merge once silently
     dropped this read — this guards the contract, not a literal value.
@@ -197,19 +197,19 @@ class TestSessionTokenInjection:
         import importlib
         import alice_cli.web_server as ws
 
-        monkeypatch.setenv("LYDIA_DASHBOARD_SESSION_TOKEN", "desktop-seeded-token")
+        monkeypatch.setenv("ALICE_DASHBOARD_SESSION_TOKEN", "desktop-seeded-token")
         try:
             importlib.reload(ws)
             assert ws._SESSION_TOKEN == "desktop-seeded-token"
         finally:
-            monkeypatch.delenv("LYDIA_DASHBOARD_SESSION_TOKEN", raising=False)
+            monkeypatch.delenv("ALICE_DASHBOARD_SESSION_TOKEN", raising=False)
             importlib.reload(ws)
 
     def test_falls_back_to_random_token(self, monkeypatch):
         import importlib
         import alice_cli.web_server as ws
 
-        monkeypatch.delenv("LYDIA_DASHBOARD_SESSION_TOKEN", raising=False)
+        monkeypatch.delenv("ALICE_DASHBOARD_SESSION_TOKEN", raising=False)
         importlib.reload(ws)
 
         assert ws._SESSION_TOKEN and len(ws._SESSION_TOKEN) >= 32
@@ -224,7 +224,7 @@ class TestWebServerEndpoints:
     """Test the FastAPI REST endpoints using Starlette TestClient."""
 
     @pytest.fixture(autouse=True)
-    def _setup_test_client(self, monkeypatch, _isolate_lydia_home):
+    def _setup_test_client(self, monkeypatch, _isolate_alice_home):
         """Create a TestClient and isolate the state DB under the test ALICE_HOME."""
         try:
             from starlette.testclient import TestClient
@@ -245,9 +245,9 @@ class TestWebServerEndpoints:
         assert resp.status_code == 200
         data = resp.json()
         assert "version" in data
-        assert "lydia_home" in data
+        assert "alice_home" in data
         assert "active_sessions" in data
-        assert data["can_update_lydia"] is True
+        assert data["can_update_alice"] is True
 
     def test_gateway_drain_begin_writes_marker(self):
         from gateway import drain_control
@@ -325,7 +325,7 @@ class TestWebServerEndpoints:
 
         resp = self.client.get("/api/status")
         assert resp.status_code == 200
-        assert resp.json()["can_update_lydia"] is False
+        assert resp.json()["can_update_alice"] is False
 
     def test_dashboard_update_capability_detects_generic_container(self, monkeypatch):
         import alice_constants
@@ -1123,7 +1123,7 @@ class TestWebServerEndpoints:
         resp = self.client.post("/api/audio/speak", json={"text": "   "})
         assert resp.status_code == 400
 
-    def test_update_lydia_returns_docker_guidance_without_spawning(self, monkeypatch):
+    def test_update_alice_returns_docker_guidance_without_spawning(self, monkeypatch):
         import alice_cli.web_server as web_server
 
         spawned = False
@@ -1136,7 +1136,7 @@ class TestWebServerEndpoints:
         # Bypass the managed-externally gate so we reach the docker install check.
         monkeypatch.setattr(web_server, "_dashboard_local_update_managed_externally", lambda: False)
         monkeypatch.setattr(web_server, "detect_install_method", lambda _root: "docker")
-        monkeypatch.setattr(web_server, "_spawn_lydia_action", fail_spawn)
+        monkeypatch.setattr(web_server, "_spawn_alice_action", fail_spawn)
         web_server._ACTION_PROCS.pop("alice-update", None)
         web_server._ACTION_RESULTS.pop("alice-update", None)
 
@@ -1159,7 +1159,7 @@ class TestWebServerEndpoints:
         assert status_data["pid"] is None
         assert any("docker pull stuk0o/alice-agent:latest" in line for line in status_data["lines"])
 
-    def test_update_lydia_returns_managed_runtime_guidance_without_spawning(self, monkeypatch):
+    def test_update_alice_returns_managed_runtime_guidance_without_spawning(self, monkeypatch):
         import alice_cli.web_server as web_server
 
         spawned = False
@@ -1177,7 +1177,7 @@ class TestWebServerEndpoints:
 
         monkeypatch.setattr(web_server, "_dashboard_local_update_managed_externally", lambda: True)
         monkeypatch.setattr(web_server, "detect_install_method", fail_detect)
-        monkeypatch.setattr(web_server, "_spawn_lydia_action", fail_spawn)
+        monkeypatch.setattr(web_server, "_spawn_alice_action", fail_spawn)
         web_server._ACTION_PROCS.pop("alice-update", None)
         web_server._ACTION_RESULTS.pop("alice-update", None)
 
@@ -1201,7 +1201,7 @@ class TestWebServerEndpoints:
         assert status_data["pid"] is None
         assert any("managed outside this dashboard" in line for line in status_data["lines"])
 
-    def test_update_lydia_spawns_on_non_docker_install(self, monkeypatch):
+    def test_update_alice_spawns_on_non_docker_install(self, monkeypatch):
         import alice_cli.web_server as web_server
 
         class Proc:
@@ -1217,7 +1217,7 @@ class TestWebServerEndpoints:
             return Proc()
 
         monkeypatch.setattr(web_server, "detect_install_method", lambda _root: "git")
-        monkeypatch.setattr(web_server, "_spawn_lydia_action", fake_spawn)
+        monkeypatch.setattr(web_server, "_spawn_alice_action", fake_spawn)
         web_server._ACTION_PROCS.pop("alice-update", None)
         web_server._ACTION_RESULTS.pop("alice-update", None)
 
@@ -1620,7 +1620,7 @@ class TestWebServerEndpoints:
             from types import SimpleNamespace as NS
             return NS(pid=12345)
 
-        monkeypatch.setattr(ws, "_spawn_lydia_action", fake_spawn)
+        monkeypatch.setattr(ws, "_spawn_alice_action", fake_spawn)
 
         resp = self.client.post(
             "/api/ops/import", json={"archive": str(archive), "force": True},
@@ -1648,7 +1648,7 @@ class TestWebServerEndpoints:
             from types import SimpleNamespace as NS
             return NS(pid=12345)
 
-        monkeypatch.setattr(ws, "_spawn_lydia_action", fake_spawn)
+        monkeypatch.setattr(ws, "_spawn_alice_action", fake_spawn)
 
         resp = self.client.post("/api/ops/backup", json={})
         assert resp.status_code == 200
@@ -1662,7 +1662,7 @@ class TestWebServerEndpoints:
         assert archive.name.startswith("alice-backup-")
         assert archive.suffix == ".zip"
 
-    def test_ops_backup_uses_hosted_lydia_home(self, tmp_path, monkeypatch):
+    def test_ops_backup_uses_hosted_alice_home(self, tmp_path, monkeypatch):
         from pathlib import Path
 
         import alice_cli.web_server as ws
@@ -1677,7 +1677,7 @@ class TestWebServerEndpoints:
             from types import SimpleNamespace as NS
             return NS(pid=12345)
 
-        monkeypatch.setattr(ws, "_spawn_lydia_action", fake_spawn)
+        monkeypatch.setattr(ws, "_spawn_alice_action", fake_spawn)
 
         resp = self.client.post("/api/ops/backup", json={})
         assert resp.status_code == 200
@@ -1729,7 +1729,7 @@ class TestWebServerEndpoints:
             from types import SimpleNamespace as NS
             return NS(pid=12345)
 
-        monkeypatch.setattr(ws, "_spawn_lydia_action", fake_spawn)
+        monkeypatch.setattr(ws, "_spawn_alice_action", fake_spawn)
 
         resp = self.client.post(
             "/api/ops/import-upload",
@@ -1762,7 +1762,7 @@ class TestWebServerEndpoints:
         def fail_spawn(*_args):
             raise AssertionError("invalid uploads must not spawn import")
 
-        monkeypatch.setattr(ws, "_spawn_lydia_action", fail_spawn)
+        monkeypatch.setattr(ws, "_spawn_alice_action", fail_spawn)
 
         resp = self.client.post(
             "/api/ops/import-upload",
@@ -1901,7 +1901,7 @@ class TestWebServerEndpoints:
         assert "personal WeChat" in weixin["description"]
         assert "Official Account" not in f"{weixin['name']} {weixin['description']}"
         assert weixin["docs_url"] == (
-            "https://alice-agent.nousresearch.com/docs/user-guide/messaging/weixin/"
+            "https://alice-agent.stuko.dev/docs/user-guide/messaging/weixin/"
         )
 
         fields = {field["key"]: field for field in weixin["env_vars"]}
@@ -1919,7 +1919,7 @@ class TestWebServerEndpoints:
 
         teams = _build_catalog_entry("teams")
         assert teams["docs_url"] == (
-            "https://alice-agent.nousresearch.com/docs/user-guide/messaging/teams"
+            "https://alice-agent.stuko.dev/docs/user-guide/messaging/teams"
         )
 
     def test_google_chat_messaging_metadata_links_setup_guide(self):
@@ -1932,7 +1932,7 @@ class TestWebServerEndpoints:
         google_chat = _build_catalog_entry("google_chat")
         assert google_chat["name"] == "Google Chat"
         assert google_chat["docs_url"] == (
-            "https://alice-agent.nousresearch.com/docs/user-guide/messaging/google_chat"
+            "https://alice-agent.stuko.dev/docs/user-guide/messaging/google_chat"
         )
 
     def test_messaging_catalog_covers_gateway_platforms(self):
@@ -2111,7 +2111,7 @@ class TestWebServerEndpoints:
         assert kwargs["headers"]["Accept"] == "application/json"
         assert kwargs["headers"]["Authorization"] == "Bearer poll-secret"
         assert kwargs["headers"]["Content-Type"] == "application/json"
-        assert kwargs["headers"]["User-Agent"].startswith("LydiaDashboard/")
+        assert kwargs["headers"]["User-Agent"].startswith("AliceDashboard/")
 
     def test_telegram_onboarding_worker_request_maps_unexpected_errors(
         self, monkeypatch
@@ -2146,9 +2146,9 @@ class TestWebServerEndpoints:
             return {
                 "pairing_id": "pair123",
                 "poll_token": "poll-secret",
-                "suggested_username": "lydia_pair123_bot",
-                "deep_link": "https://t.me/newbot/LydiaSetupBot/lydia_pair123_bot",
-                "qr_payload": "https://t.me/newbot/LydiaSetupBot/lydia_pair123_bot",
+                "suggested_username": "alice_pair123_bot",
+                "deep_link": "https://t.me/newbot/AliceSetupBot/alice_pair123_bot",
+                "qr_payload": "https://t.me/newbot/AliceSetupBot/alice_pair123_bot",
                 "expires_at": "2027-05-18T00:00:00.000Z",
             }
 
@@ -2184,9 +2184,9 @@ class TestWebServerEndpoints:
                 return {
                     "pairing_id": "pair-ready",
                     "poll_token": "poll-secret",
-                    "suggested_username": "lydia_pair_ready_bot",
-                    "deep_link": "https://t.me/newbot/LydiaSetupBot/lydia_pair_ready_bot",
-                    "qr_payload": "https://t.me/newbot/LydiaSetupBot/lydia_pair_ready_bot",
+                    "suggested_username": "alice_pair_ready_bot",
+                    "deep_link": "https://t.me/newbot/AliceSetupBot/alice_pair_ready_bot",
+                    "qr_payload": "https://t.me/newbot/AliceSetupBot/alice_pair_ready_bot",
                     "expires_at": "2027-05-18T00:00:00.000Z",
                 }
             assert method == "GET"
@@ -2194,7 +2194,7 @@ class TestWebServerEndpoints:
             assert bearer_token == "poll-secret"
             return {
                 "status": "ready",
-                "bot_username": "lydia_pair_ready_bot",
+                "bot_username": "alice_pair_ready_bot",
                 "owner_user_id": 123456789,
                 "token": "123456:SECRET",
             }
@@ -2210,7 +2210,7 @@ class TestWebServerEndpoints:
             restart_calls.append((subcommand, name))
             return FakeRestartProc()
 
-        monkeypatch.setattr(ws, "_spawn_lydia_action", fake_spawn_action)
+        monkeypatch.setattr(ws, "_spawn_alice_action", fake_spawn_action)
 
         start = self.client.post("/api/messaging/telegram/onboarding/start", json={})
         assert start.status_code == 200
@@ -2231,7 +2231,7 @@ class TestWebServerEndpoints:
         assert applied_data == {
             "ok": True,
             "platform": "telegram",
-            "bot_username": "lydia_pair_ready_bot",
+            "bot_username": "alice_pair_ready_bot",
             "needs_restart": False,
             "restart_started": True,
             "restart_action": "gateway-restart",
@@ -2257,9 +2257,9 @@ class TestWebServerEndpoints:
                 return {
                     "pairing_id": "pair-restart-fails",
                     "poll_token": "poll-secret",
-                    "suggested_username": "lydia_pair_restart_fails_bot",
-                    "deep_link": "https://t.me/newbot/LydiaSetupBot/lydia_pair_restart_fails_bot",
-                    "qr_payload": "https://t.me/newbot/LydiaSetupBot/lydia_pair_restart_fails_bot",
+                    "suggested_username": "alice_pair_restart_fails_bot",
+                    "deep_link": "https://t.me/newbot/AliceSetupBot/alice_pair_restart_fails_bot",
+                    "qr_payload": "https://t.me/newbot/AliceSetupBot/alice_pair_restart_fails_bot",
                     "expires_at": "2027-05-18T00:00:00.000Z",
                 }
             assert method == "GET"
@@ -2267,7 +2267,7 @@ class TestWebServerEndpoints:
             assert bearer_token == "poll-secret"
             return {
                 "status": "ready",
-                "bot_username": "lydia_pair_restart_fails_bot",
+                "bot_username": "alice_pair_restart_fails_bot",
                 "owner_user_id": 123456789,
                 "token": "123456:SECRET",
             }
@@ -2280,7 +2280,7 @@ class TestWebServerEndpoints:
             assert name == "gateway-restart"
             raise RuntimeError("supervisor unavailable")
 
-        monkeypatch.setattr(ws, "_spawn_lydia_action", fail_spawn_action)
+        monkeypatch.setattr(ws, "_spawn_alice_action", fail_spawn_action)
 
         start = self.client.post("/api/messaging/telegram/onboarding/start", json={})
         assert start.status_code == 200
@@ -2321,14 +2321,14 @@ class TestWebServerEndpoints:
                 return {
                     "pairing_id": "pair-reuse",
                     "poll_token": "poll-secret",
-                    "suggested_username": "lydia_pair_reuse_bot",
-                    "deep_link": "https://t.me/newbot/LydiaSetupBot/lydia_pair_reuse_bot",
-                    "qr_payload": "https://t.me/newbot/LydiaSetupBot/lydia_pair_reuse_bot",
+                    "suggested_username": "alice_pair_reuse_bot",
+                    "deep_link": "https://t.me/newbot/AliceSetupBot/alice_pair_reuse_bot",
+                    "qr_payload": "https://t.me/newbot/AliceSetupBot/alice_pair_reuse_bot",
                     "expires_at": "2027-05-18T00:00:00.000Z",
                 }
             return {
                 "status": "ready",
-                "bot_username": "lydia_pair_reuse_bot",
+                "bot_username": "alice_pair_reuse_bot",
                 "owner_user_id": 123456789,
                 "token": "123456:SECRET",
             }
@@ -2346,7 +2346,7 @@ class TestWebServerEndpoints:
         def fail_spawn_action(subcommand, name):
             raise AssertionError("must not spawn a second concurrent restart")
 
-        monkeypatch.setattr(ws, "_spawn_lydia_action", fail_spawn_action)
+        monkeypatch.setattr(ws, "_spawn_alice_action", fail_spawn_action)
 
         start = self.client.post("/api/messaging/telegram/onboarding/start", json={})
         assert start.status_code == 200
@@ -2374,9 +2374,9 @@ class TestWebServerEndpoints:
             return {
                 "pairing_id": "pair-waiting",
                 "poll_token": "poll-secret",
-                "suggested_username": "lydia_pair_waiting_bot",
-                "deep_link": "https://t.me/newbot/LydiaSetupBot/lydia_pair_waiting_bot",
-                "qr_payload": "https://t.me/newbot/LydiaSetupBot/lydia_pair_waiting_bot",
+                "suggested_username": "alice_pair_waiting_bot",
+                "deep_link": "https://t.me/newbot/AliceSetupBot/alice_pair_waiting_bot",
+                "qr_payload": "https://t.me/newbot/AliceSetupBot/alice_pair_waiting_bot",
                 "expires_at": "2027-05-18T00:00:00.000Z",
             }
 
@@ -2403,9 +2403,9 @@ class TestWebServerEndpoints:
             return {
                 "pairing_id": "pair-cancel",
                 "poll_token": "poll-secret",
-                "suggested_username": "lydia_pair_cancel_bot",
-                "deep_link": "https://t.me/newbot/LydiaSetupBot/lydia_pair_cancel_bot",
-                "qr_payload": "https://t.me/newbot/LydiaSetupBot/lydia_pair_cancel_bot",
+                "suggested_username": "alice_pair_cancel_bot",
+                "deep_link": "https://t.me/newbot/AliceSetupBot/alice_pair_cancel_bot",
+                "qr_payload": "https://t.me/newbot/AliceSetupBot/alice_pair_cancel_bot",
                 "expires_at": "2027-05-18T00:00:00.000Z",
             }
 
@@ -3190,7 +3190,7 @@ class TestNewEndpoints:
     """Tests for session detail, logs, cron, skills, tools, raw config, analytics."""
 
     @pytest.fixture(autouse=True)
-    def _setup(self, monkeypatch, _isolate_lydia_home):
+    def _setup(self, monkeypatch, _isolate_alice_home):
         try:
             from starlette.testclient import TestClient
         except ImportError:
@@ -3277,13 +3277,13 @@ class TestNewEndpoints:
         from alice_constants import get_alice_home
         import alice_cli.profiles as profiles_mod
 
-        lydia_home = get_alice_home()
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "config.yaml").write_text(
+        alice_home = get_alice_home()
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "config.yaml").write_text(
             "model:\n  provider: openrouter\n  name: anthropic/claude-sonnet-4.6\n",
             encoding="utf-8",
         )
-        named = lydia_home / "profiles" / "multi-agent"
+        named = alice_home / "profiles" / "multi-agent"
         named.mkdir(parents=True)
         (named / ".env").write_text("EXAMPLE=1\n", encoding="utf-8")
         (named / "skills" / "demo").mkdir(parents=True)
@@ -3338,7 +3338,7 @@ class TestNewEndpoints:
         assert resp.status_code == 200
         assert resp.json()["command"] == "coder setup"
 
-    def test_profile_setup_command_uses_lydia_for_default_profile(self):
+    def test_profile_setup_command_uses_alice_for_default_profile(self):
         from alice_constants import get_alice_home
 
         get_alice_home().mkdir(parents=True, exist_ok=True)
@@ -3475,8 +3475,8 @@ class TestNewEndpoints:
         scoped to that profile via ``-p <name>``."""
         from alice_constants import (
             get_alice_home,
-            set_lydia_home_override,
-            reset_lydia_home_override,
+            set_alice_home_override,
+            reset_alice_home_override,
         )
         from alice_cli.config import load_config
         from alice_cli.skills_config import get_disabled_skills
@@ -3505,7 +3505,7 @@ class TestNewEndpoints:
             spawned.append((list(subcommand), name))
             return _FakeProc()
 
-        monkeypatch.setattr(web_server, "_spawn_lydia_action", fake_spawn)
+        monkeypatch.setattr(web_server, "_spawn_alice_action", fake_spawn)
 
         resp = self.client.post(
             "/api/profiles",
@@ -3539,7 +3539,7 @@ class TestNewEndpoints:
 
         # Verify the writes landed in the NEW profile's config, not the root.
         prof_dir = get_alice_home() / "profiles" / "builder"
-        token = set_lydia_home_override(str(prof_dir))
+        token = set_alice_home_override(str(prof_dir))
         try:
             cfg = load_config()
             assert cfg["model"]["default"] == "anthropic/claude-sonnet-4.6"
@@ -3549,7 +3549,7 @@ class TestNewEndpoints:
             assert "drop-me" in disabled
             assert "keep-me" not in disabled
         finally:
-            reset_lydia_home_override(token)
+            reset_alice_home_override(token)
 
     def test_profile_open_terminal_uses_macos_terminal(self, monkeypatch):
         from alice_constants import get_alice_home
@@ -4842,7 +4842,7 @@ class TestGatewayBusyReadout:
             "platforms": {},
             "active_agents": 0,
         })
-        monkeypatch.setenv("LYDIA_RESTART_DRAIN_TIMEOUT", "90")
+        monkeypatch.setenv("ALICE_RESTART_DRAIN_TIMEOUT", "90")
 
         data = self.client.get("/api/status").json()
         assert "restart_drain_timeout" in data
@@ -5192,7 +5192,7 @@ class TestDeleteSessionEndpoint:
     """
 
     @pytest.fixture(autouse=True)
-    def _setup_test_client(self, monkeypatch, _isolate_lydia_home):
+    def _setup_test_client(self, monkeypatch, _isolate_alice_home):
         try:
             from starlette.testclient import TestClient
         except ImportError:
@@ -5269,7 +5269,7 @@ class TestBulkDeleteSessionsEndpoint:
     """
 
     @pytest.fixture(autouse=True)
-    def _setup_test_client(self, monkeypatch, _isolate_lydia_home):
+    def _setup_test_client(self, monkeypatch, _isolate_alice_home):
         try:
             from starlette.testclient import TestClient
         except ImportError:
@@ -5393,7 +5393,7 @@ class TestDeleteEmptySessionsEndpoint:
     """
 
     @pytest.fixture(autouse=True)
-    def _setup_test_client(self, monkeypatch, _isolate_lydia_home):
+    def _setup_test_client(self, monkeypatch, _isolate_alice_home):
         try:
             from starlette.testclient import TestClient
         except ImportError:
@@ -5522,7 +5522,7 @@ class TestPluginAPIAuth:
     """Tests that plugin API routes require the session token (issue #19533)."""
 
     @pytest.fixture(autouse=True)
-    def _setup_test_client(self, monkeypatch, _isolate_lydia_home, _install_example_plugin):
+    def _setup_test_client(self, monkeypatch, _isolate_alice_home, _install_example_plugin):
         """Create a TestClient without the session token header.
 
         Pulls in ``_install_example_plugin`` so ``test_plugin_route_allows_auth``
@@ -5770,7 +5770,7 @@ skip_on_windows = pytest.mark.skipif(
 @skip_on_windows
 class TestPtyWebSocket:
     @pytest.fixture(autouse=True)
-    def _setup(self, monkeypatch, _isolate_lydia_home):
+    def _setup(self, monkeypatch, _isolate_alice_home):
         from starlette.testclient import TestClient
 
         import alice_cli.web_server as ws
@@ -5804,12 +5804,12 @@ class TestPtyWebSocket:
 
         _argv, _cwd, env = self.ws_module._resolve_chat_argv()
 
-        assert env["LYDIA_TUI_DASHBOARD"] == "1"
-        assert env["LYDIA_TUI_INLINE"] == "1"
-        assert env["LYDIA_TUI_DISABLE_MOUSE"] == "1"
+        assert env["ALICE_TUI_DASHBOARD"] == "1"
+        assert env["ALICE_TUI_INLINE"] == "1"
+        assert env["ALICE_TUI_DISABLE_MOUSE"] == "1"
 
     def test_resolve_chat_argv_applies_terminal_backend_config(
-        self, monkeypatch, _isolate_lydia_home
+        self, monkeypatch, _isolate_alice_home
     ):
         import alice_cli.main as main_mod
 
@@ -6111,7 +6111,7 @@ class TestPtyWebSocket:
 
     def test_channel_param_propagates_sidecar_url(self, monkeypatch):
         """When /api/pty is opened with ?channel=, the PTY child gets a
-        LYDIA_TUI_SIDECAR_URL env var pointing back at /api/pub on the
+        ALICE_TUI_SIDECAR_URL env var pointing back at /api/pub on the
         same channel — which is how tool events reach the dashboard sidebar."""
         captured: dict = {}
 
@@ -6226,7 +6226,7 @@ def test_resolve_chat_argv_injects_gateway_ws_url(monkeypatch):
     _argv, _cwd, env = ws._resolve_chat_argv()
 
     assert env is not None
-    gateway_url = env.get("LYDIA_TUI_GATEWAY_URL", "")
+    gateway_url = env.get("ALICE_TUI_GATEWAY_URL", "")
     assert gateway_url.startswith("ws://127.0.0.1:9119/api/ws?")
     assert "token=" in gateway_url
 
@@ -6245,7 +6245,7 @@ class TestDashboardPluginStaticAssetAllowlist:
     """
 
     @pytest.fixture(autouse=True)
-    def _setup_test_client(self, monkeypatch, _isolate_lydia_home, _install_example_plugin):
+    def _setup_test_client(self, monkeypatch, _isolate_alice_home, _install_example_plugin):
         """Create a TestClient and install the example-dashboard fixture.
 
         The static-asset allowlist tests need a plugin to point at —
@@ -6348,7 +6348,7 @@ class TestValidateProviderCredential:
     """Live-probe credential validation (/api/providers/validate)."""
 
     @pytest.fixture(autouse=True)
-    def _setup_test_client(self, monkeypatch, _isolate_lydia_home):
+    def _setup_test_client(self, monkeypatch, _isolate_alice_home):
         try:
             from starlette.testclient import TestClient
         except ImportError:
@@ -6481,24 +6481,24 @@ class TestDesktopCronTicker:
 
         return TestClient(app)
 
-    def test_ticker_runs_when_desktop(self, monkeypatch, _isolate_lydia_home):
+    def test_ticker_runs_when_desktop(self, monkeypatch, _isolate_alice_home):
         import threading
         import cron.scheduler as sched
 
         called = threading.Event()
         monkeypatch.setattr(sched, "tick", lambda *a, **k: called.set())
-        monkeypatch.setenv("LYDIA_DESKTOP", "1")
+        monkeypatch.setenv("ALICE_DESKTOP", "1")
 
         with self._client():
-            assert called.wait(3.0), "expected cron tick under LYDIA_DESKTOP=1"
+            assert called.wait(3.0), "expected cron tick under ALICE_DESKTOP=1"
 
-    def test_ticker_skipped_without_desktop(self, monkeypatch, _isolate_lydia_home):
+    def test_ticker_skipped_without_desktop(self, monkeypatch, _isolate_alice_home):
         import threading
         import cron.scheduler as sched
 
         called = threading.Event()
         monkeypatch.setattr(sched, "tick", lambda *a, **k: called.set())
-        monkeypatch.delenv("LYDIA_DESKTOP", raising=False)
+        monkeypatch.delenv("ALICE_DESKTOP", raising=False)
 
         with self._client():
             assert not called.wait(0.5), "ticker must not run outside the desktop app"

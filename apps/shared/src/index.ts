@@ -10,12 +10,12 @@ export {
 } from './json-rpc-gateway'
 export {
   GatewayReauthRequiredError,
-  buildLydiaWebSocketUrl,
+  buildAliceWebSocketUrl,
   isGatewayReauthRequired,
   resolveGatewayWsUrl,
   type GatewayAuthMode,
   type GatewayWsConnection,
-  type LydiaWebSocketUrlOptions,
+  type AliceWebSocketUrlOptions,
   type ResolveGatewayWsUrlDeps,
   type WebSocketAuthParam
 } from './websocket-url'

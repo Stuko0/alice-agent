@@ -104,7 +104,7 @@ def adapter():
         tree=FakeTree(),
         get_channel=lambda _id: None,
         fetch_channel=AsyncMock(),
-        user=SimpleNamespace(id=99999, name="LydiaBot"),
+        user=SimpleNamespace(id=99999, name="AliceBot"),
     )
     adapter._text_batch_delay_seconds = 0  # disable batching for tests
     # Slash auth is exercised in test_discord_slash_auth.py — bypass it here
@@ -589,7 +589,7 @@ async def test_auto_create_thread_strips_mention_syntax_from_name(adapter):
 
 
 @pytest.mark.asyncio
-async def test_auto_create_thread_falls_back_to_lydia_when_only_mentions(adapter):
+async def test_auto_create_thread_falls_back_to_alice_when_only_mentions(adapter):
     """If a message contains only mention syntax, the stripped content is
     empty — fall back to the 'Alice' default rather than ''."""
     thread = SimpleNamespace(id=999, name="Alice")
@@ -827,15 +827,15 @@ def test_discord_auto_thread_config_bridge(monkeypatch, tmp_path):
     from pathlib import Path
 
     # Write a config.yaml the loader will find
-    lydia_dir = tmp_path / ".alice"
-    lydia_dir.mkdir()
-    config_path = lydia_dir / "config.yaml"
+    alice_dir = tmp_path / ".alice"
+    alice_dir.mkdir()
+    config_path = alice_dir / "config.yaml"
     config_path.write_text(yaml.dump({
         "discord": {"auto_thread": True},
     }))
 
     monkeypatch.delenv("DISCORD_AUTO_THREAD", raising=False)
-    monkeypatch.setenv("ALICE_HOME", str(lydia_dir))
+    monkeypatch.setenv("ALICE_HOME", str(alice_dir))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
     from gateway.config import load_gateway_config

@@ -9,7 +9,7 @@ def homes(tmp_path, monkeypatch):
     managed = tmp_path / "managed"
     managed.mkdir()
     monkeypatch.setenv("ALICE_HOME", str(home))
-    monkeypatch.setenv("LYDIA_MANAGED_DIR", str(managed))
+    monkeypatch.setenv("ALICE_MANAGED_DIR", str(managed))
     import alice_cli.config as cfg
     from alice_cli import managed_scope
 
@@ -61,7 +61,7 @@ def env_homes(tmp_path, monkeypatch):
     managed = tmp_path / "managed"
     managed.mkdir()
     monkeypatch.setenv("ALICE_HOME", str(home))
-    monkeypatch.setenv("LYDIA_MANAGED_DIR", str(managed))
+    monkeypatch.setenv("ALICE_MANAGED_DIR", str(managed))
     (managed / ".env").write_text(
         "OPENAI_API_BASE=https://org.example/v1\n", encoding="utf-8"
     )

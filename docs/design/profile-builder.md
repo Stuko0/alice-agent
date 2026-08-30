@@ -42,18 +42,18 @@ These are load-bearing — they change the implementation, not just the polish.
 ### Seam #1 — hub-skill install cannot use the ALICE_HOME override
 
 `tools/skills_hub.py` binds `SKILLS_DIR = ALICE_HOME / "skills"` at **module
-import time**. The context-local `set_lydia_home_override()` swap (which makes
+import time**. The context-local `set_alice_home_override()` swap (which makes
 `_write_profile_model` and the MCP write land in the target profile) does NOT
 retroactively rebind that already-imported module global. So a data-layer wrap
 of hub install would write into the dashboard's *own* active profile, not the
 new one.
 
-The correct mechanism is the existing subprocess path: `_spawn_lydia_action`
+The correct mechanism is the existing subprocess path: `_spawn_alice_action`
 runs `python -m alice_cli.main <subcommand>`, and `_apply_profile_override()`
 re-reads `sys.argv` at import in the fresh child. Prepend `-p <profile>`:
 
 ```python
-_spawn_lydia_action(["-p", profile, "skills", "install", identifier], "skills-install")
+_spawn_alice_action(["-p", profile, "skills", "install", identifier], "skills-install")
 ```
 
 A fresh subprocess re-imports `skills_hub` with the profile's ALICE_HOME bound
@@ -64,7 +64,7 @@ construction.
 
 Built-in/optional skill enabling and MCP writes are **synchronous config ops**
 and can be part of the create call. Hub installs are long-running git fetches
-spawned detached (`_spawn_lydia_action` returns a PID immediately). So the
+spawned detached (`_spawn_alice_action` returns a PID immediately). So the
 create flow is:
 
 1. `create_profile()` — make the dir (synchronous)

@@ -84,15 +84,15 @@ def _setup_isolated_home(tmp_path, monkeypatch, model_yaml_value):
     """Write a config.yaml with the given ``model:`` value and stub heavy bits."""
     import gateway.run as gateway_run
 
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    cfg_path = lydia_home / "config.yaml"
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    cfg_path = alice_home / "config.yaml"
     cfg_path.write_text(
         yaml.safe_dump({"model": model_yaml_value, "providers": {}}),
         encoding="utf-8",
     )
 
-    monkeypatch.setattr(gateway_run, "_lydia_home", lydia_home)
+    monkeypatch.setattr(gateway_run, "_alice_home", alice_home)
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
     # The picker-setup path calls list_picker_providers, which otherwise hits
     # the network (OpenRouter model catalog). Stub it to a minimal list — these
@@ -119,8 +119,8 @@ def _setup_isolated_home(tmp_path, monkeypatch, model_yaml_value):
         lambda *a, **k: 272000,
     )
     # save_config writes to ``get_alice_home() / config.yaml`` — point it here.
-    monkeypatch.setattr("alice_constants.get_alice_home", lambda: lydia_home)
-    monkeypatch.setattr("alice_cli.config.get_alice_home", lambda: lydia_home)
+    monkeypatch.setattr("alice_constants.get_alice_home", lambda: alice_home)
+    monkeypatch.setattr("alice_cli.config.get_alice_home", lambda: alice_home)
     return cfg_path
 
 

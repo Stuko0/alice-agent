@@ -75,7 +75,7 @@ def _fake_http_ok(payload: dict):
 
 
 class TestHappyPath:
-    def _run(self, *, args, account_token="tok_abc", portal="https://portal.nousresearch.com",
+    def _run(self, *, args, account_token="tok_abc", portal="https://stuko.dev",
              response=None, captured=None, existing_client_id=None):
         response = response or {
             "client_id": "agent:selfhost-1",
@@ -99,11 +99,11 @@ class TestHappyPath:
             saved[key] = value
 
         # get_env_value is consulted twice: once for the stored client_id
-        # (idempotency key) and once for LYDIA_DASHBOARD_PORTAL_URL. Route by
+        # (idempotency key) and once for ALICE_DASHBOARD_PORTAL_URL. Route by
         # key so a test can seed a prior client_id while keeping the portal
         # unset (the default-portal-not-persisted path).
         def fake_get_env(key):
-            if key == "LYDIA_DASHBOARD_OAUTH_CLIENT_ID":
+            if key == "ALICE_DASHBOARD_OAUTH_CLIENT_ID":
                 return existing_client_id
             return None
 
@@ -132,8 +132,8 @@ class TestHappyPath:
         assert "custom_redirect_uri" not in captured["body"]
 
         # env write: client_id present, portal URL NOT written (default portal)
-        assert saved["LYDIA_DASHBOARD_OAUTH_CLIENT_ID"] == "agent:selfhost-1"
-        assert "LYDIA_DASHBOARD_PORTAL_URL" not in saved
+        assert saved["ALICE_DASHBOARD_OAUTH_CLIENT_ID"] == "agent:selfhost-1"
+        assert "ALICE_DASHBOARD_PORTAL_URL" not in saved
 
         out = capsys.readouterr().out
         assert "Registered dashboard" in out
@@ -161,7 +161,7 @@ class TestHappyPath:
             portal="https://nous-account-service-git-feat-x.vercel.app",
         )
         assert (
-            saved["LYDIA_DASHBOARD_PORTAL_URL"]
+            saved["ALICE_DASHBOARD_PORTAL_URL"]
             == "https://nous-account-service-git-feat-x.vercel.app"
         )
 
@@ -170,7 +170,7 @@ class TestIdempotentRerun(TestHappyPath):
     """Re-running with a stored client_id updates instead of creating.
 
     Inherits ``_run`` from TestHappyPath; the only new lever is
-    ``existing_client_id`` (the LYDIA_DASHBOARD_OAUTH_CLIENT_ID a prior run
+    ``existing_client_id`` (the ALICE_DASHBOARD_OAUTH_CLIENT_ID a prior run
     persisted), which the CLI re-sends so the portal updates that row.
     """
 
@@ -237,7 +237,7 @@ class TestIdempotentRerun(TestHappyPath):
             existing_client_id="agent:selfhost-1",
         )
         # Same id round-trips into .env -> idempotent, one record.
-        assert saved["LYDIA_DASHBOARD_OAUTH_CLIENT_ID"] == "agent:selfhost-1"
+        assert saved["ALICE_DASHBOARD_OAUTH_CLIENT_ID"] == "agent:selfhost-1"
 
     def test_stale_id_falls_through_to_create_prints_registered(self, capsys):
         # Stored id no longer resolves server-side -> portal created a fresh
@@ -263,7 +263,7 @@ class TestIdempotentRerun(TestHappyPath):
         out = capsys.readouterr().out
         assert "Registered dashboard" in out
         assert "Updated dashboard" not in out
-        assert saved["LYDIA_DASHBOARD_OAUTH_CLIENT_ID"] == "agent:selfhost-new"
+        assert saved["ALICE_DASHBOARD_OAUTH_CLIENT_ID"] == "agent:selfhost-new"
 
     def test_blank_stored_client_id_treated_as_first_run(self, capsys):
         # A blank/whitespace stored value is not a usable key: treat as a
@@ -279,7 +279,7 @@ class TestIdempotentRerun(TestHappyPath):
 
 
 class TestCustomPortalPersistence:
-    """`--portal-url` / LYDIA_DASHBOARD_PORTAL_URL is persisted to .env.
+    """`--portal-url` / ALICE_DASHBOARD_PORTAL_URL is persisted to .env.
 
     An *explicitly supplied* custom portal URL is an intentional choice the
     user wants to survive across sessions, so it's always written (updating an
@@ -293,7 +293,7 @@ class TestCustomPortalPersistence:
         """Drive cmd_dashboard_register, capturing save_env_value calls.
 
         `existing_portal` is what get_env_value returns for
-        LYDIA_DASHBOARD_PORTAL_URL (None = not present in .env).
+        ALICE_DASHBOARD_PORTAL_URL (None = not present in .env).
         """
         response = {
             "client_id": "agent:selfhost-1",
@@ -310,7 +310,7 @@ class TestCustomPortalPersistence:
             saved[key] = value
 
         def fake_get_env_value(key, *a, **kw):
-            if key == "LYDIA_DASHBOARD_PORTAL_URL":
+            if key == "ALICE_DASHBOARD_PORTAL_URL":
                 return existing_portal
             return None
 
@@ -327,10 +327,10 @@ class TestCustomPortalPersistence:
         ), patch.object(
             dr.urllib.request, "urlopen", return_value=_fake_http_ok(response)
         ):
-            # The ambient process env may carry LYDIA_DASHBOARD_PORTAL_URL
+            # The ambient process env may carry ALICE_DASHBOARD_PORTAL_URL
             # (e.g. staging dev shells); drop it so `custom_portal_supplied`
             # is driven solely by the args.portal_url under test.
-            dr.os.environ.pop("LYDIA_DASHBOARD_PORTAL_URL", None)
+            dr.os.environ.pop("ALICE_DASHBOARD_PORTAL_URL", None)
             dr.cmd_dashboard_register(args)
         return saved
 
@@ -340,7 +340,7 @@ class TestCustomPortalPersistence:
             portal="https://preview.example.com",
             existing_portal=None,
         )
-        assert saved["LYDIA_DASHBOARD_PORTAL_URL"] == "https://preview.example.com"
+        assert saved["ALICE_DASHBOARD_PORTAL_URL"] == "https://preview.example.com"
 
     def test_explicit_custom_url_updates_existing_in_place(self, capsys):
         # An entry already exists with a different value; the explicit custom
@@ -351,19 +351,19 @@ class TestCustomPortalPersistence:
             existing_portal="https://old-preview.example.com",
         )
         assert (
-            saved["LYDIA_DASHBOARD_PORTAL_URL"] == "https://new-preview.example.com"
+            saved["ALICE_DASHBOARD_PORTAL_URL"] == "https://new-preview.example.com"
         )
 
     def test_explicit_custom_url_persisted_even_when_equals_default(self, capsys):
         # User explicitly asked for the production portal — honour the explicit
         # request and persist it (the no-flag path would skip the default).
         saved = self._run(
-            args=_ns(portal_url="https://portal.nousresearch.com"),
-            portal="https://portal.nousresearch.com",
+            args=_ns(portal_url="https://stuko.dev"),
+            portal="https://stuko.dev",
             existing_portal=None,
         )
         assert (
-            saved["LYDIA_DASHBOARD_PORTAL_URL"] == "https://portal.nousresearch.com"
+            saved["ALICE_DASHBOARD_PORTAL_URL"] == "https://stuko.dev"
         )
 
     def test_explicit_custom_url_equal_to_existing_is_noop(self, capsys):
@@ -373,16 +373,16 @@ class TestCustomPortalPersistence:
             portal="https://preview.example.com",
             existing_portal="https://preview.example.com",
         )
-        assert "LYDIA_DASHBOARD_PORTAL_URL" not in saved
+        assert "ALICE_DASHBOARD_PORTAL_URL" not in saved
 
     def test_no_flag_default_portal_not_written(self, capsys):
         # No custom URL supplied, resolves to default → not written.
         saved = self._run(
             args=_ns(),
-            portal="https://portal.nousresearch.com",
+            portal="https://stuko.dev",
             existing_portal=None,
         )
-        assert "LYDIA_DASHBOARD_PORTAL_URL" not in saved
+        assert "ALICE_DASHBOARD_PORTAL_URL" not in saved
 
     def test_no_flag_does_not_overwrite_existing_entry(self, capsys):
         # No custom URL supplied and the var already exists → left untouched,
@@ -392,18 +392,18 @@ class TestCustomPortalPersistence:
             portal="https://inferred-from-login.example.com",
             existing_portal="https://already-set.example.com",
         )
-        assert "LYDIA_DASHBOARD_PORTAL_URL" not in saved
+        assert "ALICE_DASHBOARD_PORTAL_URL" not in saved
 
 
 class TestPublicUrlPersistence:
-    """`--redirect-uri` derives & persists LYDIA_DASHBOARD_PUBLIC_URL in .env.
+    """`--redirect-uri` derives & persists ALICE_DASHBOARD_PUBLIC_URL in .env.
 
     --redirect-uri is the full public callback (e.g.
     https://alice.example.com/auth/callback). At serve time the dashboard auth
     layer reconstructs that callback by appending "/auth/callback" to
-    LYDIA_DASHBOARD_PUBLIC_URL, so the value that's actually consumed is the
+    ALICE_DASHBOARD_PUBLIC_URL, so the value that's actually consumed is the
     ORIGIN (scheme://host). We derive the origin from the supplied redirect URI
-    and persist THAT as LYDIA_DASHBOARD_PUBLIC_URL — the var the runtime reads
+    and persist THAT as ALICE_DASHBOARD_PUBLIC_URL — the var the runtime reads
     — so the public-URL override is genuinely wired, not just stored.
 
     An explicitly supplied value is always written (updating an existing entry
@@ -415,7 +415,7 @@ class TestPublicUrlPersistence:
         """Drive cmd_dashboard_register, capturing save_env_value calls.
 
         `existing_public` is what get_env_value returns for
-        LYDIA_DASHBOARD_PUBLIC_URL (None = not present in .env).
+        ALICE_DASHBOARD_PUBLIC_URL (None = not present in .env).
         """
         response = {
             "client_id": "agent:selfhost-1",
@@ -432,7 +432,7 @@ class TestPublicUrlPersistence:
             saved[key] = value
 
         def fake_get_env_value(key, *a, **kw):
-            if key == "LYDIA_DASHBOARD_PUBLIC_URL":
+            if key == "ALICE_DASHBOARD_PUBLIC_URL":
                 return existing_public
             return None
 
@@ -441,7 +441,7 @@ class TestPublicUrlPersistence:
         ), patch("alice_cli.config.is_managed", return_value=False), patch.dict(
             dr.os.environ, {}, clear=False
         ), patch.object(
-            dr, "_resolve_portal_base_url", return_value="https://portal.nousresearch.com"
+            dr, "_resolve_portal_base_url", return_value="https://stuko.dev"
         ), patch(
             "alice_cli.config.get_env_value", side_effect=fake_get_env_value
         ), patch(
@@ -449,7 +449,7 @@ class TestPublicUrlPersistence:
         ), patch.object(
             dr.urllib.request, "urlopen", return_value=_fake_http_ok(response)
         ):
-            dr.os.environ.pop("LYDIA_DASHBOARD_PORTAL_URL", None)
+            dr.os.environ.pop("ALICE_DASHBOARD_PORTAL_URL", None)
             dr.cmd_dashboard_register(args)
         return saved
 
@@ -460,17 +460,17 @@ class TestPublicUrlPersistence:
             args=_ns(redirect_uri="https://alice.example.com/auth/callback"),
             existing_public=None,
         )
-        assert saved["LYDIA_DASHBOARD_PUBLIC_URL"] == "https://alice.example.com"
+        assert saved["ALICE_DASHBOARD_PUBLIC_URL"] == "https://alice.example.com"
         # The full callback path must NOT be persisted verbatim (would double
         # the path at serve time).
-        assert "/auth/callback" not in saved["LYDIA_DASHBOARD_PUBLIC_URL"]
+        assert "/auth/callback" not in saved["ALICE_DASHBOARD_PUBLIC_URL"]
 
     def test_origin_preserves_port(self, capsys):
         saved = self._run(
             args=_ns(redirect_uri="https://alice.example.com:8443/auth/callback"),
             existing_public=None,
         )
-        assert saved["LYDIA_DASHBOARD_PUBLIC_URL"] == "https://alice.example.com:8443"
+        assert saved["ALICE_DASHBOARD_PUBLIC_URL"] == "https://alice.example.com:8443"
 
     def test_public_url_updates_existing_in_place(self, capsys):
         # A stale public-url entry exists; the new derived origin overwrites it.
@@ -478,7 +478,7 @@ class TestPublicUrlPersistence:
             args=_ns(redirect_uri="https://new.example.com/auth/callback"),
             existing_public="https://old.example.com",
         )
-        assert saved["LYDIA_DASHBOARD_PUBLIC_URL"] == "https://new.example.com"
+        assert saved["ALICE_DASHBOARD_PUBLIC_URL"] == "https://new.example.com"
 
     def test_public_url_equal_to_existing_is_noop(self, capsys):
         # Derived origin already matches what's stored → no redundant write.
@@ -486,7 +486,7 @@ class TestPublicUrlPersistence:
             args=_ns(redirect_uri="https://alice.example.com/auth/callback"),
             existing_public="https://alice.example.com",
         )
-        assert "LYDIA_DASHBOARD_PUBLIC_URL" not in saved
+        assert "ALICE_DASHBOARD_PUBLIC_URL" not in saved
 
     def test_no_redirect_flag_not_written(self, capsys):
         # Localhost-only install (no --redirect-uri) → var left untouched.
@@ -494,7 +494,7 @@ class TestPublicUrlPersistence:
             args=_ns(),
             existing_public=None,
         )
-        assert "LYDIA_DASHBOARD_PUBLIC_URL" not in saved
+        assert "ALICE_DASHBOARD_PUBLIC_URL" not in saved
 
     def test_no_redirect_flag_does_not_overwrite_existing(self, capsys):
         # No --redirect-uri supplied but a value already exists → never touch
@@ -503,7 +503,7 @@ class TestPublicUrlPersistence:
             args=_ns(),
             existing_public="https://already-set.example.com",
         )
-        assert "LYDIA_DASHBOARD_PUBLIC_URL" not in saved
+        assert "ALICE_DASHBOARD_PUBLIC_URL" not in saved
 
     def test_non_http_redirect_not_persisted(self, capsys):
         # A malformed / non-http(s) redirect yields no derivable origin → skip.
@@ -511,7 +511,7 @@ class TestPublicUrlPersistence:
             args=_ns(redirect_uri="not-a-url"),
             existing_public=None,
         )
-        assert "LYDIA_DASHBOARD_PUBLIC_URL" not in saved
+        assert "ALICE_DASHBOARD_PUBLIC_URL" not in saved
 
     def test_public_url_persisted_alongside_portal_url(self, capsys):
         # Both --portal-url and --redirect-uri supplied → portal_url AND the
@@ -543,15 +543,15 @@ class TestPublicUrlPersistence:
         ), patch.object(
             dr.urllib.request, "urlopen", return_value=_fake_http_ok(response)
         ):
-            dr.os.environ.pop("LYDIA_DASHBOARD_PORTAL_URL", None)
+            dr.os.environ.pop("ALICE_DASHBOARD_PORTAL_URL", None)
             dr.cmd_dashboard_register(
                 _ns(
                     portal_url="https://preview.example.com",
                     redirect_uri="https://alice.example.com/auth/callback",
                 )
             )
-        assert saved["LYDIA_DASHBOARD_PORTAL_URL"] == "https://preview.example.com"
-        assert saved["LYDIA_DASHBOARD_PUBLIC_URL"] == "https://alice.example.com"
+        assert saved["ALICE_DASHBOARD_PORTAL_URL"] == "https://preview.example.com"
+        assert saved["ALICE_DASHBOARD_PUBLIC_URL"] == "https://alice.example.com"
 
 
 class TestPortalResolution:
@@ -585,7 +585,7 @@ class TestPortalResolution:
 class TestPortalErrors:
     def _run_http_error(self, code, body):
         err = urllib.error.HTTPError(
-            url="https://portal.nousresearch.com/api/oauth/self-hosted-client",
+            url="https://stuko.dev/api/oauth/self-hosted-client",
             code=code,
             msg="err",
             hdrs=None,
@@ -595,7 +595,7 @@ class TestPortalErrors:
         with patch(
             "alice_cli.auth.resolve_nous_access_token", return_value="tok"
         ), patch("alice_cli.config.is_managed", return_value=False), patch.object(
-            dr, "_resolve_portal_base_url", return_value="https://portal.nousresearch.com"
+            dr, "_resolve_portal_base_url", return_value="https://stuko.dev"
         ), patch.object(dr.urllib.request, "urlopen", side_effect=err):
             with pytest.raises(SystemExit) as exc:
                 dr.cmd_dashboard_register(_ns())

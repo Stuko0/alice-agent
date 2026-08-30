@@ -99,7 +99,7 @@ def get_alice_home() -> Path:
     callers that import this at load time.  Subprocess spawners are
     expected to propagate ``ALICE_HOME`` explicitly (see the systemd
     template in ``alice_cli/gateway.py`` and the kanban dispatcher in
-    ``alice_cli/kanban_db.py``).  See https://10.1.200.116:3000/arquant-admin/NewLydia/issues/18594.
+    ``alice_cli/kanban_db.py``).  See https://10.1.200.116:3000/arquant-admin/NewAlice/issues/18594.
     """
     override = get_alice_home_override()
     if override:
@@ -220,7 +220,7 @@ def get_optional_skills_dir(default: Path | None = None) -> Path:
 def get_optional_mcps_dir(default: Path | None = None) -> Path:
     """Return the optional-mcps directory, honoring package-manager wrappers.
 
-    Mirrors :func:`get_optional_skills_dir` for the MCP catalog (Nous-approved
+    Mirrors :func:`get_optional_skills_dir` for the MCP catalog (Stuko-approved
     Model Context Protocol servers shipped with the repo but disabled by
     default). Packaged installs may ship ``optional-mcps`` outside the Python
     package tree and expose it via ``ALICE_OPTIONAL_MCPS``.
@@ -689,7 +689,7 @@ def secure_parent_dir(path: Path) -> None:
     prevent catastrophic host bricking when ``ALICE_HOME`` or other path
     env vars resolve to an unexpected location.
 
-    See https://10.1.200.116:3000/arquant-admin/NewLydia/issues/25821.
+    See https://10.1.200.116:3000/arquant-admin/NewAlice/issues/25821.
     """
     parent = path.parent.resolve()
     # Refuse root and its direct children (/usr, /home, /var, /tmp, …).
@@ -894,7 +894,7 @@ def is_container() -> bool:
 
     Result is cached for the process lifetime.  Import-safe — no heavy deps.
 
-    See: arquant-admin/NewLydia#47111
+    See: arquant-admin/NewAlice#47111
     """
     global _container_detected
     if _container_detected is not None:

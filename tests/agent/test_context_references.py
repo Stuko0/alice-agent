@@ -328,15 +328,15 @@ def test_defaults_allowed_root_to_cwd(tmp_path: Path):
 
 
 @pytest.mark.asyncio
-async def test_blocks_sensitive_home_and_lydia_paths(tmp_path: Path, monkeypatch):
+async def test_blocks_sensitive_home_and_alice_paths(tmp_path: Path, monkeypatch):
     from agent.context_references import preprocess_context_references_async
 
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("ALICE_HOME", str(tmp_path / ".alice"))
 
-    lydia_env = tmp_path / ".alice" / ".env"
-    lydia_env.parent.mkdir(parents=True)
-    lydia_env.write_text("API_KEY=super-secret\n", encoding="utf-8")
+    alice_env = tmp_path / ".alice" / ".env"
+    alice_env.parent.mkdir(parents=True)
+    alice_env.write_text("API_KEY=super-secret\n", encoding="utf-8")
 
     ssh_key = tmp_path / ".ssh" / "id_rsa"
     ssh_key.parent.mkdir(parents=True)

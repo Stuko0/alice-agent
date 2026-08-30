@@ -130,7 +130,7 @@ _UPDATE_CHECK_CACHE_SECONDS = 6 * 3600
 # (e.g. nix-built alice — no local git history to count against).
 UPDATE_AVAILABLE_NO_COUNT = -1
 
-_UPSTREAM_REPO_URL = "https://10.1.200.116:3000/arquant-admin/NewLydia.git"
+_UPSTREAM_REPO_URL = "https://10.1.200.116:3000/arquant-admin/NewAlice.git"
 _OFFICIAL_REPO_CANONICAL = "github.com/stuk0o/alice-agent"
 
 
@@ -486,7 +486,7 @@ def get_git_banner_state(repo_dir: Optional[Path] = None) -> Optional[dict]:
     return {"upstream": upstream, "local": local, "ahead": max(ahead, 0)}
 
 
-_RELEASE_URL_BASE = "https://10.1.200.116:3000/arquant-admin/NewLydia/releases/tag"
+_RELEASE_URL_BASE = "https://10.1.200.116:3000/arquant-admin/NewAlice/releases/tag"
 _latest_release_cache: Optional[tuple] = None  # (tag, url) once resolved
 
 
@@ -495,7 +495,7 @@ def get_latest_release_tag(repo_dir: Optional[Path] = None) -> Optional[tuple]:
 
     Local-only — runs ``git describe --tags --abbrev=0`` against the
     Alice checkout. Cached per-process. Release URL always points at the
-    canonical arquant-admin/NewLydia repo (forks don't get a link).
+    canonical arquant-admin/NewAlice repo (forks don't get a link).
     """
     global _latest_release_cache
     if _latest_release_cache is not None:
@@ -901,7 +901,7 @@ def build_welcome_banner(
             else ""
         )
         left_lines.append(
-            f"[{accent}]MoA: {preset_name}[/]{agg_str}{ctx_str} [dim {dim}]·[/] [dim {dim}]Nous Research[/]"
+            f"[{accent}]MoA: {preset_name}[/]{agg_str}{ctx_str} [dim {dim}]·[/] [dim {dim}]Stuko[/]"
         )
     else:
         model_short = model.split("/")[-1] if "/" in model else model
@@ -915,7 +915,7 @@ def build_welcome_banner(
             else ""
         )
         left_lines.append(
-            f"[{accent}]{model_short}[/]{ctx_str} [dim {dim}]·[/] [dim {dim}]Nous Research[/]"
+            f"[{accent}]{model_short}[/]{ctx_str} [dim {dim}]·[/] [dim {dim}]Stuko[/]"
         )
 
     if os.getenv("ALICE_YOLO_MODE"):

@@ -30,7 +30,7 @@ class TestWriteDenyExactPaths:
         assert _is_write_denied(path) is True
 
 
-    def test_lydia_env(self):
+    def test_alice_env(self):
         # ``.env`` under the active ALICE_HOME (profile-aware, not just
         # ``~/.alice``) must be write-denied. The hermetic test conftest
         # points ALICE_HOME at a tempdir — resolve via get_alice_home()
@@ -39,7 +39,7 @@ class TestWriteDenyExactPaths:
         path = str(get_alice_home() / ".env")
         assert _is_write_denied(path) is True
 
-    def test_lydia_root_env_when_running_under_profile(self, tmp_path, monkeypatch):
+    def test_alice_root_env_when_running_under_profile(self, tmp_path, monkeypatch):
         """Top-level ``<root>/.env`` stays write-denied even when running under
         a profile (#15981).
 
@@ -49,7 +49,7 @@ class TestWriteDenyExactPaths:
         could be silently overwritten by ``write_file`` while a profile was
         active.
         """
-        root = tmp_path / "lydia_root"
+        root = tmp_path / "alice_root"
         profile_home = root / "profiles" / "coder"
         profile_home.mkdir(parents=True)
         global_env = root / ".env"
@@ -58,9 +58,9 @@ class TestWriteDenyExactPaths:
         monkeypatch.setenv("ALICE_HOME", str(profile_home))
 
         # Sanity check: ALICE_HOME does point to the profile dir, not the root.
-        from alice_constants import get_alice_home, get_default_lydia_root
+        from alice_constants import get_alice_home, get_default_alice_root
         assert get_alice_home() == profile_home
-        assert get_default_lydia_root() == root
+        assert get_default_alice_root() == root
 
         assert _is_write_denied(str(global_env)) is True
 
@@ -120,7 +120,7 @@ class TestWriteAllowed:
     def test_project_file(self):
         assert _is_write_denied("/home/user/project/main.py") is False
 
-    def test_lydia_control_files_requested_writable(self):
+    def test_alice_control_files_requested_writable(self):
         from alice_constants import get_alice_home
 
         home = get_alice_home()

@@ -9,7 +9,7 @@ import { composerPlainText, normalizeComposerEditorDom, placeCaretEnd, refChipEl
 export type InlineRefInput = string | { kind: string; label?: string; value: string }
 
 /** MIME for an in-app session drag (sidebar row → composer). */
-export const LYDIA_SESSION_MIME = 'application/x-alice-session'
+export const ALICE_SESSION_MIME = 'application/x-alice-session'
 
 export interface SessionDragPayload {
   id: string
@@ -18,16 +18,16 @@ export interface SessionDragPayload {
 }
 
 export function writeSessionDrag(transfer: DataTransfer, payload: SessionDragPayload) {
-  transfer.setData(LYDIA_SESSION_MIME, JSON.stringify(payload))
+  transfer.setData(ALICE_SESSION_MIME, JSON.stringify(payload))
   transfer.effectAllowed = 'copy'
 }
 
 export function dragHasSession(transfer: DataTransfer | null) {
-  return Boolean(transfer) && Array.from(transfer!.types || []).includes(LYDIA_SESSION_MIME)
+  return Boolean(transfer) && Array.from(transfer!.types || []).includes(ALICE_SESSION_MIME)
 }
 
 export function readSessionDrag(transfer: DataTransfer | null): null | SessionDragPayload {
-  const raw = transfer?.getData(LYDIA_SESSION_MIME)
+  const raw = transfer?.getData(ALICE_SESSION_MIME)
 
   if (!raw) {
     return null

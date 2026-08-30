@@ -234,4 +234,4 @@ curl -X POST -H "Content-Type: application/json" -H "X-Alice-Session-Token: $TOK
   http://localhost:PORT/api/model/set
 ```
 
-session token 在启动时注入仪表板 HTML，每次服务器重启后轮换。如需对运行中的仪表板编写脚本，可从浏览器开发者工具中获取（`window.__LYDIA_SESSION_TOKEN__`）。
+session token 在启动时注入仪表板 HTML，每次服务器重启后轮换。如需对运行中的仪表板编写脚本，可从浏览器开发者工具中获取（`window.__ALICE_SESSION_TOKEN__`）。

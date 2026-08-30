@@ -217,9 +217,9 @@ class TestIRCAdapterMessageParsing:
         adapter._writer = writer
 
         await adapter._handle_line(":server 433 * alice :Nickname in use")
-        assert adapter._current_nick == "lydia_"
+        assert adapter._current_nick == "alice_"
         sent = writer.write.call_args[0][0]
-        assert b"NICK lydia_" in sent
+        assert b"NICK alice_" in sent
 
     @pytest.mark.asyncio
     async def test_handle_addressed_channel_message(self, adapter):
@@ -373,11 +373,11 @@ class TestIRCAdapterMessageParsing:
         adapter._writer = writer
 
         await adapter._handle_line(":server 433 * alice :Nickname in use")
-        assert adapter._current_nick == "lydia_"
-        await adapter._handle_line(":server 433 * lydia_ :Nickname in use")
-        assert adapter._current_nick == "lydia_1"
-        await adapter._handle_line(":server 433 * lydia_1 :Nickname in use")
-        assert adapter._current_nick == "lydia_2"
+        assert adapter._current_nick == "alice_"
+        await adapter._handle_line(":server 433 * alice_ :Nickname in use")
+        assert adapter._current_nick == "alice_1"
+        await adapter._handle_line(":server 433 * alice_1 :Nickname in use")
+        assert adapter._current_nick == "alice_2"
 
 
 class TestIRCAdapterSplitting:
@@ -554,11 +554,11 @@ class TestIRCStandaloneSend:
 
         monkeypatch.setenv("IRC_SERVER", "irc.test.net")
         monkeypatch.setenv("IRC_CHANNEL", "#cron")
-        monkeypatch.setenv("IRC_NICKNAME", "lydiabot")
+        monkeypatch.setenv("IRC_NICKNAME", "alicebot")
         monkeypatch.setenv("IRC_USE_TLS", "false")
 
         # Server greets us with 001 RPL_WELCOME, then nothing for QUIT drain.
-        conn = _FakeIRCConnection([b":server 001 lydiabot-cron :Welcome"])
+        conn = _FakeIRCConnection([b":server 001 alicebot-cron :Welcome"])
 
         async def _fake_open(host, port, **kwargs):
             return conn, conn  # reader and writer share the same fake
@@ -577,8 +577,8 @@ class TestIRCStandaloneSend:
         sent_lines = b"".join(conn.writes).decode("utf-8").splitlines()
         # NICK uses the cron-suffixed identity to avoid colliding with the
         # long-running gateway adapter that may already hold the nickname.
-        assert any(line.startswith("NICK lydiabot-cron") for line in sent_lines)
-        assert any(line.startswith("USER lydiabot-cron 0 * :Alice Agent (cron)")
+        assert any(line.startswith("NICK alicebot-cron") for line in sent_lines)
+        assert any(line.startswith("USER alicebot-cron 0 * :Alice Agent (cron)")
                    for line in sent_lines)
         assert any(line == "PRIVMSG #cron :hello from cron" for line in sent_lines)
         assert any(line.startswith("QUIT ") for line in sent_lines)
@@ -605,7 +605,7 @@ class TestIRCStandaloneSend:
 
         monkeypatch.setenv("IRC_SERVER", "irc.test.net")
         monkeypatch.setenv("IRC_CHANNEL", "#cron")
-        monkeypatch.setenv("IRC_NICKNAME", "lydiabot")
+        monkeypatch.setenv("IRC_NICKNAME", "alicebot")
         monkeypatch.setenv("IRC_USE_TLS", "false")
 
         # No 001 response: the readuntil call returns IncompleteReadError so
@@ -641,13 +641,13 @@ class TestIRCStandaloneSend:
 
         monkeypatch.setenv("IRC_SERVER", "irc.test.net")
         monkeypatch.setenv("IRC_CHANNEL", "#cron")
-        monkeypatch.setenv("IRC_NICKNAME", "lydiabot")
+        monkeypatch.setenv("IRC_NICKNAME", "alicebot")
         monkeypatch.setenv("IRC_USE_TLS", "false")
 
         # Attempt to inject a second IRC command via CRLF in chat_id
         result = await _standalone_send(
             PlatformConfig(enabled=True, extra={}),
-            "#cron\r\nKICK #cron lydiabot",
+            "#cron\r\nKICK #cron alicebot",
             "hi",
         )
 
@@ -660,10 +660,10 @@ class TestIRCStandaloneSend:
 
         monkeypatch.setenv("IRC_SERVER", "irc.test.net")
         monkeypatch.setenv("IRC_CHANNEL", "#cron")
-        monkeypatch.setenv("IRC_NICKNAME", "lydiabot")
+        monkeypatch.setenv("IRC_NICKNAME", "alicebot")
         monkeypatch.setenv("IRC_USE_TLS", "false")
 
-        conn = _FakeIRCConnection([b":server 001 lydiabot-cron :Welcome"])
+        conn = _FakeIRCConnection([b":server 001 alicebot-cron :Welcome"])
 
         async def _fake_open(host, port, **kwargs):
             return conn, conn
@@ -682,7 +682,7 @@ class TestIRCStandaloneSend:
         # No injected NICK command after the legitimate registration NICK
         nick_lines = [line for line in sent_lines if line.startswith("NICK ")]
         # Only the original registration NICK should be present (no injected one)
-        assert all(line.startswith("NICK lydiabot-cron") for line in nick_lines)
+        assert all(line.startswith("NICK alicebot-cron") for line in nick_lines)
         # The PRIVMSG should contain "hello NICK eviltwin" as one line (with \r blanked)
         assert any("PRIVMSG #cron :hello NICK eviltwin" in line for line in sent_lines)
 
@@ -692,13 +692,13 @@ class TestIRCStandaloneSend:
 
         monkeypatch.setenv("IRC_SERVER", "irc.test.net")
         monkeypatch.setenv("IRC_CHANNEL", "#cron")
-        monkeypatch.setenv("IRC_NICKNAME", "lydiabot")
+        monkeypatch.setenv("IRC_NICKNAME", "alicebot")
         monkeypatch.setenv("IRC_USE_TLS", "false")
 
         # Register, then accept JOIN with 366 RPL_ENDOFNAMES, then PRIVMSG.
         conn = _FakeIRCConnection([
-            b":server 001 lydiabot-cron :Welcome",
-            b":server 366 lydiabot-cron #cron :End of /NAMES list.",
+            b":server 001 alicebot-cron :Welcome",
+            b":server 366 alicebot-cron #cron :End of /NAMES list.",
         ])
 
         async def _fake_open(host, port, **kwargs):

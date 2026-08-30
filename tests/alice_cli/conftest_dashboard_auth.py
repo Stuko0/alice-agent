@@ -93,7 +93,7 @@ class StubAuthProvider(DashboardAuthProvider):
         return LoginStart(
             redirect_url=f"{redirect_uri}?code=stub_code&state={state}",
             cookie_payload={
-                "lydia_session_pkce": f"state={state};verifier={verifier}",
+                "alice_session_pkce": f"state={state};verifier={verifier}",
             },
         )
 

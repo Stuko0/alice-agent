@@ -113,7 +113,7 @@ def agent_env():
     t = threading.Thread(target=srv.serve_forever, daemon=True)
     t.start()
 
-    test_home = tempfile.mkdtemp(prefix="lydia_e2e_47967_")
+    test_home = tempfile.mkdtemp(prefix="alice_e2e_47967_")
     os.makedirs(os.path.join(test_home, ".alice"))
     prev_home = os.environ.get("ALICE_HOME")
     os.environ["ALICE_HOME"] = os.path.join(test_home, ".alice")
@@ -121,7 +121,7 @@ def agent_env():
     # Import fresh so the patched conversation_loop is exercised even when the
     # module was imported earlier in the same worker.
     for mod in list(sys.modules):
-        if mod == "run_agent" or mod.startswith("agent.") or mod.startswith("tools.") or mod.startswith("lydia_"):
+        if mod == "run_agent" or mod.startswith("agent.") or mod.startswith("tools.") or mod.startswith("alice_"):
             del sys.modules[mod]
     from run_agent import AIAgent
 

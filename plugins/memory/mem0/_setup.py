@@ -207,9 +207,9 @@ def _write_env(env_path: Path, env_writes: dict[str, str]) -> None:
     env_path.write_text("\n".join(new_lines) + "\n")
 
 
-def _save_mem0_json(lydia_home: str, data: dict) -> None:
+def _save_mem0_json(alice_home: str, data: dict) -> None:
     """Merge-write to mem0.json."""
-    config_path = Path(lydia_home) / "mem0.json"
+    config_path = Path(alice_home) / "mem0.json"
     existing = {}
     if config_path.exists():
         try:
@@ -220,7 +220,7 @@ def _save_mem0_json(lydia_home: str, data: dict) -> None:
     config_path.write_text(json.dumps(existing, indent=2) + "\n")
 
 
-def _setup_platform(lydia_home: str, config: dict, flags: dict[str, str]) -> None:
+def _setup_platform(alice_home: str, config: dict, flags: dict[str, str]) -> None:
     """Platform mode setup — uses the framework's schema-based flow.
 
     Delegates to the same code path the framework uses when post_setup
@@ -234,7 +234,7 @@ def _setup_platform(lydia_home: str, config: dict, flags: dict[str, str]) -> Non
     ]
 
     existing_config = {}
-    config_path = Path(lydia_home) / "mem0.json"
+    config_path = Path(alice_home) / "mem0.json"
     if config_path.exists():
         try:
             existing_config = json.loads(config_path.read_text())
@@ -300,10 +300,10 @@ def _setup_platform(lydia_home: str, config: dict, flags: dict[str, str]) -> Non
 
     from plugins.memory.mem0 import Mem0MemoryProvider
     provider = Mem0MemoryProvider()
-    provider.save_config(provider_config, lydia_home)
+    provider.save_config(provider_config, alice_home)
 
     if env_writes:
-        _write_env(Path(lydia_home) / ".env", env_writes)
+        _write_env(Path(alice_home) / ".env", env_writes)
 
     print(f"\n  Memory provider: mem0")
     print(f"  Activation saved to config.yaml")
@@ -313,14 +313,14 @@ def _setup_platform(lydia_home: str, config: dict, flags: dict[str, str]) -> Non
     print(f"\n  Start a new session to activate.\n")
 
 
-def _setup_oss(lydia_home: str, config: dict, flags: dict[str, str]) -> None:
+def _setup_oss(alice_home: str, config: dict, flags: dict[str, str]) -> None:
     """OSS mode setup — build config from flags or interactive prompts.
 
     Non-interactive when --mode was set explicitly via flags (post_setup already
     resolved mode). Interactive only when mode was chosen via curses picker.
     """
     if not flags.get("_mode_from_flag"):
-        _setup_oss_interactive(lydia_home, config)
+        _setup_oss_interactive(alice_home, config)
         return
 
     oss_config, env_writes = build_oss_config(flags)
@@ -348,8 +348,8 @@ def _setup_oss(lydia_home: str, config: dict, flags: dict[str, str]) -> None:
         return
 
     if env_writes:
-        _write_env(Path(lydia_home) / ".env", env_writes)
-    _save_mem0_json(lydia_home, {"mode": "oss", "user_id": user_id, "agent_id": "alice", "oss": oss_config})
+        _write_env(Path(alice_home) / ".env", env_writes)
+    _save_mem0_json(alice_home, {"mode": "oss", "user_id": user_id, "agent_id": "alice", "oss": oss_config})
 
     _install_provider_deps(llm_id, embedder_id, vector_id)
 
@@ -369,11 +369,11 @@ def _setup_oss(lydia_home: str, config: dict, flags: dict[str, str]) -> None:
     print("\n  Start a new session to activate.\n")
 
 
-def _prompt_api_key(label: str, env_var: str, lydia_home: str) -> str:
+def _prompt_api_key(label: str, env_var: str, alice_home: str) -> str:
     """Prompt for API key, showing masked existing value if found."""
     existing = os.environ.get(env_var, "")
     if not existing:
-        env_path = Path(lydia_home) / ".env"
+        env_path = Path(alice_home) / ".env"
         if env_path.exists():
             for line in env_path.read_text().splitlines():
                 if line.startswith(f"{env_var}="):
@@ -601,7 +601,7 @@ def _vector_description(pid: str, v: dict) -> str:
     return pid
 
 
-def _setup_oss_interactive(lydia_home: str, config: dict) -> None:
+def _setup_oss_interactive(alice_home: str, config: dict) -> None:
     """Interactive OSS setup using curses pickers."""
     llm_items = [(v["label"], _provider_description(v)) for pid, v in LLM_PROVIDERS.items()]
     llm_idx = _curses_select("LLM Provider", llm_items, 0)
@@ -612,7 +612,7 @@ def _setup_oss_interactive(lydia_home: str, config: dict) -> None:
     llm_model = llm_def["default_model"]
     llm_url = llm_def.get("default_url")
     if llm_def["needs_key"]:
-        key = _prompt_api_key(llm_def["label"], llm_def["env_var"], lydia_home)
+        key = _prompt_api_key(llm_def["label"], llm_def["env_var"], alice_home)
         if key:
             env_writes[llm_def["env_var"]] = key
     if llm_id == "ollama":
@@ -627,7 +627,7 @@ def _setup_oss_interactive(lydia_home: str, config: dict) -> None:
     embedder_model = embedder_def["default_model"]
     embedder_url = embedder_def.get("default_url")
     if embedder_def["needs_key"] and embedder_id != llm_id:
-        key = _prompt_api_key(f"{embedder_def['label']} embedder", embedder_def["env_var"], lydia_home)
+        key = _prompt_api_key(f"{embedder_def['label']} embedder", embedder_def["env_var"], alice_home)
         if key:
             env_writes[embedder_def["env_var"]] = key
     elif embedder_def["needs_key"] and embedder_id == llm_id:
@@ -698,8 +698,8 @@ def _setup_oss_interactive(lydia_home: str, config: dict) -> None:
     oss_config, _ = build_oss_config(flags)
 
     if env_writes:
-        _write_env(Path(lydia_home) / ".env", env_writes)
-    _save_mem0_json(lydia_home, {"mode": "oss", "user_id": user_id, "agent_id": agent_id, "oss": oss_config})
+        _write_env(Path(alice_home) / ".env", env_writes)
+    _save_mem0_json(alice_home, {"mode": "oss", "user_id": user_id, "agent_id": agent_id, "oss": oss_config})
 
     _install_provider_deps(llm_id, embedder_id, vector_id)
 
@@ -825,7 +825,7 @@ def _check_min_dep_version() -> None:
         pass
 
 
-def post_setup(lydia_home: str, config: dict) -> None:
+def post_setup(alice_home: str, config: dict) -> None:
     """Entry point called by alice memory setup framework.
 
     Only intercepts when OSS mode is requested (via --mode oss flag or
@@ -838,11 +838,11 @@ def post_setup(lydia_home: str, config: dict) -> None:
 
     if flags["mode"] == "oss":
         flags["_mode_from_flag"] = True
-        _setup_oss(lydia_home, config, flags)
+        _setup_oss(alice_home, config, flags)
         return
 
     if flags["mode"] == "platform":
-        _setup_platform(lydia_home, config, flags)
+        _setup_platform(alice_home, config, flags)
         return
 
     # No --mode flag: show interactive picker
@@ -853,6 +853,6 @@ def post_setup(lydia_home: str, config: dict) -> None:
     mode_idx = _curses_select("  Select mode", mode_items, 0)
     if mode_idx == 1:
         flags["_mode_from_flag"] = False
-        _setup_oss(lydia_home, config, flags)
+        _setup_oss(alice_home, config, flags)
     else:
-        _setup_platform(lydia_home, config, flags)
+        _setup_platform(alice_home, config, flags)

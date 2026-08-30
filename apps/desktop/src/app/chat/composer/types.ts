@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import type { LydiaGateway } from '@/alice'
+import type { AliceGateway } from '@/alice'
 import type { ComposerAttachment } from '@/store/composer'
 
 import type { DroppedFile } from '../hooks/use-composer-actions'
@@ -37,7 +37,7 @@ export interface ChatBarProps {
   focusKey?: string | null
   maxRecordingSeconds?: number
   state: ChatBarState
-  gateway?: LydiaGateway | null
+  gateway?: AliceGateway | null
   queueSessionKey?: string | null
   sessionId?: string | null
   cwd?: string | null

@@ -1,5 +1,5 @@
 export function logError(error: unknown): void {
-  if (!process.env.LYDIA_INK_DEBUG_ERRORS) {
+  if (!process.env.ALICE_INK_DEBUG_ERRORS) {
     return
   }
 

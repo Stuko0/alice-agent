@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import type { LydiaConfigRecord } from '@/types/alice'
+import type { AliceConfigRecord } from '@/types/alice'
 
 import { voiceFieldVisible } from './config-settings'
 
-const cfg = (over: Record<string, unknown> = {}): LydiaConfigRecord =>
+const cfg = (over: Record<string, unknown> = {}): AliceConfigRecord =>
   ({
     tts: { provider: 'edge', edge: {}, openai: {} },
     stt: { enabled: true, provider: 'local', local: {}, groq: {} },
     ...over
-  }) as unknown as LydiaConfigRecord
+  }) as unknown as AliceConfigRecord
 
 describe('voiceFieldVisible', () => {
   it('always shows top-level + non-provider keys', () => {

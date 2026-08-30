@@ -17,7 +17,7 @@ Alice 随仓库附带了一小组插件。它们位于 `<repo>/plugins/<name>/`�
 
 1. **内置（Bundled）** — `<repo>/plugins/<name>/`（本页所记录的内容）
 2. **用户（User）** — `~/.alice/plugins/<name>/`
-3. **项目（Project）** — `./.alice/plugins/<name>/`（需要 `LYDIA_ENABLE_PROJECT_PLUGINS=1`）
+3. **项目（Project）** — `./.alice/plugins/<name>/`（需要 `ALICE_ENABLE_PROJECT_PLUGINS=1`）
 4. **Pip 入口点（Entry points）** — `alice_agent.plugins`
 
 名称冲突时，后面的来源优先——名为 `disk-cleanup` 的用户插件会替换内置版本。
@@ -131,9 +131,9 @@ alice plugins enable observability/langfuse
 或在交互式 `alice plugins` UI 中勾选复选框。然后将凭据写入 `~/.alice/.env`：
 
 ```bash
-LYDIA_LANGFUSE_PUBLIC_KEY=pk-lf-...
-LYDIA_LANGFUSE_SECRET_KEY=sk-lf-...
-LYDIA_LANGFUSE_BASE_URL=https://cloud.langfuse.com   # 或你的自托管 URL
+ALICE_LANGFUSE_PUBLIC_KEY=pk-lf-...
+ALICE_LANGFUSE_SECRET_KEY=sk-lf-...
+ALICE_LANGFUSE_BASE_URL=https://cloud.langfuse.com   # 或你的自托管 URL
 ```
 
 **工作原理：**
@@ -143,7 +143,7 @@ LYDIA_LANGFUSE_BASE_URL=https://cloud.langfuse.com   # 或你的自托管 URL
 | `pre_api_request` / `pre_llm_call` | 打开（或复用）每轮的根 span "Alice turn"。为本次 API 调用启动一个 `generation` 子 observation，将最近的消息序列化为输入。 |
 | `post_api_request` / `post_llm_call` | 关闭 generation，附加 `usage_details`、`cost_details`、`finish_reason`、助手输出和工具调用。如果没有工具调用且内容非空，则关闭本轮。 |
 | `pre_tool_call` | 启动一个带有经过清理的 `args` 的 `tool` 子 observation。 |
-| `post_tool_call` | 关闭 tool observation，附加经过清理的 `result`。`read_file` 的内容会被摘要化（头部 + 尾部 + 省略行数），以使大文件读取保持在 `LYDIA_LANGFUSE_MAX_CHARS` 以内。 |
+| `post_tool_call` | 关闭 tool observation，附加经过清理的 `result`。`read_file` 的内容会被摘要化（头部 + 尾部 + 省略行数），以使大文件读取保持在 `ALICE_LANGFUSE_MAX_CHARS` 以内。 |
 
 会话分组基于 Alice 会话 ID（或子 agent 的任务 ID），通过 `langfuse.propagate_attributes` 实现，因此单次 `alice chat` 会话中的所有内容都归属于同一个 Langfuse session。
 
@@ -158,11 +158,11 @@ alice chat -q "hello"              # 在 Langfuse UI 中检查是否有 "Alice t
 
 | 变量 | 默认值 | 用途 |
 |---|---|---|
-| `LYDIA_LANGFUSE_ENV` | — | trace 上的环境标签（`production`、`staging` 等） |
-| `LYDIA_LANGFUSE_RELEASE` | — | 发布/版本标签 |
-| `LYDIA_LANGFUSE_SAMPLE_RATE` | `1.0` | 传递给 SDK 的采样率（0.0–1.0） |
-| `LYDIA_LANGFUSE_MAX_CHARS` | `12000` | 消息内容 / 工具参数 / 工具结果的单字段截断长度 |
-| `LYDIA_LANGFUSE_DEBUG` | `false` | 向 `agent.log` 输出详细插件日志 |
+| `ALICE_LANGFUSE_ENV` | — | trace 上的环境标签（`production`、`staging` 等） |
+| `ALICE_LANGFUSE_RELEASE` | — | 发布/版本标签 |
+| `ALICE_LANGFUSE_SAMPLE_RATE` | `1.0` | 传递给 SDK 的采样率（0.0–1.0） |
+| `ALICE_LANGFUSE_MAX_CHARS` | `12000` | 消息内容 / 工具参数 / 工具结果的单字段截断长度 |
+| `ALICE_LANGFUSE_DEBUG` | `false` | 向 `agent.log` 输出详细插件日志 |
 
 Alice 前缀的环境变量和标准 SDK 环境变量（`LANGFUSE_PUBLIC_KEY`、`LANGFUSE_SECRET_KEY`、`LANGFUSE_BASE_URL`）均被接受——两者同时设置时，Alice 前缀的优先。
 

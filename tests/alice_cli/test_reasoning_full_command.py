@@ -38,10 +38,10 @@ def _seed_config(tmp_path, monkeypatch):
     hh.mkdir()
     (hh / "config.yaml").write_text("display:\n  show_reasoning: true\n")
     monkeypatch.setenv("ALICE_HOME", str(hh))
-    # cli captures _lydia_home at import; force it to the temp home.
+    # cli captures _alice_home at import; force it to the temp home.
     import cli
 
-    monkeypatch.setattr(cli, "_lydia_home", hh, raising=False)
+    monkeypatch.setattr(cli, "_alice_home", hh, raising=False)
     return hh
 
 

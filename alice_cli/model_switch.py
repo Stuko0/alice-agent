@@ -74,13 +74,13 @@ def _bare_custom_provider_def(current_base_url: str) -> Optional[ProviderDef]:
 # ---------------------------------------------------------------------------
 
 _ALICE_MODEL_WARNING = (
-    "Nous Research __PROT_ALICE_MODEL__ & 4 models are NOT agentic and are not designed "
+    "Stuko __PROT_ALICE_MODEL__ & 4 models are NOT agentic and are not designed "
     "for use with Alice Agent. They lack the tool-calling capabilities "
     "required for agent workflows. Consider using an agentic model instead "
     "(Claude, GPT, Gemini, DeepSeek, etc.)."
 )
 
-# Match only the real Nous Research __PROT_ALICE_MODEL__ / Alice 4 chat families.
+# Match only the real Stuko __PROT_ALICE_MODEL__ / Alice 4 chat families.
 # The previous substring check (`"alice" in name.lower()`) false-positived on
 # unrelated local Modelfiles like ``alice-brain:qwen3-14b-ctx16k`` that just
 # happen to carry "alice" in their tag but are fully tool-capable.
@@ -1562,7 +1562,7 @@ def list_authenticated_providers(
     curated: dict[str, list[str]] = dict(_PROVIDER_MODELS)
     curated["openrouter"] = [mid for mid, _ in OPENROUTER_MODELS]
     # "nous" pulls from the remote model-catalog manifest published at
-    # https://alice-agent.nousresearch.com/docs/api/model-catalog.json so
+    # https://alice-agent.stuko.dev/docs/api/model-catalog.json so
     # newly added Portal models surface in the /model picker without
     # requiring a Alice release. Falls back to the in-repo
     # _PROVIDER_MODELS["nous"] snapshot when the manifest is unreachable.

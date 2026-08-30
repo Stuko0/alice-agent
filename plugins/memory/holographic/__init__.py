@@ -128,10 +128,10 @@ class HolographicMemoryProvider(MemoryProvider):
     def is_available(self) -> bool:
         return True  # SQLite is always available, numpy is optional
 
-    def save_config(self, values, lydia_home):
+    def save_config(self, values, alice_home):
         """Write config to config.yaml under plugins.alice-memory-store."""
         from pathlib import Path
-        config_path = Path(lydia_home) / "config.yaml"
+        config_path = Path(alice_home) / "config.yaml"
         try:
             import yaml
             existing = {}
@@ -157,15 +157,15 @@ class HolographicMemoryProvider(MemoryProvider):
 
     def initialize(self, session_id: str, **kwargs) -> None:
         from alice_constants import get_alice_home
-        _lydia_home = str(get_alice_home())
-        _default_db = _lydia_home + "/memory_store.db"
+        _alice_home = str(get_alice_home())
+        _default_db = _alice_home + "/memory_store.db"
         db_path = self._config.get("db_path", _default_db)
         # Expand $ALICE_HOME in user-supplied paths so config values like
         # "$ALICE_HOME/memory_store.db" or "~/.alice/memory_store.db" both
         # resolve to the active profile's directory.
         if isinstance(db_path, str):
-            db_path = db_path.replace("$ALICE_HOME", _lydia_home)
-            db_path = db_path.replace("${ALICE_HOME}", _lydia_home)
+            db_path = db_path.replace("$ALICE_HOME", _alice_home)
+            db_path = db_path.replace("${ALICE_HOME}", _alice_home)
         default_trust = float(self._config.get("default_trust", 0.5))
         hrr_dim = int(self._config.get("hrr_dim", 1024))
         hrr_weight = float(self._config.get("hrr_weight", 0.3))

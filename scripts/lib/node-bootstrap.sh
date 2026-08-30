@@ -15,18 +15,18 @@
 # Usage:
 #   source scripts/lib/node-bootstrap.sh
 #   ensure_node   # returns 0 on success, non-zero on failure
-#   if [ "$LYDIA_NODE_AVAILABLE" = true ]; then ...; fi
+#   if [ "$ALICE_NODE_AVAILABLE" = true ]; then ...; fi
 #
 # Env inputs (set before sourcing to override defaults):
-#   LYDIA_NODE_MIN_VERSION   (default: 20)   — accepted on PATH
-#   LYDIA_NODE_TARGET_MAJOR  (default: 22)   — installed when we install
-#   LYDIA_HOME               (default: $HOME/.alice)
+#   ALICE_NODE_MIN_VERSION   (default: 20)   — accepted on PATH
+#   ALICE_NODE_TARGET_MAJOR  (default: 22)   — installed when we install
+#   ALICE_HOME               (default: $HOME/.alice)
 # ============================================================================
 
-LYDIA_NODE_MIN_VERSION="${LYDIA_NODE_MIN_VERSION:-20}"
-LYDIA_NODE_TARGET_MAJOR="${LYDIA_NODE_TARGET_MAJOR:-22}"
-LYDIA_HOME="${LYDIA_HOME:-$HOME/.alice}"
-LYDIA_NODE_AVAILABLE=false
+ALICE_NODE_MIN_VERSION="${ALICE_NODE_MIN_VERSION:-20}"
+ALICE_NODE_TARGET_MAJOR="${ALICE_NODE_TARGET_MAJOR:-22}"
+ALICE_HOME="${ALICE_HOME:-$HOME/.alice}"
+ALICE_NODE_AVAILABLE=false
 
 # ---------------------------------------------------------------------------
 # Logging — prefer the host script's log_* helpers when present
@@ -58,16 +58,16 @@ _nb_get_link_dir() {
 }
 
 # Redirect a Alice-managed Node's `npm install -g` to the command link dir
-# (already on PATH) instead of the default $LYDIA_HOME/node/bin, which is off
+# (already on PATH) instead of the default $ALICE_HOME/node/bin, which is off
 # PATH and wiped on every Node upgrade. Scoped to the managed Node via its
 # prefix-local global npmrc; the user's other Node installs / ~/.npmrc are
 # untouched. Idempotent no-op when there's no managed npm.
 _nb_configure_npm_prefix() {
-    [ -x "$LYDIA_HOME/node/bin/npm" ] || return 0
+    [ -x "$ALICE_HOME/node/bin/npm" ] || return 0
     local _link_dir
     _link_dir="$(_nb_get_link_dir)"
-    mkdir -p "$LYDIA_HOME/node/etc"
-    printf 'prefix=%s\n' "$(dirname "$_link_dir")" > "$LYDIA_HOME/node/etc/npmrc"
+    mkdir -p "$ALICE_HOME/node/etc"
+    printf 'prefix=%s\n' "$(dirname "$_link_dir")" > "$ALICE_HOME/node/etc/npmrc"
 }
 
 _nb_node_major() {
@@ -78,7 +78,7 @@ _nb_node_major() {
 
 _nb_have_modern_node() {
     command -v node >/dev/null 2>&1 || return 1
-    [ "$(_nb_node_major)" -ge "$LYDIA_NODE_MIN_VERSION" ]
+    [ "$(_nb_node_major)" -ge "$ALICE_NODE_MIN_VERSION" ]
 }
 
 # ---------------------------------------------------------------------------
@@ -87,10 +87,10 @@ _nb_have_modern_node() {
 
 _nb_try_fnm() {
     command -v fnm >/dev/null 2>&1 || return 1
-    _nb_log "fnm detected — installing Node $LYDIA_NODE_TARGET_MAJOR..."
+    _nb_log "fnm detected — installing Node $ALICE_NODE_TARGET_MAJOR..."
     eval "$(fnm env 2>/dev/null)" || true
-    fnm install "$LYDIA_NODE_TARGET_MAJOR" >/dev/null 2>&1 || return 1
-    fnm use     "$LYDIA_NODE_TARGET_MAJOR" >/dev/null 2>&1 || return 1
+    fnm install "$ALICE_NODE_TARGET_MAJOR" >/dev/null 2>&1 || return 1
+    fnm use     "$ALICE_NODE_TARGET_MAJOR" >/dev/null 2>&1 || return 1
     _nb_have_modern_node || return 1
     _nb_ok "Node $(node --version) activated via fnm"
     return 0
@@ -98,8 +98,8 @@ _nb_try_fnm() {
 
 _nb_try_proto() {
     command -v proto >/dev/null 2>&1 || return 1
-    _nb_log "proto detected — installing Node $LYDIA_NODE_TARGET_MAJOR..."
-    proto install node "$LYDIA_NODE_TARGET_MAJOR" >/dev/null 2>&1 || return 1
+    _nb_log "proto detected — installing Node $ALICE_NODE_TARGET_MAJOR..."
+    proto install node "$ALICE_NODE_TARGET_MAJOR" >/dev/null 2>&1 || return 1
     _nb_have_modern_node || return 1
     _nb_ok "Node $(node --version) activated via proto"
     return 0
@@ -110,9 +110,9 @@ _nb_try_nvm() {
     [ -s "$nvm_sh" ] || return 1
     # shellcheck source=/dev/null
     \. "$nvm_sh" >/dev/null 2>&1 || return 1
-    _nb_log "nvm detected — installing Node $LYDIA_NODE_TARGET_MAJOR..."
-    nvm install "$LYDIA_NODE_TARGET_MAJOR" >/dev/null 2>&1 || return 1
-    nvm use     "$LYDIA_NODE_TARGET_MAJOR" >/dev/null 2>&1 || return 1
+    _nb_log "nvm detected — installing Node $ALICE_NODE_TARGET_MAJOR..."
+    nvm install "$ALICE_NODE_TARGET_MAJOR" >/dev/null 2>&1 || return 1
+    nvm use     "$ALICE_NODE_TARGET_MAJOR" >/dev/null 2>&1 || return 1
     _nb_have_modern_node || return 1
     _nb_ok "Node $(node --version) activated via nvm"
     return 0
@@ -135,10 +135,10 @@ _nb_try_brew() {
     [ "$(uname -s)" = "Darwin" ] || return 1
     command -v brew >/dev/null 2>&1 || return 1
     _nb_log "Installing Node via Homebrew..."
-    brew install "node@${LYDIA_NODE_TARGET_MAJOR}" >/dev/null 2>&1 \
+    brew install "node@${ALICE_NODE_TARGET_MAJOR}" >/dev/null 2>&1 \
         || brew install node >/dev/null 2>&1 \
         || return 1
-    brew link --overwrite --force "node@${LYDIA_NODE_TARGET_MAJOR}" >/dev/null 2>&1 || true
+    brew link --overwrite --force "node@${ALICE_NODE_TARGET_MAJOR}" >/dev/null 2>&1 || true
     _nb_have_modern_node || return 1
     _nb_ok "Node $(node --version) installed via Homebrew"
     return 0
@@ -171,18 +171,18 @@ _nb_install_bundled_node() {
             ;;
     esac
 
-    local index_url="https://nodejs.org/dist/latest-v${LYDIA_NODE_TARGET_MAJOR}.x/"
+    local index_url="https://nodejs.org/dist/latest-v${ALICE_NODE_TARGET_MAJOR}.x/"
     local tarball
     tarball=$(curl -fsSL "$index_url" \
-        | grep -oE "node-v${LYDIA_NODE_TARGET_MAJOR}\.[0-9]+\.[0-9]+-${node_os}-${node_arch}\.tar\.xz" \
+        | grep -oE "node-v${ALICE_NODE_TARGET_MAJOR}\.[0-9]+\.[0-9]+-${node_os}-${node_arch}\.tar\.xz" \
         | head -1)
     if [ -z "$tarball" ]; then
         tarball=$(curl -fsSL "$index_url" \
-            | grep -oE "node-v${LYDIA_NODE_TARGET_MAJOR}\.[0-9]+\.[0-9]+-${node_os}-${node_arch}\.tar\.gz" \
+            | grep -oE "node-v${ALICE_NODE_TARGET_MAJOR}\.[0-9]+\.[0-9]+-${node_os}-${node_arch}\.tar\.gz" \
             | head -1)
     fi
     if [ -z "$tarball" ]; then
-        _nb_warn "Could not resolve Node $LYDIA_NODE_TARGET_MAJOR binary for $node_os-$node_arch"
+        _nb_warn "Could not resolve Node $ALICE_NODE_TARGET_MAJOR binary for $node_os-$node_arch"
         return 1
     fi
 
@@ -193,7 +193,7 @@ _nb_install_bundled_node() {
         _nb_warn "Download failed"; rm -rf "$tmp"; return 1
     }
 
-    _nb_log "Extracting to $LYDIA_HOME/node/..."
+    _nb_log "Extracting to $ALICE_HOME/node/..."
     if [[ "$tarball" == *.tar.xz ]]; then
         tar xf  "$tmp/$tarball" -C "$tmp" || { rm -rf "$tmp"; return 1; }
     else
@@ -208,24 +208,24 @@ _nb_install_bundled_node() {
         return 1
     fi
 
-    mkdir -p "$LYDIA_HOME"
-    rm -rf "$LYDIA_HOME/node"
-    mv "$extracted" "$LYDIA_HOME/node"
+    mkdir -p "$ALICE_HOME"
+    rm -rf "$ALICE_HOME/node"
+    mv "$extracted" "$ALICE_HOME/node"
     rm -rf "$tmp"
 
     local _link_dir
     _link_dir="$(_nb_get_link_dir)"
     mkdir -p "$_link_dir"
-    ln -sf "$LYDIA_HOME/node/bin/node" "$_link_dir/node"
-    ln -sf "$LYDIA_HOME/node/bin/npm"  "$_link_dir/npm"
-    ln -sf "$LYDIA_HOME/node/bin/npx"  "$_link_dir/npx"
+    ln -sf "$ALICE_HOME/node/bin/node" "$_link_dir/node"
+    ln -sf "$ALICE_HOME/node/bin/npm"  "$_link_dir/npm"
+    ln -sf "$ALICE_HOME/node/bin/npx"  "$_link_dir/npx"
 
     _nb_configure_npm_prefix
 
-    export PATH="$LYDIA_HOME/node/bin:$PATH"
+    export PATH="$ALICE_HOME/node/bin:$PATH"
 
     _nb_have_modern_node || return 1
-    _nb_ok "Node $(node --version) installed to $LYDIA_HOME/node/"
+    _nb_ok "Node $(node --version) installed to $ALICE_HOME/node/"
     return 0
 }
 
@@ -237,9 +237,9 @@ _nb_managed_tool_broken() {
     local tool="$1"
     local probe
     for probe in \
-        "$LYDIA_HOME/node/bin/$tool" \
-        "$LYDIA_HOME/node/${tool}.exe" \
-        "$LYDIA_HOME/node/$tool"; do
+        "$ALICE_HOME/node/bin/$tool" \
+        "$ALICE_HOME/node/${tool}.exe" \
+        "$ALICE_HOME/node/$tool"; do
         if [ -x "$probe" ] || [ -f "$probe" ]; then
             if ! "$probe" --version >/dev/null 2>&1; then
                 return 0
@@ -261,14 +261,14 @@ _nb_managed_node_needs_heal() {
 
 # Redownload the pinned nodejs.org tarball when a managed tree exists but
 # node/npm/npx fail a --version probe. No-op when the tree is healthy or
-# absent. Used by alice_constants.find_lydia_node_executable() and safe
+# absent. Used by alice_constants.find_alice_node_executable() and safe
 # to call from install reruns.
 heal_managed_node() {
-    [ -d "$LYDIA_HOME/node" ] || return 1
+    [ -d "$ALICE_HOME/node" ] || return 1
     if ! _nb_managed_node_needs_heal; then
         return 0
     fi
-    _nb_log "Alice-managed Node is broken — redownloading to $LYDIA_HOME/node/..."
+    _nb_log "Alice-managed Node is broken — redownloading to $ALICE_HOME/node/..."
     _nb_install_bundled_node
 }
 
@@ -277,7 +277,7 @@ heal_managed_node() {
 # ---------------------------------------------------------------------------
 
 ensure_node() {
-    LYDIA_NODE_AVAILABLE=false
+    ALICE_NODE_AVAILABLE=false
 
     # Repair pre-existing managed installs where `npm install -g` lands off
     # PATH. No-op when there's no managed Node, so it's safe to run first.
@@ -285,32 +285,32 @@ ensure_node() {
 
     if _nb_have_modern_node; then
         _nb_ok "Node $(node --version) found"
-        LYDIA_NODE_AVAILABLE=true
+        ALICE_NODE_AVAILABLE=true
         return 0
     fi
 
-    if [ -x "$LYDIA_HOME/node/bin/node" ]; then
-        export PATH="$LYDIA_HOME/node/bin:$PATH"
+    if [ -x "$ALICE_HOME/node/bin/node" ]; then
+        export PATH="$ALICE_HOME/node/bin:$PATH"
         if _nb_have_modern_node; then
             _nb_ok "Node $(node --version) found (Alice-managed)"
-            LYDIA_NODE_AVAILABLE=true
+            ALICE_NODE_AVAILABLE=true
             return 0
         fi
     fi
 
     # Version managers first — respect the user's existing setup.
-    _nb_try_fnm   && { LYDIA_NODE_AVAILABLE=true; return 0; }
-    _nb_try_proto && { LYDIA_NODE_AVAILABLE=true; return 0; }
-    _nb_try_nvm   && { LYDIA_NODE_AVAILABLE=true; return 0; }
+    _nb_try_fnm   && { ALICE_NODE_AVAILABLE=true; return 0; }
+    _nb_try_proto && { ALICE_NODE_AVAILABLE=true; return 0; }
+    _nb_try_nvm   && { ALICE_NODE_AVAILABLE=true; return 0; }
 
     # Platform package managers.
-    _nb_try_termux_pkg && { LYDIA_NODE_AVAILABLE=true; return 0; }
-    _nb_try_brew       && { LYDIA_NODE_AVAILABLE=true; return 0; }
+    _nb_try_termux_pkg && { ALICE_NODE_AVAILABLE=true; return 0; }
+    _nb_try_brew       && { ALICE_NODE_AVAILABLE=true; return 0; }
 
     # Last resort: pinned nodejs.org tarball.
-    _nb_install_bundled_node && { LYDIA_NODE_AVAILABLE=true; return 0; }
+    _nb_install_bundled_node && { ALICE_NODE_AVAILABLE=true; return 0; }
 
     _nb_warn "Node.js install failed — TUI and browser tools will be unavailable."
-    _nb_warn "Install manually: https://nodejs.org/en/download/  (or: \`brew install node\`, \`fnm install $LYDIA_NODE_TARGET_MAJOR\`, etc.)"
+    _nb_warn "Install manually: https://nodejs.org/en/download/  (or: \`brew install node\`, \`fnm install $ALICE_NODE_TARGET_MAJOR\`, etc.)"
     return 1
 }

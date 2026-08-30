@@ -359,7 +359,7 @@ Refresh the dashboard after creating the file. Switch themes live from the heade
 
 A dashboard plugin is a directory with a `manifest.json`, a pre-built JS bundle, and optionally a CSS file and a Python file with FastAPI routes. Plugins live next to other Alice plugins in `~/.alice/plugins/<name>/` — the dashboard extension is a `dashboard/` subfolder inside that plugin directory, so one plugin can extend both the CLI/gateway and the dashboard from a single install.
 
-Plugins don't bundle React or UI components. They use the **Plugin SDK** exposed on `window.__LYDIA_PLUGIN_SDK__`. This keeps plugin bundles tiny (typically a few KB) and avoids version conflicts.
+Plugins don't bundle React or UI components. They use the **Plugin SDK** exposed on `window.__ALICE_PLUGIN_SDK__`. This keeps plugin bundles tiny (typically a few KB) and avoids version conflicts.
 
 ### Quick start — your first plugin
 
@@ -393,7 +393,7 @@ Write the JS bundle (a plain IIFE — no build step needed):
 (function () {
   "use strict";
 
-  const SDK = window.__LYDIA_PLUGIN_SDK__;
+  const SDK = window.__ALICE_PLUGIN_SDK__;
   const { React } = SDK;
   const { Card, CardHeader, CardTitle, CardContent } = SDK.components;
 
@@ -410,7 +410,7 @@ Write the JS bundle (a plain IIFE — no build step needed):
     );
   }
 
-  window.__LYDIA_PLUGINS__.register("my-plugin", MyPage);
+  window.__ALICE_PLUGINS__.register("my-plugin", MyPage);
 })();
 ```
 
@@ -490,10 +490,10 @@ Need a different icon? Open a PR to `web/src/App.tsx`'s `ICON_MAP` — pure addi
 
 ### The Plugin SDK
 
-Everything a plugin needs is on `window.__LYDIA_PLUGIN_SDK__`. Plugins should never import React directly.
+Everything a plugin needs is on `window.__ALICE_PLUGIN_SDK__`. Plugins should never import React directly.
 
 ```javascript
-const SDK = window.__LYDIA_PLUGIN_SDK__;
+const SDK = window.__ALICE_PLUGIN_SDK__;
 
 // React + hooks
 SDK.React                    // the React instance
@@ -564,8 +564,8 @@ Slots let a plugin inject components into named locations of the app shell — t
 Register from inside the plugin bundle:
 
 ```javascript
-window.__LYDIA_PLUGINS__.registerSlot("my-plugin", "sidebar", MySidebar);
-window.__LYDIA_PLUGINS__.registerSlot("my-plugin", "header-left", MyCrest);
+window.__ALICE_PLUGINS__.registerSlot("my-plugin", "sidebar", MySidebar);
+window.__ALICE_PLUGINS__.registerSlot("my-plugin", "header-left", MyCrest);
 ```
 
 #### Slot catalogue
@@ -609,7 +609,7 @@ function PinnedSessionsBanner() {
   );
 }
 
-window.__LYDIA_PLUGINS__.registerSlot("my-plugin", "sessions:top", PinnedSessionsBanner);
+window.__ALICE_PLUGINS__.registerSlot("my-plugin", "sessions:top", PinnedSessionsBanner);
 ```
 
 Combine page-scoped slots with `tab.hidden: true` if your plugin only augments existing pages and doesn't need a sidebar tab of its own.
@@ -671,7 +671,7 @@ Minimal example — pin a banner to the top of the Sessions page:
 ```javascript
 // ~/.alice/plugins/session-notes/dashboard/dist/index.js
 (function () {
-  const SDK = window.__LYDIA_PLUGIN_SDK__;
+  const SDK = window.__ALICE_PLUGIN_SDK__;
   const { React } = SDK;
   const { Card, CardContent } = SDK.components;
 
@@ -683,10 +683,10 @@ Minimal example — pin a banner to the top of the Sessions page:
   }
 
   // Placeholder for the hidden tab.
-  window.__LYDIA_PLUGINS__.register("session-notes", function () { return null; });
+  window.__ALICE_PLUGINS__.register("session-notes", function () { return null; });
 
   // The real work.
-  window.__LYDIA_PLUGINS__.registerSlot("session-notes", "sessions:top", Banner);
+  window.__ALICE_PLUGINS__.registerSlot("session-notes", "sessions:top", Banner);
 })();
 ```
 
@@ -697,7 +697,7 @@ Key points:
 - Multiple plugins can claim the same page-scoped slot. They render stacked in registration order.
 - Zero footprint when no plugin registers: the built-in page renders exactly as before.
 
-A reference plugin (`example-dashboard` in [`alice-example-plugins`](https://github.com/NousResearch/alice-example-plugins/tree/main/example-dashboard)) ships a live demo that injects a banner into `sessions:top` — install it to see the pattern end-to-end.
+A reference plugin (`example-dashboard` in [`alice-example-plugins`](https://github.com/Stuko0/alice-example-plugins/tree/main/example-dashboard)) ships a live demo that injects a banner into `sessions:top` — install it to see the pattern end-to-end.
 
 ### Slot-only plugins (`tab.hidden`)
 
@@ -807,7 +807,7 @@ The dashboard scans three directories for `dashboard/manifest.json`:
 | 1 (wins on conflict) | `~/.alice/plugins/<name>/dashboard/` | `user` |
 | 2 | `<repo>/plugins/memory/<name>/dashboard/` | `bundled` |
 | 2 | `<repo>/plugins/<name>/dashboard/` | `bundled` |
-| 3 | `./.alice/plugins/<name>/dashboard/` | `project` — only when `LYDIA_ENABLE_PROJECT_PLUGINS` is set |
+| 3 | `./.alice/plugins/<name>/dashboard/` | `project` — only when `ALICE_ENABLE_PROJECT_PLUGINS` is set |
 
 Discovery results are cached per dashboard process. After adding a new plugin, either:
 
@@ -820,10 +820,10 @@ curl http://127.0.0.1:9119/api/dashboard/plugins/rescan
 
 #### Plugin load lifecycle
 
-1. Dashboard loads. `main.tsx` exposes the SDK on `window.__LYDIA_PLUGIN_SDK__` and the registry on `window.__LYDIA_PLUGINS__`.
+1. Dashboard loads. `main.tsx` exposes the SDK on `window.__ALICE_PLUGIN_SDK__` and the registry on `window.__ALICE_PLUGINS__`.
 2. `App.tsx` calls `usePlugins()` → fetches `GET /api/dashboard/plugins`.
 3. For each manifest: CSS `<link>` is injected (if declared), then a `<script>` tag loads the JS bundle.
-4. The plugin's IIFE runs and calls `window.__LYDIA_PLUGINS__.register(name, Component)` — and optionally `.registerSlot(name, slot, Component)` for each slot.
+4. The plugin's IIFE runs and calls `window.__ALICE_PLUGINS__.register(name, Component)` — and optionally `.registerSlot(name, slot, Component)` for each slot.
 5. The dashboard resolves the registered component against the manifest, adds the tab to navigation (unless `hidden`), and mounts the component as a route.
 
 Plugins have up to **2 seconds** after their script loads to call `register()`. After that the dashboard stops waiting and finishes initial render. If a plugin later registers, it still appears — the nav is reactive.
@@ -834,7 +834,7 @@ If a plugin's script fails to load (404, syntax error, exception during IIFE), t
 
 ## Combined theme + plugin demo
 
-The [`strike-freedom-cockpit`](https://github.com/NousResearch/alice-example-plugins/tree/main/strike-freedom-cockpit) plugin (companion repo `alice-example-plugins`) is a complete reskin demo. It pairs a theme YAML with a slot-only plugin to produce a cockpit-style HUD without forking the dashboard.
+The [`strike-freedom-cockpit`](https://github.com/Stuko0/alice-example-plugins/tree/main/strike-freedom-cockpit) plugin (companion repo `alice-example-plugins`) is a complete reskin demo. It pairs a theme YAML with a slot-only plugin to produce a cockpit-style HUD without forking the dashboard.
 
 **What it demonstrates:**
 
@@ -848,7 +848,7 @@ The [`strike-freedom-cockpit`](https://github.com/NousResearch/alice-example-plu
 **Install:**
 
 ```bash
-git clone https://github.com/NousResearch/alice-example-plugins.git
+git clone https://github.com/Stuko0/alice-example-plugins.git
 
 # Theme
 cp alice-example-plugins/strike-freedom-cockpit/theme/strike-freedom.yaml \
@@ -886,9 +886,9 @@ Read the plugin source (`strike-freedom-cockpit/dashboard/dist/index.js` in the 
 
 | Global | Type | Provider |
 |--------|------|----------|
-| `window.__LYDIA_PLUGIN_SDK__` | object | `registry.ts` — React, hooks, UI components, API client, utils. |
-| `window.__LYDIA_PLUGINS__.register(name, Component)` | function | Register a plugin's main component. |
-| `window.__LYDIA_PLUGINS__.registerSlot(name, slot, Component)` | function | Register into a named shell slot. |
+| `window.__ALICE_PLUGIN_SDK__` | object | `registry.ts` — React, hooks, UI components, API client, utils. |
+| `window.__ALICE_PLUGINS__.register(name, Component)` | function | Register a plugin's main component. |
+| `window.__ALICE_PLUGINS__.registerSlot(name, slot, Component)` | function | Register into a named shell slot. |
 
 ---
 
@@ -901,8 +901,8 @@ Check that the file is in `~/.alice/dashboard-themes/` and ends in `.yaml` or `.
 1. Check the manifest is at `~/.alice/plugins/<name>/dashboard/manifest.json` (note the `dashboard/` subdirectory).
 2. `curl http://127.0.0.1:9119/api/dashboard/plugins/rescan` to force re-discovery.
 3. Open browser dev tools → Network — confirm `manifest.json`, `index.js`, and any CSS loaded without 404s.
-4. Open browser dev tools → Console — look for errors during the IIFE or `window.__LYDIA_PLUGINS__ is undefined` (indicates the SDK didn't initialize, usually a React render crash earlier).
-5. Verify your bundle calls `window.__LYDIA_PLUGINS__.register(...)` with the **same name** as `manifest.json:name`.
+4. Open browser dev tools → Console — look for errors during the IIFE or `window.__ALICE_PLUGINS__ is undefined` (indicates the SDK didn't initialize, usually a React render crash earlier).
+5. Verify your bundle calls `window.__ALICE_PLUGINS__.register(...)` with the **same name** as `manifest.json:name`.
 
 **Slot-registered components don't render.**
 The `sidebar` slot only renders when the active theme has `layoutVariant: cockpit`. Other slots always render. If you're registering into a slot with no hits, add `console.log` inside `registerSlot` to confirm the plugin bundle ran at all.

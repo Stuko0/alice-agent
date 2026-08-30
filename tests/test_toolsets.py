@@ -211,7 +211,7 @@ class TestToolsetConsistency:
             for inc in ts["includes"]:
                 assert inc in TOOLSETS, f"{name} includes unknown toolset '{inc}'"
 
-    def test_lydia_platforms_share_core_tools(self):
+    def test_alice_platforms_share_core_tools(self):
         """All alice-* platform toolsets share the same core tools.
 
         Platform-specific additions (e.g. ``discord`` / ``discord_admin``
@@ -248,8 +248,8 @@ class TestPluginToolsets:
 
 
 class TestDefaultPlatformWebSearchCoverage:
-    def test_lydia_whatsapp_toolset_includes_web_search(self):
+    def test_alice_whatsapp_toolset_includes_web_search(self):
         assert "web_search" in resolve_toolset("alice-whatsapp")
 
-    def test_lydia_api_server_toolset_includes_web_search(self):
+    def test_alice_api_server_toolset_includes_web_search(self):
         assert "web_search" in resolve_toolset("alice-api-server")

@@ -901,7 +901,7 @@ function SidebarSystemActions({
   const navigate = useNavigate();
   const { activeAction, isBusy, isRunning, pendingAction, runAction } =
     useSystemActions();
-  const canUpdateLydia = status?.can_update_lydia === true;
+  const canUpdateAlice = status?.can_update_alice === true;
   const [restartConfirmOpen, setRestartConfirmOpen] = useState(false);
   const [updateConfirmOpen, setUpdateConfirmOpen] = useState(false);
   const [updateConfirmInfo, setUpdateConfirmInfo] =
@@ -916,7 +916,7 @@ function SidebarSystemActions({
     let cancelled = false;
     setUpdateConfirmChecking(true);
     api
-      .checkLydiaUpdate(false)
+      .checkAliceUpdate(false)
       .then((info) => {
         if (!cancelled) setUpdateConfirmInfo(info);
       })
@@ -939,10 +939,10 @@ function SidebarSystemActions({
     }
     const cmd = updateConfirmInfo?.update_command ?? "alice update";
     return (
-      t.status.updateLydiaConfirmMessage ??
+      t.status.updateAliceConfirmMessage ??
       `This will run 'alice update' (${cmd}) and restart the gateway when it finishes.`
     );
-  }, [t.status.updateLydiaConfirmMessage, updateConfirmInfo]);
+  }, [t.status.updateAliceConfirmMessage, updateConfirmInfo]);
 
   const items: SystemActionItem[] = [
     {
@@ -953,12 +953,12 @@ function SidebarSystemActions({
       spin: true,
     },
   ];
-  if (canUpdateLydia) {
+  if (canUpdateAlice) {
     items.push({
       action: "update",
       icon: Download,
-      label: t.status.updateLydia,
-      runningLabel: t.status.updatingLydia,
+      label: t.status.updateAlice,
+      runningLabel: t.status.updatingAlice,
       spin: false,
     });
   }
@@ -1051,7 +1051,7 @@ function SidebarSystemActions({
 
     <ConfirmDialog
       cancelLabel={t.common.cancel}
-      confirmLabel={t.status.updateLydiaConfirmNow ?? "Update now"}
+      confirmLabel={t.status.updateAliceConfirmNow ?? "Update now"}
       description={
         updateConfirmChecking ? t.common.loading : updateConfirmDescription
       }
@@ -1059,7 +1059,7 @@ function SidebarSystemActions({
       onCancel={() => setUpdateConfirmOpen(false)}
       onConfirm={confirmUpdate}
       open={updateConfirmOpen}
-      title={t.status.updateLydiaConfirmTitle ?? `${t.status.updateLydia}?`}
+      title={t.status.updateAliceConfirmTitle ?? `${t.status.updateAlice}?`}
     />
     </>
   );

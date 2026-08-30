@@ -133,7 +133,7 @@ async function fallbackRootFor(cwd: string): Promise<string | null> {
     return null
   }
 
-  const sanitize = window.lydiaDesktop?.sanitizeWorkspaceCwd
+  const sanitize = window.aliceDesktop?.sanitizeWorkspaceCwd
 
   if (!sanitize) {
     return null

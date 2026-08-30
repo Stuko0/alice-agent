@@ -61,7 +61,7 @@ export const PreviewStatusRow = memo(function PreviewStatusRow({ item, onDismiss
 
   const openInBrowser = async () => {
     try {
-      const bridge = window.lydiaDesktop?.openPreviewInBrowser
+      const bridge = window.aliceDesktop?.openPreviewInBrowser
 
       if (!bridge) {
         throw new Error('Desktop preview browser bridge is unavailable')

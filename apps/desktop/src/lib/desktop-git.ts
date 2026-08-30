@@ -1,24 +1,24 @@
 import type {
-  LydiaGitBranch,
-  LydiaGitRemoteInfo,
-  LydiaGitWorktree,
-  LydiaRepoStatus,
-  LydiaReviewList,
-  LydiaReviewShipInfo
+  AliceGitBranch,
+  AliceGitRemoteInfo,
+  AliceGitWorktree,
+  AliceRepoStatus,
+  AliceReviewList,
+  AliceReviewShipInfo
 } from '@/global'
 
 import { desktopFsProfile, isDesktopFsRemoteMode } from './desktop-fs'
 
 // Remote-aware git facade. Locally the desktop runs git through Electron
-// (window.lydiaDesktop.git); on a remote gateway that's the wrong filesystem,
+// (window.aliceDesktop.git); on a remote gateway that's the wrong filesystem,
 // so we mirror the same surface over the dashboard REST API (/api/git/*) — the
 // coding rail, worktree lanes, review pane, and branch ops then act on the
 // BACKEND repo where sessions actually run. Mirrors desktop-fs.ts.
 
-type GitBridge = NonNullable<NonNullable<Window['lydiaDesktop']>['git']>
+type GitBridge = NonNullable<NonNullable<Window['aliceDesktop']>['git']>
 
 function desktopApi<T>(path: string, body?: Record<string, unknown>): Promise<T> {
-  const desktop = window.lydiaDesktop
+  const desktop = window.aliceDesktop
 
   if (!desktop) {
     throw new Error('Alice Desktop bridge is unavailable')
@@ -47,7 +47,7 @@ function gitPost<T>(route: string, body: Record<string, unknown>): Promise<T> {
 
 const remoteGit: GitBridge = {
   worktreeList: async repoPath =>
-    (await gitGet<{ worktrees: LydiaGitWorktree[] }>('worktrees', { path: repoPath })).worktrees,
+    (await gitGet<{ worktrees: AliceGitWorktree[] }>('worktrees', { path: repoPath })).worktrees,
 
   worktreeAdd: (repoPath, options) => gitPost('worktree/add', { path: repoPath, ...options }),
 
@@ -57,21 +57,21 @@ const remoteGit: GitBridge = {
   branchSwitch: (repoPath, branch) => gitPost('branch/switch', { branch, path: repoPath }),
 
   branchList: async repoPath =>
-    (await gitGet<{ branches: LydiaGitBranch[] }>('branches', { path: repoPath })).branches,
+    (await gitGet<{ branches: AliceGitBranch[] }>('branches', { path: repoPath })).branches,
 
-  remoteInfo: repoPath => gitGet<LydiaGitRemoteInfo>('remote', { path: repoPath }),
+  remoteInfo: repoPath => gitGet<AliceGitRemoteInfo>('remote', { path: repoPath }),
 
   askpassRespond: (requestId, answer) =>
     gitPost<{ status: string }>('askpass/respond', { answer, request_id: requestId }),
 
-  repoStatus: repoPath => gitGet<LydiaRepoStatus | null>('status', { path: repoPath }),
+  repoStatus: repoPath => gitGet<AliceRepoStatus | null>('status', { path: repoPath }),
 
   fileDiff: async (repoPath, filePath) =>
     (await gitGet<{ diff: string }>('file-diff', { file: filePath, path: repoPath })).diff,
 
   review: {
     list: (repoPath, scope, baseRef) =>
-      gitGet<LydiaReviewList>('review/list', { base: baseRef, path: repoPath, scope }),
+      gitGet<AliceReviewList>('review/list', { base: baseRef, path: repoPath, scope }),
 
     diff: async (repoPath, filePath, scope, baseRef, staged) =>
       (await gitGet<{ diff: string }>('review/diff', { base: baseRef, file: filePath, path: repoPath, scope, staged }))
@@ -92,7 +92,7 @@ const remoteGit: GitBridge = {
 
     push: repoPath => gitPost('review/push', { path: repoPath }),
 
-    shipInfo: repoPath => gitGet<LydiaReviewShipInfo>('review/ship-info', { path: repoPath }),
+    shipInfo: repoPath => gitGet<AliceReviewShipInfo>('review/ship-info', { path: repoPath }),
 
     createPr: repoPath => gitPost('review/create-pr', { path: repoPath })
   },
@@ -103,18 +103,18 @@ const remoteGit: GitBridge = {
 }
 
 // Always-routes-through-HTTP implementation of `remoteInfo`. The local
-// Electron bridge (`window.lydiaDesktop.git`) doesn't expose `remoteInfo` —
+// Electron bridge (`window.aliceDesktop.git`) doesn't expose `remoteInfo` —
 // the gateway REST API is the single source of truth for the origin remote,
 // so we go through `desktop.api` regardless of whether the FS is local or
 // remote. This keeps the desktop-git surface area uniform and prevents
 // "n.remoteInfo is not a function" crashes when the user opens the Git
 // statusbar button on a local session.
-function httpRemoteInfo(repoPath: string): Promise<LydiaGitRemoteInfo> {
-  const desktop = window.lydiaDesktop
+function httpRemoteInfo(repoPath: string): Promise<AliceGitRemoteInfo> {
+  const desktop = window.aliceDesktop
   if (!desktop) {
     return Promise.reject(new Error('Alice Desktop bridge is unavailable'))
   }
-  return desktop.api<LydiaGitRemoteInfo>({
+  return desktop.api<AliceGitRemoteInfo>({
     path: `/api/git/remote?path=${encodeURIComponent(repoPath)}`,
     profile: desktopFsProfile()
   })
@@ -125,7 +125,7 @@ function httpRemoteInfo(repoPath: string): Promise<LydiaGitRemoteInfo> {
 // `httpRemoteInfo` so the renderer doesn't have to care whether the
 // desktop is in local or remote mode.
 function httpAskpassRespond(requestId: string, answer: string): Promise<{ status: string }> {
-  const desktop = window.lydiaDesktop
+  const desktop = window.aliceDesktop
   if (!desktop) {
     return Promise.reject(new Error('Alice Desktop bridge is unavailable'))
   }
@@ -144,7 +144,7 @@ export function desktopGit(): GitBridge | undefined {
   // Local mode: wrap the Electron bridge and override methods that the
   // native bridge doesn't expose yet (remoteInfo + askpassRespond) with
   // the HTTP path. Other methods stay on the native bridge (faster).
-  const local = window.lydiaDesktop?.git
+  const local = window.aliceDesktop?.git
   if (!local) {
     return undefined
   }

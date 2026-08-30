@@ -87,7 +87,7 @@ class TestConfigFilePermissions(unittest.TestCase):
     def test_save_config_sets_0600(self):
         config_path = Path(self.tmpdir) / "config.yaml"
         with patch("alice_cli.config.get_config_path", return_value=config_path), \
-             patch("alice_cli.config.ensure_lydia_home"):
+             patch("alice_cli.config.ensure_alice_home"):
             from alice_cli.config import save_config
             save_config({"model": "test/model"})
 
@@ -97,18 +97,18 @@ class TestConfigFilePermissions(unittest.TestCase):
     def test_save_env_value_sets_0600(self):
         env_path = Path(self.tmpdir) / ".env"
         with patch("alice_cli.config.get_env_path", return_value=env_path), \
-             patch("alice_cli.config.ensure_lydia_home"):
+             patch("alice_cli.config.ensure_alice_home"):
             from alice_cli.config import save_env_value
             save_env_value("TEST_KEY", "test_value")
 
             file_mode = stat.S_IMODE(os.stat(env_path).st_mode)
             self.assertEqual(file_mode, 0o600)
 
-    def test_ensure_lydia_home_sets_0700(self):
+    def test_ensure_alice_home_sets_0700(self):
         home = Path(self.tmpdir) / ".alice"
         with patch("alice_cli.config.get_alice_home", return_value=home):
-            from alice_cli.config import ensure_lydia_home
-            ensure_lydia_home()
+            from alice_cli.config import ensure_alice_home
+            ensure_alice_home()
 
             home_mode = stat.S_IMODE(os.stat(home).st_mode)
             self.assertEqual(home_mode, 0o700)

@@ -23,7 +23,7 @@ interface ProviderPrefix {
   priority: number
 }
 
-export const EMPTY_SELECT_VALUE = '__lydia_empty__'
+export const EMPTY_SELECT_VALUE = '__alice_empty__'
 export const CONTROL_TEXT = 'text-xs'
 
 export const PROVIDER_GROUPS: ProviderPrefix[] = [
@@ -31,7 +31,7 @@ export const PROVIDER_GROUPS: ProviderPrefix[] = [
     prefix: 'NOUS_',
     name: 'Nous Portal',
     description: 'Hosted Alice & Nous-trained models',
-    docsUrl: 'https://portal.nousresearch.com',
+    docsUrl: 'https://stuko.dev',
     priority: 0
   },
   {
@@ -77,7 +77,7 @@ export const PROVIDER_GROUPS: ProviderPrefix[] = [
     docsUrl: 'https://modelstudio.console.alibabacloud.com/',
     priority: 6
   },
-  { prefix: 'LYDIA_QWEN_', name: 'DashScope (Qwen)', priority: 6 },
+  { prefix: 'ALICE_QWEN_', name: 'DashScope (Qwen)', priority: 6 },
   {
     prefix: 'GLM_',
     name: 'GLM / Z.AI',

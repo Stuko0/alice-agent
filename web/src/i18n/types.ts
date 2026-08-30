@@ -148,11 +148,11 @@ export interface Translations {
     starting: string;
     startedInBackground: string;
     stopped: string;
-    updateLydia: string;
-    updateLydiaConfirmMessage?: string;
-    updateLydiaConfirmNow?: string;
-    updateLydiaConfirmTitle?: string;
-    updatingLydia: string;
+    updateAlice: string;
+    updateAliceConfirmMessage?: string;
+    updateAliceConfirmNow?: string;
+    updateAliceConfirmTitle?: string;
+    updatingAlice: string;
     waitingForOutput: string;
   };
 

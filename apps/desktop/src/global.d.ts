@@ -9,11 +9,11 @@ export {}
 
 declare global {
   interface Window {
-    lydiaDesktop: {
+    aliceDesktop: {
       // Resolve a backend connection. Omit `profile` (or pass the primary) for
       // the window's backend; pass a named profile to lazily spawn/reuse that
       // profile's backend from the pool.
-      getConnection: (profile?: string | null) => Promise<LydiaConnection>
+      getConnection: (profile?: string | null) => Promise<AliceConnection>
       // Reconnect-after-wake recovery: liveness-probe the cached PRIMARY backend
       // and drop it if a remote one has gone unreachable, so the next
       // getConnection() rebuilds a reachable descriptor instead of the renderer
@@ -58,25 +58,25 @@ declare global {
       profile: {
         get: () => Promise<DesktopActiveProfile>
         // Persists the desktop's profile choice and relaunches the local
-        // backend under the new LYDIA_HOME (reloads the window). Pass null to
+        // backend under the new ALICE_HOME (reloads the window). Pass null to
         // clear the preference.
         set: (name: string | null) => Promise<DesktopActiveProfile>
       }
-      api: <T>(request: LydiaApiRequest) => Promise<T>
-      notify: (payload: LydiaNotification) => Promise<boolean>
+      api: <T>(request: AliceApiRequest) => Promise<T>
+      notify: (payload: AliceNotification) => Promise<boolean>
       requestMicrophoneAccess: () => Promise<boolean>
       readFileDataUrl: (filePath: string) => Promise<string>
-      readFileText: (filePath: string) => Promise<LydiaReadFileTextResult>
-      selectPaths: (options?: LydiaSelectPathsOptions) => Promise<string[]>
+      readFileText: (filePath: string) => Promise<AliceReadFileTextResult>
+      selectPaths: (options?: AliceSelectPathsOptions) => Promise<string[]>
       writeClipboard: (text: string) => Promise<boolean>
       saveImageFromUrl: (url: string) => Promise<boolean>
       saveImageBuffer: (data: ArrayBuffer | Uint8Array, ext: string) => Promise<string>
       saveClipboardImage: () => Promise<string>
       getPathForFile: (file: File) => string
-      normalizePreviewTarget: (target: string, baseDir?: string) => Promise<LydiaPreviewTarget | null>
-      watchPreviewFile: (url: string) => Promise<LydiaPreviewWatch>
+      normalizePreviewTarget: (target: string, baseDir?: string) => Promise<AlicePreviewTarget | null>
+      watchPreviewFile: (url: string) => Promise<AlicePreviewWatch>
       stopPreviewFileWatch: (id: string) => Promise<boolean>
-      setTitleBarTheme?: (payload: LydiaTitleBarTheme) => void
+      setTitleBarTheme?: (payload: AliceTitleBarTheme) => void
       setNativeTheme?: (mode: 'dark' | 'light' | 'system') => void
       setTranslucency?: (payload: { intensity: number }) => void
       setPreviewShortcutActive?: (active: boolean) => void
@@ -91,7 +91,7 @@ declare global {
       }
       revealLogs: () => Promise<{ ok: boolean; path: string; error?: string }>
       getRecentLogs: () => Promise<{ path: string; lines: string[] }>
-      readDir: (path: string) => Promise<LydiaReadDirResult>
+      readDir: (path: string) => Promise<AliceReadDirResult>
       gitRoot?: (path: string) => Promise<string | null>
       // Reveal a path in the OS file manager (Finder / Explorer).
       revealPath?: (path: string) => Promise<boolean>
@@ -103,7 +103,7 @@ declare global {
       trashPath?: (path: string) => Promise<boolean>
       // Git-driven worktree management for the "Start work" flow.
       git?: {
-        worktreeList: (repoPath: string) => Promise<LydiaGitWorktree[]>
+        worktreeList: (repoPath: string) => Promise<AliceGitWorktree[]>
         worktreeAdd: (
           repoPath: string,
           options?: { name?: string; branch?: string; base?: string; existingBranch?: string }
@@ -115,24 +115,24 @@ declare global {
         ) => Promise<{ removed: string }>
         branchSwitch: (repoPath: string, branch: string) => Promise<{ branch: string }>
         // Local branches for the "convert a branch into a worktree" picker.
-        branchList: (repoPath: string) => Promise<LydiaGitBranch[]>
+        branchList: (repoPath: string) => Promise<AliceGitBranch[]>
         // Origin remote URL + provider detection (used by the statusbar's
         // provider-aware Git button). Defaults to "none" on a non-repo.
-        remoteInfo: (repoPath: string) => Promise<LydiaGitRemoteInfo>
+        remoteInfo: (repoPath: string) => Promise<AliceGitRemoteInfo>
         // Compact working-tree status for the composer coding rail. Null on a
         // non-repo / remote backend (where the Electron probe can't run).
-        repoStatus: (repoPath: string) => Promise<LydiaRepoStatus | null>
+        repoStatus: (repoPath: string) => Promise<AliceRepoStatus | null>
         // Working-tree-vs-HEAD unified diff for one file (the preview's diff
         // view). Empty string when the file is unchanged or not in a repo.
         fileDiff: (repoPath: string, filePath: string) => Promise<string>
         // Codex-style review pane: changed files per scope, per-file diff, and
         // stage / unstage / revert.
         review: {
-          list: (repoPath: string, scope: LydiaReviewScope, baseRef?: null | string) => Promise<LydiaReviewList>
+          list: (repoPath: string, scope: AliceReviewScope, baseRef?: null | string) => Promise<AliceReviewList>
           diff: (
             repoPath: string,
             filePath: string,
-            scope: LydiaReviewScope,
+            scope: AliceReviewScope,
             baseRef?: null | string,
             staged?: boolean
           ) => Promise<string>
@@ -145,7 +145,7 @@ declare global {
           // commit message. Reads only; empty strings off-repo.
           commitContext: (repoPath: string) => Promise<{ diff: string; recent: string }>
           push: (repoPath: string) => Promise<{ ok: boolean }>
-          shipInfo: (repoPath: string) => Promise<LydiaReviewShipInfo>
+          shipInfo: (repoPath: string) => Promise<AliceReviewShipInfo>
           createPr: (repoPath: string) => Promise<{ url: string }>
         }
         // Repo-first discovery: scan bounded roots for git repos (depth-capped).
@@ -159,9 +159,9 @@ declare global {
       terminal: {
         dispose: (id: string) => Promise<boolean>
         onData: (id: string, callback: (payload: string) => void) => () => void
-        onExit: (id: string, callback: (payload: LydiaTerminalExit) => void) => () => void
+        onExit: (id: string, callback: (payload: AliceTerminalExit) => void) => () => void
         resize: (id: string, size: { cols: number; rows: number }) => Promise<boolean>
-        start: (options?: { cols?: number; cwd?: string; rows?: number }) => Promise<LydiaTerminalSession>
+        start: (options?: { cols?: number; cwd?: string; rows?: number }) => Promise<AliceTerminalSession>
         write: (id: string, data: string) => Promise<boolean>
       }
       onClosePreviewRequested?: (callback: () => void) => () => void
@@ -170,10 +170,10 @@ declare global {
         callback: (payload: { kind: string; name: string; params: Record<string, string> }) => void
       ) => () => void
       signalDeepLinkReady?: () => Promise<{ ok: boolean }>
-      onWindowStateChanged?: (callback: (payload: LydiaWindowState) => void) => () => void
+      onWindowStateChanged?: (callback: (payload: AliceWindowState) => void) => () => void
       onFocusSession?: (callback: (sessionId: string) => void) => () => void
       onNotificationAction?: (callback: (payload: { actionId: string; sessionId?: string }) => void) => () => void
-      onPreviewFileChanged: (callback: (payload: LydiaPreviewFileChanged) => void) => () => void
+      onPreviewFileChanged: (callback: (payload: AlicePreviewFileChanged) => void) => () => void
       onBackendExit: (callback: (payload: BackendExit) => void) => () => void
       onPowerResume?: (callback: () => void) => () => void
       onBootProgress: (callback: (payload: DesktopBootProgress) => void) => () => void
@@ -229,13 +229,13 @@ export interface DesktopMarketplaceThemeResult {
   themes: DesktopMarketplaceThemeFile[]
 }
 
-export interface LydiaTerminalSession {
+export interface AliceTerminalSession {
   cwd: string
   id: string
   shell: string
 }
 
-export interface LydiaTerminalExit {
+export interface AliceTerminalExit {
   code: number | null
   signal: string | null
 }
@@ -245,13 +245,13 @@ export interface DesktopVersionInfo {
   electronVersion: string
   nodeVersion: string
   platform: string
-  lydiaRoot: string
+  aliceRoot: string
 }
 
 export type DesktopUninstallMode = 'full' | 'gui' | 'lite'
 
 export interface DesktopUninstallSummary {
-  lydia_home: string
+  alice_home: string
   agent_installed: boolean
   gui_installed: boolean
   source_built_artifacts: string[]
@@ -310,7 +310,7 @@ export interface DesktopUpdateApplyResult {
    *  `alice update` themselves. `command` is the exact line to run. */
   manual?: boolean
   command?: string
-  lydiaRoot?: string
+  aliceRoot?: string
   /** True when the backend was updated but the GUI couldn't be relaunched in
    *  place (AppImage / dev run): the new version loads on next launch. */
   backendUpdated?: boolean
@@ -359,7 +359,7 @@ export interface DesktopUpdateProgress {
   at: number
 }
 
-export interface LydiaConnection {
+export interface AliceConnection {
   baseUrl: string
   isFullscreen: boolean
   mode?: 'local' | 'remote'
@@ -375,12 +375,12 @@ export interface LydiaConnection {
   windowButtonPosition: { x: number; y: number } | null
 }
 
-export interface LydiaTitleBarTheme {
+export interface AliceTitleBarTheme {
   background: string
   foreground: string
 }
 
-export interface LydiaWindowState {
+export interface AliceWindowState {
   isFullscreen: boolean
   nativeOverlayWidth: number
   windowButtonPosition: { x: number; y: number } | null
@@ -521,7 +521,7 @@ export type DesktopBootstrapEvent =
       docsUrl: string
     }
 
-export interface LydiaApiRequest {
+export interface AliceApiRequest {
   path: string
   method?: string
   body?: unknown
@@ -532,7 +532,7 @@ export interface LydiaApiRequest {
   profile?: string | null
 }
 
-export interface LydiaNotification {
+export interface AliceNotification {
   title?: string
   body?: string
   silent?: boolean
@@ -541,7 +541,7 @@ export interface LydiaNotification {
   actions?: { id: string; text: string }[]
 }
 
-export interface LydiaPreviewTarget {
+export interface AlicePreviewTarget {
   binary?: boolean
   byteSize?: number
   kind: 'file' | 'url'
@@ -556,7 +556,7 @@ export interface LydiaPreviewTarget {
   url: string
 }
 
-export interface LydiaReadFileTextResult {
+export interface AliceReadFileTextResult {
   binary?: boolean
   byteSize?: number
   language?: string
@@ -566,14 +566,14 @@ export interface LydiaReadFileTextResult {
   truncated?: boolean
 }
 
-export interface LydiaPreviewWatch {
+export interface AlicePreviewWatch {
   id: string
   path: string
 }
 
 // A real git worktree as reported by `git worktree list` (source of truth for
 // the "Start work" flow), as opposed to the session-cwd-derived grouping above.
-export interface LydiaGitWorktree {
+export interface AliceGitWorktree {
   path: string
   branch: null | string
   isMain: boolean
@@ -584,7 +584,7 @@ export interface LydiaGitWorktree {
 // A local branch as offered by the "convert a branch into a worktree" picker.
 // `checkedOut` means selecting opens that checkout; `isDefault` means selecting
 // switches the main checkout instead of creating `.worktrees/main`.
-export interface LydiaGitBranch {
+export interface AliceGitBranch {
   name: string
   checkedOut: boolean
   isDefault: boolean
@@ -593,7 +593,7 @@ export interface LydiaGitBranch {
 
 // A single changed path from `git status --porcelain=v2`, classified by state
 // so the coding rail / switcher can group + open the right diff.
-export interface LydiaRepoStatusFile {
+export interface AliceRepoStatusFile {
   path: string
   staged: boolean
   unstaged: boolean
@@ -603,7 +603,7 @@ export interface LydiaRepoStatusFile {
 
 // Compact working-tree status for the composer coding rail (parsed from
 // `git status --porcelain=v2 --branch`).
-export interface LydiaRepoStatus {
+export interface AliceRepoStatus {
   branch: null | string
   // The repo's trunk ("main" / "master" / …), so the UI can offer "branch off
   // the default" from anywhere. Null when no trunk is detected.
@@ -622,12 +622,12 @@ export interface LydiaRepoStatus {
   added: number
   removed: number
   // Capped changed-file list (REPO_STATUS_FILE_CAP) for the diff/open actions.
-  files: LydiaRepoStatusFile[]
+  files: AliceRepoStatusFile[]
 }
 
 // Origin remote + provider detection — drives the desktop statusbar's
 // provider-aware Git button (icon, label, PR-creation target).
-export interface LydiaGitRemoteInfo {
+export interface AliceGitRemoteInfo {
   branch: null | string
   // Web URL the user lands on to create a PR/MR for `branch` against the repo's
   // default branch. Null when no remote, no branch (detached), or provider is
@@ -647,10 +647,10 @@ export interface LydiaGitRemoteInfo {
 // Diff scope for the review pane, mirroring Codex: uncommitted working-tree
 // changes, all changes vs the branch base, or everything since the current
 // turn began.
-export type LydiaReviewScope = 'branch' | 'lastTurn' | 'uncommitted'
+export type AliceReviewScope = 'branch' | 'lastTurn' | 'uncommitted'
 
 // One changed file in the review pane (status letter, +/- lines, staged flag).
-export interface LydiaReviewFile {
+export interface AliceReviewFile {
   path: string
   added: number
   removed: number
@@ -659,15 +659,15 @@ export interface LydiaReviewFile {
   staged: boolean
 }
 
-export interface LydiaReviewList {
-  files: LydiaReviewFile[]
+export interface AliceReviewList {
+  files: AliceReviewFile[]
   // The resolved base ref the scope diffed against (branch merge-base / turn
   // baseline), or null for the uncommitted scope.
   base: null | string
 }
 
 // The branch's PR (if any) as reported by `gh pr view`.
-export interface LydiaReviewPr {
+export interface AliceReviewPr {
   url: string
   state: string
   number: number
@@ -675,29 +675,29 @@ export interface LydiaReviewPr {
 
 // gh availability/auth + the current branch's PR — drives the review pane's PR
 // button (disabled when gh isn't ready, "Open PR" vs "Create PR" otherwise).
-export interface LydiaReviewShipInfo {
+export interface AliceReviewShipInfo {
   ghReady: boolean
-  pr: LydiaReviewPr | null
+  pr: AliceReviewPr | null
 }
 
-export interface LydiaReadDirEntry {
+export interface AliceReadDirEntry {
   name: string
   path: string
   isDirectory: boolean
 }
 
-export interface LydiaReadDirResult {
-  entries: LydiaReadDirEntry[]
+export interface AliceReadDirResult {
+  entries: AliceReadDirEntry[]
   error?: string
 }
 
-export interface LydiaPreviewFileChanged {
+export interface AlicePreviewFileChanged {
   id: string
   path: string
   url: string
 }
 
-export interface LydiaSelectPathsOptions {
+export interface AliceSelectPathsOptions {
   title?: string
   defaultPath?: string
   directories?: boolean

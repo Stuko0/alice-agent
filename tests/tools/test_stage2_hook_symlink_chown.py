@@ -19,7 +19,7 @@ def stage2_text() -> str:
     return STAGE2_HOOK.read_text()
 
 
-def _chown_lydia_tree_function(text: str) -> str:
+def _chown_alice_tree_function(text: str) -> str:
     start = text.index("path_has_symlink_component() {")
     end = text.index("\n\nneeds_chown=false", start)
     return text[start:end]
@@ -30,18 +30,18 @@ def _run_helper(
     target: Path,
     log_path: Path,
     *,
-    lydia_home: Path | None = None,
+    alice_home: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     shell = shutil.which("sh")
     if shell is None:
         pytest.skip("sh not available")
-    lydia_home = target if lydia_home is None else lydia_home
+    alice_home = target if alice_home is None else alice_home
     script = (
         "set -eu\n"
-        f'ALICE_HOME="{lydia_home}"\n'
-        f"{_chown_lydia_tree_function(text)}\n"
+        f'ALICE_HOME="{alice_home}"\n'
+        f"{_chown_alice_tree_function(text)}\n"
         f'chown() {{ printf "%s\\n" "$*" >> "{log_path}"; }}\n'
-        f'chown_lydia_tree "{target}"\n'
+        f'chown_alice_tree "{target}"\n'
     )
     return subprocess.run([shell, "-c", script], capture_output=True, text=True)
 
@@ -93,7 +93,7 @@ def test_chown_helper_refuses_target_under_symlinked_home(
         stage2_text,
         linked_home / "cron",
         log_path,
-        lydia_home=linked_home,
+        alice_home=linked_home,
     )
 
     assert proc.returncode == 0, proc.stderr
@@ -122,7 +122,7 @@ def test_chown_helper_refuses_target_with_symlinked_ancestor(
         stage2_text,
         home / "platforms" / "pairing",
         log_path,
-        lydia_home=home,
+        alice_home=home,
     )
 
     assert proc.returncode == 0, proc.stderr
@@ -130,16 +130,16 @@ def test_chown_helper_refuses_target_with_symlinked_ancestor(
     assert "refusing recursive chown through symlinked path" in proc.stdout
 
 
-def test_stage2_uses_symlink_safe_helper_for_lydia_home_trees(stage2_text: str) -> None:
-    assert 'chown_lydia_tree "$ALICE_HOME/$sub"' in stage2_text
-    assert 'chown_lydia_tree "$ALICE_HOME/profiles"' in stage2_text
-    assert 'chown_lydia_tree "$ALICE_HOME/cron"' in stage2_text
+def test_stage2_uses_symlink_safe_helper_for_alice_home_trees(stage2_text: str) -> None:
+    assert 'chown_alice_tree "$ALICE_HOME/$sub"' in stage2_text
+    assert 'chown_alice_tree "$ALICE_HOME/profiles"' in stage2_text
+    assert 'chown_alice_tree "$ALICE_HOME/cron"' in stage2_text
     assert 'chown -R alice:alice "$ALICE_HOME/$sub"' not in stage2_text
     assert 'chown -R alice:alice "$ALICE_HOME/profiles"' not in stage2_text
     assert 'chown -R alice:alice "$ALICE_HOME/cron"' not in stage2_text
 
 
-def test_stage2_skips_top_level_chown_for_symlinked_lydia_home(
+def test_stage2_skips_top_level_chown_for_symlinked_alice_home(
     stage2_text: str,
 ) -> None:
     assert 'refuse_symlinked_path "chown" "$ALICE_HOME"' in stage2_text

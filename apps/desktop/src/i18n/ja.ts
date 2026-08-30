@@ -66,7 +66,7 @@ export const ja = defineLocale({
       loadingSettings: 'Alice の設定を読み込み中',
       loadingSessions: '最近のセッションを読み込み中',
       startingDesktopConnection: 'デスクトップ接続を開始中',
-      startingLydiaDesktop: 'Alice Desktop を起動中…'
+      startingAliceDesktop: 'Alice Desktop を起動中…'
     },
     errors: {
       backgroundExited: 'Alice バックグラウンドプロセスが終了しました。',
@@ -117,7 +117,7 @@ export const ja = defineLocale({
     backendOutOfDateTitle: 'バックエンドが古いです',
     backendOutOfDateMessage:
       'Alice バックエンドがこのデスクトップビルドより古く、正常に動作しない場合があります。更新して揃えてください。',
-    updateLydia: 'Alice を更新',
+    updateAlice: 'Alice を更新',
     updateReadyTitle: '更新の準備ができました',
     updateReadyMessage: count => `${count} 件の新しい変更が利用可能です。`,
     seeWhatsNew: '新機能を見る',
@@ -638,7 +638,7 @@ export const ja = defineLocale({
         `"${profile}" がアクティブプロファイルのときのみ使用される接続。ローカルに設定するとデフォルトを継承します。`,
       envOverrideTitle: '環境変数がこのデスクトップセッションを制御しています。',
       envOverrideDesc:
-        '保存された設定を使用するには LYDIA_DESKTOP_REMOTE_URL と LYDIA_DESKTOP_REMOTE_TOKEN の設定を解除してください。',
+        '保存された設定を使用するには ALICE_DESKTOP_REMOTE_URL と ALICE_DESKTOP_REMOTE_TOKEN の設定を解除してください。',
       localTitle: 'ローカルゲートウェイ',
       localDesc:
         'ローカルホストでプライベートな Alice バックエンドを起動します。これがデフォルトで、オフラインでも動作します。',
@@ -1013,10 +1013,10 @@ export const ja = defineLocale({
     noSessions: 'セッションはまだありません。',
     gatewayRunning: 'メッセージングゲートウェイが実行中',
     gatewayStopped: 'メッセージングゲートウェイが停止中',
-    lydiaActiveSessions: (version, count) => `Alice ${version} · アクティブセッション ${count}`,
+    aliceActiveSessions: (version, count) => `Alice ${version} · アクティブセッション ${count}`,
     restartGateway: 'ゲートウェイを再起動',
     gatewayRestartFailed: 'ゲートウェイの再起動に失敗しました。',
-    updateLydia: 'Alice を更新',
+    updateAlice: 'Alice を更新',
     actionRunning: '実行中',
     actionDone: '完了',
     actionFailed: '失敗',

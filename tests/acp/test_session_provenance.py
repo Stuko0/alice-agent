@@ -27,9 +27,9 @@ def test_root_session_no_compression(db):
     _mk(db, "root1")
     prov = build_session_provenance(db, "acp-1", "root1")
     assert prov["acpSessionId"] == "acp-1"
-    assert prov["currentLydiaSessionId"] == "root1"
-    assert prov["rootLydiaSessionId"] == "root1"
-    assert prov["parentLydiaSessionId"] is None
+    assert prov["currentAliceSessionId"] == "root1"
+    assert prov["rootAliceSessionId"] == "root1"
+    assert prov["parentAliceSessionId"] is None
     assert prov["sessionKind"] == "root"
     assert prov["compressionDepth"] == 0
     assert "reason" not in prov  # no rotation signalled
@@ -43,13 +43,13 @@ def test_compression_split_continuation(db):
     _mk(db, "new", parent="old")
 
     prov = build_session_provenance(
-        db, "acp-1", "new", previous_lydia_session_id="old"
+        db, "acp-1", "new", previous_alice_session_id="old"
     )
     assert prov["sessionKind"] == "continuation"
-    assert prov["parentLydiaSessionId"] == "old"
-    assert prov["rootLydiaSessionId"] == "old"
+    assert prov["parentAliceSessionId"] == "old"
+    assert prov["rootAliceSessionId"] == "old"
     assert prov["compressionDepth"] == 1
-    assert prov["previousLydiaSessionId"] == "old"
+    assert prov["previousAliceSessionId"] == "old"
     # Head rotated this turn → reason/creatorKind flagged.
     assert prov["reason"] == "compression"
     assert prov["creatorKind"] == "compression"
@@ -63,7 +63,7 @@ def test_multi_depth_chain(db):
     _mk(db, "s2", parent="s1")
 
     prov = build_session_provenance(db, "acp-1", "s2")
-    assert prov["rootLydiaSessionId"] == "s0"
+    assert prov["rootAliceSessionId"] == "s0"
     assert prov["compressionDepth"] == 2
     assert prov["sessionKind"] == "continuation"
 
@@ -76,18 +76,18 @@ def test_non_compression_parent_is_root_not_continuation(db):
     prov = build_session_provenance(db, "acp-1", "c")
     assert prov["sessionKind"] == "root"
     assert prov["compressionDepth"] == 0
-    assert prov["rootLydiaSessionId"] == "p"  # lineage root still walked
+    assert prov["rootAliceSessionId"] == "p"  # lineage root still walked
 
 
 def test_no_false_rotation_when_head_unchanged(db):
     _mk(db, "s")
     # previous == current → no rotation reason emitted.
     prov = build_session_provenance(
-        db, "acp-1", "s", previous_lydia_session_id="s"
+        db, "acp-1", "s", previous_alice_session_id="s"
     )
     assert "reason" not in prov
     assert "creatorKind" not in prov
-    assert prov["previousLydiaSessionId"] == "s"
+    assert prov["previousAliceSessionId"] == "s"
 
 
 def test_unknown_session_returns_none(db):
@@ -100,4 +100,4 @@ def test_meta_wrapper_shape(db):
     meta = session_provenance_meta(db, "acp-1", "root1")
     assert set(meta.keys()) == {"alice"}
     assert "sessionProvenance" in meta["alice"]
-    assert meta["alice"]["sessionProvenance"]["currentLydiaSessionId"] == "root1"
+    assert meta["alice"]["sessionProvenance"]["currentAliceSessionId"] == "root1"

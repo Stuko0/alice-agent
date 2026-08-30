@@ -314,7 +314,7 @@ Future messages in this room will use that transcript until `/reset` or another 
   update:
     platform_not_messaging:  "✗ /update is slegs beskikbaar vanaf boodskapplatforms. Voer `alice update` vanaf die terminale uit."
     not_git_repo:            "✗ Nie 'n git-bewaarplek nie — kan nie opdateer nie."
-    lydia_cmd_not_found:    "✗ Kon nie die `alice`-opdrag vind nie. Alice loop, maar die opdateeropdrag kon nie die uitvoerbare lêer op PATH of via die huidige Python-vertolker vind nie. Probeer `alice update` met die hand in jou terminale uitvoer."
+    alice_cmd_not_found:    "✗ Kon nie die `alice`-opdrag vind nie. Alice loop, maar die opdateeropdrag kon nie die uitvoerbare lêer op PATH of via die huidige Python-vertolker vind nie. Probeer `alice update` met die hand in jou terminale uitvoer."
     start_failed:            "✗ Kon nie opdatering begin nie: {error}"
     starting:                "🌹 Begin Alice-opdatering… Ek sal vordering hier stroom."
 

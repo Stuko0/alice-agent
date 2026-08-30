@@ -15,7 +15,7 @@ from alice_cli.provider_catalog import (
 )
 
 
-def test_catalog_covers_every_lydia_model_provider():
+def test_catalog_covers_every_alice_model_provider():
     """PARITY CONTRACT: the catalog == the `alice model` universe."""
     slugs = {d.slug for d in provider_catalog()}
     for entry in CANONICAL_PROVIDERS:
@@ -24,7 +24,7 @@ def test_catalog_covers_every_lydia_model_provider():
         )
 
 
-def test_catalog_has_no_providers_outside_lydia_model():
+def test_catalog_has_no_providers_outside_alice_model():
     """The catalog must not invent providers `alice model` doesn't show."""
     canonical = {e.slug for e in CANONICAL_PROVIDERS}
     for d in provider_catalog():

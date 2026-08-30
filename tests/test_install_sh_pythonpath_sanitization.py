@@ -20,11 +20,11 @@ def test_install_script_unsets_pythonpath_and_pythonhome_early() -> None:
     assert 'unset PYTHONHOME' in text
 
 
-def test_lydia_launcher_wrapper_clears_python_env_before_exec() -> None:
+def test_alice_launcher_wrapper_clears_python_env_before_exec() -> None:
     text = INSTALL_SH.read_text()
 
     # Wrapper should clear env and forward args untouched to the venv entrypoint.
     assert 'cat > "$command_link_dir/alice" <<EOF' in text
     assert 'unset PYTHONPATH' in text
     assert 'unset PYTHONHOME' in text
-    assert 'exec "$LYDIA_BIN" "\\$@"' in text
+    assert 'exec "$ALICE_BIN" "\\$@"' in text

@@ -20,7 +20,7 @@ class TestResolveRuntimeAgentKwargsAuthFallback:
             "  model: meta-llama/llama-4-maverick\n"
         )
 
-        monkeypatch.setattr("gateway.run._lydia_home", tmp_path)
+        monkeypatch.setattr("gateway.run._alice_home", tmp_path)
 
         call_count = {"n": 0}
 
@@ -61,7 +61,7 @@ class TestResolveRuntimeAgentKwargsAuthFallback:
         config_path = tmp_path / "config.yaml"
         config_path.write_text("model:\n  provider: openai-codex\n")
 
-        monkeypatch.setattr("gateway.run._lydia_home", tmp_path)
+        monkeypatch.setattr("gateway.run._alice_home", tmp_path)
 
         with patch(
             "alice_cli.runtime_provider.resolve_runtime_provider",
@@ -83,7 +83,7 @@ class TestResolveRuntimeAgentKwargsAuthFallback:
             "  model: Alice-4\n"
         )
 
-        monkeypatch.setattr("gateway.run._lydia_home", tmp_path)
+        monkeypatch.setattr("gateway.run._alice_home", tmp_path)
 
         calls = []
 
@@ -94,7 +94,7 @@ class TestResolveRuntimeAgentKwargsAuthFallback:
                 raise RuntimeError("openrouter unavailable")
             return {
                 "api_key": "nous-key",
-                "base_url": "https://portal.nousresearch.com/v1",
+                "base_url": "https://stuko.dev/v1",
                 "provider": "nous",
                 "api_mode": "chat_completions",
                 "command": None,

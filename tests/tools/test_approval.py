@@ -172,7 +172,7 @@ class TestSessionKeyContext:
     def test_context_session_key_overrides_process_env(self):
         token = approval_module.set_current_session_key("alice")
         try:
-            with mock_patch.dict("os.environ", {"LYDIA_SESSION_KEY": "bob"}, clear=False):
+            with mock_patch.dict("os.environ", {"ALICE_SESSION_KEY": "bob"}, clear=False):
                 assert approval_module.get_current_session_key() == "alice"
         finally:
             approval_module.reset_current_session_key(token)
@@ -386,7 +386,7 @@ class TestTeePattern:
         assert dangerous is True
         assert key is not None
 
-    def test_tee_lydia_env(self):
+    def test_tee_alice_env(self):
         dangerous, key, desc = detect_dangerous_command("echo x | tee ~/.alice/.env")
         assert dangerous is True
         assert key is not None
@@ -397,12 +397,12 @@ class TestTeePattern:
         assert dangerous is True
         assert key is not None
 
-    def test_tee_custom_lydia_home_env(self):
+    def test_tee_custom_alice_home_env(self):
         dangerous, key, desc = detect_dangerous_command("echo x | tee $ALICE_HOME/.env")
         assert dangerous is True
         assert key is not None
 
-    def test_tee_quoted_custom_lydia_home_env(self):
+    def test_tee_quoted_custom_alice_home_env(self):
         dangerous, key, desc = detect_dangerous_command('echo x | tee "$ALICE_HOME/.env"')
         assert dangerous is True
         assert key is not None
@@ -418,7 +418,7 @@ class TestTeePattern:
         assert key is None
 
 
-class TestLydiaConfigWriteProtection:
+class TestAliceConfigWriteProtection:
     """Terminal-side pairing for the file_tools write_file/patch deny on
     ~/.alice/config.yaml (#14639). config.yaml IS the security policy
     (approvals.mode/yolo live there, mtime-keyed cache reloads mid-session),
@@ -453,7 +453,7 @@ class TestLydiaConfigWriteProtection:
         dangerous, key, desc = detect_dangerous_command("sed --in-place 's/manual/off/' ~/.alice/config.yaml")
         assert dangerous is True
 
-    def test_sed_in_place_absolute_lydia_home_config(self):
+    def test_sed_in_place_absolute_alice_home_config(self):
         config_path = get_alice_home() / "config.yaml"
         dangerous, key, desc = detect_dangerous_command(
             f"sed -i 's/manual/off/' {config_path}"
@@ -461,7 +461,7 @@ class TestLydiaConfigWriteProtection:
         assert dangerous is True
         assert "alice config" in desc.lower() or "in-place" in desc.lower()
 
-    def test_sed_in_place_absolute_lydia_home_env(self):
+    def test_sed_in_place_absolute_alice_home_env(self):
         env_path = get_alice_home() / ".env"
         dangerous, key, desc = detect_dangerous_command(
             f"sed -i 's/API_KEY=.*/API_KEY=x/' {env_path}"
@@ -469,7 +469,7 @@ class TestLydiaConfigWriteProtection:
         assert dangerous is True
         assert "alice config" in desc.lower() or "in-place" in desc.lower()
 
-    def test_custom_lydia_home(self):
+    def test_custom_alice_home(self):
         dangerous, key, desc = detect_dangerous_command("echo x | tee $ALICE_HOME/config.yaml")
         assert dangerous is True
 
@@ -482,7 +482,7 @@ class TestLydiaConfigWriteProtection:
         assert dangerous is True
         assert "in-place" in desc.lower() or "perl" in desc.lower()
 
-    def test_perl_in_place_absolute_lydia_home_config(self):
+    def test_perl_in_place_absolute_alice_home_config(self):
         config_path = get_alice_home() / "config.yaml"
         dangerous, key, desc = detect_dangerous_command(
             f"perl -i -pe 's/approvals.mode: on/approvals.mode: off/' {config_path}"
@@ -496,7 +496,7 @@ class TestLydiaConfigWriteProtection:
         )
         assert dangerous is True
 
-    def test_ruby_in_place_absolute_lydia_home_env(self):
+    def test_ruby_in_place_absolute_alice_home_env(self):
         env_path = get_alice_home() / ".env"
         dangerous, key, desc = detect_dangerous_command(
             f"ruby -i -pe 'gsub(/API_KEY=.*/, \"API_KEY=x\")' {env_path}"
@@ -578,7 +578,7 @@ class TestFindExecFullPathRm:
 class TestSensitiveRedirectPattern:
     """Detect shell redirection writes to sensitive user-managed paths."""
 
-    def test_redirect_to_custom_lydia_home_env(self):
+    def test_redirect_to_custom_alice_home_env(self):
         dangerous, key, desc = detect_dangerous_command("echo x > $ALICE_HOME/.env")
         assert dangerous is True
         assert key is not None
@@ -711,7 +711,7 @@ class TestSensitiveCopyMovePattern:
         dangerous, key, desc = detect_dangerous_command("cp /tmp/e ~/.bashrc")
         assert dangerous is True
 
-    def test_cp_to_lydia_config(self):
+    def test_cp_to_alice_config(self):
         dangerous, key, desc = detect_dangerous_command("cp /tmp/evil.yaml ~/.alice/config.yaml")
         assert dangerous is True
 
@@ -798,7 +798,7 @@ class TestWindowsAbsolutePathFolding:
         assert dangerous is True
         assert key is not None
 
-    def test_windows_lydia_home_config_folds(self, monkeypatch):
+    def test_windows_alice_home_config_folds(self, monkeypatch):
         # Alice home nests under the user home on Windows; it must fold before
         # the user-home rewrite eats its prefix.
         monkeypatch.setenv("HOME", r"C:\Users\tester")
@@ -965,13 +965,13 @@ class TestGatewayProtection:
         assert dangerous is True
         assert "stop/restart" in desc
 
-    def test_lydia_gateway_stop_detected(self):
+    def test_alice_gateway_stop_detected(self):
         cmd = "alice gateway stop"
         dangerous, key, desc = detect_dangerous_command(cmd)
         assert dangerous is True
         assert "gateway" in desc.lower()
 
-    def test_lydia_gateway_restart_with_profile_flag_detected(self):
+    def test_alice_gateway_restart_with_profile_flag_detected(self):
         """A profile flag between `alice` and `gateway` must not slip past
         the guard. See the 2026-04-11 ade-profile self-kill incident."""
         cmd = "alice -p ade gateway restart"
@@ -979,35 +979,35 @@ class TestGatewayProtection:
         assert dangerous is True
         assert "gateway" in desc.lower()
 
-    def test_lydia_gateway_stop_with_long_profile_flag_detected(self):
+    def test_alice_gateway_stop_with_long_profile_flag_detected(self):
         cmd = "alice --profile ade gateway stop"
         dangerous, key, desc = detect_dangerous_command(cmd)
         assert dangerous is True
 
-    def test_lydia_gateway_multiple_flags_detected(self):
+    def test_alice_gateway_multiple_flags_detected(self):
         cmd = "alice -p cocoa --verbose gateway restart"
         dangerous, key, desc = detect_dangerous_command(cmd)
         assert dangerous is True
 
-    def test_lydia_gateway_status_with_profile_flag_not_flagged(self):
+    def test_alice_gateway_status_with_profile_flag_not_flagged(self):
         """Read-only subcommands stay allowed even with a profile flag."""
         cmd = "alice -p ade gateway status"
         dangerous, key, desc = detect_dangerous_command(cmd)
         assert dangerous is False
 
-    def test_lydia_gateway_start_not_flagged(self):
+    def test_alice_gateway_start_not_flagged(self):
         cmd = "alice gateway start"
         dangerous, key, desc = detect_dangerous_command(cmd)
         assert dangerous is False
 
-    def test_pkill_lydia_detected(self):
+    def test_pkill_alice_detected(self):
         """pkill targeting alice/gateway processes must be caught."""
         cmd = 'pkill -f "cli.py --gateway"'
         dangerous, key, desc = detect_dangerous_command(cmd)
         assert dangerous is True
         assert "self-termination" in desc
 
-    def test_killall_lydia_detected(self):
+    def test_killall_alice_detected(self):
         cmd = "killall alice"
         dangerous, key, desc = detect_dangerous_command(cmd)
         assert dangerous is True
@@ -1185,7 +1185,7 @@ class TestPgrepKillExpansion:
         dangerous, _, _ = detect_dangerous_command(cmd)
         assert dangerous is True
 
-    def test_pkill_lydia_still_detected(self):
+    def test_pkill_alice_still_detected(self):
         """Existing pkill pattern must not regress."""
         cmd = "pkill -9 alice"
         dangerous, _, _ = detect_dangerous_command(cmd)
@@ -1218,23 +1218,23 @@ class TestLaunchctlGatewayLifecycle:
     must require the same approval. See issue #33071.
     """
 
-    def test_launchctl_stop_lydia_detected(self):
+    def test_launchctl_stop_alice_detected(self):
         cmd = "launchctl stop ai.alice.gateway"
         dangerous, _, desc = detect_dangerous_command(cmd)
         assert dangerous is True
         assert "launchd" in desc.lower() or "alice" in desc.lower()
 
-    def test_launchctl_kickstart_lydia_detected(self):
+    def test_launchctl_kickstart_alice_detected(self):
         cmd = "launchctl kickstart -k system/ai.alice.gateway"
         dangerous, _, _ = detect_dangerous_command(cmd)
         assert dangerous is True
 
-    def test_launchctl_bootout_lydia_detected(self):
+    def test_launchctl_bootout_alice_detected(self):
         cmd = "launchctl bootout system/ai.alice.gateway"
         dangerous, _, _ = detect_dangerous_command(cmd)
         assert dangerous is True
 
-    def test_launchctl_unload_lydia_detected(self):
+    def test_launchctl_unload_alice_detected(self):
         cmd = "launchctl unload ~/Library/LaunchAgents/ai.alice.gateway.plist"
         dangerous, _, _ = detect_dangerous_command(cmd)
         assert dangerous is True
@@ -1772,18 +1772,18 @@ class TestApprovalTimeoutIsNotConsent:
 
         self._saved_env = {
             k: os.environ.get(k)
-            for k in ("LYDIA_GATEWAY_SESSION", "LYDIA_CRON_SESSION",
-                      "LYDIA_YOLO_MODE",
-                      "LYDIA_SESSION_KEY", "LYDIA_INTERACTIVE")
+            for k in ("ALICE_GATEWAY_SESSION", "ALICE_CRON_SESSION",
+                      "ALICE_YOLO_MODE",
+                      "ALICE_SESSION_KEY", "ALICE_INTERACTIVE")
         }
-        os.environ.pop("LYDIA_YOLO_MODE", None)
-        os.environ.pop("LYDIA_INTERACTIVE", None)
-        # LYDIA_CRON_SESSION takes priority over LYDIA_GATEWAY_SESSION in
+        os.environ.pop("ALICE_YOLO_MODE", None)
+        os.environ.pop("ALICE_INTERACTIVE", None)
+        # ALICE_CRON_SESSION takes priority over ALICE_GATEWAY_SESSION in
         # _is_gateway_approval_context(); a leaked value from a parent cron
         # process would force the cron path and break these gateway tests.
-        os.environ.pop("LYDIA_CRON_SESSION", None)
-        os.environ["LYDIA_GATEWAY_SESSION"] = "1"
-        os.environ["LYDIA_SESSION_KEY"] = self.SESSION_KEY
+        os.environ.pop("ALICE_CRON_SESSION", None)
+        os.environ["ALICE_GATEWAY_SESSION"] = "1"
+        os.environ["ALICE_SESSION_KEY"] = self.SESSION_KEY
 
     def teardown_method(self):
         from tools import approval as mod
@@ -1937,7 +1937,7 @@ class TestTirithImportErrorFailOpenPolicy:
         with _patch("builtins.__import__", side_effect=self._make_failing_import(real_import)):
             with _patch("alice_cli.config.load_config", return_value=cfg):
                 with _patch("tools.approval.detect_dangerous_command", return_value=(False, None, None)):
-                    with mock_patch.dict("os.environ", {"LYDIA_INTERACTIVE": "1"}, clear=False):
+                    with mock_patch.dict("os.environ", {"ALICE_INTERACTIVE": "1"}, clear=False):
                         result = check_all_command_guards("echo hello", "local")
 
         assert result.get("approved") is True
@@ -1962,7 +1962,7 @@ class TestTirithImportErrorFailOpenPolicy:
         with _patch("builtins.__import__", side_effect=self._make_failing_import(real_import)):
             with _patch("alice_cli.config.load_config", return_value=cfg):
                 with _patch("tools.approval.detect_dangerous_command", return_value=(False, None, None)):
-                    with mock_patch.dict("os.environ", {"LYDIA_INTERACTIVE": "1"}, clear=False):
+                    with mock_patch.dict("os.environ", {"ALICE_INTERACTIVE": "1"}, clear=False):
                         result = check_all_command_guards(
                             "echo hello",
                             "local",
@@ -1993,7 +1993,7 @@ class TestTirithImportErrorFailOpenPolicy:
         with _patch("builtins.__import__", side_effect=self._make_failing_import(real_import)):
             with _patch("alice_cli.config.load_config", return_value=cfg):
                 with _patch("tools.approval.detect_dangerous_command", return_value=(False, None, None)):
-                    with mock_patch.dict("os.environ", {"LYDIA_INTERACTIVE": "1"}, clear=False):
+                    with mock_patch.dict("os.environ", {"ALICE_INTERACTIVE": "1"}, clear=False):
                         result = check_all_command_guards("echo hello", "local")
 
         assert result.get("approved") is True

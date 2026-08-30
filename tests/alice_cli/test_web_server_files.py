@@ -40,7 +40,7 @@ def _close_client(client):
 @pytest.fixture
 def forced_files_client(monkeypatch, tmp_path):
     root = tmp_path / "data"
-    monkeypatch.setenv("LYDIA_DASHBOARD_FILES_ROOT", str(root))
+    monkeypatch.setenv("ALICE_DASHBOARD_FILES_ROOT", str(root))
 
     client, prev_auth_required, prev_bound_host = _client_with_app_state()
     try:
@@ -54,7 +54,7 @@ def forced_files_client(monkeypatch, tmp_path):
 def local_files_client(monkeypatch, tmp_path):
     home = tmp_path / "home"
     home.mkdir()
-    monkeypatch.delenv("LYDIA_DASHBOARD_FILES_ROOT", raising=False)
+    monkeypatch.delenv("ALICE_DASHBOARD_FILES_ROOT", raising=False)
     monkeypatch.delenv("ALICE_HOME", raising=False)
     monkeypatch.setenv("HOME", str(home))
 
@@ -196,8 +196,8 @@ def test_local_mode_defaults_to_home_and_can_jump_to_absolute_path(local_files_c
 def test_gated_local_mode_still_defaults_to_home(monkeypatch, tmp_path):
     home = tmp_path / "home"
     home.mkdir()
-    monkeypatch.delenv("LYDIA_DASHBOARD_FILES_ROOT", raising=False)
-    monkeypatch.delenv("LYDIA_MANAGED", raising=False)
+    monkeypatch.delenv("ALICE_DASHBOARD_FILES_ROOT", raising=False)
+    monkeypatch.delenv("ALICE_MANAGED", raising=False)
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("ALICE_HOME", str(home / ".alice"))
 
@@ -315,7 +315,7 @@ def test_query_token_does_not_authenticate_other_endpoints(forced_files_client):
 
 
 def test_hosted_policy_locks_to_opt_data(monkeypatch):
-    monkeypatch.delenv("LYDIA_DASHBOARD_FILES_ROOT", raising=False)
+    monkeypatch.delenv("ALICE_DASHBOARD_FILES_ROOT", raising=False)
     monkeypatch.setenv("ALICE_HOME", "/opt/data")
     client, prev_auth_required, prev_bound_host = _client_with_app_state()
     try:

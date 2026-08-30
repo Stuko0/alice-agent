@@ -241,11 +241,11 @@ class Mem0MemoryProvider(MemoryProvider):
             return bool(cfg.get("oss", {}).get("vector_store"))
         return bool(cfg.get("api_key"))
 
-    def save_config(self, values, lydia_home):
+    def save_config(self, values, alice_home):
         """Write config to $ALICE_HOME/mem0.json."""
         import json
         from pathlib import Path
-        config_path = Path(lydia_home) / "mem0.json"
+        config_path = Path(alice_home) / "mem0.json"
         existing = {}
         if config_path.exists():
             try:
@@ -267,9 +267,9 @@ class Mem0MemoryProvider(MemoryProvider):
             {"key": "rerank", "description": "Enable reranking for recall", "default": "true", "choices": ["true", "false"]},
         ]
 
-    def post_setup(self, lydia_home: str, config: dict) -> None:
+    def post_setup(self, alice_home: str, config: dict) -> None:
         from ._setup import post_setup
-        post_setup(lydia_home, config)
+        post_setup(alice_home, config)
 
     def _create_backend(self):
         # Lazy-install the mem0 SDK on demand before either backend imports

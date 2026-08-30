@@ -12,7 +12,7 @@ import pytest
 import asyncio
 
 from tools.mcp_oauth import (
-    LydiaTokenStorage,
+    AliceTokenStorage,
     OAuthNonInteractiveError,
     build_oauth_auth,
     remove_oauth_tokens,
@@ -33,13 +33,13 @@ def _set_interactive_stdin(monkeypatch, *, is_tty: bool = True) -> None:
 
 
 # ---------------------------------------------------------------------------
-# LydiaTokenStorage
+# AliceTokenStorage
 # ---------------------------------------------------------------------------
 
-class TestLydiaTokenStorage:
+class TestAliceTokenStorage:
     def test_roundtrip_tokens(self, tmp_path, monkeypatch):
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        storage = LydiaTokenStorage("test-server")
+        storage = AliceTokenStorage("test-server")
 
         import asyncio
 
@@ -71,7 +71,7 @@ class TestLydiaTokenStorage:
         the fix shipped for ``agent/google_oauth.py`` in #19673.
         """
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        storage = LydiaTokenStorage("perm-test-server")
+        storage = AliceTokenStorage("perm-test-server")
 
         import asyncio
         mock_token = MagicMock()
@@ -94,7 +94,7 @@ class TestLydiaTokenStorage:
 
     def test_roundtrip_client_info(self, tmp_path, monkeypatch):
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        storage = LydiaTokenStorage("test-server")
+        storage = AliceTokenStorage("test-server")
         import asyncio
 
         assert asyncio.run(storage.get_client_info()) is None
@@ -111,7 +111,7 @@ class TestLydiaTokenStorage:
 
     def test_remove_cleans_up(self, tmp_path, monkeypatch):
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        storage = LydiaTokenStorage("test-server")
+        storage = AliceTokenStorage("test-server")
 
         # Create files
         d = tmp_path / "mcp-tokens"
@@ -125,7 +125,7 @@ class TestLydiaTokenStorage:
 
     def test_has_cached_tokens(self, tmp_path, monkeypatch):
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        storage = LydiaTokenStorage("my-server")
+        storage = AliceTokenStorage("my-server")
 
         assert not storage.has_cached_tokens()
 
@@ -137,7 +137,7 @@ class TestLydiaTokenStorage:
 
     def test_corrupt_tokens_returns_none(self, tmp_path, monkeypatch):
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        storage = LydiaTokenStorage("bad-server")
+        storage = AliceTokenStorage("bad-server")
 
         d = tmp_path / "mcp-tokens"
         d.mkdir(parents=True)
@@ -148,7 +148,7 @@ class TestLydiaTokenStorage:
 
     def test_corrupt_client_info_returns_none(self, tmp_path, monkeypatch):
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        storage = LydiaTokenStorage("bad-server")
+        storage = AliceTokenStorage("bad-server")
 
         d = tmp_path / "mcp-tokens"
         d.mkdir(parents=True)
@@ -320,7 +320,7 @@ class TestPathTraversal:
 
     def test_path_traversal_blocked(self, tmp_path, monkeypatch):
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        storage = LydiaTokenStorage("../../.ssh/config")
+        storage = AliceTokenStorage("../../.ssh/config")
         path = storage._tokens_path()
         # Should stay within mcp-tokens directory
         assert "mcp-tokens" in str(path)
@@ -328,19 +328,19 @@ class TestPathTraversal:
 
     def test_dots_and_slashes_sanitized(self, tmp_path, monkeypatch):
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        storage = LydiaTokenStorage("../../../etc/passwd")
+        storage = AliceTokenStorage("../../../etc/passwd")
         path = storage._tokens_path()
         resolved = path.resolve()
         assert resolved.is_relative_to((tmp_path / "mcp-tokens").resolve())
 
     def test_normal_name_unchanged(self, tmp_path, monkeypatch):
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        storage = LydiaTokenStorage("my-mcp-server")
+        storage = AliceTokenStorage("my-mcp-server")
         assert "my-mcp-server.json" in str(storage._tokens_path())
 
     def test_special_chars_sanitized(self, tmp_path, monkeypatch):
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        storage = LydiaTokenStorage("server@host:8080/path")
+        storage = AliceTokenStorage("server@host:8080/path")
         path = storage._tokens_path()
         assert "@" not in path.name
         assert ":" not in path.name
@@ -666,7 +666,7 @@ def test_build_oauth_auth_preserves_server_url_path():
          patch.object(mcp_oauth, "OAuthClientProvider", _FakeProvider), \
          patch.object(mcp_oauth, "_is_interactive", return_value=True), \
          patch.object(mcp_oauth, "_maybe_preregister_client"), \
-         patch.object(mcp_oauth, "LydiaTokenStorage") as mock_storage_cls:
+         patch.object(mcp_oauth, "AliceTokenStorage") as mock_storage_cls:
         mock_storage_cls.return_value = MagicMock(has_cached_tokens=lambda: True)
         build_oauth_auth(
             server_name="notion",
@@ -913,7 +913,7 @@ class TestWaitForCallbackSkipIntegration:
 class TestPoisonClientRegistration:
     def test_poison_backs_up_and_removes_client_and_meta(self, tmp_path, monkeypatch):
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        storage = LydiaTokenStorage("srv")
+        storage = AliceTokenStorage("srv")
         d = tmp_path / "mcp-tokens"
         d.mkdir(parents=True)
         (d / "srv.json").write_text('{"access_token": "keep-me"}')
@@ -933,5 +933,5 @@ class TestPoisonClientRegistration:
 
     def test_poison_noop_when_no_client_file(self, tmp_path, monkeypatch):
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        storage = LydiaTokenStorage("srv")
+        storage = AliceTokenStorage("srv")
         assert storage.poison_client_registration() is False

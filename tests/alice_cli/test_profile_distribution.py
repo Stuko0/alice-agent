@@ -24,7 +24,7 @@ from alice_cli.profile_distribution import (
     _env_template_from_manifest,
     _looks_like_git_url,
     _parse_semver,
-    check_lydia_requires,
+    check_alice_requires,
     describe_distribution,
     install_distribution,
     plan_install,
@@ -100,7 +100,7 @@ class TestManifestParsing:
             "name: telem\n"
             "version: 1.2.3\n"
             "description: Telem monitor\n"
-            "lydia_requires: '>=0.12.0'\n"
+            "alice_requires: '>=0.12.0'\n"
             "author: Kyle\n"
             "license: MIT\n"
             "env_requires:\n"
@@ -185,10 +185,10 @@ class TestVersionRequires:
     ])
     def test_check_matrix(self, spec, cur, ok):
         if ok:
-            check_lydia_requires(spec, cur)
+            check_alice_requires(spec, cur)
         else:
             with pytest.raises(DistributionError, match="requires Alice"):
-                check_lydia_requires(spec, cur)
+                check_alice_requires(spec, cur)
 
     def test_parse_semver_handles_prerelease(self):
         assert _parse_semver("0.12.0-rc1") == (0, 12, 0)
@@ -334,7 +334,7 @@ class TestInstall:
         assert example.is_file()
         assert "OPENAI_API_KEY" in example.read_text()
 
-    def test_install_enforces_lydia_requires(self, profile_env, monkeypatch):
+    def test_install_enforces_alice_requires(self, profile_env, monkeypatch):
         # Pin current Alice version to something well below the requirement
         import alice_cli
         monkeypatch.setattr(alice_cli, "__version__", "0.1.0", raising=False)
@@ -342,7 +342,7 @@ class TestInstall:
         mf = DistributionManifest(
             name="future",
             version="1.0.0",
-            lydia_requires=">=99.0.0",
+            alice_requires=">=99.0.0",
         )
         staged = _make_staging_dir(profile_env, "future", manifest=mf)
         with pytest.raises(DistributionError, match="requires Alice"):

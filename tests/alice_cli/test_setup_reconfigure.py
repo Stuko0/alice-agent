@@ -55,7 +55,7 @@ def _enter_existing_install_patches(stack, **extra):
     """
     # Unconditional mocks (no return values to assert against).
     for target, kwargs in [
-        ("alice_cli.setup.ensure_lydia_home", {}),
+        ("alice_cli.setup.ensure_alice_home", {}),
         ("alice_cli.setup.is_interactive_stdin", {"return_value": True}),
         ("alice_cli.config.is_managed", {"return_value": False}),
         ("alice_cli.setup.load_config", {"return_value": {}}),
@@ -76,7 +76,7 @@ def _enter_existing_install_patches(stack, **extra):
 
 def _enter_fresh_install_patches(stack, **extra):
     for target, kwargs in [
-        ("alice_cli.setup.ensure_lydia_home", {}),
+        ("alice_cli.setup.ensure_alice_home", {}),
         ("alice_cli.setup.is_interactive_stdin", {"return_value": True}),
         ("alice_cli.config.is_managed", {"return_value": False}),
         ("alice_cli.setup.load_config", {"return_value": {}}),

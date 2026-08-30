@@ -12,7 +12,7 @@ from __future__ import annotations
 import subprocess
 
 
-def test_no_args_starts_lydia(built_image: str) -> None:
+def test_no_args_starts_alice(built_image: str) -> None:
     """``docker run <image>`` should start alice cleanly.
 
     We invoke ``--version`` so the call exits without needing a configured

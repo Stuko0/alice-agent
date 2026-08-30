@@ -168,7 +168,7 @@ def test_per_profile_isolation(tmp_path):
         b.close()
 
 
-def test_db_path_under_lydia_home():
+def test_db_path_under_alice_home():
     # Resolves under ALICE_HOME (set by the autouse isolation fixture).
     assert pdb.projects_db_path().name == "projects.db"
     assert os.path.basename(str(pdb.projects_db_path().parent))  # non-empty parent

@@ -252,10 +252,10 @@ Like any Alice plugin, model providers can ship as a pip package. Add an entry p
 
 ```toml
 [project.entry-points."alice_agent.plugins"]
-acme-inference = "acme_lydia_plugin:register"
+acme-inference = "acme_alice_plugin:register"
 ```
 
-…where `acme_lydia_plugin:register` is a function that calls `register_provider(profile)`. The general PluginManager picks up entry-point plugins during `discover_and_load()`. For `kind: model-provider` pip plugins, you still need to declare the kind in your manifest (or rely on the source-text heuristic).
+…where `acme_alice_plugin:register` is a function that calls `register_provider(profile)`. The general PluginManager picks up entry-point plugins during `discover_and_load()`. For `kind: model-provider` pip plugins, you still need to declare the kind in your manifest (or rely on the source-text heuristic).
 
 See [Building a Alice Plugin](/guides/build-a-alice-plugin#distribute-via-pip) for the full entry-points setup.
 

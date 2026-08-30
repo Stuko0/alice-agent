@@ -29,7 +29,7 @@ def _reset_modules(prefixes: tuple[str, ...]):
 
 @pytest.fixture(autouse=True)
 def _restore_tool_modules():
-    original_lydia_home = os.environ.get("ALICE_HOME")
+    original_alice_home = os.environ.get("ALICE_HOME")
     original_modules = {
         name: module
         for name, module in sys.modules.items()
@@ -43,10 +43,10 @@ def _restore_tool_modules():
     try:
         yield
     finally:
-        if original_lydia_home is None:
+        if original_alice_home is None:
             os.environ.pop("ALICE_HOME", None)
         else:
-            os.environ["ALICE_HOME"] = original_lydia_home
+            os.environ["ALICE_HOME"] = original_alice_home
         _reset_modules(("tools", "alice_cli", "modal"))
         sys.modules.update(original_modules)
 
@@ -62,10 +62,10 @@ def _install_modal_test_modules(
     alice_cli = types.ModuleType("alice_cli")
     alice_cli.__path__ = []  # type: ignore[attr-defined]
     sys.modules["alice_cli"] = alice_cli
-    lydia_home = tmp_path / "alice-home"
-    os.environ["ALICE_HOME"] = str(lydia_home)
+    alice_home = tmp_path / "alice-home"
+    os.environ["ALICE_HOME"] = str(alice_home)
     sys.modules["alice_cli.config"] = types.SimpleNamespace(
-        get_alice_home=lambda: lydia_home,
+        get_alice_home=lambda: alice_home,
     )
 
     tools_package = types.ModuleType("tools")
@@ -190,7 +190,7 @@ def _install_modal_test_modules(
     )
 
     return {
-        "snapshot_store": lydia_home / "modal_snapshots.json",
+        "snapshot_store": alice_home / "modal_snapshots.json",
         "create_calls": create_calls,
         "from_id_calls": from_id_calls,
         "registry_calls": registry_calls,

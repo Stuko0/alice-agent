@@ -17,12 +17,12 @@ const MIN_PORT_ANNOUNCE_TIMEOUT_MS = 45_000
 
 /**
  * Resolve the port-announcement deadline. Honors the
- * LYDIA_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS env override (for users on slow
+ * ALICE_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS env override (for users on slow
  * disks / aggressive AV who need an even longer cold-start window), clamped
  * to a sane floor so a bad value can't make boot flakier than the default.
  */
 function resolvePortAnnounceTimeoutMs(env = process.env) {
-  const parsed = Number(env.LYDIA_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS)
+  const parsed = Number(env.ALICE_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS)
   if (Number.isFinite(parsed) && parsed > 0) {
     return Math.max(MIN_PORT_ANNOUNCE_TIMEOUT_MS, Math.round(parsed))
   }

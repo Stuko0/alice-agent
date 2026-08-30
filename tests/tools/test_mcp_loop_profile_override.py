@@ -25,8 +25,8 @@ def mcp_loop():
 def test_override_propagates_to_mcp_loop(tmp_path, monkeypatch, mcp_loop):
     from alice_constants import (
         get_alice_home,
-        reset_lydia_home_override,
-        set_lydia_home_override,
+        reset_alice_home_override,
+        set_alice_home_override,
     )
 
     process_home = tmp_path / "proc-home"
@@ -42,7 +42,7 @@ def test_override_propagates_to_mcp_loop(tmp_path, monkeypatch, mcp_loop):
     assert mcp_loop._run_on_mcp_loop(read_home(), timeout=10) == str(process_home)
 
     # Scoped: the caller's override must reach the loop task.
-    token = set_lydia_home_override(str(profile_home))
+    token = set_alice_home_override(str(profile_home))
     try:
         assert mcp_loop._run_on_mcp_loop(read_home(), timeout=10) == str(profile_home)
         # Factory form must be wrapped too.
@@ -50,19 +50,19 @@ def test_override_propagates_to_mcp_loop(tmp_path, monkeypatch, mcp_loop):
             profile_home
         )
     finally:
-        reset_lydia_home_override(token)
+        reset_alice_home_override(token)
 
     # The loop thread's default context is untouched afterwards.
     assert mcp_loop._run_on_mcp_loop(read_home(), timeout=10) == str(process_home)
 
 
 def test_oauth_token_paths_follow_override(tmp_path, monkeypatch, mcp_loop):
-    """The actual symptom path: LydiaTokenStorage resolving inside the
+    """The actual symptom path: AliceTokenStorage resolving inside the
     probe's MCP-loop coroutine must land in the selected profile's
     mcp-tokens dir, not the process home's."""
     from alice_constants import (
-        reset_lydia_home_override,
-        set_lydia_home_override,
+        reset_alice_home_override,
+        set_alice_home_override,
     )
 
     process_home = tmp_path / "proc-home"
@@ -72,15 +72,15 @@ def test_oauth_token_paths_follow_override(tmp_path, monkeypatch, mcp_loop):
     monkeypatch.setenv("ALICE_HOME", str(process_home))
 
     async def token_path():
-        from tools.mcp_oauth import LydiaTokenStorage
+        from tools.mcp_oauth import AliceTokenStorage
 
-        return str(LydiaTokenStorage("probe-srv")._tokens_path())
+        return str(AliceTokenStorage("probe-srv")._tokens_path())
 
-    token = set_lydia_home_override(str(profile_home))
+    token = set_alice_home_override(str(profile_home))
     try:
         path = mcp_loop._run_on_mcp_loop(token_path(), timeout=10)
     finally:
-        reset_lydia_home_override(token)
+        reset_alice_home_override(token)
     assert path.startswith(str(profile_home))
     assert os.path.join("mcp-tokens", "probe-srv.json") in path
 
@@ -92,8 +92,8 @@ def test_concurrent_scopes_do_not_interfere(tmp_path, monkeypatch, mcp_loop):
 
     from alice_constants import (
         get_alice_home,
-        reset_lydia_home_override,
-        set_lydia_home_override,
+        reset_alice_home_override,
+        set_alice_home_override,
     )
 
     process_home = tmp_path / "proc-home"
@@ -109,11 +109,11 @@ def test_concurrent_scopes_do_not_interfere(tmp_path, monkeypatch, mcp_loop):
     results: dict = {}
 
     def scoped_call(key, home):
-        token = set_lydia_home_override(str(home))
+        token = set_alice_home_override(str(home))
         try:
             results[key] = mcp_loop._run_on_mcp_loop(read_home(), timeout=10)
         finally:
-            reset_lydia_home_override(token)
+            reset_alice_home_override(token)
 
     threads = [
         threading.Thread(target=scoped_call, args=("a", home_a)),

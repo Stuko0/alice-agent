@@ -1,6 +1,6 @@
 import { withInkSuspended } from '@alice/ink'
 
-import { launchLydiaCommand } from '../../../lib/externalCli.js'
+import { launchAliceCommand } from '../../../lib/externalCli.js'
 import { runExternalSetup } from '../../setupHandoff.js'
 import type { SlashCommand } from '../types.js'
 
@@ -13,7 +13,7 @@ export const setupCommands: SlashCommand[] = [
         args: ['setup', ...arg.split(/\s+/).filter(Boolean)],
         ctx,
         done: 'setup complete — starting session…',
-        launcher: launchLydiaCommand,
+        launcher: launchAliceCommand,
         suspend: withInkSuspended
       })
   }

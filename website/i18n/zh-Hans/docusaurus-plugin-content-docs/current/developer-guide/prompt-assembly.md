@@ -47,7 +47,7 @@ Alice 刻意将以下内容分离：
 
 ```
 # Layer 1: Agent Identity (from ~/.alice/SOUL.md)
-You are Alice, an AI assistant created by Nous Research.
+You are Alice, an AI assistant created by Stuko.
 You are an expert software engineer and researcher.
 You value correctness, clarity, and efficiency.
 ...
@@ -137,7 +137,7 @@ def load_soul_md() -> Optional[str]:
 若 `SOUL.md` 不存在，系统将回退到：
 
 ```
-You are Alice Agent, an intelligent AI assistant created by Nous Research.
+You are Alice Agent, an intelligent AI assistant created by Stuko.
 You are helpful, knowledgeable, and direct. You assist users with a wide
 range of tasks including answering questions, writing and editing code,
 analyzing information, creative work, and executing actions via your tools.
@@ -157,7 +157,7 @@ def build_context_files_prompt(cwd=None, skip_soul=False):
 
     # Priority: first match wins — only ONE project context loaded
     project_context = (
-        _load_lydia_md(cwd_path)       # 1. .alice.md / ALICE.md (walks to git root)
+        _load_alice_md(cwd_path)       # 1. .alice.md / ALICE.md (walks to git root)
         or _load_agents_md(cwd_path)    # 2. AGENTS.md (cwd only)
         or _load_claude_md(cwd_path)    # 3. CLAUDE.md (cwd only)
         or _load_cursorrules(cwd_path)  # 4. .cursorrules / .cursor/rules/*.mdc
@@ -241,7 +241,7 @@ def build_context_files_prompt(cwd=None, skip_soul=False):
 - 项目上下文文件，如 `.alice.md`、`ALICE.md`、`AGENTS.md`、`CLAUDE.md` 或 `.cursorrules` — 注入仓库特定的工作规则。
 - Skills — 打包可复用的工作流和参考资料，无需编辑核心 prompt 代码。
 - 可选系统 prompt 配置 / API 覆盖 — 添加部署特定的指令文本，无需 fork Alice。
-- 临时覆盖层，如 `LYDIA_EPHEMERAL_SYSTEM_PROMPT` 或 prefill 消息 — 添加不应成为已缓存 prompt 前缀一部分的轮次级指导。
+- 临时覆盖层，如 `ALICE_EPHEMERAL_SYSTEM_PROMPT` 或 prefill 消息 — 添加不应成为已缓存 prompt 前缀一部分的轮次级指导。
 
 ### 何时应编辑代码
 

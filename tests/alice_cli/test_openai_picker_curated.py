@@ -10,7 +10,7 @@ Bug 1 — OpenAI picker dumped the raw ``/v1/models`` catalog
     verbatim so discovery still works.
 
 Bug 2 — OpenRouter appeared authenticated whenever OPENAI_API_KEY was set
-    OpenRouter's LydiaOverlay carried ``extra_env_vars=("OPENAI_API_KEY",)``.
+    OpenRouter's AliceOverlay carried ``extra_env_vars=("OPENAI_API_KEY",)``.
     ``list_authenticated_providers`` reads ``extra_env_vars`` to decide whether
     a provider has credentials, so any OpenAI user saw a phantom OpenRouter
     row. The overlay entry is removed; runtime credential resolution still
@@ -24,13 +24,13 @@ from unittest.mock import patch
 import pytest
 
 from alice_cli import models as M
-from alice_cli.providers import LYDIA_OVERLAYS
+from alice_cli.providers import ALICE_OVERLAYS
 
 
 # --- Bug 2: overlay no longer lists OPENAI_API_KEY --------------------------
 
 def test_openrouter_overlay_does_not_list_openai_api_key():
-    overlay = LYDIA_OVERLAYS["openrouter"]
+    overlay = ALICE_OVERLAYS["openrouter"]
     assert "OPENAI_API_KEY" not in overlay.extra_env_vars
 
 

@@ -68,9 +68,9 @@ def is_safe_path(path: Path) -> bool:
 
     Rejects Windows mounts (``/mnt/c`` etc.) and any system directory.
     """
-    lydia_home = get_alice_home()
+    alice_home = get_alice_home()
     try:
-        path.resolve().relative_to(lydia_home)
+        path.resolve().relative_to(alice_home)
         return True
     except (ValueError, OSError):
         pass
@@ -173,9 +173,9 @@ def _is_protected_cron_path(p: Path) -> bool:
     # Lazily build the set once per process so ALICE_HOME is resolved
     # exactly once.
     if not _PROTECTED_CRON_PATHS:
-        lydia_home = get_alice_home()
+        alice_home = get_alice_home()
         for parent in ("cron", "cronjobs"):
-            base = lydia_home / parent
+            base = alice_home / parent
             _PROTECTED_CRON_PATHS.add(str(base))
             _PROTECTED_CRON_PATHS.add(str(base / "jobs.json"))
             _PROTECTED_CRON_PATHS.add(str(base / ".tick.lock"))
@@ -363,11 +363,11 @@ def quick() -> Dict[str, Any]:
     # durable state trees.  Some installs place the Alice checkout, venv,
     # and desktop build under ALICE_HOME; a full rglob over that tree can
     # stall the gateway event loop for minutes.
-    lydia_home = get_alice_home()
+    alice_home = get_alice_home()
     empty_removed = 0
     sweep_stack: List[Tuple[Path, bool]] = []
     try:
-        for top in lydia_home.iterdir():
+        for top in alice_home.iterdir():
             if (
                 top.is_dir()
                 and not top.is_symlink()
@@ -550,9 +550,9 @@ def guess_category(path: Path) -> Optional[str]:
         return None
 
     # Skip the state dir itself, logs, memory files, sessions, config.
-    lydia_home = get_alice_home()
+    alice_home = get_alice_home()
     try:
-        rel = path.resolve().relative_to(lydia_home)
+        rel = path.resolve().relative_to(alice_home)
         top = rel.parts[0] if rel.parts else ""
         if top in {
             "disk-cleanup", "logs", "memories", "sessions", "config.yaml",

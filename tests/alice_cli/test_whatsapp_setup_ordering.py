@@ -36,8 +36,8 @@ def isolated_home(tmp_path, monkeypatch):
     return alice
 
 
-def _env_value(lydia_home: Path, key: str) -> str | None:
-    env_file = lydia_home / ".env"
+def _env_value(alice_home: Path, key: str) -> str | None:
+    env_file = alice_home / ".env"
     if not env_file.exists():
         return None
     for line in env_file.read_text().splitlines():

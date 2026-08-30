@@ -30,9 +30,9 @@ RUN_DURATION_S = 30
 WT = str(Path(__file__).resolve().parents[2])
 
 
-def worker_loop(worker_id: int, lydia_home: str, result_file: str) -> None:
-    os.environ["ALICE_HOME"] = lydia_home
-    os.environ["HOME"] = lydia_home
+def worker_loop(worker_id: int, alice_home: str, result_file: str) -> None:
+    os.environ["ALICE_HOME"] = alice_home
+    os.environ["HOME"] = alice_home
     sys.path.insert(0, WT)
     from alice_cli import kanban_db as kb
 
@@ -141,10 +141,10 @@ def worker_loop(worker_id: int, lydia_home: str, result_file: str) -> None:
         json.dump(events, f)
 
 
-def reclaimer_loop(lydia_home: str, result_file: str) -> None:
+def reclaimer_loop(alice_home: str, result_file: str) -> None:
     """Background dispatcher-like loop that reclaims stale tasks."""
-    os.environ["ALICE_HOME"] = lydia_home
-    os.environ["HOME"] = lydia_home
+    os.environ["ALICE_HOME"] = alice_home
+    os.environ["HOME"] = alice_home
     sys.path.insert(0, WT)
     from alice_cli import kanban_db as kb
 
@@ -170,7 +170,7 @@ def reclaimer_loop(lydia_home: str, result_file: str) -> None:
 
 
 def main():
-    home = tempfile.mkdtemp(prefix="lydia_mixed_stress_")
+    home = tempfile.mkdtemp(prefix="alice_mixed_stress_")
     print(f"ALICE_HOME = {home}")
 
     os.environ["ALICE_HOME"] = home

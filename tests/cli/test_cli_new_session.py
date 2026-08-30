@@ -89,7 +89,7 @@ def _make_cli(env_overrides=None, config_overrides=None, **kwargs):
     }
     if config_overrides:
         _clean_config.update(config_overrides)
-    clean_env = {"LLM_MODEL": "", "LYDIA_MAX_ITERATIONS": ""}
+    clean_env = {"LLM_MODEL": "", "ALICE_MAX_ITERATIONS": ""}
     if env_overrides:
         clean_env.update(env_overrides)
     prompt_toolkit_stubs = {
@@ -145,8 +145,8 @@ def _reset_session_id_context():
     from gateway.session_context import _UNSET, _VAR_MAP
 
     yield
-    os.environ.pop("LYDIA_SESSION_ID", None)
-    _VAR_MAP["LYDIA_SESSION_ID"].set(_UNSET)
+    os.environ.pop("ALICE_SESSION_ID", None)
+    _VAR_MAP["ALICE_SESSION_ID"].set(_UNSET)
 
 
 def test_new_command_creates_real_fresh_session_and_resets_agent_state(tmp_path):
@@ -175,19 +175,19 @@ def test_new_command_creates_real_fresh_session_and_resets_agent_state(tmp_path)
     cli.agent._invalidate_system_prompt.assert_called_once()
 
 
-def test_new_command_rotates_lydia_session_id_env_and_context(tmp_path):
+def test_new_command_rotates_alice_session_id_env_and_context(tmp_path):
     from gateway.session_context import _VAR_MAP, get_session_env
 
     cli = _prepare_cli_with_active_session(tmp_path)
     old_session_id = cli.session_id
-    os.environ["LYDIA_SESSION_ID"] = old_session_id
-    _VAR_MAP["LYDIA_SESSION_ID"].set(old_session_id)
+    os.environ["ALICE_SESSION_ID"] = old_session_id
+    _VAR_MAP["ALICE_SESSION_ID"].set(old_session_id)
 
     cli.process_command("/new")
 
     assert cli.session_id != old_session_id
-    assert os.environ["LYDIA_SESSION_ID"] == cli.session_id
-    assert get_session_env("LYDIA_SESSION_ID") == cli.session_id
+    assert os.environ["ALICE_SESSION_ID"] == cli.session_id
+    assert get_session_env("ALICE_SESSION_ID") == cli.session_id
 
 
 def test_reset_command_is_alias_for_new_session(tmp_path):

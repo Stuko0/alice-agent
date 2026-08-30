@@ -88,7 +88,7 @@ RUN set -eu; \
     # ENTRYPOINT. Safe to drop once the affected catalogs are updated.\
     ln -sf /init /usr/bin/tini
 
-# Non-root user for runtime; UID can be overridden via LYDIA_UID at runtime
+# Non-root user for runtime; UID can be overridden via ALICE_UID at runtime
 RUN useradd -u 10000 -m -d /opt/data alice
 
 COPY --chmod=0755 --from=uv_source /usr/local/bin/uv /usr/local/bin/uvx /usr/local/bin/
@@ -217,14 +217,14 @@ RUN mkdir -p /opt/alice/bin && \
     chmod 0755 /opt/alice/bin/alice && \
     printf 'docker\n' > /opt/alice/.install_method
 # The ``.install_method`` stamp is baked next to the running code (the install
-# tree), NOT into $LYDIA_HOME. $LYDIA_HOME (/opt/data) is a shared data
+# tree), NOT into $ALICE_HOME. $ALICE_HOME (/opt/data) is a shared data
 # volume that is commonly bind-mounted from the host and even shared with a
 # host-side Desktop/CLI install; stamping it at boot used to clobber that
 # host install's marker and wrongly block its ``alice update``. A code-scoped
 # stamp is read first by detect_install_method() and is immune to the share.
 # Start as root so the s6-overlay stage2 hook can usermod/groupmod and chown
 # the data volume. Each supervised service then drops to the alice user via
-# `s6-setuidgid alice` in its run script. If LYDIA_UID is unset, services
+# `s6-setuidgid alice` in its run script. If ALICE_UID is unset, services
 # run as the default alice user (UID 10000).
 
 # ---------- Bake build-time git revision ----------
@@ -234,9 +234,9 @@ RUN mkdir -p /opt/alice/bin && \
 # That makes support triage from container bug reports impossible:
 # we can't tell which commit the user is actually running.
 #
-# Fix: write the commit SHA passed via the LYDIA_GIT_SHA build-arg to
-# /opt/alice/.lydia_build_sha at build time, and have
-# lydia_cli/build_info.py read it at runtime.  Both `alice dump` and
+# Fix: write the commit SHA passed via the ALICE_GIT_SHA build-arg to
+# /opt/alice/.alice_build_sha at build time, and have
+# alice_cli/build_info.py read it at runtime.  Both `alice dump` and
 # banner.get_git_banner_state() try the baked SHA first, then fall back
 # to live `git rev-parse` for source installs (unchanged behaviour).
 #
@@ -244,9 +244,9 @@ RUN mkdir -p /opt/alice/bin && \
 # omits the file, and the runtime falls back to live-git lookup.  CI
 # (.github/workflows/docker.yml) passes ${{ github.sha }} so
 # every published image has it.
-ARG LYDIA_GIT_SHA=
-RUN if [ -n "${LYDIA_GIT_SHA}" ]; then \
-        printf '%s\n' "${LYDIA_GIT_SHA}" > /opt/alice/.lydia_build_sha; \
+ARG ALICE_GIT_SHA=
+RUN if [ -n "${ALICE_GIT_SHA}" ]; then \
+        printf '%s\n' "${ALICE_GIT_SHA}" > /opt/alice/.alice_build_sha; \
     fi
 
 # ---------- s6-overlay service wiring ----------
@@ -263,7 +263,7 @@ COPY docker/s6-rc.d/ /etc/s6-overlay/s6-rc.d/
 # runs before user services start.
 #
 # 02-reconcile-profiles re-creates per-profile gateway s6 service
-# slots from $LYDIA_HOME/profiles/<name>/ after a container restart
+# slots from $ALICE_HOME/profiles/<name>/ after a container restart
 # (the /run/service/ scandir is tmpfs and wiped on restart). Phase 4.
 RUN mkdir -p /etc/cont-init.d && \
     printf '#!/command/with-contenv sh\nexec /opt/alice/docker/stage2-hook.sh\n' \
@@ -273,7 +273,7 @@ COPY --chmod=0755 docker/cont-init.d/015-supervise-perms /etc/cont-init.d/015-su
 COPY --chmod=0755 docker/cont-init.d/02-reconcile-profiles /etc/cont-init.d/02-reconcile-profiles
 
 # ---------- Runtime ----------
-ENV LYDIA_WEB_DIST=/opt/alice/lydia_cli/web_dist
+ENV ALICE_WEB_DIST=/opt/alice/alice_cli/web_dist
 # Point the TUI launcher at the prebuilt bundle baked at build time (Layer 8:
 # `ui-tui && npm run build`). This makes _make_tui_argv take the prebuilt-bundle
 # fast path (`node --expose-gc /opt/alice/ui-tui/dist/entry.js`) and skip the
@@ -290,10 +290,10 @@ ENV LYDIA_WEB_DIST=/opt/alice/lydia_cli/web_dist
 # embedded-chat (/api/pty) connections → ENOTEMPTY → the chat tab dies with a
 # 502 / "[session ended]". Pointing at the prebuilt bundle sidesteps the whole
 # check. (A separate launcher hardening is tracked independently.)
-ENV LYDIA_TUI_DIR=/opt/alice/ui-tui
-ENV LYDIA_HOME=/opt/data
-ENV LYDIA_WRITE_SAFE_ROOT=/opt/data
-ENV LYDIA_DISABLE_LAZY_INSTALLS=1
+ENV ALICE_TUI_DIR=/opt/alice/ui-tui
+ENV ALICE_HOME=/opt/data
+ENV ALICE_WRITE_SAFE_ROOT=/opt/data
+ENV ALICE_DISABLE_LAZY_INSTALLS=1
 # The published image seals /opt/alice (root-owned, read-only) so a runtime
 # lazy install can't mutate the agent's own venv and brick it. But opt-in
 # backends (Firecrawl web search, Exa, Feishu, …) keep their SDKs in
@@ -306,11 +306,11 @@ ENV LYDIA_DISABLE_LAZY_INSTALLS=1
 # is seeded + chowned to the alice user by docker/stage2-hook.sh and lives
 # on the /opt/data volume, so it persists across container recreates / image
 # updates (an ABI stamp invalidates it if a rebuild bumps the interpreter).
-ENV LYDIA_LAZY_INSTALL_TARGET=/opt/data/lazy-packages
+ENV ALICE_LAZY_INSTALL_TARGET=/opt/data/lazy-packages
 
 # `docker exec` privilege-drop shim. When operators run
 # `docker exec <c> alice ...` they default to root, and any file the
-# command writes under $LYDIA_HOME (auth.json, .env, config.yaml) ends
+# command writes under $ALICE_HOME (auth.json, .env, config.yaml) ends
 # up root-owned and unreadable to the supervised gateway (UID 10000).
 # The shim lives at /opt/alice/bin/alice, sits earliest on PATH, and
 # transparently re-exec's the real venv binary via `s6-setuidgid alice`
@@ -318,7 +318,7 @@ ENV LYDIA_LAZY_INSTALL_TARGET=/opt/data/lazy-packages
 # `--user alice`, etc.) hit the short-circuit path with no overhead.
 # Recursion is impossible because the shim exec's the venv binary by
 # absolute path (/opt/alice/.venv/bin/alice). See the shim source for
-# the opt-out env var (LYDIA_DOCKER_EXEC_AS_ROOT=1).
+# the opt-out env var (ALICE_DOCKER_EXEC_AS_ROOT=1).
 
 # Pre-s6 entrypoint.sh did `source .venv/bin/activate` which exported
 # the venv bin onto PATH; Architecture B's main-wrapper.sh does the

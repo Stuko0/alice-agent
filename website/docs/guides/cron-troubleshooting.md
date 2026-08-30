@@ -157,7 +157,7 @@ The skill must be installed on the machine running the scheduler. If you move be
 Likely a delivery target issue (see Delivery Failures above), no output, or a response containing the cron quiet marker `[SILENT]`.
 
 **Job hangs or times out**
-The scheduler uses an inactivity-based timeout (default 600s, configurable via `LYDIA_CRON_TIMEOUT` env var, `0` for unlimited). The agent can run as long as it's actively calling tools — the timer only fires after sustained inactivity. Long-running jobs should use scripts to handle data collection and deliver only the result.
+The scheduler uses an inactivity-based timeout (default 600s, configurable via `ALICE_CRON_TIMEOUT` env var, `0` for unlimited). The agent can run as long as it's actively calling tools — the timer only fires after sustained inactivity. Long-running jobs should use scripts to handle data collection and deliver only the result.
 
 ### Check 3: Lock contention
 
@@ -214,7 +214,7 @@ If you've worked through this guide and the issue persists:
 
 1. Run the job with `alice cron run <job_id>` (fires on next gateway tick) and watch for errors in the chat output
 2. Check `~/.alice/logs/agent.log` for scheduler messages and `~/.alice/logs/errors.log` for warnings
-3. Open an issue at [github.com/NousResearch/alice-agent](https://github.com/NousResearch/alice-agent) with:
+3. Open an issue at [github.com/Stuko0/alice-agent](https://github.com/Stuko0/alice-agent) with:
    - The job ID and schedule
    - The delivery target
    - What you expected vs. what happened

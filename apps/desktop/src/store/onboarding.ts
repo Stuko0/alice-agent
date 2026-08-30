@@ -556,9 +556,9 @@ export async function refreshOnboarding(ctx: OnboardingContext) {
 // the flow never silently stalls in a waiting state. Mirrors the pattern in
 // apps/desktop/src/app/artifacts/index.tsx.
 async function openSignInUrl(url: string) {
-  if (window.lydiaDesktop?.openExternal) {
+  if (window.aliceDesktop?.openExternal) {
     try {
-      await window.lydiaDesktop.openExternal(url)
+      await window.aliceDesktop.openExternal(url)
 
       return
     } catch {

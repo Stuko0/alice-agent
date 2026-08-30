@@ -7,22 +7,22 @@ const {
   appendUniquePathEntries,
   buildDesktopBackendEnv,
   buildDesktopBackendPath,
-  normalizeLydiaHomeRoot,
+  normalizeAliceHomeRoot,
   pathEnvKey
 } = require('./backend-env.cjs')
 
-test('desktop backend PATH adds Lydia-managed bins and missing POSIX sane entries', () => {
+test('desktop backend PATH adds Alice-managed bins and missing POSIX sane entries', () => {
   const result = buildDesktopBackendPath({
-    lydiaHome: '/Users/test/.lydia',
-    venvRoot: '/Users/test/.lydia/lydia-agent/venv',
+    aliceHome: '/Users/test/.alice',
+    venvRoot: '/Users/test/.alice/alice-agent/venv',
     currentPath: '/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin',
     platform: 'darwin',
     pathModule: path.posix
   })
 
   const entries = result.split(':')
-  assert.equal(entries[0], '/Users/test/.lydia/node/bin')
-  assert.equal(entries[1], '/Users/test/.lydia/lydia-agent/venv/bin')
+  assert.equal(entries[0], '/Users/test/.alice/node/bin')
+  assert.equal(entries[1], '/Users/test/.alice/alice-agent/venv/bin')
   assert.ok(entries.includes('/opt/homebrew/bin'), 'Apple Silicon Homebrew bin is added')
   assert.ok(entries.includes('/opt/homebrew/sbin'), 'Apple Silicon Homebrew sbin is added')
   assert.ok(entries.includes('/usr/local/sbin'), 'missing standard sbin is added')
@@ -34,8 +34,8 @@ test('desktop backend PATH adds Lydia-managed bins and missing POSIX sane entrie
 
 test('desktop backend PATH preserves first occurrence and avoids duplicates', () => {
   const result = buildDesktopBackendPath({
-    lydiaHome: '/Users/test/.lydia',
-    venvRoot: '/Users/test/.lydia/lydia-agent/venv',
+    aliceHome: '/Users/test/.alice',
+    venvRoot: '/Users/test/.alice/alice-agent/venv',
     currentPath: '/opt/homebrew/bin:/usr/bin:/opt/homebrew/bin:/bin',
     platform: 'darwin',
     pathModule: path.posix
@@ -51,9 +51,9 @@ test('desktop backend PATH preserves first occurrence and avoids duplicates', ()
 
 test('buildDesktopBackendEnv extends PYTHONPATH and backend PATH together', () => {
   const env = buildDesktopBackendEnv({
-    lydiaHome: '/Users/test/.lydia',
-    pythonPathEntries: ['/repo/lydia-agent'],
-    venvRoot: '/Users/test/.lydia/lydia-agent/venv',
+    aliceHome: '/Users/test/.alice',
+    pythonPathEntries: ['/repo/alice-agent'],
+    venvRoot: '/Users/test/.alice/alice-agent/venv',
     currentEnv: {
       PATH: '/usr/bin:/bin',
       PYTHONPATH: '/existing/pythonpath'
@@ -62,28 +62,28 @@ test('buildDesktopBackendEnv extends PYTHONPATH and backend PATH together', () =
     pathModule: path.posix
   })
 
-  assert.equal(env.PYTHONPATH, '/repo/lydia-agent:/existing/pythonpath')
-  assert.ok(env.PATH.startsWith('/Users/test/.lydia/node/bin:/Users/test/.lydia/lydia-agent/venv/bin:'))
+  assert.equal(env.PYTHONPATH, '/repo/alice-agent:/existing/pythonpath')
+  assert.ok(env.PATH.startsWith('/Users/test/.alice/node/bin:/Users/test/.alice/alice-agent/venv/bin:'))
   assert.ok(env.PATH.includes('/opt/homebrew/bin'))
 })
 
-test('normalizeLydiaHomeRoot maps profile homes back to the global Lydia root', () => {
+test('normalizeAliceHomeRoot maps profile homes back to the global Alice root', () => {
   assert.equal(
-    normalizeLydiaHomeRoot('/Users/test/.lydia/profiles/oracle', { pathModule: path.posix }),
-    '/Users/test/.lydia'
+    normalizeAliceHomeRoot('/Users/test/.alice/profiles/oracle', { pathModule: path.posix }),
+    '/Users/test/.alice'
   )
   assert.equal(
-    normalizeLydiaHomeRoot('C:\\Users\\test\\AppData\\Local\\lydia\\profiles\\oracle', { pathModule: path.win32 }),
-    'C:\\Users\\test\\AppData\\Local\\lydia'
+    normalizeAliceHomeRoot('C:\\Users\\test\\AppData\\Local\\alice\\profiles\\oracle', { pathModule: path.win32 }),
+    'C:\\Users\\test\\AppData\\Local\\alice'
   )
-  assert.equal(normalizeLydiaHomeRoot('/Users/test/.lydia', { pathModule: path.posix }), '/Users/test/.lydia')
+  assert.equal(normalizeAliceHomeRoot('/Users/test/.alice', { pathModule: path.posix }), '/Users/test/.alice')
 })
 
 test('Windows PATH casing and delimiter are preserved without POSIX sane entries', () => {
   const env = buildDesktopBackendEnv({
-    lydiaHome: 'C:\\Users\\test\\AppData\\Local\\lydia',
-    pythonPathEntries: ['C:\\repo\\lydia-agent'],
-    venvRoot: 'C:\\Users\\test\\AppData\\Local\\lydia\\lydia-agent\\venv',
+    aliceHome: 'C:\\Users\\test\\AppData\\Local\\alice',
+    pythonPathEntries: ['C:\\repo\\alice-agent'],
+    venvRoot: 'C:\\Users\\test\\AppData\\Local\\alice\\alice-agent\\venv',
     currentEnv: {
       Path: 'C:\\Windows\\System32;C:\\Windows',
       PYTHONPATH: 'C:\\existing\\pythonpath'
@@ -94,7 +94,7 @@ test('Windows PATH casing and delimiter are preserved without POSIX sane entries
 
   assert.equal(pathEnvKey({ Path: 'x' }, 'win32'), 'Path')
   assert.equal(env.PATH, undefined)
-  assert.ok(env.Path.startsWith('C:\\Users\\test\\AppData\\Local\\lydia\\node\\bin;'))
+  assert.ok(env.Path.startsWith('C:\\Users\\test\\AppData\\Local\\alice\\node\\bin;'))
   assert.ok(env.Path.includes('\\venv\\Scripts;'))
   assert.ok(env.Path.includes(';C:\\Windows\\System32;C:\\Windows'))
   assert.equal(env.Path.includes('/opt/homebrew/bin'), false)

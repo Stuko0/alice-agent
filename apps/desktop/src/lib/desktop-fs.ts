@@ -1,13 +1,13 @@
 import type {
-  LydiaConnection,
-  LydiaReadDirResult,
-  LydiaReadFileTextResult,
-  LydiaSelectPathsOptions
+  AliceConnection,
+  AliceReadDirResult,
+  AliceReadFileTextResult,
+  AliceSelectPathsOptions
 } from '@/global'
 import { $connection } from '@/store/session'
 
 export interface DesktopFsRemotePicker {
-  selectPaths: (options?: LydiaSelectPathsOptions) => Promise<string[]>
+  selectPaths: (options?: AliceSelectPathsOptions) => Promise<string[]>
 }
 
 let remotePicker: DesktopFsRemotePicker | null = null
@@ -16,7 +16,7 @@ export function setDesktopFsRemotePicker(next: DesktopFsRemotePicker | null) {
   remotePicker = next
 }
 
-function connectionCacheKey(connection: LydiaConnection | null) {
+function connectionCacheKey(connection: AliceConnection | null) {
   if (!connection) {
     return 'local:'
   }
@@ -43,7 +43,7 @@ function fsPath(endpoint: string, filePath: string) {
 }
 
 function bridge() {
-  const desktop = window.lydiaDesktop
+  const desktop = window.aliceDesktop
 
   if (!desktop) {
     throw new Error('Alice Desktop bridge is unavailable')
@@ -58,20 +58,20 @@ function remoteFsApi<T>(path: string, body?: Record<string, unknown>): Promise<T
   )
 }
 
-export async function readDesktopDir(path: string): Promise<LydiaReadDirResult> {
+export async function readDesktopDir(path: string): Promise<AliceReadDirResult> {
   if (!isDesktopFsRemoteMode()) {
     return bridge().readDir(path)
   }
 
-  return remoteFsApi<LydiaReadDirResult>(fsPath('list', path))
+  return remoteFsApi<AliceReadDirResult>(fsPath('list', path))
 }
 
-export async function readDesktopFileText(path: string): Promise<LydiaReadFileTextResult> {
+export async function readDesktopFileText(path: string): Promise<AliceReadFileTextResult> {
   if (!isDesktopFsRemoteMode()) {
     return bridge().readFileText(path)
   }
 
-  return remoteFsApi<LydiaReadFileTextResult>(fsPath('read-text', path))
+  return remoteFsApi<AliceReadFileTextResult>(fsPath('read-text', path))
 }
 
 // Save UTF-8 text back to a file. Local writes go through the hardened Electron
@@ -171,7 +171,7 @@ export async function desktopFileDiff(repoRoot: string, filePath: string): Promi
   return git?.fileDiff ? git.fileDiff(repoRoot, filePath) : ''
 }
 
-export async function selectDesktopPaths(options?: LydiaSelectPathsOptions): Promise<string[]> {
+export async function selectDesktopPaths(options?: AliceSelectPathsOptions): Promise<string[]> {
   const desktop = bridge()
 
   if (!isDesktopFsRemoteMode()) {

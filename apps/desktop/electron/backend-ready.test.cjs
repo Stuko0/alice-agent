@@ -8,7 +8,7 @@
  * starts before the backend binds its port, so a tight 45s deadline killed a
  * healthy-but-still-compiling backend on cold Windows installs. The default is
  * now cold-start tolerant and overridable via
- * LYDIA_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS, clamped to a 45s floor.
+ * ALICE_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS, clamped to a 45s floor.
  */
 
 const test = require('node:test')
@@ -49,24 +49,24 @@ test('default is cold-start tolerant (> the historical 45s floor)', () => {
   )
 })
 
-test('honors a valid LYDIA_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS override', () => {
-  const env = { LYDIA_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS: '120000' }
+test('honors a valid ALICE_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS override', () => {
+  const env = { ALICE_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS: '120000' }
   assert.equal(resolvePortAnnounceTimeoutMs(env), 120_000)
 })
 
 test('clamps an override below the floor up to the 45s minimum', () => {
-  const env = { LYDIA_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS: '1000' }
+  const env = { ALICE_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS: '1000' }
   assert.equal(resolvePortAnnounceTimeoutMs(env), MIN_PORT_ANNOUNCE_TIMEOUT_MS)
 })
 
 test('rounds a fractional override', () => {
-  const env = { LYDIA_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS: '60000.7' }
+  const env = { ALICE_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS: '60000.7' }
   assert.equal(resolvePortAnnounceTimeoutMs(env), 60_001)
 })
 
 test('falls back to the default for malformed / non-positive overrides', () => {
   for (const bad of ['', 'abc', '0', '-5', 'NaN', undefined]) {
-    const env = bad === undefined ? {} : { LYDIA_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS: bad }
+    const env = bad === undefined ? {} : { ALICE_DESKTOP_PORT_ANNOUNCE_TIMEOUT_MS: bad }
     assert.equal(
       resolvePortAnnounceTimeoutMs(env),
       DEFAULT_PORT_ANNOUNCE_TIMEOUT_MS,
@@ -82,14 +82,14 @@ test('falls back to the default for malformed / non-positive overrides', () => {
 test('resolves with the announced port', async () => {
   const child = makeFakeChild()
   const p = waitForDashboardPort(child, 1000)
-  child.stdout.emit('data', 'noise before\nLYDIA_DASHBOARD_READY port=54321\n')
+  child.stdout.emit('data', 'noise before\nALICE_DASHBOARD_READY port=54321\n')
   assert.equal(await p, 54321)
 })
 
 test('parses the port even when the line arrives split across chunks', async () => {
   const child = makeFakeChild()
   const p = waitForDashboardPort(child, 1000)
-  child.stdout.emit('data', 'LYDIA_DASHBOARD_READY po')
+  child.stdout.emit('data', 'ALICE_DASHBOARD_READY po')
   child.stdout.emit('data', 'rt=8080\n')
   assert.equal(await p, 8080)
 })
@@ -122,7 +122,7 @@ test('a late announcement after timeout does not throw (listeners torn down)', a
   // The orphaned backend may still print its READY line later; the watcher
   // must have detached so this emit is a no-op rather than a double-settle.
   assert.doesNotThrow(() => {
-    child.stdout.emit('data', 'LYDIA_DASHBOARD_READY port=9999\n')
+    child.stdout.emit('data', 'ALICE_DASHBOARD_READY port=9999\n')
   })
 })
 
@@ -131,7 +131,7 @@ test('a late announcement after timeout does not throw (listeners torn down)', a
 // ---------------------------------------------------------------------------
 
 function mkTmpReadyFile() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lydia-ready-test-'))
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alice-ready-test-'))
   return {
     dir,
     file: path.join(dir, 'ready.json'),

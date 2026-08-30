@@ -1,12 +1,12 @@
 //! Filesystem paths + logging setup.
 //!
-//! Mirrors `lydia_constants.get_lydia_home()` from the Python CLI:
-//!   Windows: %LOCALAPPDATA%\lydia
-//!   macOS:   ~/.lydia
-//!   Linux:   ~/.lydia  (override via $LYDIA_HOME)
+//! Mirrors `alice_constants.get_alice_home()` from the Python CLI:
+//!   Windows: %LOCALAPPDATA%\alice
+//!   macOS:   ~/.alice
+//!   Linux:   ~/.alice  (override via $ALICE_HOME)
 //!
-//! NOTE (macOS): Python's get_lydia_home(), scripts/install.sh, and the
-//! Electron desktop's resolveLydiaHome() ALL use ~/.lydia on macOS — there
+//! NOTE (macOS): Python's get_alice_home(), scripts/install.sh, and the
+//! Electron desktop's resolveAliceHome() ALL use ~/.alice on macOS — there
 //! is no ~/Library/Application Support branch anywhere else. An earlier
 //! version of this file used Application Support, which drifted from every
 //! other component: the installer wrote the install to one dir and the
@@ -21,9 +21,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use tracing_appender::non_blocking::WorkerGuard;
 
-/// Returns the canonical Lydia home directory, respecting $LYDIA_HOME if set.
-pub fn lydia_home() -> PathBuf {
-    if let Ok(override_path) = std::env::var("LYDIA_HOME") {
+/// Returns the canonical Alice home directory, respecting $ALICE_HOME if set.
+pub fn alice_home() -> PathBuf {
+    if let Ok(override_path) = std::env::var("ALICE_HOME") {
         if !override_path.trim().is_empty() {
             return PathBuf::from(override_path);
         }
@@ -31,25 +31,25 @@ pub fn lydia_home() -> PathBuf {
 
     #[cfg(target_os = "windows")]
     {
-        // %LOCALAPPDATA%\lydia — matches scripts/install.ps1's $LydiaHome.
+        // %LOCALAPPDATA%\alice — matches scripts/install.ps1's $AliceHome.
         if let Some(local_app_data) = dirs::data_local_dir() {
-            return local_app_data.join("lydia");
+            return local_app_data.join("alice");
         }
     }
 
-    // macOS + Linux + fallback: ~/.lydia (matches Python get_lydia_home(),
-    // install.sh, and the Electron desktop's resolveLydiaHome()).
+    // macOS + Linux + fallback: ~/.alice (matches Python get_alice_home(),
+    // install.sh, and the Electron desktop's resolveAliceHome()).
     if let Some(home) = dirs::home_dir() {
-        return home.join(".lydia");
+        return home.join(".alice");
     }
 
     // Last resort — current dir, almost certainly wrong but at least
     // doesn't panic.
-    PathBuf::from(".lydia")
+    PathBuf::from(".alice")
 }
 
 pub fn log_dir() -> PathBuf {
-    lydia_home().join("logs")
+    alice_home().join("logs")
 }
 
 pub fn log_path() -> PathBuf {
@@ -57,37 +57,37 @@ pub fn log_path() -> PathBuf {
 }
 
 pub fn bootstrap_cache_dir() -> PathBuf {
-    lydia_home().join("bootstrap-cache")
+    alice_home().join("bootstrap-cache")
 }
 
 /// Stable location the installer copies itself to after a successful install.
 /// The desktop app re-invokes this with `--update`, and the start-menu /
 /// desktop shortcuts can point users back to it. Lives directly under
-/// LYDIA_HOME so it survives repo checkout deletion (unlike anything under
-/// lydia-agent/).
+/// ALICE_HOME so it survives repo checkout deletion (unlike anything under
+/// alice-agent/).
 ///
-/// On Windows this is `%LOCALAPPDATA%\lydia\lydia-setup.exe`; on other
+/// On Windows this is `%LOCALAPPDATA%\alice\alice-setup.exe`; on other
 /// platforms the extension differs but the directory is the same.
 pub fn installer_dest() -> PathBuf {
     let name = if cfg!(target_os = "windows") {
-        "lydia-setup.exe"
+        "alice-setup.exe"
     } else {
-        "lydia-setup"
+        "alice-setup"
     };
-    lydia_home().join(name)
+    alice_home().join(name)
 }
 
 /// Marker the updater writes for the duration of an in-app update and removes
 /// when it finishes (see update.rs `UpdateMarkerGuard`). A freshly-launched
 /// desktop checks this before spawning its own local backend: spawning one
-/// mid-update re-locks the venv shim and triggers `force_kill_other_lydia`,
+/// mid-update re-locks the venv shim and triggers `force_kill_other_alice`,
 /// which then kills that legitimate backend in a respawn loop (#50238).
 ///
-/// Lives directly under LYDIA_HOME (same rationale as `installer_dest`) so the
-/// Electron desktop — which resolves LYDIA_HOME identically and pins it into
+/// Lives directly under ALICE_HOME (same rationale as `installer_dest`) so the
+/// Electron desktop — which resolves ALICE_HOME identically and pins it into
 /// the updater's env — agrees on the exact path.
 pub fn update_in_progress_marker() -> PathBuf {
-    lydia_home().join(".lydia-update-in-progress")
+    alice_home().join(".alice-update-in-progress")
 }
 
 /// Copy the currently-running installer binary to `installer_dest()` so it's
@@ -98,7 +98,7 @@ pub fn update_in_progress_marker() -> PathBuf {
 /// that path), where copying onto ourselves would be a Windows sharing
 /// violation. Best-effort: a failure here must not fail the install, so the
 /// caller logs and continues.
-pub fn copy_self_to_lydia_home() -> std::io::Result<()> {
+pub fn copy_self_to_alice_home() -> std::io::Result<()> {
     let src = std::env::current_exe()?;
     let dest = installer_dest();
 
@@ -119,7 +119,7 @@ pub fn copy_self_to_lydia_home() -> std::io::Result<()> {
     }
     std::fs::copy(&src, &dest)?;
     repair_macos_installer_helper(&dest);
-    tracing::info!(?src, ?dest, "copied installer to LYDIA_HOME");
+    tracing::info!(?src, ?dest, "copied installer to ALICE_HOME");
     Ok(())
 }
 
@@ -151,14 +151,14 @@ fn repair_macos_installer_helper(_path: &Path) {}
 
 /// Where install.ps1 writes the bootstrap-complete marker (existence-only file
 /// the Electron app also checks). Per main.cjs:
-///   const BOOTSTRAP_COMPLETE_MARKER = path.join(ACTIVE_LYDIA_ROOT, '.lydia-bootstrap-complete')
-/// We don't always know ACTIVE_LYDIA_ROOT until install.ps1 reports it, so
+///   const BOOTSTRAP_COMPLETE_MARKER = path.join(ACTIVE_ALICE_ROOT, '.alice-bootstrap-complete')
+/// We don't always know ACTIVE_ALICE_ROOT until install.ps1 reports it, so
 /// this is a probe helper, not a definitive path.
 pub fn likely_bootstrap_marker(install_root: &Path) -> PathBuf {
-    install_root.join(".lydia-bootstrap-complete")
+    install_root.join(".alice-bootstrap-complete")
 }
 
-/// Initializes tracing to bootstrap-installer.log under LYDIA_HOME/logs/.
+/// Initializes tracing to bootstrap-installer.log under ALICE_HOME/logs/.
 /// Returns a guard that flushes the appender on drop — keep it alive for
 /// the lifetime of the process.
 pub fn init_logging() -> Option<WorkerGuard> {
@@ -166,14 +166,14 @@ pub fn init_logging() -> Option<WorkerGuard> {
     if let Err(err) = std::fs::create_dir_all(&dir) {
         // No log dir → log to stderr only. Don't panic; the installer
         // should still be usable on an exotic filesystem.
-        eprintln!("[lydia-setup] could not create log dir {dir:?}: {err}");
+        eprintln!("[alice-setup] could not create log dir {dir:?}: {err}");
         return None;
     }
 
     let file_appender = tracing_appender::rolling::never(&dir, "bootstrap-installer.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
-    let env_filter = tracing_subscriber::EnvFilter::try_from_env("LYDIA_BOOTSTRAP_LOG")
+    let env_filter = tracing_subscriber::EnvFilter::try_from_env("ALICE_BOOTSTRAP_LOG")
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
 
     tracing_subscriber::fmt()
@@ -196,8 +196,8 @@ pub fn get_log_path() -> String {
 }
 
 #[tauri::command]
-pub fn get_lydia_home() -> String {
-    lydia_home().to_string_lossy().into_owned()
+pub fn get_alice_home() -> String {
+    alice_home().to_string_lossy().into_owned()
 }
 
 #[tauri::command]

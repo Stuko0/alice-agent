@@ -290,9 +290,9 @@ class TestNormalizeAuxProvider:
 
 class TestReadCodexAccessToken:
     def test_valid_auth_store(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "auth.json").write_text(json.dumps({
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "auth.json").write_text(json.dumps({
             "version": 1,
             "providers": {
                 "openai-codex": {
@@ -300,14 +300,14 @@ class TestReadCodexAccessToken:
                 },
             },
         }))
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         result = _read_codex_access_token()
         assert result == "tok-123"
 
     def test_pool_without_selected_entry_falls_back_to_auth_store(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
         valid_jwt = "eyJhbGciOiJSUzI1NiJ9.eyJleHAiOjk5OTk5OTk5OTl9.sig"
         with patch("agent.auxiliary_client._select_pool_entry", return_value=(True, None)), \
@@ -319,18 +319,18 @@ class TestReadCodexAccessToken:
         assert result == valid_jwt
 
     def test_missing_returns_none(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         with patch("agent.auxiliary_client._select_pool_entry", return_value=(False, None)):
             result = _read_codex_access_token()
         assert result is None
 
     def test_empty_token_returns_none(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "auth.json").write_text(json.dumps({
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "auth.json").write_text(json.dumps({
             "version": 1,
             "providers": {
                 "openai-codex": {
@@ -338,7 +338,7 @@ class TestReadCodexAccessToken:
                 },
             },
         }))
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         result = _read_codex_access_token()
         assert result is None
 
@@ -370,9 +370,9 @@ class TestReadCodexAccessToken:
         payload = base64.urlsafe_b64encode(payload_data).rstrip(b"=").decode()
         expired_jwt = f"{header}.{payload}.fakesig"
 
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "auth.json").write_text(json.dumps({
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "auth.json").write_text(json.dumps({
             "version": 1,
             "providers": {
                 "openai-codex": {
@@ -380,7 +380,7 @@ class TestReadCodexAccessToken:
                 },
             },
         }))
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         with patch("agent.auxiliary_client._select_pool_entry", return_value=(False, None)):
             result = _read_codex_access_token()
         assert result is None, "Expired JWT should return None"
@@ -395,9 +395,9 @@ class TestReadCodexAccessToken:
         payload = base64.urlsafe_b64encode(payload_data).rstrip(b"=").decode()
         valid_jwt = f"{header}.{payload}.fakesig"
 
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "auth.json").write_text(json.dumps({
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "auth.json").write_text(json.dumps({
             "version": 1,
             "providers": {
                 "openai-codex": {
@@ -405,15 +405,15 @@ class TestReadCodexAccessToken:
                 },
             },
         }))
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         result = _read_codex_access_token()
         assert result == valid_jwt
 
     def test_non_jwt_token_passes_through(self, tmp_path, monkeypatch):
         """Non-JWT tokens (no dots) should be returned as-is."""
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "auth.json").write_text(json.dumps({
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "auth.json").write_text(json.dumps({
             "version": 1,
             "providers": {
                 "openai-codex": {
@@ -421,7 +421,7 @@ class TestReadCodexAccessToken:
                 },
             },
         }))
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         result = _read_codex_access_token()
         assert result == "plain-token-no-jwt"
 
@@ -437,14 +437,14 @@ class TestResolveXaiOAuthForAux:
         from agent.credential_pool import AUTH_TYPE_OAUTH, PooledCredential, load_pool
         from alice_cli.auth import DEFAULT_XAI_OAUTH_BASE_URL
 
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "auth.json").write_text(json.dumps({
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "auth.json").write_text(json.dumps({
             "version": 1,
             "providers": {},
         }))
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
-        monkeypatch.delenv("LYDIA_XAI_BASE_URL", raising=False)
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
+        monkeypatch.delenv("ALICE_XAI_BASE_URL", raising=False)
         monkeypatch.delenv("XAI_BASE_URL", raising=False)
 
         pool = load_pool("xai-oauth")
@@ -469,14 +469,14 @@ class TestResolveXaiOAuthForAux:
         from agent.credential_pool import AUTH_TYPE_OAUTH, PooledCredential, load_pool
         from alice_cli.auth import DEFAULT_XAI_OAUTH_BASE_URL
 
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "auth.json").write_text(json.dumps({
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "auth.json").write_text(json.dumps({
             "version": 1,
             "providers": {},
         }))
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
-        monkeypatch.setenv("LYDIA_XAI_BASE_URL", "https://example.x.ai/v1/")
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
+        monkeypatch.setenv("ALICE_XAI_BASE_URL", "https://example.x.ai/v1/")
 
         pool = load_pool("xai-oauth")
         pool.add_entry(PooledCredential(
@@ -787,9 +787,9 @@ class TestExpiredCodexFallback:
         payload = base64.urlsafe_b64encode(payload_data).rstrip(b"=").decode()
         expired_jwt = f"{header}.{payload}.fakesig"
 
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "auth.json").write_text(json.dumps({
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "auth.json").write_text(json.dumps({
             "version": 1,
             "providers": {
                 "openai-codex": {
@@ -797,7 +797,7 @@ class TestExpiredCodexFallback:
                 },
             },
         }))
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
         # Set up Anthropic as fallback
         monkeypatch.setenv("ANTHROPIC_TOKEN", "sk-ant-oat01-test-fallback")
@@ -830,9 +830,9 @@ class TestExpiredCodexFallback:
         payload = base64.urlsafe_b64encode(payload_data).rstrip(b"=").decode()
         expired_jwt = f"{header}.{payload}.fakesig"
 
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "auth.json").write_text(json.dumps({
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "auth.json").write_text(json.dumps({
             "version": 1,
             "providers": {
                 "openai-codex": {
@@ -840,7 +840,7 @@ class TestExpiredCodexFallback:
                 },
             },
         }))
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setenv("OPENROUTER_API_KEY", "or-test-key")
 
         with patch("agent.auxiliary_client.OpenAI") as mock_openai:
@@ -861,9 +861,9 @@ class TestExpiredCodexFallback:
         payload = base64.urlsafe_b64encode(payload_data).rstrip(b"=").decode()
         expired_jwt = f"{header}.{payload}.fakesig"
 
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "auth.json").write_text(json.dumps({
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "auth.json").write_text(json.dumps({
             "version": 1,
             "providers": {
                 "openai-codex": {
@@ -871,7 +871,7 @@ class TestExpiredCodexFallback:
                 },
             },
         }))
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
         # Simulate Ollama or custom endpoint
         with patch("agent.auxiliary_client._resolve_custom_runtime",
@@ -883,7 +883,7 @@ class TestExpiredCodexFallback:
                 assert client is not None
 
 
-    def test_lydia_oauth_file_sets_oauth_flag(self, monkeypatch):
+    def test_alice_oauth_file_sets_oauth_flag(self, monkeypatch):
         """OAuth-style tokens should get is_oauth=*** (token is not sk-ant-api-*)."""
         # Mock resolve_anthropic_token to return an OAuth-style token
         with patch("agent.anthropic_adapter.resolve_anthropic_token", return_value="sk-ant-oat-alice-token"), \
@@ -904,9 +904,9 @@ class TestExpiredCodexFallback:
         payload = base64.urlsafe_b64encode(payload_data).rstrip(b"=").decode()
         no_exp_jwt = f"{header}.{payload}.fakesig"
 
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "auth.json").write_text(json.dumps({
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "auth.json").write_text(json.dumps({
             "version": 1,
             "providers": {
                 "openai-codex": {
@@ -914,7 +914,7 @@ class TestExpiredCodexFallback:
                 },
             },
         }))
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         result = _read_codex_access_token()
         assert result == no_exp_jwt, "JWT without exp should pass through"
 
@@ -925,9 +925,9 @@ class TestExpiredCodexFallback:
         payload = base64.urlsafe_b64encode(b"not-json-content").rstrip(b"=").decode()
         bad_jwt = f"{header}.{payload}.fakesig"
 
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "auth.json").write_text(json.dumps({
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "auth.json").write_text(json.dumps({
             "version": 1,
             "providers": {
                 "openai-codex": {
@@ -935,7 +935,7 @@ class TestExpiredCodexFallback:
                 },
             },
         }))
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         result = _read_codex_access_token()
         assert result == bad_jwt, "JWT with invalid JSON payload should pass through"
 
@@ -1506,7 +1506,7 @@ class TestIsPaymentError:
     def test_404_free_tier_model_block_is_payment(self):
         exc = Exception(
             "Model 'gpt-5' is not available on the Free Tier. "
-            "Upgrade at https://portal.nousresearch.com or pick a free model."
+            "Upgrade at https://stuko.dev or pick a free model."
         )
         exc.status_code = 404
         assert _is_payment_error(exc) is True
@@ -3982,7 +3982,7 @@ class TestAuxiliaryClientPoisonedCacheEviction:
     Otherwise the next auxiliary call (compression retry, memory flush,
     background review) reuses the closed httpx transport and fails with
     ``Connection error`` even though the main provider route is healthy.
-    See https://10.1.200.116:3000/arquant-admin/NewLydia/issues/23432.
+    See https://10.1.200.116:3000/arquant-admin/NewAlice/issues/23432.
     """
 
     def test_evict_cached_client_instance_drops_direct_match(self):
@@ -4205,7 +4205,7 @@ class TestBuildCallKwargsToolDedup:
     Providers like Google Vertex, Azure, and Bedrock reject requests with
     duplicate tool names (HTTP 400).  This guard converts a hard failure into
     a warning log so agent turns succeed even if an upstream injection path
-    regresses.  See: https://10.1.200.116:3000/arquant-admin/NewLydia/issues/18478
+    regresses.  See: https://10.1.200.116:3000/arquant-admin/NewAlice/issues/18478
     """
 
     def _make_tool(self, name: str) -> dict:

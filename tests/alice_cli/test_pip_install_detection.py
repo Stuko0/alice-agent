@@ -21,7 +21,7 @@ def test_git_install_detected_when_git_dir_exists(tmp_path):
 
 
 def test_managed_install_takes_precedence(tmp_path):
-    """When LYDIA_MANAGED is set, that takes precedence over git detection."""
+    """When ALICE_MANAGED is set, that takes precedence over git detection."""
     (tmp_path / ".git").mkdir()
     with patch("alice_cli.config.get_managed_system", return_value="NixOS"), \
          patch("alice_cli.config.get_alice_home", return_value=tmp_path):

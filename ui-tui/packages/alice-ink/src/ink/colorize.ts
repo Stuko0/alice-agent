@@ -33,7 +33,7 @@ export function shouldUseRichEightBitDowngradeForLegacyAppleTerminal(
   level = chalk.level
 ): boolean {
   const termProgram = (env.TERM_PROGRAM ?? '').trim()
-  const truecolorOverride = /^(?:1|true|yes|on)$/i.test((env.LYDIA_TUI_TRUECOLOR ?? '').trim())
+  const truecolorOverride = /^(?:1|true|yes|on)$/i.test((env.ALICE_TUI_TRUECOLOR ?? '').trim())
   const advertisesTruecolor = /^(?:truecolor|24bit)$/i.test((env.COLORTERM ?? '').trim())
 
   return (

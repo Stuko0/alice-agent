@@ -44,7 +44,7 @@ alice auth spotify
 
 The 7 Spotify tools only appear in the agent's toolset after step 1 — they're off by default so users who don't want them don't ship extra tool schemas on every API call.
 
-If no `LYDIA_SPOTIFY_CLIENT_ID` is set, Alice walks you through the app registration inline:
+If no `ALICE_SPOTIFY_CLIENT_ID` is set, Alice walks you through the app registration inline:
 
 1. Opens `https://developer.spotify.com/dashboard` in your browser
 2. Prints the exact values to paste into Spotify's "Create app" form
@@ -225,7 +225,7 @@ Full cron reference: [Cron Jobs](./cron).
 alice auth logout spotify
 ```
 
-Removes tokens from `~/.alice/auth.json`. To also clear the app config, delete `LYDIA_SPOTIFY_CLIENT_ID` (and `LYDIA_SPOTIFY_REDIRECT_URI` if you set it) from `~/.alice/.env`, or run the wizard again.
+Removes tokens from `~/.alice/auth.json`. To also clear the app config, delete `ALICE_SPOTIFY_CLIENT_ID` (and `ALICE_SPOTIFY_REDIRECT_URI` if you set it) from `~/.alice/.env`, or run the wizard again.
 
 To revoke the app on Spotify's side, visit [Apps connected to your account](https://www.spotify.com/account/apps/) and click **REMOVE ACCESS**.
 
@@ -237,7 +237,7 @@ To revoke the app on Spotify's side, visit [Apps connected to your account](http
 
 **`204 No Content` on `get_currently_playing`** — nothing is currently playing on any device. This is Spotify's normal response, not an error; Alice surfaces it as an explanatory empty result (`is_playing: false`).
 
-**`INVALID_CLIENT: Invalid redirect URI`** — the redirect URI in your Spotify app settings doesn't match what Alice is using. The default is `http://127.0.0.1:43827/spotify/callback`. Either add that to your app's allowed redirect URIs, or set `LYDIA_SPOTIFY_REDIRECT_URI` in `~/.alice/.env` to whatever you registered.
+**`INVALID_CLIENT: Invalid redirect URI`** — the redirect URI in your Spotify app settings doesn't match what Alice is using. The default is `http://127.0.0.1:43827/spotify/callback`. Either add that to your app's allowed redirect URIs, or set `ALICE_SPOTIFY_REDIRECT_URI` in `~/.alice/.env` to whatever you registered.
 
 **`429 Too Many Requests`** — Spotify's rate limit. Alice returns a friendly error; wait a minute and retry. If this persists, you're probably running a tight loop in a script — Spotify's quota resets roughly every 30 seconds.
 
@@ -264,8 +264,8 @@ alice auth spotify --client-id <id> --redirect-uri http://localhost:3000/callbac
 Or set them permanently in `~/.alice/.env`:
 
 ```
-LYDIA_SPOTIFY_CLIENT_ID=<your_id>
-LYDIA_SPOTIFY_REDIRECT_URI=http://localhost:3000/callback
+ALICE_SPOTIFY_CLIENT_ID=<your_id>
+ALICE_SPOTIFY_REDIRECT_URI=http://localhost:3000/callback
 ```
 
 The redirect URI must be allow-listed in your Spotify app's settings. The default works for almost everyone — only change it if port 43827 is taken.
@@ -275,5 +275,5 @@ The redirect URI must be allow-listed in your Spotify app's settings. The defaul
 | File | Contents |
 |------|----------|
 | `~/.alice/auth.json` → `providers.spotify` | access token, refresh token, expiry, scope, redirect URI |
-| `~/.alice/.env` | `LYDIA_SPOTIFY_CLIENT_ID`, optional `LYDIA_SPOTIFY_REDIRECT_URI` |
+| `~/.alice/.env` | `ALICE_SPOTIFY_CLIENT_ID`, optional `ALICE_SPOTIFY_REDIRECT_URI` |
 | Spotify app | owned by you at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard); contains the Client ID and the redirect URI allow-list |

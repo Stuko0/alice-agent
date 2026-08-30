@@ -14,51 +14,51 @@ import pytest
 import alice_cli.gui_uninstall as gu
 
 
-def _make_agent(lydia_home: Path) -> Path:
+def _make_agent(alice_home: Path) -> Path:
     """Create a fake agent install: source package + venv."""
-    agent_root = lydia_home / "alice-agent"
+    agent_root = alice_home / "alice-agent"
     (agent_root / "alice_cli").mkdir(parents=True)
     (agent_root / "alice_cli" / "__init__.py").write_text("")
     (agent_root / "venv" / "bin").mkdir(parents=True)
     return agent_root
 
 
-def _make_gui_build(lydia_home: Path) -> None:
+def _make_gui_build(alice_home: Path) -> None:
     """Create the source-built GUI artifacts a `alice desktop` run produces."""
-    desktop = lydia_home / "alice-agent" / "apps" / "desktop"
+    desktop = alice_home / "alice-agent" / "apps" / "desktop"
     (desktop / "dist").mkdir(parents=True)
     (desktop / "dist" / "index.html").write_text("<html>")
     (desktop / "release" / "linux-unpacked").mkdir(parents=True)
     (desktop / "node_modules").mkdir(parents=True)
-    (lydia_home / "alice-agent" / "node_modules").mkdir(parents=True)
-    (lydia_home / "desktop-build-stamp.json").write_text("{}")
+    (alice_home / "alice-agent" / "node_modules").mkdir(parents=True)
+    (alice_home / "desktop-build-stamp.json").write_text("{}")
 
 
-def _make_user_data(lydia_home: Path) -> None:
-    (lydia_home / "config.yaml").write_text("x: 1\n")
-    (lydia_home / ".env").write_text("KEY=secret\n")
-    (lydia_home / "sessions").mkdir()
+def _make_user_data(alice_home: Path) -> None:
+    (alice_home / "config.yaml").write_text("x: 1\n")
+    (alice_home / ".env").write_text("KEY=secret\n")
+    (alice_home / "sessions").mkdir()
 
 
 def test_agent_is_installed_detects_source_and_venv(tmp_path):
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    assert gu.agent_is_installed(lydia_home) is False
-    _make_agent(lydia_home)
-    assert gu.agent_is_installed(lydia_home) is True
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    assert gu.agent_is_installed(alice_home) is False
+    _make_agent(alice_home)
+    assert gu.agent_is_installed(alice_home) is True
 
 
 def test_agent_is_installed_venv_only(tmp_path):
     """A checkout with only a venv (no package dir yet) still counts."""
-    lydia_home = tmp_path / ".alice"
-    (lydia_home / "alice-agent" / "venv").mkdir(parents=True)
-    assert gu.agent_is_installed(lydia_home) is True
+    alice_home = tmp_path / ".alice"
+    (alice_home / "alice-agent" / "venv").mkdir(parents=True)
+    assert gu.agent_is_installed(alice_home) is True
 
 
 def test_source_built_artifacts_lists_known_paths(tmp_path):
-    lydia_home = tmp_path / ".alice"
-    _make_gui_build(lydia_home)
-    artifacts = gu.source_built_gui_artifacts(lydia_home)
+    alice_home = tmp_path / ".alice"
+    _make_gui_build(alice_home)
+    artifacts = gu.source_built_gui_artifacts(alice_home)
     names = {p.name for p in artifacts}
     assert "dist" in names
     assert "release" in names
@@ -67,35 +67,35 @@ def test_source_built_artifacts_lists_known_paths(tmp_path):
 
 
 def test_gui_is_installed_true_when_built(tmp_path, monkeypatch):
-    lydia_home = tmp_path / ".alice"
-    _make_gui_build(lydia_home)
+    alice_home = tmp_path / ".alice"
+    _make_gui_build(alice_home)
     # Make sure packaged-app + userdata probes don't false-positive on the box
     # running the test.
     monkeypatch.setattr(gu, "packaged_gui_app_paths", lambda: [])
     monkeypatch.setattr(gu, "desktop_userdata_dir", lambda: tmp_path / "nope")
-    assert gu.gui_is_installed(lydia_home) is True
+    assert gu.gui_is_installed(alice_home) is True
 
 
 def test_gui_is_installed_false_when_nothing(tmp_path, monkeypatch):
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
     monkeypatch.setattr(gu, "packaged_gui_app_paths", lambda: [])
     monkeypatch.setattr(gu, "desktop_userdata_dir", lambda: tmp_path / "nope")
-    assert gu.gui_is_installed(lydia_home) is False
+    assert gu.gui_is_installed(alice_home) is False
 
 
 def test_uninstall_gui_removes_only_gui_artifacts(tmp_path, monkeypatch):
     """The core invariant: GUI gone, agent + user data untouched."""
-    lydia_home = tmp_path / ".alice"
-    agent_root = _make_agent(lydia_home)
-    _make_gui_build(lydia_home)
-    _make_user_data(lydia_home)
+    alice_home = tmp_path / ".alice"
+    agent_root = _make_agent(alice_home)
+    _make_gui_build(alice_home)
+    _make_user_data(alice_home)
 
     # Isolate the packaged-app + userdata probes from the test machine.
     monkeypatch.setattr(gu, "packaged_gui_app_paths", lambda: [])
     monkeypatch.setattr(gu, "desktop_userdata_dir", lambda: tmp_path / "userdata-none")
 
-    removed = gu.uninstall_gui(lydia_home)
+    removed = gu.uninstall_gui(alice_home)
     removed_names = {p.name for p in removed}
 
     # GUI artifacts removed.
@@ -104,22 +104,22 @@ def test_uninstall_gui_removes_only_gui_artifacts(tmp_path, monkeypatch):
     assert not (desktop / "release").exists()
     assert not (desktop / "node_modules").exists()
     assert not (agent_root / "node_modules").exists()
-    assert not (lydia_home / "desktop-build-stamp.json").exists()
+    assert not (alice_home / "desktop-build-stamp.json").exists()
     assert "dist" in removed_names
 
     # Agent + user data preserved.
     assert (agent_root / "alice_cli" / "__init__.py").exists()
     assert (agent_root / "venv").exists()
-    assert (lydia_home / "config.yaml").exists()
-    assert (lydia_home / ".env").exists()
-    assert (lydia_home / "sessions").exists()
+    assert (alice_home / "config.yaml").exists()
+    assert (alice_home / ".env").exists()
+    assert (alice_home / "sessions").exists()
     # The desktop source dir itself survives (only its build output is gone).
     assert desktop.exists()
 
 
 def test_uninstall_gui_removes_userdata(tmp_path, monkeypatch):
-    lydia_home = tmp_path / ".alice"
-    _make_agent(lydia_home)
+    alice_home = tmp_path / ".alice"
+    _make_agent(alice_home)
     userdata = tmp_path / "Alice-userdata"
     userdata.mkdir()
     (userdata / "connection.json").write_text("{}")
@@ -127,51 +127,51 @@ def test_uninstall_gui_removes_userdata(tmp_path, monkeypatch):
     monkeypatch.setattr(gu, "packaged_gui_app_paths", lambda: [])
     monkeypatch.setattr(gu, "desktop_userdata_dir", lambda: userdata)
 
-    gu.uninstall_gui(lydia_home)
+    gu.uninstall_gui(alice_home)
     assert not userdata.exists()
 
 
 def test_uninstall_gui_keeps_userdata_when_requested(tmp_path, monkeypatch):
-    lydia_home = tmp_path / ".alice"
-    _make_agent(lydia_home)
+    alice_home = tmp_path / ".alice"
+    _make_agent(alice_home)
     userdata = tmp_path / "Alice-userdata"
     userdata.mkdir()
 
     monkeypatch.setattr(gu, "packaged_gui_app_paths", lambda: [])
     monkeypatch.setattr(gu, "desktop_userdata_dir", lambda: userdata)
 
-    gu.uninstall_gui(lydia_home, remove_userdata=False)
+    gu.uninstall_gui(alice_home, remove_userdata=False)
     assert userdata.exists()
 
 
 def test_uninstall_gui_removes_packaged_bundle(tmp_path, monkeypatch):
-    lydia_home = tmp_path / ".alice"
-    _make_agent(lydia_home)
+    alice_home = tmp_path / ".alice"
+    _make_agent(alice_home)
     bundle = tmp_path / "Alice.app"
     (bundle / "Contents").mkdir(parents=True)
 
     monkeypatch.setattr(gu, "packaged_gui_app_paths", lambda: [bundle])
     monkeypatch.setattr(gu, "desktop_userdata_dir", lambda: tmp_path / "none")
 
-    removed = gu.uninstall_gui(lydia_home)
+    removed = gu.uninstall_gui(alice_home)
     assert not bundle.exists()
     assert bundle in removed
 
 
 def test_gui_install_summary_shape(tmp_path, monkeypatch):
-    lydia_home = tmp_path / ".alice"
-    _make_agent(lydia_home)
-    _make_gui_build(lydia_home)
+    alice_home = tmp_path / ".alice"
+    _make_agent(alice_home)
+    _make_gui_build(alice_home)
     monkeypatch.setattr(gu, "packaged_gui_app_paths", lambda: [])
     monkeypatch.setattr(gu, "desktop_userdata_dir", lambda: tmp_path / "none")
 
-    summary = gu.gui_install_summary(lydia_home)
+    summary = gu.gui_install_summary(alice_home)
     # JSON-serializable primitives the desktop UI gates on.
     assert summary["agent_installed"] is True
     assert summary["gui_installed"] is True
     assert isinstance(summary["source_built_artifacts"], list)
     assert all(isinstance(p, str) for p in summary["source_built_artifacts"])
-    assert summary["lydia_home"] == str(lydia_home)
+    assert summary["alice_home"] == str(alice_home)
     assert summary["platform"] == sys.platform
 
 
@@ -227,19 +227,19 @@ def test_run_uninstall_yes_keep_data_is_non_interactive(tmp_path, monkeypatch):
     """
     import alice_cli.uninstall as uninstall
 
-    lydia_home = tmp_path / ".alice"
-    agent_root = lydia_home / "alice-agent"
+    alice_home = tmp_path / ".alice"
+    agent_root = alice_home / "alice-agent"
     (agent_root / "alice_cli").mkdir(parents=True)
-    (lydia_home / "config.yaml").write_text("x: 1\n")
+    (alice_home / "config.yaml").write_text("x: 1\n")
     desktop = agent_root / "apps" / "desktop"
     (desktop / "release").mkdir(parents=True)
-    (lydia_home / "desktop-build-stamp.json").write_text("{}")
+    (alice_home / "desktop-build-stamp.json").write_text("{}")
     fake_code = tmp_path / "checkout"
     fake_code.mkdir()
 
     # Stub every destructive external so the test only exercises the control
     # flow + the real GUI sweep (which is safe inside tmp_path).
-    monkeypatch.setattr(uninstall, "get_alice_home", lambda: lydia_home)
+    monkeypatch.setattr(uninstall, "get_alice_home", lambda: alice_home)
     monkeypatch.setattr(uninstall, "get_project_root", lambda: fake_code)
     monkeypatch.setattr(uninstall, "uninstall_gateway_service", lambda: False)
     monkeypatch.setattr(uninstall, "remove_path_from_shell_configs", lambda: [])
@@ -257,23 +257,23 @@ def test_run_uninstall_yes_keep_data_is_non_interactive(tmp_path, monkeypatch):
 
     # Code checkout removed, GUI artifacts swept, but user data preserved.
     assert not fake_code.exists()
-    assert not (lydia_home / "desktop-build-stamp.json").exists()
+    assert not (alice_home / "desktop-build-stamp.json").exists()
     assert not (desktop / "release").exists()
-    assert (lydia_home / "config.yaml").exists()
-    assert lydia_home.exists()
+    assert (alice_home / "config.yaml").exists()
+    assert alice_home.exists()
 
 
 def test_run_uninstall_yes_full_wipes_home(tmp_path, monkeypatch):
     """``--yes --full`` removes the whole ALICE_HOME non-interactively."""
     import alice_cli.uninstall as uninstall
 
-    lydia_home = tmp_path / ".alice"
-    (lydia_home / "alice-agent" / "alice_cli").mkdir(parents=True)
-    (lydia_home / "config.yaml").write_text("x: 1\n")
+    alice_home = tmp_path / ".alice"
+    (alice_home / "alice-agent" / "alice_cli").mkdir(parents=True)
+    (alice_home / "config.yaml").write_text("x: 1\n")
     fake_code = tmp_path / "checkout"
     fake_code.mkdir()
 
-    monkeypatch.setattr(uninstall, "get_alice_home", lambda: lydia_home)
+    monkeypatch.setattr(uninstall, "get_alice_home", lambda: alice_home)
     monkeypatch.setattr(uninstall, "get_project_root", lambda: fake_code)
     monkeypatch.setattr(uninstall, "uninstall_gateway_service", lambda: False)
     monkeypatch.setattr(uninstall, "remove_path_from_shell_configs", lambda: [])
@@ -288,7 +288,7 @@ def test_run_uninstall_yes_full_wipes_home(tmp_path, monkeypatch):
 
     uninstall.run_uninstall(_Args(yes=True, full=True))
 
-    assert not lydia_home.exists()
+    assert not alice_home.exists()
 
 
 def test_uninstall_module_main_gui_mode(tmp_path, monkeypatch):
@@ -300,28 +300,28 @@ def test_uninstall_module_main_gui_mode(tmp_path, monkeypatch):
     """
     import alice_cli.uninstall as uninstall
 
-    lydia_home = tmp_path / ".alice"
-    agent_root = lydia_home / "alice-agent"
+    alice_home = tmp_path / ".alice"
+    agent_root = alice_home / "alice-agent"
     (agent_root / "alice_cli").mkdir(parents=True)
     desktop = agent_root / "apps" / "desktop"
     (desktop / "release").mkdir(parents=True)
-    (lydia_home / "desktop-build-stamp.json").write_text("{}")
-    (lydia_home / "config.yaml").write_text("x: 1\n")
+    (alice_home / "desktop-build-stamp.json").write_text("{}")
+    (alice_home / "config.yaml").write_text("x: 1\n")
 
-    monkeypatch.setattr(uninstall, "get_alice_home", lambda: lydia_home)
+    monkeypatch.setattr(uninstall, "get_alice_home", lambda: alice_home)
     from alice_cli import gui_uninstall as gu_mod
     monkeypatch.setattr(gu_mod, "packaged_gui_app_paths", lambda: [])
     monkeypatch.setattr(gu_mod, "desktop_userdata_dir", lambda: tmp_path / "none")
-    monkeypatch.setattr(gu_mod, "get_alice_home", lambda: lydia_home)
+    monkeypatch.setattr(gu_mod, "get_alice_home", lambda: alice_home)
     monkeypatch.setattr("builtins.input", lambda *a, **k: pytest.fail("prompted in module main"))
 
     rc = uninstall.main(["--mode", "gui"])
     assert rc == 0
     # GUI swept, agent + config kept (gui-only contract).
     assert not (desktop / "release").exists()
-    assert not (lydia_home / "desktop-build-stamp.json").exists()
+    assert not (alice_home / "desktop-build-stamp.json").exists()
     assert (agent_root / "alice_cli").exists()
-    assert (lydia_home / "config.yaml").exists()
+    assert (alice_home / "config.yaml").exists()
 
 
 def test_uninstall_module_main_rejects_bad_mode():

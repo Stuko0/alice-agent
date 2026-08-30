@@ -112,28 +112,28 @@ async function mediaSrc(path: string): Promise<string> {
 
   // Stream audio/video through the custom protocol: data URLs are capped and
   // load the whole file into memory, which broke playback for larger videos.
-  if (window.lydiaDesktop && ['audio', 'video'].includes(mediaKind(path))) {
+  if (window.aliceDesktop && ['audio', 'video'].includes(mediaKind(path))) {
     return mediaStreamUrl(path)
   }
 
   // Remote gateway: the image lives on the gateway machine, so read it over the
   // authenticated API rather than this machine's disk.
-  if (window.lydiaDesktop && isRemoteGateway()) {
+  if (window.aliceDesktop && isRemoteGateway()) {
     return gatewayMediaDataUrl(path)
   }
 
-  if (!window.lydiaDesktop?.readFileDataUrl) {
+  if (!window.aliceDesktop?.readFileDataUrl) {
     return mediaExternalUrl(path)
   }
 
-  return window.lydiaDesktop.readFileDataUrl(filePathFromMediaPath(path))
+  return window.aliceDesktop.readFileDataUrl(filePathFromMediaPath(path))
 }
 
 function OpenMediaButton({ kind, path }: { kind: 'audio' | 'video'; path: string }) {
   return (
     <button
       className="mt-2 bg-transparent text-xs font-medium text-muted-foreground underline underline-offset-4 decoration-current/20 hover:text-foreground"
-      onClick={() => void window.lydiaDesktop?.openExternal(mediaExternalUrl(path))}
+      onClick={() => void window.aliceDesktop?.openExternal(mediaExternalUrl(path))}
       type="button"
     >
       Open {kind} file
@@ -275,7 +275,7 @@ function MarkdownLink({ children, className, href, ...props }: ComponentProps<'a
 
   // Bare autolink → inline rich embed when a provider matches. Labeled links
   // (`[watch](url)`) stay plain. Desktop only (webview / iframe renderers).
-  if (window.lydiaDesktop && text && normalizeExternalUrl(text) === target) {
+  if (window.aliceDesktop && text && normalizeExternalUrl(text) === target) {
     const embed = detectEmbed(target)
 
     if (embed) {

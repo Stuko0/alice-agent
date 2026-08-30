@@ -1,7 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { useEffect, useMemo, useState } from 'react'
 
-import type { LydiaGitWorktree } from '@/global'
+import type { AliceGitWorktree } from '@/global'
 import type { SessionInfo } from '@/alice'
 import { desktopGit } from '@/lib/desktop-git'
 import { mapPool } from '@/lib/pool'
@@ -81,8 +81,8 @@ export function sortProjectsForOverview(
 export function useRepoWorktreeMap(
   repoPaths: string[],
   enabled: boolean
-): [Record<string, LydiaGitWorktree[]>, boolean] {
-  const [map, setMap] = useState<Record<string, LydiaGitWorktree[]>>({})
+): [Record<string, AliceGitWorktree[]>, boolean] {
+  const [map, setMap] = useState<Record<string, AliceGitWorktree[]>>({})
   const [loading, setLoading] = useState(false)
   const key = useMemo(() => pathListKey(repoPaths), [repoPaths])
   // Refetch when a worktree is added/removed so a new lane shows immediately.

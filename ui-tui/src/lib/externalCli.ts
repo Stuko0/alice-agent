@@ -5,11 +5,11 @@ export interface LaunchResult {
   error?: string
 }
 
-const resolveLydiaBin = () => process.env.LYDIA_BIN?.trim() || 'alice'
+const resolveAliceBin = () => process.env.ALICE_BIN?.trim() || 'alice'
 
-export const launchLydiaCommand = (args: string[]): Promise<LaunchResult> =>
+export const launchAliceCommand = (args: string[]): Promise<LaunchResult> =>
   new Promise(resolve => {
-    const child = spawn(resolveLydiaBin(), args, { stdio: 'inherit' })
+    const child = spawn(resolveAliceBin(), args, { stdio: 'inherit' })
 
     child.on('error', err => resolve({ code: null, error: err.message }))
     child.on('exit', code => resolve({ code }))

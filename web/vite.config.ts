@@ -3,22 +3,22 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
-const BACKEND = process.env.LYDIA_DASHBOARD_URL ?? "http://127.0.0.1:9119";
+const BACKEND = process.env.ALICE_DASHBOARD_URL ?? "http://127.0.0.1:9119";
 
 /**
  * In production the Python `alice dashboard` server injects a one-shot
- * session token into `index.html` (see `lydia_cli/web_server.py`). The
+ * session token into `index.html` (see `alice_cli/web_server.py`). The
  * Vite dev server serves its own `index.html`, so unless we forward that
  * token, every protected `/api/*` call 401s.
  *
  * This plugin fetches the running dashboard's `index.html` on each dev page
- * load, scrapes the `window.__LYDIA_SESSION_TOKEN__` assignment, and
+ * load, scrapes the `window.__ALICE_SESSION_TOKEN__` assignment, and
  * re-injects it into the dev HTML. No-op in production builds.
  */
-function lydiaDevToken(): Plugin {
-  const TOKEN_RE = /window\.__LYDIA_SESSION_TOKEN__\s*=\s*"([^"]+)"/;
+function aliceDevToken(): Plugin {
+  const TOKEN_RE = /window\.__ALICE_SESSION_TOKEN__\s*=\s*"([^"]+)"/;
   const EMBEDDED_RE =
-    /window\.__LYDIA_DASHBOARD_EMBEDDED_CHAT__\s*=\s*(true|false)/;
+    /window\.__ALICE_DASHBOARD_EMBEDDED_CHAT__\s*=\s*(true|false)/;
 
   return {
     name: "alice:dev-session-token",
@@ -42,14 +42,14 @@ function lydiaDevToken(): Plugin {
             tag: "script",
             injectTo: "head",
             children:
-              `window.__LYDIA_SESSION_TOKEN__="${match[1]}";` +
-              `window.__LYDIA_DASHBOARD_EMBEDDED_CHAT__=${embeddedJs};`,
+              `window.__ALICE_SESSION_TOKEN__="${match[1]}";` +
+              `window.__ALICE_DASHBOARD_EMBEDDED_CHAT__=${embeddedJs};`,
           },
         ];
       } catch (err) {
         console.warn(
           `[alice] Dashboard at ${BACKEND} unreachable — ` +
-            `start it with \`alice dashboard\` or set LYDIA_DASHBOARD_URL. ` +
+            `start it with \`alice dashboard\` or set ALICE_DASHBOARD_URL. ` +
             `(${(err as Error).message})`,
         );
       }
@@ -58,7 +58,7 @@ function lydiaDevToken(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), lydiaDevToken()],
+  plugins: [react(), tailwindcss(), aliceDevToken()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -84,7 +84,7 @@ export default defineConfig({
     ],
   },
   build: {
-    outDir: "../lydia_cli/web_dist",
+    outDir: "../alice_cli/web_dist",
     emptyOutDir: true,
   },
   server: {

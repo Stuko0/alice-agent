@@ -27,7 +27,7 @@ def _write_script(tmp_path: Path, name: str, body: str) -> Path:
 
 
 def _allowlist_pair(monkeypatch, tmp_path, event: str, command: str) -> None:
-    monkeypatch.setenv("ALICE_HOME", str(tmp_path / "lydia_home"))
+    monkeypatch.setenv("ALICE_HOME", str(tmp_path / "alice_home"))
     shell_hooks._record_approval(event, command)
 
 
@@ -332,7 +332,7 @@ class TestCallbackSubprocess:
         )
 
         monkeypatch.setenv("ALICE_HOME", str(tmp_path / "home"))
-        monkeypatch.setenv("LYDIA_ACCEPT_HOOKS", "1")
+        monkeypatch.setenv("ALICE_ACCEPT_HOOKS", "1")
 
         # Fresh manager
         plugins._plugin_manager = plugins.PluginManager()
@@ -534,7 +534,7 @@ class TestIdempotentRegistration:
         script = _write_script(tmp_path, "h.sh",
                                "#!/usr/bin/env bash\nprintf '{}\\n'\n")
         monkeypatch.setenv("ALICE_HOME", str(tmp_path / "home"))
-        monkeypatch.setenv("LYDIA_ACCEPT_HOOKS", "1")
+        monkeypatch.setenv("ALICE_ACCEPT_HOOKS", "1")
 
         plugins._plugin_manager = plugins.PluginManager()
 
@@ -558,7 +558,7 @@ class TestIdempotentRegistration:
         script = _write_script(tmp_path, "h.sh",
                                "#!/usr/bin/env bash\nprintf '{}\\n'\n")
         monkeypatch.setenv("ALICE_HOME", str(tmp_path / "home"))
-        monkeypatch.setenv("LYDIA_ACCEPT_HOOKS", "1")
+        monkeypatch.setenv("ALICE_ACCEPT_HOOKS", "1")
 
         plugins._plugin_manager = plugins.PluginManager()
 

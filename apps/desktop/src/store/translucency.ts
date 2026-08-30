@@ -33,6 +33,6 @@ export function setTranslucency(intensity: number): void {
 if (typeof window !== 'undefined') {
   $translucency.subscribe(intensity => {
     persistString(KEY, String(intensity))
-    window.lydiaDesktop?.setTranslucency?.({ intensity })
+    window.aliceDesktop?.setTranslucency?.({ intensity })
   })
 }

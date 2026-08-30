@@ -245,7 +245,7 @@ class TestSystemdServiceRefresh:
         ``Environment=`` line. Without this guard, any test that drives
         ``run_gateway()`` end-to-end on a real Linux dev box silently
         rewrites the developer's installed gateway unit with a
-        ``/tmp/pytest-of-.../lydia_test`` ALICE_HOME — silently breaking
+        ``/tmp/pytest-of-.../alice_test`` ALICE_HOME — silently breaking
         their gateway on the next boot. The guard sniffs the generated
         unit body for tmpdir markers and refuses the write. Tests that
         legitimately exercise the refresh flow patch
@@ -262,7 +262,7 @@ class TestSystemdServiceRefresh:
         polluted_unit = (
             "[Service]\n"
             'Environment="ALICE_HOME=/tmp/pytest-of-alice/pytest-42/'
-            'popen-gw0/test_x/lydia_test"\n'
+            'popen-gw0/test_x/alice_test"\n'
         )
         monkeypatch.setattr(
             gateway_cli,
@@ -378,7 +378,7 @@ class TestTempHomeServiceDefinitionGuard:
         )
         assert gateway_cli._temp_home_in_service_definition(plist) is None
 
-    def test_accepts_unit_without_lydia_home(self):
+    def test_accepts_unit_without_alice_home(self):
         unit = "[Service]\nExecStart=/usr/bin/python -m alice_cli.main gateway run\n"
         assert gateway_cli._temp_home_in_service_definition(unit) is None
 
@@ -476,7 +476,7 @@ class TestGeneratedSystemdUnits:
             "_system_service_identity",
             lambda run_as_user=None: ("alice", "alice", "/home/alice"),
         )
-        monkeypatch.setattr(gateway_cli, "_lydia_home_for_target_user", lambda home: "/home/alice/.alice")
+        monkeypatch.setattr(gateway_cli, "_alice_home_for_target_user", lambda home: "/home/alice/.alice")
         monkeypatch.setenv("PATH", "/usr/local/bin:/mnt/c/WINDOWS/system32")
         monkeypatch.setattr(gateway_cli.shutil, "which", lambda cmd: None)
 
@@ -567,7 +567,7 @@ class TestGatewayStopCleanup:
 
 class TestLaunchdServiceRecovery:
     def test_get_restart_drain_timeout_prefers_env_then_config_then_default(self, monkeypatch):
-        monkeypatch.delenv("LYDIA_RESTART_DRAIN_TIMEOUT", raising=False)
+        monkeypatch.delenv("ALICE_RESTART_DRAIN_TIMEOUT", raising=False)
         monkeypatch.setattr(gateway_cli, "read_raw_config", lambda: {})
 
         assert (
@@ -582,10 +582,10 @@ class TestLaunchdServiceRecovery:
         )
         assert gateway_cli._get_restart_drain_timeout() == 14.0
 
-        monkeypatch.setenv("LYDIA_RESTART_DRAIN_TIMEOUT", "9")
+        monkeypatch.setenv("ALICE_RESTART_DRAIN_TIMEOUT", "9")
         assert gateway_cli._get_restart_drain_timeout() == 9.0
 
-        monkeypatch.setenv("LYDIA_RESTART_DRAIN_TIMEOUT", "invalid")
+        monkeypatch.setenv("ALICE_RESTART_DRAIN_TIMEOUT", "invalid")
         assert (
             gateway_cli._get_restart_drain_timeout()
             == DEFAULT_GATEWAY_RESTART_DRAIN_TIMEOUT
@@ -1678,7 +1678,7 @@ class TestGatewaySystemServiceRouting:
         monkeypatch.setattr(gateway_cli, "_select_systemd_scope", lambda system=False: False)
         monkeypatch.setattr(gateway_cli, "get_systemd_unit_path", lambda system=False: unit)
         monkeypatch.setattr(gateway_cli, "has_conflicting_systemd_units", lambda: False)
-        monkeypatch.setattr(gateway_cli, "has_legacy_lydia_units", lambda: False)
+        monkeypatch.setattr(gateway_cli, "has_legacy_alice_units", lambda: False)
         monkeypatch.setattr(gateway_cli, "systemd_unit_is_current", lambda system=False: True)
         monkeypatch.setattr(gateway_cli, "_runtime_health_lines", lambda: ["⚠ Last shutdown reason: Gateway restart requested"])
         monkeypatch.setattr(gateway_cli, "get_systemd_linger_status", lambda: (True, ""))
@@ -1923,7 +1923,7 @@ class TestDetectVenvDir:
         assert result is None
 
 
-class TestSystemUnitLydiaHome:
+class TestSystemUnitAliceHome:
     """ALICE_HOME in system units must reference the target user, not root."""
 
     def test_system_unit_uses_target_user_home_not_calling_user(self, monkeypatch):
@@ -1962,7 +1962,7 @@ class TestSystemUnitLydiaHome:
         assert 'ALICE_HOME=/home/alice/.alice/profiles/coder' in unit
         assert '/root/' not in unit
 
-    def test_system_unit_preserves_custom_lydia_home(self, monkeypatch):
+    def test_system_unit_preserves_custom_alice_home(self, monkeypatch):
         # Custom ALICE_HOME not under any user's home — keep as-is
         monkeypatch.setattr(Path, "home", staticmethod(lambda: Path("/root")))
         monkeypatch.setenv("ALICE_HOME", "/opt/alice-shared")
@@ -1983,39 +1983,39 @@ class TestSystemUnitLydiaHome:
         # User-scope units should still use the calling user's ALICE_HOME
         unit = gateway_cli.generate_systemd_unit(system=False)
 
-        lydia_home = str(gateway_cli.get_alice_home().resolve())
-        assert f'ALICE_HOME={lydia_home}' in unit
+        alice_home = str(gateway_cli.get_alice_home().resolve())
+        assert f'ALICE_HOME={alice_home}' in unit
 
 
-class TestLydiaHomeForTargetUser:
-    """Unit tests for _lydia_home_for_target_user()."""
+class TestAliceHomeForTargetUser:
+    """Unit tests for _alice_home_for_target_user()."""
 
     def test_remaps_default_home(self, monkeypatch):
         monkeypatch.setattr(Path, "home", staticmethod(lambda: Path("/root")))
         monkeypatch.delenv("ALICE_HOME", raising=False)
 
-        result = gateway_cli._lydia_home_for_target_user("/home/alice")
+        result = gateway_cli._alice_home_for_target_user("/home/alice")
         assert result == "/home/alice/.alice"
 
     def test_remaps_profile_path(self, monkeypatch):
         monkeypatch.setattr(Path, "home", staticmethod(lambda: Path("/root")))
         monkeypatch.setenv("ALICE_HOME", "/root/.alice/profiles/coder")
 
-        result = gateway_cli._lydia_home_for_target_user("/home/alice")
+        result = gateway_cli._alice_home_for_target_user("/home/alice")
         assert result == "/home/alice/.alice/profiles/coder"
 
     def test_keeps_custom_path(self, monkeypatch):
         monkeypatch.setattr(Path, "home", staticmethod(lambda: Path("/root")))
         monkeypatch.setenv("ALICE_HOME", "/opt/alice")
 
-        result = gateway_cli._lydia_home_for_target_user("/home/alice")
+        result = gateway_cli._alice_home_for_target_user("/home/alice")
         assert result == "/opt/alice"
 
     def test_noop_when_same_user(self, monkeypatch):
         monkeypatch.setattr(Path, "home", staticmethod(lambda: Path("/home/alice")))
         monkeypatch.delenv("ALICE_HOME", raising=False)
 
-        result = gateway_cli._lydia_home_for_target_user("/home/alice")
+        result = gateway_cli._alice_home_for_target_user("/home/alice")
         assert result == "/home/alice/.alice"
 
 
@@ -2305,13 +2305,13 @@ class TestPreflightUserSystemd:
 class TestProfileArg:
     """Tests for _profile_arg — returns '--profile <name>' for named profiles."""
 
-    def test_default_lydia_home_returns_empty(self, tmp_path, monkeypatch):
+    def test_default_alice_home_returns_empty(self, tmp_path, monkeypatch):
         """Default ~/.alice should not produce a --profile flag."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
-        result = gateway_cli._profile_arg(str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
+        result = gateway_cli._profile_arg(str(alice_home))
         assert result == ""
 
     def test_named_profile_returns_flag(self, tmp_path, monkeypatch):
@@ -2588,8 +2588,8 @@ class TestDockerAwareGateway:
         assert "alice gateway run" in out
 
 
-class TestLegacyLydiaUnitDetection:
-    """Tests for _find_legacy_lydia_units / has_legacy_lydia_units.
+class TestLegacyAliceUnitDetection:
+    """Tests for _find_legacy_alice_units / has_legacy_alice_units.
 
     These guard against the scenario that tripped Luis in April 2026: an
     older install left a ``alice.service`` unit behind when the service was
@@ -2622,26 +2622,26 @@ class TestLegacyLydiaUnitDetection:
         )
         return user_dir, system_dir
 
-    def test_detects_legacy_lydia_service_in_user_scope(self, tmp_path, monkeypatch):
+    def test_detects_legacy_alice_service_in_user_scope(self, tmp_path, monkeypatch):
         user_dir, _ = self._setup_search_paths(tmp_path, monkeypatch)
         legacy = user_dir / "alice.service"
         legacy.write_text(self._OUR_UNIT_TEXT, encoding="utf-8")
 
-        results = gateway_cli._find_legacy_lydia_units()
+        results = gateway_cli._find_legacy_alice_units()
 
         assert len(results) == 1
         name, path, is_system = results[0]
         assert name == "alice.service"
         assert path == legacy
         assert is_system is False
-        assert gateway_cli.has_legacy_lydia_units() is True
+        assert gateway_cli.has_legacy_alice_units() is True
 
-    def test_detects_legacy_lydia_service_in_system_scope(self, tmp_path, monkeypatch):
+    def test_detects_legacy_alice_service_in_system_scope(self, tmp_path, monkeypatch):
         _, system_dir = self._setup_search_paths(tmp_path, monkeypatch)
         legacy = system_dir / "alice.service"
         legacy.write_text(self._OUR_UNIT_TEXT, encoding="utf-8")
 
-        results = gateway_cli._find_legacy_lydia_units()
+        results = gateway_cli._find_legacy_alice_units()
 
         assert len(results) == 1
         name, path, is_system = results[0]
@@ -2649,7 +2649,7 @@ class TestLegacyLydiaUnitDetection:
         assert path == legacy
         assert is_system is True
 
-    def test_ignores_profile_unit_lydia_gateway_coder(self, tmp_path, monkeypatch):
+    def test_ignores_profile_unit_alice_gateway_coder(self, tmp_path, monkeypatch):
         """CRITICAL: profile units must NOT be flagged as legacy.
 
         Teknium's concern — ``alice-gateway-coder.service`` is our standard
@@ -2669,12 +2669,12 @@ class TestLegacyLydiaUnitDetection:
                 self._OUR_UNIT_TEXT, encoding="utf-8"
             )
 
-        results = gateway_cli._find_legacy_lydia_units()
+        results = gateway_cli._find_legacy_alice_units()
 
         assert results == []
-        assert gateway_cli.has_legacy_lydia_units() is False
+        assert gateway_cli.has_legacy_alice_units() is False
 
-    def test_ignores_unrelated_lydia_service(self, tmp_path, monkeypatch):
+    def test_ignores_unrelated_alice_service(self, tmp_path, monkeypatch):
         """Third-party ``alice.service`` that isn't ours stays untouched.
 
         If a user has some other package named ``alice`` installed as a
@@ -2687,16 +2687,16 @@ class TestLegacyLydiaUnitDetection:
             encoding="utf-8",
         )
 
-        results = gateway_cli._find_legacy_lydia_units()
+        results = gateway_cli._find_legacy_alice_units()
 
         assert results == []
-        assert gateway_cli.has_legacy_lydia_units() is False
+        assert gateway_cli.has_legacy_alice_units() is False
 
     def test_returns_empty_when_no_legacy_files_exist(self, tmp_path, monkeypatch):
         self._setup_search_paths(tmp_path, monkeypatch)
 
-        assert gateway_cli._find_legacy_lydia_units() == []
-        assert gateway_cli.has_legacy_lydia_units() is False
+        assert gateway_cli._find_legacy_alice_units() == []
+        assert gateway_cli.has_legacy_alice_units() is False
 
     def test_detects_both_scopes_simultaneously(self, tmp_path, monkeypatch):
         """When a user has BOTH user-scope and system-scope legacy units,
@@ -2705,7 +2705,7 @@ class TestLegacyLydiaUnitDetection:
         (user_dir / "alice.service").write_text(self._OUR_UNIT_TEXT, encoding="utf-8")
         (system_dir / "alice.service").write_text(self._OUR_UNIT_TEXT, encoding="utf-8")
 
-        results = gateway_cli._find_legacy_lydia_units()
+        results = gateway_cli._find_legacy_alice_units()
 
         scopes = sorted(is_system for _, _, is_system in results)
         assert scopes == [False, True]
@@ -2733,7 +2733,7 @@ class TestLegacyLydiaUnitDetection:
                 f"[Unit]\nDescription=Old Alice\n[Service]\n{execstart}\n",
                 encoding="utf-8",
             )
-            results = gateway_cli._find_legacy_lydia_units()
+            results = gateway_cli._find_legacy_alice_units()
             assert len(results) == 1, f"Variant {i} not detected: {execstart!r}"
 
     def test_print_legacy_unit_warning_is_noop_when_empty(self, tmp_path, monkeypatch, capsys):
@@ -2771,12 +2771,12 @@ class TestLegacyLydiaUnitDetection:
         monkeypatch.setattr(gateway_cli.Path, "read_text", raising_read_text)
 
         # Should not raise
-        results = gateway_cli._find_legacy_lydia_units()
+        results = gateway_cli._find_legacy_alice_units()
         assert results == []
 
 
-class TestRemoveLegacyLydiaUnits:
-    """Tests for remove_legacy_lydia_units (the migration action)."""
+class TestRemoveLegacyAliceUnits:
+    """Tests for remove_legacy_alice_units (the migration action)."""
 
     _OUR_UNIT_TEXT = (
         "[Unit]\nDescription=Alice Gateway\n[Service]\n"
@@ -2808,7 +2808,7 @@ class TestRemoveLegacyLydiaUnits:
     def test_returns_zero_when_no_legacy_units(self, tmp_path, monkeypatch, capsys):
         self._setup(tmp_path, monkeypatch)
 
-        removed, remaining = gateway_cli.remove_legacy_lydia_units(interactive=False)
+        removed, remaining = gateway_cli.remove_legacy_alice_units(interactive=False)
 
         assert removed == 0
         assert remaining == []
@@ -2819,7 +2819,7 @@ class TestRemoveLegacyLydiaUnits:
         legacy = user_dir / "alice.service"
         legacy.write_text(self._OUR_UNIT_TEXT, encoding="utf-8")
 
-        removed, remaining = gateway_cli.remove_legacy_lydia_units(
+        removed, remaining = gateway_cli.remove_legacy_alice_units(
             interactive=False, dry_run=True
         )
 
@@ -2835,7 +2835,7 @@ class TestRemoveLegacyLydiaUnits:
         legacy = user_dir / "alice.service"
         legacy.write_text(self._OUR_UNIT_TEXT, encoding="utf-8")
 
-        removed, remaining = gateway_cli.remove_legacy_lydia_units(interactive=False)
+        removed, remaining = gateway_cli.remove_legacy_alice_units(interactive=False)
 
         assert removed == 1
         assert remaining == []
@@ -2851,7 +2851,7 @@ class TestRemoveLegacyLydiaUnits:
         legacy = system_dir / "alice.service"
         legacy.write_text(self._OUR_UNIT_TEXT, encoding="utf-8")
 
-        removed, remaining = gateway_cli.remove_legacy_lydia_units(interactive=False)
+        removed, remaining = gateway_cli.remove_legacy_alice_units(interactive=False)
 
         assert removed == 0
         assert remaining == [legacy]
@@ -2864,7 +2864,7 @@ class TestRemoveLegacyLydiaUnits:
         legacy = system_dir / "alice.service"
         legacy.write_text(self._OUR_UNIT_TEXT, encoding="utf-8")
 
-        removed, remaining = gateway_cli.remove_legacy_lydia_units(interactive=False)
+        removed, remaining = gateway_cli.remove_legacy_alice_units(interactive=False)
 
         assert removed == 1
         assert remaining == []
@@ -2885,7 +2885,7 @@ class TestRemoveLegacyLydiaUnits:
         user_legacy.write_text(self._OUR_UNIT_TEXT, encoding="utf-8")
         system_legacy.write_text(self._OUR_UNIT_TEXT, encoding="utf-8")
 
-        removed, remaining = gateway_cli.remove_legacy_lydia_units(interactive=False)
+        removed, remaining = gateway_cli.remove_legacy_alice_units(interactive=False)
 
         assert removed == 2
         assert remaining == []
@@ -2904,7 +2904,7 @@ class TestRemoveLegacyLydiaUnits:
         default_unit = user_dir / "alice-gateway.service"
         default_unit.write_text(self._OUR_UNIT_TEXT, encoding="utf-8")
 
-        removed, remaining = gateway_cli.remove_legacy_lydia_units(interactive=False)
+        removed, remaining = gateway_cli.remove_legacy_alice_units(interactive=False)
 
         assert removed == 0
         assert remaining == []
@@ -2920,7 +2920,7 @@ class TestRemoveLegacyLydiaUnits:
 
         monkeypatch.setattr(gateway_cli, "prompt_yes_no", lambda *a, **k: False)
 
-        removed, remaining = gateway_cli.remove_legacy_lydia_units(interactive=True)
+        removed, remaining = gateway_cli.remove_legacy_alice_units(interactive=True)
 
         assert removed == 0
         assert remaining == [legacy]
@@ -2968,7 +2968,7 @@ class TestMigrateLegacyCommand:
             called["dry_run"] = dry_run
             return 0, []
 
-        monkeypatch.setattr(gateway_cli, "remove_legacy_lydia_units", fake_remove)
+        monkeypatch.setattr(gateway_cli, "remove_legacy_alice_units", fake_remove)
         monkeypatch.setattr(gateway_cli, "supports_systemd_services", lambda: True)
         monkeypatch.setattr(gateway_cli, "is_macos", lambda: False)
 
@@ -3006,7 +3006,7 @@ class TestGatewayStatusParser:
             called["dry_run"] = dry_run
             return 0, []
 
-        monkeypatch.setattr(gateway_cli, "remove_legacy_lydia_units", fake_remove)
+        monkeypatch.setattr(gateway_cli, "remove_legacy_alice_units", fake_remove)
         monkeypatch.setattr(gateway_cli, "supports_systemd_services", lambda: True)
         monkeypatch.setattr(gateway_cli, "is_macos", lambda: False)
 
@@ -3047,9 +3047,9 @@ class TestSystemdInstallOffersLegacyRemoval:
             remove_called["interactive"] = interactive
             return 1, []
 
-        # has_legacy_lydia_units must return True
-        monkeypatch.setattr(gateway_cli, "has_legacy_lydia_units", lambda: True)
-        monkeypatch.setattr(gateway_cli, "remove_legacy_lydia_units", fake_remove)
+        # has_legacy_alice_units must return True
+        monkeypatch.setattr(gateway_cli, "has_legacy_alice_units", lambda: True)
+        monkeypatch.setattr(gateway_cli, "remove_legacy_alice_units", fake_remove)
         monkeypatch.setattr(gateway_cli, "print_legacy_unit_warning", lambda: None)
         # Answer "yes" to the legacy-removal prompt
         monkeypatch.setattr(gateway_cli, "prompt_yes_no", lambda *a, **k: True)
@@ -3087,8 +3087,8 @@ class TestSystemdInstallOffersLegacyRemoval:
             remove_called["invoked"] = True
             return 0, []
 
-        monkeypatch.setattr(gateway_cli, "has_legacy_lydia_units", lambda: True)
-        monkeypatch.setattr(gateway_cli, "remove_legacy_lydia_units", fake_remove)
+        monkeypatch.setattr(gateway_cli, "has_legacy_alice_units", lambda: True)
+        monkeypatch.setattr(gateway_cli, "remove_legacy_alice_units", fake_remove)
         monkeypatch.setattr(gateway_cli, "print_legacy_unit_warning", lambda: None)
         monkeypatch.setattr(gateway_cli, "prompt_yes_no", lambda *a, **k: False)
 
@@ -3132,8 +3132,8 @@ class TestSystemdInstallOffersLegacyRemoval:
             remove_called["invoked"] = True
             return 0, []
 
-        monkeypatch.setattr(gateway_cli, "has_legacy_lydia_units", lambda: False)
-        monkeypatch.setattr(gateway_cli, "remove_legacy_lydia_units", fake_remove)
+        monkeypatch.setattr(gateway_cli, "has_legacy_alice_units", lambda: False)
+        monkeypatch.setattr(gateway_cli, "remove_legacy_alice_units", fake_remove)
         monkeypatch.setattr(gateway_cli, "prompt_yes_no", counting_prompt)
 
         unit_path = tmp_path / "alice-gateway.service"
@@ -3332,7 +3332,7 @@ class TestServiceWorkingDirIsStable:
     deleted checkout can't crash-loop the unit on CHDIR (status=200).
     """
 
-    def test_stable_working_dir_uses_lydia_home(self, tmp_path, monkeypatch):
+    def test_stable_working_dir_uses_alice_home(self, tmp_path, monkeypatch):
         home = tmp_path / ".alice"
         home.mkdir()
         monkeypatch.setattr(gateway_cli, "get_alice_home", lambda: home)
@@ -3344,7 +3344,7 @@ class TestServiceWorkingDirIsStable:
         monkeypatch.setattr(gateway_cli, "get_alice_home", lambda: missing)
         assert gateway_cli._stable_service_working_dir() == str(gateway_cli.PROJECT_ROOT)
 
-    def test_user_unit_workingdirectory_is_lydia_home_not_checkout(self, tmp_path, monkeypatch):
+    def test_user_unit_workingdirectory_is_alice_home_not_checkout(self, tmp_path, monkeypatch):
         home = tmp_path / ".alice"
         home.mkdir()
         monkeypatch.setattr(gateway_cli, "get_alice_home", lambda: home)
@@ -3356,7 +3356,7 @@ class TestServiceWorkingDirIsStable:
         # The bug class: never pin cwd inside a transient worktree checkout.
         assert "/.worktrees/" not in value
 
-    def test_launchd_workingdirectory_is_lydia_home(self, tmp_path, monkeypatch):
+    def test_launchd_workingdirectory_is_alice_home(self, tmp_path, monkeypatch):
         import re
 
         home = tmp_path / ".alice"

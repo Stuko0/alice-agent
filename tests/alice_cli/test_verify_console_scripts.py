@@ -53,7 +53,7 @@ class TestVerifyConsoleScriptsInstalled:
 
         mock_install.assert_not_called()
 
-    def test_triggers_reinstall_when_lydia_exe_missing(
+    def test_triggers_reinstall_when_alice_exe_missing(
         self, temp_pyproject, fake_scripts_dir
     ):
         (fake_scripts_dir / "alice-agent.exe").write_bytes(b"fake")
@@ -110,7 +110,7 @@ class TestVerifyConsoleScriptsInstalled:
         import alice_cli.main as main_mod
 
         with patch("alice_cli.main._is_windows", return_value=True):
-            names = {path.name for path in main_mod._lydia_exe_shims(fake_scripts_dir)}
+            names = {path.name for path in main_mod._alice_exe_shims(fake_scripts_dir)}
 
         assert {"alice.exe", "alice-agent.exe", "alice-acp.exe"} <= names
         assert "alice-gateway.exe" in names

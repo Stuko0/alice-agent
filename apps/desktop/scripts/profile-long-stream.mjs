@@ -12,7 +12,7 @@ const args = Object.fromEntries(
   })
 )
 const PORT = Number(args.port ?? 9222)
-const OUT = String(args.out ?? `/tmp/lydia-long-stream-${Date.now()}`)
+const OUT = String(args.out ?? `/tmp/alice-long-stream-${Date.now()}`)
 const STREAM_SEC = Number(args.seconds ?? 25)
 
 async function pickRenderer() {

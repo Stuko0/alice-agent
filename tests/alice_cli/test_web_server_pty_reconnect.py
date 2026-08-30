@@ -39,7 +39,7 @@ class _OneFrameBridge:
 
 
 @pytest.fixture
-def pty_client(monkeypatch, _isolate_lydia_home):
+def pty_client(monkeypatch, _isolate_alice_home):
     from starlette.testclient import TestClient
 
     import alice_cli.web_server as ws
@@ -71,7 +71,7 @@ def test_resolve_chat_argv_sets_active_session_file_env(monkeypatch):
         active_session_file="/tmp/alice-active-session.json"
     )
 
-    assert env["LYDIA_TUI_ACTIVE_SESSION_FILE"] == "/tmp/alice-active-session.json"
+    assert env["ALICE_TUI_ACTIVE_SESSION_FILE"] == "/tmp/alice-active-session.json"
 
 
 def test_channel_reconnect_resumes_active_session_file(pty_client, monkeypatch):

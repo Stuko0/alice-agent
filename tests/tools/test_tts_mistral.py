@@ -8,7 +8,7 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch):
-    for key in ("MISTRAL_API_KEY", "LYDIA_SESSION_PLATFORM"):
+    for key in ("MISTRAL_API_KEY", "ALICE_SESSION_PLATFORM"):
         monkeypatch.delenv(key, raising=False)
 
 

@@ -34,7 +34,7 @@ const api = vi.fn(async ({ path }: { path: string }) => {
 
 describe('desktop git facade', () => {
   beforeEach(() => {
-    vi.stubGlobal('window', { lydiaDesktop: { api, git: localGit } })
+    vi.stubGlobal('window', { aliceDesktop: { api, git: localGit } })
     $connection.set(null)
   })
 

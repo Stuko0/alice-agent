@@ -156,7 +156,7 @@ class TestReapOrphanedBrowserSessions:
         # No PID file → cleaned up
         assert not d.exists()
 
-    def test_non_lydia_dirs_are_ignored(self, fake_tmpdir):
+    def test_non_alice_dirs_are_ignored(self, fake_tmpdir):
         """Socket dirs that don't match our naming pattern are left alone."""
         from tools.browser_tool import _reap_orphaned_browser_sessions
 

@@ -124,7 +124,7 @@ export function GatewaySettings() {
 
   useEffect(() => {
     let cancelled = false
-    const desktop = window.lydiaDesktop
+    const desktop = window.aliceDesktop
 
     if (!desktop?.getConnectionConfig) {
       setLoading(false)
@@ -171,7 +171,7 @@ export function GatewaySettings() {
       return
     }
 
-    const desktop = window.lydiaDesktop
+    const desktop = window.aliceDesktop
 
     if (!desktop?.probeConnectionConfig) {
       return
@@ -303,8 +303,8 @@ export function GatewaySettings() {
 
     try {
       const next = apply
-        ? await window.lydiaDesktop.applyConnectionConfig(payload())
-        : await window.lydiaDesktop.saveConnectionConfig(payload())
+        ? await window.aliceDesktop.applyConnectionConfig(payload())
+        : await window.aliceDesktop.saveConnectionConfig(payload())
 
       setState(next)
       setRemoteToken('')
@@ -335,7 +335,7 @@ export function GatewaySettings() {
     try {
       // Save (don't apply/restart) so the login window has a URL to use and the
       // oauth mode is persisted, without yet flipping the live connection.
-      const saved = await window.lydiaDesktop.saveConnectionConfig({
+      const saved = await window.aliceDesktop.saveConnectionConfig({
         mode: state.mode,
         profile: scope ?? undefined,
         remoteAuthMode: 'oauth',
@@ -344,10 +344,10 @@ export function GatewaySettings() {
 
       setState(saved)
 
-      const result = await window.lydiaDesktop.oauthLoginConnectionConfig(trimmedUrl)
+      const result = await window.aliceDesktop.oauthLoginConnectionConfig(trimmedUrl)
 
       if (result.connected) {
-        const refreshed = await window.lydiaDesktop.getConnectionConfig(scope)
+        const refreshed = await window.aliceDesktop.getConnectionConfig(scope)
         setState(refreshed)
         notify({ kind: 'success', title: g.signedIn, message: g.connectedTo(providerLabel) })
       } else {
@@ -368,8 +368,8 @@ export function GatewaySettings() {
     setSigningIn(true)
 
     try {
-      await window.lydiaDesktop.oauthLogoutConnectionConfig(trimmedUrl || undefined)
-      const refreshed = await window.lydiaDesktop.getConnectionConfig(scope)
+      await window.aliceDesktop.oauthLogoutConnectionConfig(trimmedUrl || undefined)
+      const refreshed = await window.aliceDesktop.getConnectionConfig(scope)
       setState(refreshed)
       notify({ kind: 'success', title: g.signedOutTitle, message: g.signedOutMessage })
     } catch (err) {
@@ -394,7 +394,7 @@ export function GatewaySettings() {
     setLastTest(null)
 
     try {
-      const result = await window.lydiaDesktop.testConnectionConfig({
+      const result = await window.aliceDesktop.testConnectionConfig({
         mode: 'remote',
         profile: scope ?? undefined,
         remoteAuthMode: authMode,
@@ -416,7 +416,7 @@ export function GatewaySettings() {
     return <LoadingState label={g.loading} />
   }
 
-  if (!window.lydiaDesktop?.getConnectionConfig) {
+  if (!window.aliceDesktop?.getConnectionConfig) {
     return <EmptyState description={g.unavailableDesc} title={g.unavailableTitle} />
   }
 
@@ -594,7 +594,7 @@ export function GatewaySettings() {
       <div className="mt-6 grid gap-1">
         <ListRow
           action={
-            <Button onClick={() => void window.lydiaDesktop?.revealLogs()} size="sm" variant="textStrong">
+            <Button onClick={() => void window.aliceDesktop?.revealLogs()} size="sm" variant="textStrong">
               <FileText />
               {g.openLogs}
             </Button>

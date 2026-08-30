@@ -618,15 +618,15 @@ class TestRegistration:
 # ---------------------------------------------------------------------------
 
 class TestToolsetInclusion:
-    def test_discord_tools_in_lydia_discord_toolset(self):
+    def test_discord_tools_in_alice_discord_toolset(self):
         from toolsets import TOOLSETS
         assert "discord" in TOOLSETS["alice-discord"]["tools"]
         assert "discord_admin" in TOOLSETS["alice-discord"]["tools"]
 
     def test_discord_tools_not_in_core_tools(self):
-        from toolsets import _LYDIA_CORE_TOOLS
-        assert "discord" not in _LYDIA_CORE_TOOLS
-        assert "discord_admin" not in _LYDIA_CORE_TOOLS
+        from toolsets import _ALICE_CORE_TOOLS
+        assert "discord" not in _ALICE_CORE_TOOLS
+        assert "discord_admin" not in _ALICE_CORE_TOOLS
 
     def test_discord_tools_not_in_other_toolsets(self):
         from toolsets import TOOLSETS

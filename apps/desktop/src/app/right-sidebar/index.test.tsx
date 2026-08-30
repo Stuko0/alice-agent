@@ -1,17 +1,17 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { LydiaReadDirResult } from '@/global'
+import type { AliceReadDirResult } from '@/global'
 import { $connection, setCurrentCwd } from '@/store/session'
 
 import { resetProjectTreeState } from './files/use-project-tree'
 
 import { RightSidebarPane } from './index'
 
-const readDir = vi.fn<(path: string) => Promise<LydiaReadDirResult>>()
+const readDir = vi.fn<(path: string) => Promise<AliceReadDirResult>>()
 
 function installBridge() {
-  ;(window as unknown as { lydiaDesktop: { readDir: typeof readDir } }).lydiaDesktop = { readDir }
+  ;(window as unknown as { aliceDesktop: { readDir: typeof readDir } }).aliceDesktop = { readDir }
 }
 
 describe('RightSidebarPane', () => {
@@ -28,7 +28,7 @@ describe('RightSidebarPane', () => {
     $connection.set(null)
     setCurrentCwd('')
     resetProjectTreeState()
-    delete (window as unknown as { lydiaDesktop?: unknown }).lydiaDesktop
+    delete (window as unknown as { aliceDesktop?: unknown }).aliceDesktop
   })
 
   it('renders the tree whenever the session has a working dir (repo or not) — no picker', async () => {

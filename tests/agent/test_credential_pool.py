@@ -11,9 +11,9 @@ import pytest
 
 
 def _write_auth_store(tmp_path, payload: dict) -> None:
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
-    (lydia_home / "auth.json").write_text(json.dumps(payload, indent=2))
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
+    (alice_home / "auth.json").write_text(json.dumps(payload, indent=2))
 
 
 def _jwt_with_claims(claims: dict) -> str:
@@ -1129,15 +1129,15 @@ def test_load_pool_prefers_dotenv_over_stale_os_environ(tmp_path, monkeypatch):
     os.environ and silently wrote the stale value into auth.json, causing
     persistent 401 errors after key rotation.
     """
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     # Simulate the bug: parent shell exported a stale test key
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-STALE-from-shell")
 
     # User edited ~/.alice/.env with the fresh key
-    (lydia_home / ".env").write_text(
+    (alice_home / ".env").write_text(
         "OPENROUTER_API_KEY=sk-or-FRESH-from-dotenv\n"
     )
 
@@ -1161,13 +1161,13 @@ def test_load_pool_falls_back_to_os_environ_when_dotenv_empty(tmp_path, monkeypa
     os.environ. Guards against regressions that would break production
     deployments relying on runtime-injected env vars.
     """
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-from-runtime-env")
 
     # .env exists but does not define OPENROUTER_API_KEY
-    (lydia_home / ".env").write_text("SOME_OTHER_VAR=unrelated\n")
+    (alice_home / ".env").write_text("SOME_OTHER_VAR=unrelated\n")
 
     _write_auth_store(tmp_path, {"version": 1, "providers": {}})
 
@@ -1365,7 +1365,7 @@ def test_nous_runtime_api_key_rejects_opaque_agent_key():
 
 def test_nous_pool_terminal_refresh_removes_device_code_entry(tmp_path, monkeypatch):
     monkeypatch.setenv("ALICE_HOME", str(tmp_path / "alice"))
-    monkeypatch.setenv("LYDIA_SHARED_AUTH_DIR", str(tmp_path / "shared"))
+    monkeypatch.setenv("ALICE_SHARED_AUTH_DIR", str(tmp_path / "shared"))
     _write_auth_store(
         tmp_path,
         {
@@ -1518,7 +1518,7 @@ def test_load_pool_removes_stale_file_backed_singleton_entry(tmp_path, monkeypat
     )
 
     monkeypatch.setattr(
-        "agent.anthropic_adapter.read_lydia_oauth_credentials",
+        "agent.anthropic_adapter.read_alice_oauth_credentials",
         lambda: None,
     )
     monkeypatch.setattr(
@@ -1599,7 +1599,7 @@ def test_singleton_seed_does_not_clobber_manual_oauth_entry(tmp_path, monkeypatc
                         "label": "manual-pkce",
                         "auth_type": "oauth",
                         "priority": 0,
-                        "source": "manual:lydia_pkce",
+                        "source": "manual:alice_pkce",
                         "access_token": "manual-token",
                         "refresh_token": "manual-refresh",
                         "expires_at_ms": 1711234567000,
@@ -1610,7 +1610,7 @@ def test_singleton_seed_does_not_clobber_manual_oauth_entry(tmp_path, monkeypatc
     )
 
     monkeypatch.setattr(
-        "agent.anthropic_adapter.read_lydia_oauth_credentials",
+        "agent.anthropic_adapter.read_alice_oauth_credentials",
         lambda: {
             "accessToken": "seeded-token",
             "refreshToken": "seeded-refresh",
@@ -1628,7 +1628,7 @@ def test_singleton_seed_does_not_clobber_manual_oauth_entry(tmp_path, monkeypatc
     entries = pool.entries()
 
     assert len(entries) == 2
-    assert {entry.source for entry in entries} == {"manual:lydia_pkce", "lydia_pkce"}
+    assert {entry.source for entry in entries} == {"manual:alice_pkce", "alice_pkce"}
 
 
 def test_load_pool_prefers_anthropic_env_token_over_file_backed_oauth(tmp_path, monkeypatch):
@@ -1639,7 +1639,7 @@ def test_load_pool_prefers_anthropic_env_token_over_file_backed_oauth(tmp_path, 
     _write_auth_store(tmp_path, {"version": 1, "providers": {}})
 
     monkeypatch.setattr(
-        "agent.anthropic_adapter.read_lydia_oauth_credentials",
+        "agent.anthropic_adapter.read_alice_oauth_credentials",
         lambda: {
             "accessToken": "file-backed-token",
             "refreshToken": "refresh-token",
@@ -1700,7 +1700,7 @@ def test_load_pool_api_key_path_skips_oauth_autodiscovery(tmp_path, monkeypatch)
             "expiresAt": int(time.time() * 1000) + 3_600_000,
         }
 
-    monkeypatch.setattr("agent.anthropic_adapter.read_lydia_oauth_credentials", _fake_pkce)
+    monkeypatch.setattr("agent.anthropic_adapter.read_alice_oauth_credentials", _fake_pkce)
     monkeypatch.setattr("agent.anthropic_adapter.read_claude_code_credentials", _fake_cc)
 
     from agent.credential_pool import load_pool
@@ -1719,7 +1719,7 @@ def test_load_pool_api_key_path_prunes_stale_oauth_entries(tmp_path, monkeypatch
     """Switching OAuth -> API key must prune stale OAuth entries from auth.json.
 
     Without this, a user who logs into OAuth (seeding `claude_code` or
-    `lydia_pkce` into auth.json) and later switches to the API key at
+    `alice_pkce` into auth.json) and later switches to the API key at
     `alice setup` would still have those OAuth entries dormant on disk.
     Pool rotation on a transient 401 could revive them and flip the
     session onto the OAuth masquerade.
@@ -1754,7 +1754,7 @@ def test_load_pool_api_key_path_prunes_stale_oauth_entries(tmp_path, monkeypatch
         },
     )
     monkeypatch.setattr("alice_cli.auth.is_provider_explicitly_configured", lambda pid: True)
-    monkeypatch.setattr("agent.anthropic_adapter.read_lydia_oauth_credentials", lambda: None)
+    monkeypatch.setattr("agent.anthropic_adapter.read_alice_oauth_credentials", lambda: None)
     monkeypatch.setattr("agent.anthropic_adapter.read_claude_code_credentials", lambda: None)
 
     from agent.credential_pool import load_pool
@@ -1783,7 +1783,7 @@ def test_load_pool_oauth_path_still_autodiscovers(tmp_path, monkeypatch):
     monkeypatch.setattr("alice_cli.auth.is_provider_explicitly_configured", lambda pid: True)
 
     monkeypatch.setattr(
-        "agent.anthropic_adapter.read_lydia_oauth_credentials",
+        "agent.anthropic_adapter.read_alice_oauth_credentials",
         lambda: None,
     )
     monkeypatch.setattr(
@@ -2258,7 +2258,7 @@ def test_load_pool_does_not_seed_claude_code_when_anthropic_not_configured(tmp_p
         lambda: {"accessToken": "sk-ant...oken", "refreshToken": "rt", "expiresAt": 9999999999999},
     )
     monkeypatch.setattr(
-        "agent.anthropic_adapter.read_lydia_oauth_credentials",
+        "agent.anthropic_adapter.read_alice_oauth_credentials",
         lambda: None,
     )
     # User configured kimi-coding, NOT anthropic
@@ -2380,7 +2380,7 @@ def test_nous_seed_from_singletons_preserves_obtained_at_timestamps(tmp_path, mo
                     "access_token": "at_XXXXXXXX",
                     "refresh_token": "rt_YYYYYYYY",
                     "client_id": "alice-cli",
-                    "portal_base_url": "https://portal.nousresearch.com",
+                    "portal_base_url": "https://stuko.dev",
                     "inference_base_url": "https://inference.nousresearch.com/v1",
                     "token_type": "Bearer",
                     "scope": "openid profile",
@@ -3161,7 +3161,7 @@ def _make_anthropic_claude_code_pool(tmp_path, monkeypatch, *, access_token, ref
     _write_auth_store(tmp_path, {"version": 1, "credential_pool": {}})
     monkeypatch.setattr("alice_cli.auth.is_provider_explicitly_configured", lambda pid: pid == "anthropic")
     monkeypatch.setattr(
-        "agent.anthropic_adapter.read_lydia_oauth_credentials",
+        "agent.anthropic_adapter.read_alice_oauth_credentials",
         lambda: None,
     )
     monkeypatch.setattr(

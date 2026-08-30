@@ -1,10 +1,10 @@
 import ignore from 'ignore'
 
-import type { LydiaReadDirEntry, LydiaReadDirResult } from '@/global'
+import type { AliceReadDirEntry, AliceReadDirResult } from '@/global'
 import { desktopFsCacheKey, desktopGitRoot, readDesktopDir, readDesktopFileDataUrl } from '@/lib/desktop-fs'
 import { ALWAYS_EXCLUDED } from '@/lib/excluded-paths'
 
-export type ProjectTreeEntry = LydiaReadDirEntry
+export type ProjectTreeEntry = AliceReadDirEntry
 
 interface GitignoreRule {
   base: string
@@ -105,7 +105,7 @@ async function gitignoreFor(dir: string) {
   return cached
 }
 
-function ignoredBy(rules: GitignoreRule[], entry: LydiaReadDirEntry) {
+function ignoredBy(rules: GitignoreRule[], entry: AliceReadDirEntry) {
   return rules.some(rule => {
     const rel = relativeTo(rule.base, entry.path)
 
@@ -117,7 +117,7 @@ function ignoredBy(rules: GitignoreRule[], entry: LydiaReadDirEntry) {
   })
 }
 
-async function filterIgnored(entries: LydiaReadDirEntry[], rootPath: string, dirPath: string) {
+async function filterIgnored(entries: AliceReadDirEntry[], rootPath: string, dirPath: string) {
   const root = await gitRootFor(rootPath)
 
   if (!root) {
@@ -131,8 +131,8 @@ async function filterIgnored(entries: LydiaReadDirEntry[], rootPath: string, dir
   return rules.length > 0 ? entries.filter(entry => !ignoredBy(rules, entry)) : entries
 }
 
-export async function readProjectDir(dirPath: string, rootPath = dirPath): Promise<LydiaReadDirResult> {
-  if (!window.lydiaDesktop) {
+export async function readProjectDir(dirPath: string, rootPath = dirPath): Promise<AliceReadDirResult> {
+  if (!window.aliceDesktop) {
     return { entries: [], error: 'no-bridge' }
   }
 

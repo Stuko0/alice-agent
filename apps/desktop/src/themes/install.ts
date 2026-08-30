@@ -2,12 +2,13 @@
  * Install desktop themes from external sources.
  *
  * The heavy lifting (network + .vsix unzip) lives in the Electron main process
- * (`electron/vscode-marketplace.cjs`), reached via `window.lydiaDesktop.themes`.
+ * (`electron/vscode-marketplace.cjs`), reached via `window.aliceDesktop.themes`.
  * Main hands back the raw theme JSON; we parse + convert + persist here so the
  * conversion stays in one unit-testable place.
  */
 
 import type { DesktopMarketplaceThemeResult } from '@/global'
+import { desktopSupports } from '@/lib/desktop-capabilities'
 
 import type { DesktopTheme } from './types'
 import { installUserTheme } from './user-themes'
@@ -80,9 +81,9 @@ export async function installVscodeThemeFromMarketplace(id: string): Promise<Des
     throw new Error('Expected a Marketplace id like "publisher.extension".')
   }
 
-  const api = window.lydiaDesktop?.themes
+  const api = window.aliceDesktop?.themes
 
-  if (!api?.fetchMarketplace) {
+  if (!api?.fetchMarketplace || !desktopSupports('vscodeThemes')) {
     throw new Error('Marketplace install is only available in the desktop app.')
   }
 

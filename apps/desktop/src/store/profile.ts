@@ -103,7 +103,7 @@ interface ActiveProfileResponse {
 // Best-effort: failures (backend not up yet) leave the prior values intact.
 export async function refreshActiveProfile(): Promise<void> {
   try {
-    const res = await window.lydiaDesktop.api<ActiveProfileResponse>({ path: '/api/profiles/active' })
+    const res = await window.aliceDesktop.api<ActiveProfileResponse>({ path: '/api/profiles/active' })
 
     setActiveProfile(res.current || 'default')
   } catch {
@@ -118,7 +118,7 @@ export async function refreshActiveProfile(): Promise<void> {
   }
 }
 
-// Persist the choice and relaunch the backend under the new LYDIA_HOME. The
+// Persist the choice and relaunch the backend under the new ALICE_HOME. The
 // main process reloads the window, so this normally never returns to the caller
 // (the renderer is torn down). We optimistically reflect the selection first so
 // the pill updates instantly if the reload is delayed.
@@ -128,7 +128,7 @@ export async function switchProfile(name: string): Promise<void> {
   }
 
   setActiveProfile(name)
-  await window.lydiaDesktop.profile.set(name)
+  await window.aliceDesktop.profile.set(name)
 }
 
 // ── Swap-minimal gateway routing ──────────────────────────────────────────
@@ -195,7 +195,7 @@ let gatewaySwitch: Promise<void> | null = null
 // Best-effort: a failed descriptor fetch leaves the prior connection intact for
 // boot/reconnect to resync.
 async function syncConnectionToActiveProfile(profile: string): Promise<void> {
-  const getConnection = window.lydiaDesktop?.getConnection
+  const getConnection = window.aliceDesktop?.getConnection
 
   if (!getConnection) {
     return
@@ -394,5 +394,5 @@ export function touchActiveGatewayBackend(): void {
   // Always ping: the main process no-ops for non-pool (primary) backends, so we
   // don't need to know which profile is primary from here.
   const target = normalizeProfileKey($activeGatewayProfile.get())
-  void window.lydiaDesktop?.touchBackend?.(target).catch(() => undefined)
+  void window.aliceDesktop?.touchBackend?.(target).catch(() => undefined)
 }

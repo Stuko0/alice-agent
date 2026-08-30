@@ -94,8 +94,8 @@ class TestWalk:
 class TestGenerateBash:
     def test_contains_completion_function_and_register(self):
         out = generate_bash(_make_parser())
-        assert "_lydia_completion()" in out
-        assert "complete -F _lydia_completion alice" in out
+        assert "_alice_completion()" in out
+        assert "complete -F _alice_completion alice" in out
 
     def test_top_level_commands_present(self):
         out = generate_bash(_make_parser())
@@ -142,14 +142,14 @@ class TestGenerateZsh:
 
     def test_registers_compdef_instead_of_invoking_completion_function(self):
         out = generate_zsh(_make_parser())
-        assert 'compdef _lydia alice' in out
-        assert '_lydia "$@"' not in out
+        assert 'compdef _alice alice' in out
+        assert '_alice "$@"' not in out
 
     def test_preserves_valid_zsh_arguments_alias_syntax(self):
         out = generate_zsh(_make_parser())
         assert "'(-)'{-h,--help}'[Show help and exit]'" in out
         assert "'(-)'{-V,--version}'[Show version and exit]'" in out
-        assert "'(-)'{-p,--profile}'[Profile name]:profile:_lydia_profiles'" in out
+        assert "'(-)'{-p,--profile}'[Profile name]:profile:_alice_profiles'" in out
         assert "'(-h --help){-h,--help}[Show help and exit]'" not in out
         assert '"(-h --help)"{-h,--help}"[Show help and exit]"' not in out
 
@@ -178,7 +178,7 @@ class TestGenerateZsh:
                 [
                     "zsh",
                     "-fc",
-                    f"autoload -Uz compinit && compinit -D; source {path}; [[ ${{_comps[alice]}} == _lydia ]]",
+                    f"autoload -Uz compinit && compinit -D; source {path}; [[ ${{_comps[alice]}} == _alice ]]",
                 ],
                 capture_output=True,
                 text=True,
@@ -258,14 +258,14 @@ class TestProfileCompletion:
 
     def test_bash_has_profiles_helper(self):
         out = generate_bash(_make_parser())
-        assert "_lydia_profiles()" in out
+        assert "_alice_profiles()" in out
         assert 'profiles_dir="$HOME/.alice/profiles"' in out
 
     def test_bash_completes_profiles_after_p_flag(self):
         out = generate_bash(_make_parser())
         assert '"-p"' in out or "== \"-p\"" in out
         assert '"--profile"' in out or '== "--profile"' in out
-        assert "_lydia_profiles" in out
+        assert "_alice_profiles" in out
 
     def test_bash_profile_subcommand_has_action_completion(self):
         out = generate_bash(_make_parser())
@@ -274,27 +274,27 @@ class TestProfileCompletion:
     def test_bash_profile_actions_complete_profile_names(self):
         """After 'alice profile use', complete with profile names."""
         out = generate_bash(_make_parser())
-        # The profile case should have _lydia_profiles for name-taking actions
+        # The profile case should have _alice_profiles for name-taking actions
         lines = out.split("\n")
         in_profile_case = False
         has_profiles_in_action = False
         for line in lines:
             if "profile)" in line:
                 in_profile_case = True
-            if in_profile_case and "_lydia_profiles" in line:
+            if in_profile_case and "_alice_profiles" in line:
                 has_profiles_in_action = True
                 break
-        assert has_profiles_in_action, "profile actions should complete with _lydia_profiles"
+        assert has_profiles_in_action, "profile actions should complete with _alice_profiles"
 
     def test_zsh_has_profiles_helper(self):
         out = generate_zsh(_make_parser())
-        assert "_lydia_profiles()" in out
+        assert "_alice_profiles()" in out
         assert "$HOME/.alice/profiles" in out
 
     def test_zsh_has_profile_flag_completion(self):
         out = generate_zsh(_make_parser())
         assert "--profile" in out
-        assert "_lydia_profiles" in out
+        assert "_alice_profiles" in out
 
     def test_zsh_profile_actions_complete_names(self):
         out = generate_zsh(_make_parser())
@@ -302,18 +302,18 @@ class TestProfileCompletion:
 
     def test_fish_has_profiles_helper(self):
         out = generate_fish(_make_parser())
-        assert "__lydia_profiles" in out
+        assert "__alice_profiles" in out
         assert "$HOME/.alice/profiles" in out
 
     def test_fish_has_profile_flag_completion(self):
         out = generate_fish(_make_parser())
         assert "-s p -l profile" in out
-        assert "(__lydia_profiles)" in out
+        assert "(__alice_profiles)" in out
 
     def test_fish_profile_actions_complete_names(self):
         out = generate_fish(_make_parser())
         # Should have profile name completion for actions like use, delete, etc.
-        assert "__lydia_profiles" in out
-        count = out.count("(__lydia_profiles)")
+        assert "__alice_profiles" in out
+        count = out.count("(__alice_profiles)")
         # At least the -p flag + the profile action completions
         assert count >= 2, f"Expected >=2 profile completion entries, got {count}"

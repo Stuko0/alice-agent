@@ -82,13 +82,13 @@ def test_manager_remove_evicts_cache(tmp_path, monkeypatch):
     assert p1 is not p2
 
 
-def test_lydia_provider_subclass_exists():
-    """LydiaMCPOAuthProvider is defined and subclasses OAuthClientProvider."""
-    from tools.mcp_oauth_manager import _LYDIA_PROVIDER_CLS
+def test_alice_provider_subclass_exists():
+    """AliceMCPOAuthProvider is defined and subclasses OAuthClientProvider."""
+    from tools.mcp_oauth_manager import _ALICE_PROVIDER_CLS
     from mcp.client.auth.oauth2 import OAuthClientProvider
 
-    assert _LYDIA_PROVIDER_CLS is not None
-    assert issubclass(_LYDIA_PROVIDER_CLS, OAuthClientProvider)
+    assert _ALICE_PROVIDER_CLS is not None
+    assert issubclass(_ALICE_PROVIDER_CLS, OAuthClientProvider)
 
 
 @pytest.mark.asyncio
@@ -237,10 +237,10 @@ async def test_handle_401_dedup_survives_even_if_task_reference_dropped(tmp_path
     assert len(mgr._inflight_tasks) == 0
 
 
-def test_manager_builds_lydia_provider_subclass(tmp_path, monkeypatch):
-    """get_or_build_provider returns LydiaMCPOAuthProvider, not plain OAuthClientProvider."""
+def test_manager_builds_alice_provider_subclass(tmp_path, monkeypatch):
+    """get_or_build_provider returns AliceMCPOAuthProvider, not plain OAuthClientProvider."""
     from tools.mcp_oauth_manager import (
-        MCPOAuthManager, _LYDIA_PROVIDER_CLS, reset_manager_for_tests,
+        MCPOAuthManager, _ALICE_PROVIDER_CLS, reset_manager_for_tests,
     )
     reset_manager_for_tests()
     monkeypatch.setenv("ALICE_HOME", str(tmp_path))
@@ -249,9 +249,9 @@ def test_manager_builds_lydia_provider_subclass(tmp_path, monkeypatch):
     mgr = MCPOAuthManager()
     provider = mgr.get_or_build_provider("srv", "https://example.com/mcp", None)
 
-    assert _LYDIA_PROVIDER_CLS is not None
-    assert isinstance(provider, _LYDIA_PROVIDER_CLS)
-    assert provider._lydia_server_name == "srv"
+    assert _ALICE_PROVIDER_CLS is not None
+    assert isinstance(provider, _ALICE_PROVIDER_CLS)
+    assert provider._alice_server_name == "srv"
 
 
 def test_manager_fails_fast_noninteractive_without_cached_tokens(tmp_path, monkeypatch):

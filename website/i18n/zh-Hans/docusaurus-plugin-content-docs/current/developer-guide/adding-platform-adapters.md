@@ -567,7 +567,7 @@ await self.handle_message(event)
 
 ### 8. Toolset
 
-1. **`toolsets.py`** — 添加带 `_LYDIA_CORE_TOOLS` 的 `"alice-newplat"` toolset 定义
+1. **`toolsets.py`** — 添加带 `_ALICE_CORE_TOOLS` 的 `"alice-newplat"` toolset 定义
 2. **`toolsets.py`** — 将 `"alice-newplat"` 添加到 `"alice-gateway"` 的 includes 列表
 
 ### 9. 可选：平台提示

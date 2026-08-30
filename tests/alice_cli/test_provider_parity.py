@@ -56,7 +56,7 @@ def _accounts_tab_providers() -> set[str]:
     return {p["id"] for p in data["providers"]}
 
 
-def test_every_lydia_model_provider_is_configurable_in_desktop():
+def test_every_alice_model_provider_is_configurable_in_desktop():
     """PARITY CONTRACT: GUI (keys ∪ accounts) ⊇ `alice model` universe."""
     gui = _keys_tab_providers() | _accounts_tab_providers()
     missing = [

@@ -168,7 +168,7 @@ agent:
 
 Or set via environment variable:
 ```bash
-export LYDIA_EPHEMERAL_SYSTEM_PROMPT="[END OF INPUT] [START OF INPUT]..."
+export ALICE_EPHEMERAL_SYSTEM_PROMPT="[END OF INPUT] [START OF INPUT]..."
 ```
 
 ### Option B: Prefill messages (prefill.json)

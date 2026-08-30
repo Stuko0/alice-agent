@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { canOpenSessionWindow, openNewSessionInNewWindow, openSessionInNewWindow } from './windows'
 
-const desktopWindow = window as unknown as { lydiaDesktop?: Window['lydiaDesktop'] }
-const initialLydiaDesktop = desktopWindow.lydiaDesktop
+const desktopWindow = window as unknown as { aliceDesktop?: Window['aliceDesktop'] }
+const initialAliceDesktop = desktopWindow.aliceDesktop
 
 const notifyError = vi.fn()
 
@@ -12,13 +12,13 @@ vi.mock('./notifications', () => ({
 }))
 
 function installBridge(
-  openSessionWindow?: Window['lydiaDesktop']['openSessionWindow'],
-  openNewSessionWindow?: Window['lydiaDesktop']['openNewSessionWindow']
+  openSessionWindow?: Window['aliceDesktop']['openSessionWindow'],
+  openNewSessionWindow?: Window['aliceDesktop']['openNewSessionWindow']
 ) {
-  desktopWindow.lydiaDesktop = {
+  desktopWindow.aliceDesktop = {
     ...(openSessionWindow ? { openSessionWindow } : {}),
     ...(openNewSessionWindow ? { openNewSessionWindow } : {})
-  } as unknown as Window['lydiaDesktop']
+  } as unknown as Window['aliceDesktop']
 }
 
 beforeEach(() => {
@@ -26,16 +26,16 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  if (initialLydiaDesktop) {
-    desktopWindow.lydiaDesktop = initialLydiaDesktop
+  if (initialAliceDesktop) {
+    desktopWindow.aliceDesktop = initialAliceDesktop
   } else {
-    delete desktopWindow.lydiaDesktop
+    delete desktopWindow.aliceDesktop
   }
 })
 
 describe('canOpenSessionWindow', () => {
   it('is false when the desktop bridge is absent', () => {
-    delete desktopWindow.lydiaDesktop
+    delete desktopWindow.aliceDesktop
     expect(canOpenSessionWindow()).toBe(false)
   })
 
@@ -62,7 +62,7 @@ describe('openSessionInNewWindow', () => {
   })
 
   it('no-ops gracefully when the bridge is absent (web fallback)', async () => {
-    delete desktopWindow.lydiaDesktop
+    delete desktopWindow.aliceDesktop
 
     await openSessionInNewWindow('s1')
 
@@ -108,7 +108,7 @@ describe('openSessionInNewWindow', () => {
 
 describe('openNewSessionInNewWindow', () => {
   it('no-ops gracefully when the bridge is absent (web fallback)', async () => {
-    delete desktopWindow.lydiaDesktop
+    delete desktopWindow.aliceDesktop
 
     await openNewSessionInNewWindow()
 

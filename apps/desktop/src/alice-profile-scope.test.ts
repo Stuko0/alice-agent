@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
-  checkLydiaUpdate,
+  checkAliceUpdate,
   getActionStatus,
   getStatus,
   restartGateway,
   setApiRequestProfile,
-  updateLydia
+  updateAlice
 } from './alice'
 
 // Contract: every backend-targeted action helper must carry the active gateway
@@ -17,13 +17,13 @@ describe('backend action helpers are profile-scoped', () => {
   const api = vi.fn(async (_req: { path: string; profile?: string }) => ({}) as never)
 
   beforeEach(() => {
-    ;(window as { lydiaDesktop?: unknown }).lydiaDesktop = { api }
+    ;(window as { aliceDesktop?: unknown }).aliceDesktop = { api }
     api.mockClear()
   })
 
   afterEach(() => {
     setApiRequestProfile(null)
-    delete (window as { lydiaDesktop?: unknown }).lydiaDesktop
+    delete (window as { aliceDesktop?: unknown }).aliceDesktop
   })
 
   const lastProfile = () => api.mock.calls.at(-1)?.[0].profile
@@ -38,8 +38,8 @@ describe('backend action helpers are profile-scoped', () => {
 
     void getStatus()
     void restartGateway()
-    void updateLydia()
-    void checkLydiaUpdate()
+    void updateAlice()
+    void checkAliceUpdate()
     void getActionStatus('gateway-restart')
 
     for (const call of api.mock.calls) {

@@ -4,15 +4,15 @@ import { Buffer } from 'node:buffer'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { LydiaReadDirEntry, LydiaReadDirResult } from '@/global'
+import type { AliceReadDirEntry, AliceReadDirResult } from '@/global'
 
 import { clearProjectDirCache, readProjectDir } from './ipc'
 
-const readDir = vi.fn<(path: string) => Promise<LydiaReadDirResult>>()
+const readDir = vi.fn<(path: string) => Promise<AliceReadDirResult>>()
 const readFileDataUrl = vi.fn<(path: string) => Promise<string>>()
 const gitRoot = vi.fn<(path: string) => Promise<string | null>>()
 
-function ok(entries: LydiaReadDirEntry[]): LydiaReadDirResult {
+function ok(entries: AliceReadDirEntry[]): AliceReadDirResult {
   return { entries }
 }
 
@@ -23,13 +23,13 @@ function dataUrl(text: string) {
 function installBridge() {
   ;(
     window as unknown as {
-      lydiaDesktop: {
+      aliceDesktop: {
         gitRoot: typeof gitRoot
         readDir: typeof readDir
         readFileDataUrl: typeof readFileDataUrl
       }
     }
-  ).lydiaDesktop = { gitRoot, readDir, readFileDataUrl }
+  ).aliceDesktop = { gitRoot, readDir, readFileDataUrl }
 }
 
 describe('readProjectDir', () => {
@@ -43,11 +43,11 @@ describe('readProjectDir', () => {
 
   afterEach(() => {
     clearProjectDirCache()
-    delete (window as unknown as { lydiaDesktop?: unknown }).lydiaDesktop
+    delete (window as unknown as { aliceDesktop?: unknown }).aliceDesktop
   })
 
   it('returns no-bridge when the desktop bridge is unavailable', async () => {
-    delete (window as unknown as { lydiaDesktop?: unknown }).lydiaDesktop
+    delete (window as unknown as { aliceDesktop?: unknown }).aliceDesktop
 
     await expect(readProjectDir('/repo')).resolves.toEqual({ entries: [], error: 'no-bridge' })
   })

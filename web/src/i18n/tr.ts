@@ -120,8 +120,8 @@ export const tr: Translations = {
     starting: "Başlatılıyor",
     startedInBackground: "Arka planda başlatıldı — ilerleme için günlüklere bakın",
     stopped: "Durduruldu",
-    updateLydia: "Alice'i Güncelle",
-    updatingLydia: "Alice güncelleniyor…",
+    updateAlice: "Alice'i Güncelle",
+    updatingAlice: "Alice güncelleniyor…",
     waitingForOutput: "Çıktı bekleniyor…",
   },
 

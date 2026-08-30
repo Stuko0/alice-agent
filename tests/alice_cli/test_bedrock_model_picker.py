@@ -5,7 +5,7 @@ Covers the three paths changed by fix/bedrock-provider-model-ids-live-discovery:
   1. provider_model_ids("bedrock") — uses live discover_bedrock_models() instead
      of the static _PROVIDER_MODELS table, with curated fallback.
 
-  2. list_authenticated_providers() Section 2 (LYDIA_OVERLAYS) — bedrock
+  2. list_authenticated_providers() Section 2 (ALICE_OVERLAYS) — bedrock
      appears when AWS credentials are present; model list comes from live
      discovery keyed by the resolved region, NOT the static us.* table.
 
@@ -129,7 +129,7 @@ class TestProviderModelIdsBedrock:
 
 
 # ---------------------------------------------------------------------------
-# 2. list_authenticated_providers() — bedrock via LYDIA_OVERLAYS (Section 2)
+# 2. list_authenticated_providers() — bedrock via ALICE_OVERLAYS (Section 2)
 # ---------------------------------------------------------------------------
 
 class TestListAuthenticatedProvidersBedrock:
@@ -334,19 +334,19 @@ class TestBedrockRegionRouting:
 # ---------------------------------------------------------------------------
 
 class TestBedrockOverlayRegistration:
-    """bedrock entry in LYDIA_OVERLAYS is correctly configured."""
+    """bedrock entry in ALICE_OVERLAYS is correctly configured."""
 
     def test_bedrock_overlay_exists(self):
-        from alice_cli.providers import LYDIA_OVERLAYS
-        assert "bedrock" in LYDIA_OVERLAYS
+        from alice_cli.providers import ALICE_OVERLAYS
+        assert "bedrock" in ALICE_OVERLAYS
 
     def test_bedrock_overlay_transport(self):
-        from alice_cli.providers import LYDIA_OVERLAYS
-        assert LYDIA_OVERLAYS["bedrock"].transport == "bedrock_converse"
+        from alice_cli.providers import ALICE_OVERLAYS
+        assert ALICE_OVERLAYS["bedrock"].transport == "bedrock_converse"
 
     def test_bedrock_overlay_auth_type(self):
-        from alice_cli.providers import LYDIA_OVERLAYS
-        assert LYDIA_OVERLAYS["bedrock"].auth_type == "aws_sdk"
+        from alice_cli.providers import ALICE_OVERLAYS
+        assert ALICE_OVERLAYS["bedrock"].auth_type == "aws_sdk"
 
     def test_bedrock_label(self):
         from alice_cli.providers import get_label

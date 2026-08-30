@@ -298,7 +298,7 @@ class TestExecuteCodeModeIntegration(unittest.TestCase):
         """Strict mode: script's os.getcwd() is the staging tmpdir."""
         result = self._run("import os; print(os.getcwd())", mode="strict")
         self.assertEqual(result["status"], "success")
-        self.assertIn("lydia_sandbox_", result["output"])
+        self.assertIn("alice_sandbox_", result["output"])
 
     def test_project_mode_runs_in_session_cwd(self):
         """Project mode: script's os.getcwd() is the session's working dir."""
@@ -334,7 +334,7 @@ class TestExecuteCodeModeIntegration(unittest.TestCase):
                 f"project-mode python should be under VIRTUAL_ENV={ve} or sys.executable={sys.executable}, got {output}",
             )
 
-    def test_project_mode_can_still_import_lydia_tools(self):
+    def test_project_mode_can_still_import_alice_tools(self):
         """Regression: alice_tools still importable from non-tmpdir CWD.
 
         This is the PYTHONPATH fix — without it, switching to session CWD
@@ -351,7 +351,7 @@ class TestExecuteCodeModeIntegration(unittest.TestCase):
             self.assertEqual(result["status"], "success")
             self.assertIn("mock", result["output"])
 
-    def test_strict_mode_can_still_import_lydia_tools(self):
+    def test_strict_mode_can_still_import_alice_tools(self):
         """Regression: strict mode's tmpdir CWD still works for imports."""
         code = (
             "from alice_tools import terminal\n"

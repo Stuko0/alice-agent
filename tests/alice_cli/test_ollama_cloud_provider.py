@@ -373,9 +373,9 @@ class TestOllamaCloudAgentInit:
 
 class TestOllamaCloudProvidersNew:
     def test_overlay_exists(self):
-        from alice_cli.providers import LYDIA_OVERLAYS
-        assert "ollama-cloud" in LYDIA_OVERLAYS
-        overlay = LYDIA_OVERLAYS["ollama-cloud"]
+        from alice_cli.providers import ALICE_OVERLAYS
+        assert "ollama-cloud" in ALICE_OVERLAYS
+        overlay = ALICE_OVERLAYS["ollama-cloud"]
         assert overlay.transport == "openai_chat"
         assert overlay.base_url_env_var == "OLLAMA_BASE_URL"
 

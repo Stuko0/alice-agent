@@ -50,7 +50,7 @@ const PROVIDER_GROUPS: { prefix: string; name: string; priority: number }[] = [
   // Then alphabetical by display name
   { prefix: "ANTHROPIC_", name: "Anthropic", priority: 1 },
   { prefix: "DASHSCOPE_", name: "DashScope (Qwen)", priority: 2 },
-  { prefix: "LYDIA_QWEN_", name: "DashScope (Qwen)", priority: 2 },
+  { prefix: "ALICE_QWEN_", name: "DashScope (Qwen)", priority: 2 },
   { prefix: "DEEPSEEK_", name: "DeepSeek", priority: 3 },
   { prefix: "GOOGLE_", name: "Gemini", priority: 4 },
   { prefix: "GEMINI_", name: "Gemini", priority: 4 },
@@ -487,7 +487,7 @@ function ProviderGroupCard({
 /*  CustomKeysCard — user-added arbitrary env vars + add-key form      */
 /* ------------------------------------------------------------------ */
 
-// Mirror of the backend env-name guard (lydia_cli/config.py _ENV_VAR_NAME_RE).
+// Mirror of the backend env-name guard (alice_cli/config.py _ENV_VAR_NAME_RE).
 const ENV_VAR_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function CustomKeysCard({

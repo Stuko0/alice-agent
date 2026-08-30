@@ -2,21 +2,21 @@ import { isGatewayReauthRequired, resolveGatewayWsUrl } from '@alice/shared'
 import { useStore } from '@nanostores/react'
 import { useCallback, useEffect, useRef } from 'react'
 
-import type { LydiaGateway } from '@/alice'
+import type { AliceGateway } from '@/alice'
 import { $gateway, ensureActiveGatewayOpen, isActivePrimary } from '@/store/gateway'
 import { $activeGatewayProfile } from '@/store/profile'
 import { $gatewayState, setConnection } from '@/store/session'
 
 export function useGatewayRequest() {
   const gatewayState = useStore($gatewayState)
-  const gatewayRef = useRef<LydiaGateway | null>(null)
+  const gatewayRef = useRef<AliceGateway | null>(null)
 
-  const connectionRef = useRef<Awaited<ReturnType<NonNullable<typeof window.lydiaDesktop>['getConnection']>> | null>(
+  const connectionRef = useRef<Awaited<ReturnType<NonNullable<typeof window.aliceDesktop>['getConnection']>> | null>(
     null
   )
 
   const gatewayStateRef = useRef(gatewayState)
-  const reconnectingRef = useRef<Promise<LydiaGateway | null> | null>(null)
+  const reconnectingRef = useRef<Promise<AliceGateway | null> | null>(null)
   // Holds the reauth error from the most recent failed reconnect so
   // requestGateway can surface the gateway's "session expired, sign in again"
   // message instead of the opaque "connection closed" that triggered the retry.
@@ -31,7 +31,7 @@ export function useGatewayRequest() {
   useEffect(
     () =>
       $gateway.subscribe(gateway => {
-        gatewayRef.current = gateway as LydiaGateway | null
+        gatewayRef.current = gateway as AliceGateway | null
       }),
     []
   )
@@ -52,7 +52,7 @@ export function useGatewayRequest() {
     }
 
     reconnectingRef.current = (async () => {
-      const desktop = window.lydiaDesktop
+      const desktop = window.aliceDesktop
 
       if (!desktop) {
         return null

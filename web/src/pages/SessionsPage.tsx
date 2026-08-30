@@ -1136,8 +1136,8 @@ export default function SessionsPage() {
           credentials: "include",
           headers: {
             "X-Alice-Session-Token":
-              (window as unknown as { __LYDIA_SESSION_TOKEN__?: string })
-                .__LYDIA_SESSION_TOKEN__ ?? "",
+              (window as unknown as { __ALICE_SESSION_TOKEN__?: string })
+                .__ALICE_SESSION_TOKEN__ ?? "",
           },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1421,7 +1421,7 @@ export default function SessionsPage() {
               <span className="text-xs font-mondwest tracking-[0.12em] truncate">
                 {activeAction === "restart"
                   ? t.status.restartGateway
-                  : t.status.updateLydia}
+                  : t.status.updateAlice}
               </span>
 
               <Badge

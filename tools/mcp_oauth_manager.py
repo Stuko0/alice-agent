@@ -98,7 +98,7 @@ class _ProviderEntry:
 
 
 # ---------------------------------------------------------------------------
-# LydiaMCPOAuthProvider — OAuthClientProvider subclass with disk-watch
+# AliceMCPOAuthProvider — OAuthClientProvider subclass with disk-watch
 # ---------------------------------------------------------------------------
 
 
@@ -113,7 +113,7 @@ def _make_alice_provider_class() -> Optional[type]:
     except ImportError:  # pragma: no cover — SDK required in CI
         return None
 
-    class LydiaMCPOAuthProvider(OAuthClientProvider):
+    class AliceMCPOAuthProvider(OAuthClientProvider):
         """OAuthClientProvider with pre-flow disk-mtime reload.
 
         Before every ``async_auth_flow`` invocation, asks the manager to
@@ -172,7 +172,7 @@ def _make_alice_provider_class() -> Optional[type]:
             ``async_auth_flow`` takes the ``can_refresh_token()`` branch,
             and the SDK quietly refreshes before the first real request.
 
-            Paired with :class:`LydiaTokenStorage` persisting an absolute
+            Paired with :class:`AliceTokenStorage` persisting an absolute
             ``expires_at`` timestamp (``mcp_oauth.py:set_tokens``) so the
             remaining TTL we compute here reflects real wall-clock age.
             """
@@ -187,9 +187,9 @@ def _make_alice_provider_class() -> Optional[type]:
             # guessed ``{server_url}/token`` path (returns 404 on most real
             # providers) and require a full browser re-authorization.
             storage = self.context.storage
-            from tools.mcp_oauth import LydiaTokenStorage
+            from tools.mcp_oauth import AliceTokenStorage
             if (
-                isinstance(storage, LydiaTokenStorage)
+                isinstance(storage, AliceTokenStorage)
                 and self.context.oauth_metadata is None
             ):
                 meta = storage.load_oauth_metadata()
@@ -286,8 +286,8 @@ def _make_alice_provider_class() -> Optional[type]:
                         # Persist immediately so a subsequent cold-load can
                         # skip discovery entirely.
                         storage = self.context.storage
-                        from tools.mcp_oauth import LydiaTokenStorage
-                        if isinstance(storage, LydiaTokenStorage):
+                        from tools.mcp_oauth import AliceTokenStorage
+                        if isinstance(storage, AliceTokenStorage):
                             storage.save_oauth_metadata(asm)
                         logger.debug(
                             "MCP OAuth '%s': pre-flight ASM discovered "
@@ -307,8 +307,8 @@ def _make_alice_provider_class() -> Optional[type]:
             if meta is None:
                 return
             storage = self.context.storage
-            from tools.mcp_oauth import LydiaTokenStorage
-            if not isinstance(storage, LydiaTokenStorage):
+            from tools.mcp_oauth import AliceTokenStorage
+            if not isinstance(storage, AliceTokenStorage):
                 return
             existing = storage.load_oauth_metadata()
             if (
@@ -373,8 +373,8 @@ def _make_alice_provider_class() -> Optional[type]:
                     return
 
                 storage = self.context.storage
-                from tools.mcp_oauth import LydiaTokenStorage
-                if isinstance(storage, LydiaTokenStorage):
+                from tools.mcp_oauth import AliceTokenStorage
+                if isinstance(storage, AliceTokenStorage):
                     storage.poison_client_registration()
                 # Drop the in-memory client so the SDK re-registers next flow.
                 self.context.client_info = None
@@ -428,7 +428,7 @@ def _make_alice_provider_class() -> Optional[type]:
                 self._persist_oauth_metadata_if_changed()
                 return
 
-    return LydiaMCPOAuthProvider
+    return AliceMCPOAuthProvider
 
 
 # Cached at import time. Tested and used by :class:`MCPOAuthManager`.
@@ -500,7 +500,7 @@ class MCPOAuthManager:
     ) -> Optional[Any]:
         """Build the underlying OAuth provider.
 
-        Constructs :class:`LydiaMCPOAuthProvider` directly using the helpers
+        Constructs :class:`AliceMCPOAuthProvider` directly using the helpers
         extracted from ``tools.mcp_oauth``. The subclass injects a pre-flow
         disk-watch hook so external token refreshes (cron, other CLI
         instances) are visible to running MCP sessions.
@@ -515,7 +515,7 @@ class MCPOAuthManager:
 
         # Local imports avoid circular deps at module import time.
         from tools.mcp_oauth import (
-            LydiaTokenStorage,
+            AliceTokenStorage,
             OAuthNonInteractiveError,
             _OAUTH_AVAILABLE,
             _build_client_metadata,
@@ -530,7 +530,7 @@ class MCPOAuthManager:
             return None
 
         cfg = dict(entry.oauth_config or {})
-        storage = LydiaTokenStorage(server_name)
+        storage = AliceTokenStorage(server_name)
 
         if not _is_interactive() and not storage.has_cached_tokens():
             raise OAuthNonInteractiveError(

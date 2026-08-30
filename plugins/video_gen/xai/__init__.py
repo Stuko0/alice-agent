@@ -112,9 +112,9 @@ def _resolve_xai_credentials() -> Tuple[str, str]:
 
 def _xai_user_agent() -> str:
     try:
-        from tools.xai_http import lydia_xai_user_agent
+        from tools.xai_http import alice_xai_user_agent
 
-        return lydia_xai_user_agent()
+        return alice_xai_user_agent()
     except Exception:
         return "alice-agent/video_gen"
 

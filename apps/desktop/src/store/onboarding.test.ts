@@ -40,7 +40,7 @@ function baseState(overrides: Partial<DesktopOnboardingState> = {}): DesktopOnbo
 }
 
 function installApiMock(api: (request: { path: string }) => Promise<unknown>) {
-  Object.defineProperty(window, 'lydiaDesktop', {
+  Object.defineProperty(window, 'aliceDesktop', {
     configurable: true,
     value: { api }
   })

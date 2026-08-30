@@ -20,11 +20,11 @@ def test_service_path_includes_node_modules_when_present(tmp_path):
     assert str(nm_bin) in dirs
 
 
-def test_service_path_includes_lydia_home_node_modules(tmp_path):
+def test_service_path_includes_alice_home_node_modules(tmp_path):
     """Service PATH should include ~/.alice/node_modules/.bin when it exists."""
-    lydia_nm = tmp_path / ".alice" / "node_modules" / ".bin"
-    lydia_nm.mkdir(parents=True)
+    alice_nm = tmp_path / ".alice" / "node_modules" / ".bin"
+    alice_nm.mkdir(parents=True)
     from alice_cli.gateway import _build_service_path_dirs
     with patch("alice_cli.gateway.get_alice_home", return_value=tmp_path / ".alice"):
         dirs = _build_service_path_dirs(project_root=tmp_path)
-    assert str(lydia_nm) in dirs
+    assert str(alice_nm) in dirs

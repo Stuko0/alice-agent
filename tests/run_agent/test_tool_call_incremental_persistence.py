@@ -47,8 +47,8 @@ def _make_tool_defs(*names: str) -> list:
 
 
 def _make_agent():
-    lydia_home = Path(tempfile.mkdtemp(prefix="alice-test-home-"))
-    (lydia_home / "logs").mkdir(parents=True, exist_ok=True)
+    alice_home = Path(tempfile.mkdtemp(prefix="alice-test-home-"))
+    (alice_home / "logs").mkdir(parents=True, exist_ok=True)
     with (
         patch(
             "run_agent.get_tool_definitions",
@@ -56,7 +56,7 @@ def _make_agent():
         ),
         patch("run_agent.check_toolset_requirements", return_value={}),
         patch("run_agent.OpenAI"),
-        patch("run_agent._lydia_home", lydia_home),
+        patch("run_agent._alice_home", alice_home),
         patch("agent.model_metadata.fetch_model_metadata", return_value={}),
     ):
         agent = AIAgent(

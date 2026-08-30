@@ -1,14 +1,14 @@
 """Regression test for config.yaml `security.redact_secrets: false` toggle.
 
 Bug: `agent/redact.py` snapshots `_REDACT_ENABLED` from the env var
-`LYDIA_REDACT_SECRETS` at module-import time. `alice_cli/main.py` at
+`ALICE_REDACT_SECRETS` at module-import time. `alice_cli/main.py` at
 line ~174 calls `setup_logging(mode="cli")` which transitively imports
 `agent.redact` — BEFORE any config bridge ran. So if a user set
 `security.redact_secrets: false` in config.yaml (instead of as an env var
 in .env), the toggle was silently ignored in both `alice chat` and
 `alice gateway run`.
 
-Fix: bridge `security.redact_secrets` from config.yaml → `LYDIA_REDACT_SECRETS`
+Fix: bridge `security.redact_secrets` from config.yaml → `ALICE_REDACT_SECRETS`
 env var in `alice_cli/main.py` BEFORE the `setup_logging()` call.
 """
 import os
@@ -23,11 +23,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 def test_redact_secrets_false_in_config_yaml_is_honored(tmp_path):
     """Setting `security.redact_secrets: false` in config.yaml must disable
     redaction — even though it's set in YAML, not as an env var."""
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
 
     # Write a config.yaml with redact_secrets: false
-    (lydia_home / "config.yaml").write_text(
+    (alice_home / "config.yaml").write_text(
         textwrap.dedent(
             """\
             security:
@@ -36,7 +36,7 @@ def test_redact_secrets_false_in_config_yaml_is_honored(tmp_path):
         )
     )
     # Empty .env so nothing else sets the env var
-    (lydia_home / ".env").write_text("")
+    (alice_home / ".env").write_text("")
 
     # Spawn a fresh Python process that imports alice_cli.main and checks
     # _REDACT_ENABLED. Must be a subprocess — we need a clean module state.
@@ -44,18 +44,18 @@ def test_redact_secrets_false_in_config_yaml_is_honored(tmp_path):
         """\
         import sys, os
         # Make absolutely sure the env var is not pre-set
-        os.environ.pop("LYDIA_REDACT_SECRETS", None)
+        os.environ.pop("ALICE_REDACT_SECRETS", None)
         sys.path.insert(0, %r)
         import alice_cli.main  # triggers the bridge + setup_logging
         import agent.redact
         print(f"REDACT_ENABLED={agent.redact._REDACT_ENABLED}")
-        print(f"ENV_VAR={os.environ.get('LYDIA_REDACT_SECRETS', '<unset>')}")
+        print(f"ENV_VAR={os.environ.get('ALICE_REDACT_SECRETS', '<unset>')}")
         """
     ) % str(REPO_ROOT)
 
     env = dict(os.environ)
-    env["ALICE_HOME"] = str(lydia_home)
-    env.pop("LYDIA_REDACT_SECRETS", None)
+    env["ALICE_HOME"] = str(alice_home)
+    env.pop("ALICE_REDACT_SECRETS", None)
 
     result = subprocess.run(
         [sys.executable, "-c", probe],
@@ -78,17 +78,17 @@ def test_redact_secrets_default_true_when_unset(tmp_path):
     Secret redaction is a secure default — users who need raw credential
     values in tool output (e.g. working on the redactor itself) must set
     `security.redact_secrets: false` explicitly (or
-    `LYDIA_REDACT_SECRETS=false`).
+    `ALICE_REDACT_SECRETS=false`).
     """
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    (lydia_home / "config.yaml").write_text("{}\n")  # empty config
-    (lydia_home / ".env").write_text("")
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    (alice_home / "config.yaml").write_text("{}\n")  # empty config
+    (alice_home / ".env").write_text("")
 
     probe = textwrap.dedent(
         """\
         import sys, os
-        os.environ.pop("LYDIA_REDACT_SECRETS", None)
+        os.environ.pop("ALICE_REDACT_SECRETS", None)
         sys.path.insert(0, %r)
         import alice_cli.main
         import agent.redact
@@ -97,8 +97,8 @@ def test_redact_secrets_default_true_when_unset(tmp_path):
     ) % str(REPO_ROOT)
 
     env = dict(os.environ)
-    env["ALICE_HOME"] = str(lydia_home)
-    env.pop("LYDIA_REDACT_SECRETS", None)
+    env["ALICE_HOME"] = str(alice_home)
+    env.pop("ALICE_REDACT_SECRETS", None)
 
     result = subprocess.run(
         [sys.executable, "-c", probe],
@@ -115,9 +115,9 @@ def test_redact_secrets_default_true_when_unset(tmp_path):
 def test_redact_secrets_true_in_config_yaml_is_honored(tmp_path):
     """Setting `security.redact_secrets: true` in config.yaml must enable
     redaction — even though it's set in YAML, not as an env var."""
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    (lydia_home / "config.yaml").write_text(
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    (alice_home / "config.yaml").write_text(
         textwrap.dedent(
             """\
             security:
@@ -125,23 +125,23 @@ def test_redact_secrets_true_in_config_yaml_is_honored(tmp_path):
             """
         )
     )
-    (lydia_home / ".env").write_text("")
+    (alice_home / ".env").write_text("")
 
     probe = textwrap.dedent(
         """\
         import sys, os
-        os.environ.pop("LYDIA_REDACT_SECRETS", None)
+        os.environ.pop("ALICE_REDACT_SECRETS", None)
         sys.path.insert(0, %r)
         import alice_cli.main
         import agent.redact
         print(f"REDACT_ENABLED={agent.redact._REDACT_ENABLED}")
-        print(f"ENV_VAR={os.environ.get('LYDIA_REDACT_SECRETS', '<unset>')}")
+        print(f"ENV_VAR={os.environ.get('ALICE_REDACT_SECRETS', '<unset>')}")
         """
     ) % str(REPO_ROOT)
 
     env = dict(os.environ)
-    env["ALICE_HOME"] = str(lydia_home)
-    env.pop("LYDIA_REDACT_SECRETS", None)
+    env["ALICE_HOME"] = str(alice_home)
+    env.pop("ALICE_REDACT_SECRETS", None)
 
     result = subprocess.run(
         [sys.executable, "-c", probe],
@@ -159,10 +159,10 @@ def test_redact_secrets_true_in_config_yaml_is_honored(tmp_path):
 
 
 def test_dotenv_redact_secrets_beats_config_yaml(tmp_path):
-    """.env LYDIA_REDACT_SECRETS takes precedence over config.yaml."""
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    (lydia_home / "config.yaml").write_text(
+    """.env ALICE_REDACT_SECRETS takes precedence over config.yaml."""
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    (alice_home / "config.yaml").write_text(
         textwrap.dedent(
             """\
             security:
@@ -171,23 +171,23 @@ def test_dotenv_redact_secrets_beats_config_yaml(tmp_path):
         )
     )
     # .env force-enables redaction
-    (lydia_home / ".env").write_text("LYDIA_REDACT_SECRETS=true\n")
+    (alice_home / ".env").write_text("ALICE_REDACT_SECRETS=true\n")
 
     probe = textwrap.dedent(
         """\
         import sys, os
-        os.environ.pop("LYDIA_REDACT_SECRETS", None)
+        os.environ.pop("ALICE_REDACT_SECRETS", None)
         sys.path.insert(0, %r)
         import alice_cli.main
         import agent.redact
         print(f"REDACT_ENABLED={agent.redact._REDACT_ENABLED}")
-        print(f"ENV_VAR={os.environ.get('LYDIA_REDACT_SECRETS', '<unset>')}")
+        print(f"ENV_VAR={os.environ.get('ALICE_REDACT_SECRETS', '<unset>')}")
         """
     ) % str(REPO_ROOT)
 
     env = dict(os.environ)
-    env["ALICE_HOME"] = str(lydia_home)
-    env.pop("LYDIA_REDACT_SECRETS", None)
+    env["ALICE_HOME"] = str(alice_home)
+    env.pop("ALICE_REDACT_SECRETS", None)
 
     result = subprocess.run(
         [sys.executable, "-c", probe],

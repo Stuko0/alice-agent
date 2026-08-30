@@ -15,12 +15,12 @@ def _write_config(home, body: str) -> None:
 
 @pytest.fixture
 def gateway_home(monkeypatch, tmp_path):
-    monkeypatch.setattr(gateway_run, "_lydia_home", tmp_path)
-    monkeypatch.delenv("LYDIA_PREFILL_MESSAGES_FILE", raising=False)
-    monkeypatch.delenv("LYDIA_EPHEMERAL_SYSTEM_PROMPT", raising=False)
-    monkeypatch.delenv("LYDIA_GATEWAY_BUSY_INPUT_MODE", raising=False)
-    monkeypatch.delenv("LYDIA_RESTART_DRAIN_TIMEOUT", raising=False)
-    monkeypatch.delenv("LYDIA_BACKGROUND_NOTIFICATIONS", raising=False)
+    monkeypatch.setattr(gateway_run, "_alice_home", tmp_path)
+    monkeypatch.delenv("ALICE_PREFILL_MESSAGES_FILE", raising=False)
+    monkeypatch.delenv("ALICE_EPHEMERAL_SYSTEM_PROMPT", raising=False)
+    monkeypatch.delenv("ALICE_GATEWAY_BUSY_INPUT_MODE", raising=False)
+    monkeypatch.delenv("ALICE_RESTART_DRAIN_TIMEOUT", raising=False)
+    monkeypatch.delenv("ALICE_BACKGROUND_NOTIFICATIONS", raising=False)
     return tmp_path
 
 

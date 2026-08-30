@@ -312,7 +312,7 @@ Alice 在启动时会检测到此情况并拒绝启用 E2EE，日志显示：`de
    或通过 Synapse 管理员 API（注意 URL 编码的用户 ID）：
    ```bash
    curl -X DELETE -H "Authorization: Bearer ADMIN_TOKEN" \
-     'https://your-server/_synapse/admin/v2/users/%40lydia%3Ayour-server/devices/DEVICE_ID'
+     'https://your-server/_synapse/admin/v2/users/%40alice%3Ayour-server/devices/DEVICE_ID'
    ```
    注意：通过管理员 API 删除设备也可能使关联的访问令牌失效。之后你可能需要生成新令牌。
 
@@ -386,7 +386,7 @@ MATRIX_ALLOWED_ROOMS="!abc123def456:matrix.example.org,!opsroom789:matrix.exampl
 
 ### 机器人加入房间但静默丢弃所有消息（时钟偏差）
 
-**原因**：主机系统时钟超前于实际时间。Matrix 适配器应用了 5 秒启动宽限过滤器（`event_ts < startup_ts - 5`）以忽略初始同步中重放的事件。当系统时钟超前时，每个传入事件看起来都"早于启动时间"，在到达消息处理器之前就被丢弃——机器人看起来已连接但从不回复。参见 [#12614](https://github.com/NousResearch/alice-agent/issues/12614)。
+**原因**：主机系统时钟超前于实际时间。Matrix 适配器应用了 5 秒启动宽限过滤器（`event_ts < startup_ts - 5`）以忽略初始同步中重放的事件。当系统时钟超前时，每个传入事件看起来都"早于启动时间"，在到达消息处理器之前就被丢弃——机器人看起来已连接但从不回复。参见 [#12614](https://github.com/Stuko0/alice-agent/issues/12614)。
 
 **症状**：Gateway 日志显示 `Matrix: dropped N live events as 'too old' more than 30s after startup`。
 
@@ -574,7 +574,7 @@ services:
       MATRIX_ACCESS_TOKEN: "syt_..."
       MATRIX_ALLOWED_USERS: "@you:matrix.example.org"
       MATRIX_ENCRYPTION: "true"
-      MATRIX_DEVICE_ID: "LYDIA_BOT"
+      MATRIX_DEVICE_ID: "ALICE_BOT"
 
       # 代理模式——转发到主机 agent
       GATEWAY_PROXY_URL: "http://192.168.1.100:8642"

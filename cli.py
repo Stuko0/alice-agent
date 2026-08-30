@@ -3473,7 +3473,7 @@ def _build_compact_banner() -> str:
 
     w = min(shutil.get_terminal_size().columns - 2, 88)
     if w < 30:
-        return f"\n[{title_color}]{tiny_line}[/] [dim {dim_color}]- Nous Research[/]\n"
+        return f"\n[{title_color}]{tiny_line}[/] [dim {dim_color}]- Stuko[/]\n"
 
     inner = w - 2  # inside the box border
     bar = "═" * w
@@ -10330,7 +10330,7 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
         if card:
             print(f"  Payment: {card.masked}")
         print(f"  {'─' * 41}")
-        _consent = "By confirming, you allow Nous Research to charge your card."
+        _consent = "By confirming, you allow Stuko to charge your card."
         _cprint(f"  {_d(_consent)}")
 
         confirm_choices = [
@@ -10628,7 +10628,7 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
 
         print()
         _ar_consent = (
-            f"By confirming, you authorize Nous Research to charge {card.masked} "
+            f"By confirming, you authorize Stuko to charge {card.masked} "
             f"whenever your balance reaches {format_money(threshold_amt)}. "
             f"Turn off any time here or on the portal."
         )

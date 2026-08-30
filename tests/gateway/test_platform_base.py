@@ -657,7 +657,7 @@ class TestExtensionlessMediaDelivery:
             "gateway.platforms.base.MEDIA_DELIVERY_SAFE_ROOTS",
             (str(root),),
         )
-        monkeypatch.delenv("LYDIA_MEDIA_DELIVERY_STRICT", raising=False)
+        monkeypatch.delenv("ALICE_MEDIA_DELIVERY_STRICT", raising=False)
 
     def test_extensionless_media_extracted_when_file_validates(self, tmp_path, monkeypatch):
         root = tmp_path / "output"
@@ -722,11 +722,11 @@ class TestMediaDeliveryPathValidation:
         # recency window + denylist). Force strict on so they keep
         # exercising the legacy path even though the public default
         # flipped to off in 2026-05.
-        monkeypatch.setenv("LYDIA_MEDIA_DELIVERY_STRICT", "1")
+        monkeypatch.setenv("ALICE_MEDIA_DELIVERY_STRICT", "1")
         # Disable recency-based trust by default so the original allowlist
         # tests continue to exercise the strict-allowlist path. Tests that
         # specifically cover recency trust re-enable it themselves.
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_FILES", "0")
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_FILES", "0")
 
     def test_allows_existing_file_inside_safe_root(self, tmp_path, monkeypatch):
         root = tmp_path / "media-cache"
@@ -782,7 +782,7 @@ class TestMediaDeliveryPathValidation:
         media_file.parent.mkdir(parents=True)
         media_file.write_bytes(b"%PDF-1.4")
         self._patch_roots(monkeypatch)
-        monkeypatch.setenv("LYDIA_MEDIA_ALLOW_DIRS", str(extra_root))
+        monkeypatch.setenv("ALICE_MEDIA_ALLOW_DIRS", str(extra_root))
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(media_file)) == str(media_file.resolve())
 
@@ -795,9 +795,9 @@ class TestMediaDeliveryPathValidation:
         allowlist are accepted because the file's mtime is within the window.
         """
         self._patch_roots(monkeypatch)  # zero cache allowlist
-        monkeypatch.delenv("LYDIA_MEDIA_ALLOW_DIRS", raising=False)
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_FILES", "1")
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_SECONDS", "600")
+        monkeypatch.delenv("ALICE_MEDIA_ALLOW_DIRS", raising=False)
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_FILES", "1")
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_SECONDS", "600")
 
         fresh = tmp_path / "scratch" / "report.pdf"
         fresh.parent.mkdir(parents=True)
@@ -813,9 +813,9 @@ class TestMediaDeliveryPathValidation:
         the trust window.
         """
         self._patch_roots(monkeypatch)
-        monkeypatch.delenv("LYDIA_MEDIA_ALLOW_DIRS", raising=False)
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_FILES", "1")
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_SECONDS", "60")
+        monkeypatch.delenv("ALICE_MEDIA_ALLOW_DIRS", raising=False)
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_FILES", "1")
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_SECONDS", "60")
 
         stale = tmp_path / "stale.pdf"
         stale.write_bytes(b"%PDF-1.4")
@@ -827,8 +827,8 @@ class TestMediaDeliveryPathValidation:
     def test_recency_trust_disabled_falls_back_to_pure_allowlist(self, tmp_path, monkeypatch):
         """Setting trust_recent_files=false reverts to pre-existing strict behavior."""
         self._patch_roots(monkeypatch)
-        monkeypatch.delenv("LYDIA_MEDIA_ALLOW_DIRS", raising=False)
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_FILES", "0")
+        monkeypatch.delenv("ALICE_MEDIA_ALLOW_DIRS", raising=False)
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_FILES", "0")
 
         fresh = tmp_path / "report.pdf"
         fresh.write_bytes(b"%PDF-1.4")  # mtime = now
@@ -844,9 +844,9 @@ class TestMediaDeliveryPathValidation:
         ~/.ssh, ~/.aws, etc.
         """
         self._patch_roots(monkeypatch)
-        monkeypatch.delenv("LYDIA_MEDIA_ALLOW_DIRS", raising=False)
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_FILES", "1")
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_SECONDS", "600")
+        monkeypatch.delenv("ALICE_MEDIA_ALLOW_DIRS", raising=False)
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_FILES", "1")
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_SECONDS", "600")
 
         # Simulate $HOME so ~/.ssh resolves into our tmp dir.
         fake_home = tmp_path / "home"
@@ -866,9 +866,9 @@ class TestMediaDeliveryPathValidation:
         user with a raw filepath in chat instead of an attachment.
         """
         self._patch_roots(monkeypatch)
-        monkeypatch.delenv("LYDIA_MEDIA_ALLOW_DIRS", raising=False)
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_FILES", "1")
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_SECONDS", "600")
+        monkeypatch.delenv("ALICE_MEDIA_ALLOW_DIRS", raising=False)
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_FILES", "1")
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_SECONDS", "600")
 
         project = tmp_path / "my-project"
         report = project / "build" / "weekly-report.pdf"
@@ -880,9 +880,9 @@ class TestMediaDeliveryPathValidation:
     def test_filter_keeps_recently_produced_files(self, tmp_path, monkeypatch):
         """End-to-end: filter_local_delivery_paths routes a fresh PDF through."""
         self._patch_roots(monkeypatch)
-        monkeypatch.delenv("LYDIA_MEDIA_ALLOW_DIRS", raising=False)
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_FILES", "1")
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_SECONDS", "600")
+        monkeypatch.delenv("ALICE_MEDIA_ALLOW_DIRS", raising=False)
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_FILES", "1")
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_SECONDS", "600")
 
         fresh = tmp_path / "report.pdf"
         fresh.write_bytes(b"%PDF-1.4")
@@ -910,8 +910,8 @@ class TestMediaDeliveryDefaultMode:
         )
         # Pin strict OFF — the public default. Tests that exercise the
         # strict path live in TestMediaDeliveryPathValidation.
-        monkeypatch.delenv("LYDIA_MEDIA_DELIVERY_STRICT", raising=False)
-        monkeypatch.delenv("LYDIA_MEDIA_ALLOW_DIRS", raising=False)
+        monkeypatch.delenv("ALICE_MEDIA_DELIVERY_STRICT", raising=False)
+        monkeypatch.delenv("ALICE_MEDIA_ALLOW_DIRS", raising=False)
 
     def test_accepts_stale_file_outside_allowlist(self, tmp_path, monkeypatch):
         """The motivating case — agent says ``MEDIA:/home/user/notes.md``
@@ -971,7 +971,7 @@ class TestMediaDeliveryDefaultMode:
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(secret)) is None
 
-    def test_denylist_blocks_lydia_credentials(self, tmp_path, monkeypatch):
+    def test_denylist_blocks_alice_credentials(self, tmp_path, monkeypatch):
         """~/.alice/.env and ~/.alice/auth.json stay blocked even in
         default mode. They live under $HOME (not the system prefix list)
         so this exercises the home-relative denied paths.
@@ -979,53 +979,53 @@ class TestMediaDeliveryDefaultMode:
         self._patch_roots(monkeypatch)
 
         fake_home = tmp_path / "home"
-        lydia_dir = fake_home / ".alice"
-        lydia_dir.mkdir(parents=True)
-        env_file = lydia_dir / ".env"
+        alice_dir = fake_home / ".alice"
+        alice_dir.mkdir(parents=True)
+        env_file = alice_dir / ".env"
         env_file.write_text("OPENAI_API_KEY=sk-...")
         monkeypatch.setenv("HOME", str(fake_home))
         monkeypatch.setattr(
-            "gateway.platforms.base._LYDIA_HOME",
-            lydia_dir,
+            "gateway.platforms.base._ALICE_HOME",
+            alice_dir,
         )
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(env_file)) is None
 
-    def test_denylist_blocks_lydia_config_in_active_profile(self, tmp_path, monkeypatch):
+    def test_denylist_blocks_alice_config_in_active_profile(self, tmp_path, monkeypatch):
         """The active profile config stays blocked in default mode."""
         self._patch_roots(monkeypatch)
 
         fake_home = tmp_path / "home"
-        lydia_dir = fake_home / ".alice"
-        lydia_dir.mkdir(parents=True)
-        config_file = lydia_dir / "config.yaml"
+        alice_dir = fake_home / ".alice"
+        alice_dir.mkdir(parents=True)
+        config_file = alice_dir / "config.yaml"
         config_file.write_text("model:\n  provider: openai\n")
         monkeypatch.setenv("HOME", str(fake_home))
         monkeypatch.setattr(
-            "gateway.platforms.base._LYDIA_HOME",
-            lydia_dir,
+            "gateway.platforms.base._ALICE_HOME",
+            alice_dir,
         )
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(config_file)) is None
 
-    def test_denylist_blocks_shared_lydia_root_config_for_profiles(self, tmp_path, monkeypatch):
+    def test_denylist_blocks_shared_alice_root_config_for_profiles(self, tmp_path, monkeypatch):
         """Profile-mode gateways must still block the shared Alice root config."""
         self._patch_roots(monkeypatch)
 
         fake_home = tmp_path / "home"
         profile_home = fake_home / ".alice" / "profiles" / "work"
         profile_home.mkdir(parents=True)
-        lydia_root = fake_home / ".alice"
-        config_file = lydia_root / "config.yaml"
+        alice_root = fake_home / ".alice"
+        config_file = alice_root / "config.yaml"
         config_file.write_text("profiles:\n  active: work\n")
         monkeypatch.setenv("HOME", str(fake_home))
         monkeypatch.setattr(
-            "gateway.platforms.base._LYDIA_HOME",
+            "gateway.platforms.base._ALICE_HOME",
             profile_home,
         )
         monkeypatch.setattr(
-            "gateway.platforms.base._LYDIA_ROOT",
-            lydia_root,
+            "gateway.platforms.base._ALICE_ROOT",
+            alice_root,
         )
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(config_file)) is None
@@ -1040,13 +1040,13 @@ class TestMediaDeliveryDefaultMode:
         self._patch_roots(monkeypatch)
 
         fake_home = tmp_path / "home"
-        lydia_dir = fake_home / ".alice"
-        lydia_dir.mkdir(parents=True)
-        token = lydia_dir / "google_token.json"
+        alice_dir = fake_home / ".alice"
+        alice_dir.mkdir(parents=True)
+        token = alice_dir / "google_token.json"
         token.write_text('{"access_token": "***", "refresh_token": "***"}')
         monkeypatch.setenv("HOME", str(fake_home))
-        monkeypatch.setattr("gateway.platforms.base._LYDIA_HOME", lydia_dir)
-        monkeypatch.setattr("gateway.platforms.base._LYDIA_ROOT", lydia_dir)
+        monkeypatch.setattr("gateway.platforms.base._ALICE_HOME", alice_dir)
+        monkeypatch.setattr("gateway.platforms.base._ALICE_ROOT", alice_dir)
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(token)) is None
 
@@ -1058,17 +1058,17 @@ class TestMediaDeliveryDefaultMode:
         over recency trust.
         """
         self._patch_roots(monkeypatch)  # zero cache allowlist, strict mode on
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_FILES", "1")
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_SECONDS", "600")
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_FILES", "1")
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_SECONDS", "600")
 
         fake_home = tmp_path / "home"
-        lydia_dir = fake_home / ".alice"
-        lydia_dir.mkdir(parents=True)
-        token = lydia_dir / "google_token.json"
+        alice_dir = fake_home / ".alice"
+        alice_dir.mkdir(parents=True)
+        token = alice_dir / "google_token.json"
         token.write_text('{"access_token": "***"}')  # mtime = now → "recent"
         monkeypatch.setenv("HOME", str(fake_home))
-        monkeypatch.setattr("gateway.platforms.base._LYDIA_HOME", lydia_dir)
-        monkeypatch.setattr("gateway.platforms.base._LYDIA_ROOT", lydia_dir)
+        monkeypatch.setattr("gateway.platforms.base._ALICE_HOME", alice_dir)
+        monkeypatch.setattr("gateway.platforms.base._ALICE_ROOT", alice_dir)
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(token)) is None
 
@@ -1079,64 +1079,64 @@ class TestMediaDeliveryDefaultMode:
         self._patch_roots(monkeypatch)
 
         fake_home = tmp_path / "home"
-        lydia_dir = fake_home / ".alice"
-        pairing = lydia_dir / "pairing"
+        alice_dir = fake_home / ".alice"
+        pairing = alice_dir / "pairing"
         pairing.mkdir(parents=True)
         token = pairing / "telegram-approved.json"
         token.write_text('{"approved": ["123"]}')
         monkeypatch.setenv("HOME", str(fake_home))
-        monkeypatch.setattr("gateway.platforms.base._LYDIA_HOME", lydia_dir)
-        monkeypatch.setattr("gateway.platforms.base._LYDIA_ROOT", lydia_dir)
+        monkeypatch.setattr("gateway.platforms.base._ALICE_HOME", alice_dir)
+        monkeypatch.setattr("gateway.platforms.base._ALICE_ROOT", alice_dir)
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(token)) is None
 
-    def test_lydia_cache_still_delivers_under_denied_home(self, tmp_path, monkeypatch):
+    def test_alice_cache_still_delivers_under_denied_home(self, tmp_path, monkeypatch):
         """The targeted credential denylist must not break legitimate cache
         deliveries: a generated artifact under the allowlisted cache root is
         matched before the denylist and still delivers.
         """
         fake_home = tmp_path / "home"
-        lydia_dir = fake_home / ".alice"
-        cache_dir = lydia_dir / "cache" / "documents"
+        alice_dir = fake_home / ".alice"
+        cache_dir = alice_dir / "cache" / "documents"
         cache_dir.mkdir(parents=True)
         artifact = cache_dir / "report.pdf"
         artifact.write_bytes(b"%PDF-1.4")
         self._patch_roots(monkeypatch, cache_dir)
         monkeypatch.setenv("HOME", str(fake_home))
-        monkeypatch.setattr("gateway.platforms.base._LYDIA_HOME", lydia_dir)
-        monkeypatch.setattr("gateway.platforms.base._LYDIA_ROOT", lydia_dir)
+        monkeypatch.setattr("gateway.platforms.base._ALICE_HOME", alice_dir)
+        monkeypatch.setattr("gateway.platforms.base._ALICE_ROOT", alice_dir)
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(artifact)) == str(artifact.resolve())
 
-    def test_denylist_blocks_non_cache_file_under_lydia_home(self, tmp_path, monkeypatch):
+    def test_denylist_blocks_non_cache_file_under_alice_home(self, tmp_path, monkeypatch):
         """A non-credential file the agent wrote directly under ~/.alice
         (not in a cache subdir) is still deliverable via recency trust — we
         did NOT blanket-deny the tree (per #32090/#34425). This guards against
         accidentally re-introducing the rejected whole-tree deny.
         """
         self._patch_roots(monkeypatch)  # strict mode on
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_FILES", "1")
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_SECONDS", "600")
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_FILES", "1")
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_SECONDS", "600")
 
         fake_home = tmp_path / "home"
-        lydia_dir = fake_home / ".alice"
-        lydia_dir.mkdir(parents=True)
-        artifact = lydia_dir / "adhoc_report.pdf"
+        alice_dir = fake_home / ".alice"
+        alice_dir.mkdir(parents=True)
+        artifact = alice_dir / "adhoc_report.pdf"
         artifact.write_bytes(b"%PDF-1.4")  # fresh mtime
         monkeypatch.setenv("HOME", str(fake_home))
-        monkeypatch.setattr("gateway.platforms.base._LYDIA_HOME", lydia_dir)
-        monkeypatch.setattr("gateway.platforms.base._LYDIA_ROOT", lydia_dir)
+        monkeypatch.setattr("gateway.platforms.base._ALICE_HOME", alice_dir)
+        monkeypatch.setattr("gateway.platforms.base._ALICE_ROOT", alice_dir)
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(artifact)) == str(artifact.resolve())
 
     def test_strict_mode_envvar_restores_legacy_behavior(self, tmp_path, monkeypatch):
-        """Setting LYDIA_MEDIA_DELIVERY_STRICT=1 reactivates the older
+        """Setting ALICE_MEDIA_DELIVERY_STRICT=1 reactivates the older
         allowlist+recency logic. A stale file outside the allowlist is
         rejected.
         """
         self._patch_roots(monkeypatch)
-        monkeypatch.setenv("LYDIA_MEDIA_DELIVERY_STRICT", "1")
-        monkeypatch.setenv("LYDIA_MEDIA_TRUST_RECENT_FILES", "0")
+        monkeypatch.setenv("ALICE_MEDIA_DELIVERY_STRICT", "1")
+        monkeypatch.setenv("ALICE_MEDIA_TRUST_RECENT_FILES", "0")
 
         stale = tmp_path / "old.pdf"
         stale.write_bytes(b"%PDF-1.4")
@@ -1146,16 +1146,16 @@ class TestMediaDeliveryDefaultMode:
         assert BasePlatformAdapter.validate_media_delivery_path(str(stale)) is None
 
     def test_strict_mode_truthy_aliases(self, monkeypatch, tmp_path):
-        """``LYDIA_MEDIA_DELIVERY_STRICT=true|yes|on|1`` all enable strict mode."""
+        """``ALICE_MEDIA_DELIVERY_STRICT=true|yes|on|1`` all enable strict mode."""
         self._patch_roots(monkeypatch)
         from gateway.platforms.base import _media_delivery_strict_mode
 
         for raw in ("1", "true", "TRUE", "yes", "on"):
-            monkeypatch.setenv("LYDIA_MEDIA_DELIVERY_STRICT", raw)
+            monkeypatch.setenv("ALICE_MEDIA_DELIVERY_STRICT", raw)
             assert _media_delivery_strict_mode() is True
 
         for raw in ("0", "false", "no", "off", ""):
-            monkeypatch.setenv("LYDIA_MEDIA_DELIVERY_STRICT", raw)
+            monkeypatch.setenv("ALICE_MEDIA_DELIVERY_STRICT", raw)
             assert _media_delivery_strict_mode() is False
 
     def test_filter_passes_default_files_through(self, tmp_path, monkeypatch):
@@ -1217,23 +1217,23 @@ class TestMediaDeliveryDefaultMode:
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(key)) is None
 
-    def test_root_home_lydia_env_still_blocked(self, tmp_path, monkeypatch):
+    def test_root_home_alice_env_still_blocked(self, tmp_path, monkeypatch):
         """``~/.alice/.env`` stays blocked under the $HOME exception — it is a
         more-specific denied path, not reachable just because home is allowed.
         """
         self._patch_roots(monkeypatch)
 
         fake_home = tmp_path / "root"
-        lydia_dir = fake_home / ".alice"
-        lydia_dir.mkdir(parents=True)
-        env_file = lydia_dir / ".env"
+        alice_dir = fake_home / ".alice"
+        alice_dir.mkdir(parents=True)
+        env_file = alice_dir / ".env"
         env_file.write_text("OPENROUTER_API_KEY=sk-...")
         monkeypatch.setenv("HOME", str(fake_home))
         monkeypatch.setattr(
             "gateway.platforms.base._MEDIA_DELIVERY_DENIED_PREFIXES",
             (str(fake_home),),
         )
-        monkeypatch.setattr("gateway.platforms.base._LYDIA_HOME", lydia_dir)
+        monkeypatch.setattr("gateway.platforms.base._ALICE_HOME", alice_dir)
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(env_file)) is None
 
@@ -1250,8 +1250,8 @@ class TestMediaDeliveryDefaultMode:
 
         # Stand-in for the literal /root deny prefix in the deployment.
         denied_root = tmp_path / "root"
-        lydia_root = denied_root / ".alice"
-        prof_cache = lydia_root / "profiles" / "myprof" / "cache" / "images"
+        alice_root = denied_root / ".alice"
+        prof_cache = alice_root / "profiles" / "myprof" / "cache" / "images"
         prof_cache.mkdir(parents=True)
         image = prof_cache / "gen.png"
         image.write_bytes(b"\x89PNG\r\n\x1a\n")
@@ -1265,7 +1265,7 @@ class TestMediaDeliveryDefaultMode:
             (str(denied_root),),
         )
         monkeypatch.setattr(
-            "gateway.platforms.base._LYDIA_ROOT", lydia_root
+            "gateway.platforms.base._ALICE_ROOT", alice_root
         )
 
         assert (
@@ -1281,8 +1281,8 @@ class TestMediaDeliveryDefaultMode:
         self._patch_roots(monkeypatch)
 
         denied_root = tmp_path / "root"
-        lydia_root = denied_root / ".alice"
-        prof_dir = lydia_root / "profiles" / "myprof"
+        alice_root = denied_root / ".alice"
+        prof_dir = alice_root / "profiles" / "myprof"
         prof_dir.mkdir(parents=True)
         cred = prof_dir / "auth.json"
         cred.write_text("{}")
@@ -1295,7 +1295,7 @@ class TestMediaDeliveryDefaultMode:
             (str(denied_root),),
         )
         monkeypatch.setattr(
-            "gateway.platforms.base._LYDIA_ROOT", lydia_root
+            "gateway.platforms.base._ALICE_ROOT", alice_root
         )
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(cred)) is None
@@ -1498,24 +1498,24 @@ class TestTruncateMessage:
 
 class TestGetHumanDelay:
     def test_off_mode(self):
-        with patch.dict(os.environ, {"LYDIA_HUMAN_DELAY_MODE": "off"}):
+        with patch.dict(os.environ, {"ALICE_HUMAN_DELAY_MODE": "off"}):
             assert BasePlatformAdapter._get_human_delay() == 0.0
 
     def test_default_is_off(self):
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("LYDIA_HUMAN_DELAY_MODE", None)
+            os.environ.pop("ALICE_HUMAN_DELAY_MODE", None)
             assert BasePlatformAdapter._get_human_delay() == 0.0
 
     def test_natural_mode_range(self):
-        with patch.dict(os.environ, {"LYDIA_HUMAN_DELAY_MODE": "natural"}):
+        with patch.dict(os.environ, {"ALICE_HUMAN_DELAY_MODE": "natural"}):
             delay = BasePlatformAdapter._get_human_delay()
             assert 0.8 <= delay <= 2.5
 
     def test_natural_mode_ignores_malformed_custom_env_vars(self):
         env = {
-            "LYDIA_HUMAN_DELAY_MODE": "natural",
-            "LYDIA_HUMAN_DELAY_MIN_MS": "oops",
-            "LYDIA_HUMAN_DELAY_MAX_MS": "still-bad",
+            "ALICE_HUMAN_DELAY_MODE": "natural",
+            "ALICE_HUMAN_DELAY_MIN_MS": "oops",
+            "ALICE_HUMAN_DELAY_MAX_MS": "still-bad",
         }
         with patch.dict(os.environ, env):
             delay = BasePlatformAdapter._get_human_delay()
@@ -1523,9 +1523,9 @@ class TestGetHumanDelay:
 
     def test_custom_mode_uses_env_vars(self):
         env = {
-            "LYDIA_HUMAN_DELAY_MODE": "custom",
-            "LYDIA_HUMAN_DELAY_MIN_MS": "100",
-            "LYDIA_HUMAN_DELAY_MAX_MS": "200",
+            "ALICE_HUMAN_DELAY_MODE": "custom",
+            "ALICE_HUMAN_DELAY_MIN_MS": "100",
+            "ALICE_HUMAN_DELAY_MAX_MS": "200",
         }
         with patch.dict(os.environ, env):
             delay = BasePlatformAdapter._get_human_delay()
@@ -1533,9 +1533,9 @@ class TestGetHumanDelay:
 
     def test_custom_mode_tolerates_malformed_env_vars(self):
         env = {
-            "LYDIA_HUMAN_DELAY_MODE": "custom",
-            "LYDIA_HUMAN_DELAY_MIN_MS": "oops",
-            "LYDIA_HUMAN_DELAY_MAX_MS": "still-bad",
+            "ALICE_HUMAN_DELAY_MODE": "custom",
+            "ALICE_HUMAN_DELAY_MIN_MS": "oops",
+            "ALICE_HUMAN_DELAY_MAX_MS": "still-bad",
         }
         with patch.dict(os.environ, env):
             # falls back to the custom-mode defaults instead of crashing
@@ -1724,8 +1724,8 @@ class TestMediaDeliveryDiagnosability:
     def test_rejected_path_appears_in_log(self, tmp_path, caplog):
         outside = tmp_path / "outside.ogg"
         outside.write_bytes(b"OggS")
-        with patch.dict(os.environ, {"LYDIA_MEDIA_DELIVERY_STRICT": "1",
-                                     "LYDIA_MEDIA_TRUST_RECENT_FILES": "0"}), \
+        with patch.dict(os.environ, {"ALICE_MEDIA_DELIVERY_STRICT": "1",
+                                     "ALICE_MEDIA_TRUST_RECENT_FILES": "0"}), \
                 patch("gateway.platforms.base.MEDIA_DELIVERY_SAFE_ROOTS", ()):
             with caplog.at_level("WARNING"):
                 out = BasePlatformAdapter.filter_media_delivery_paths([(str(outside), False)])
@@ -1737,7 +1737,7 @@ class TestMediaDeliveryDiagnosability:
         """One crafted ~\\x00 path must not drop every other attachment."""
         good = tmp_path / "good.png"
         good.write_bytes(b"\x89PNG")
-        monkeypatch.setenv("LYDIA_MEDIA_DELIVERY_STRICT", "0")
+        monkeypatch.setenv("ALICE_MEDIA_DELIVERY_STRICT", "0")
         out = BasePlatformAdapter.filter_media_delivery_paths([
             ("~\x00evil.png", False),
             (str(good), False),

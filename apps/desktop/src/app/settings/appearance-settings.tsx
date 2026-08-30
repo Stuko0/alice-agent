@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import type { DesktopMarketplaceSearchItem } from '@/global'
 import { useI18n } from '@/i18n'
+import { desktopSupports } from '@/lib/desktop-capabilities'
 import { triggerHaptic } from '@/lib/haptics'
 import { Check, Download, Loader2, Palette, Trash2 } from '@/lib/icons'
 import { selectableCardClass } from '@/lib/selectable-card'
@@ -98,7 +99,10 @@ function MarketplaceThemeResults({
 
   const search = useQuery({
     enabled: debounced.length > 0,
-    queryFn: () => window.lydiaDesktop?.themes?.searchMarketplace(debounced) ?? Promise.resolve([]),
+    queryFn: () =>
+      desktopSupports('vscodeThemes')
+        ? window.aliceDesktop?.themes?.searchMarketplace(debounced) ?? Promise.resolve([])
+        : Promise.resolve([]),
     queryKey: ['marketplace-themes-settings', debounced],
     staleTime: 5 * 60 * 1000
   })
@@ -365,7 +369,9 @@ export function AppearanceSettings() {
                       })}
                     </div>
                   )}
-                  <MarketplaceThemeResults installs={installs} onInstalled={name => setTheme(name)} query={query} />
+                  {desktopSupports('vscodeThemes') && (
+                    <MarketplaceThemeResults installs={installs} onInstalled={name => setTheme(name)} query={query} />
+                  )}
                 </div>
                 {showProfileNote && (
                   <p className="mt-3 text-[length:var(--conversation-caption-font-size)] leading-(--conversation-caption-line-height) text-(--ui-text-tertiary)">
@@ -463,9 +469,11 @@ export function AppearanceSettings() {
         </div>
       </div>
 
-      <div className="mt-6">
-        <PetSettings />
-      </div>
+      {desktopSupports('petOverlay') && (
+        <div className="mt-6">
+          <PetSettings />
+        </div>
+      )}
     </SettingsContent>
   )
 }

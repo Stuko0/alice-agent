@@ -32,7 +32,7 @@ def _load_plugin_router():
     assert plugin_file.exists(), f"plugin file missing: {plugin_file}"
 
     spec = importlib.util.spec_from_file_location(
-        "lydia_dashboard_plugin_kanban_test", plugin_file,
+        "alice_dashboard_plugin_kanban_test", plugin_file,
     )
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
@@ -728,9 +728,9 @@ def test_board_auto_initializes_missing_db(tmp_path, monkeypatch):
     home = tmp_path / ".alice"
     home.mkdir()
     monkeypatch.setenv("ALICE_HOME", str(home))
-    monkeypatch.delenv("LYDIA_KANBAN_BOARD", raising=False)
-    monkeypatch.delenv("LYDIA_KANBAN_DB", raising=False)
-    monkeypatch.delenv("LYDIA_KANBAN_HOME", raising=False)
+    monkeypatch.delenv("ALICE_KANBAN_BOARD", raising=False)
+    monkeypatch.delenv("ALICE_KANBAN_DB", raising=False)
+    monkeypatch.delenv("ALICE_KANBAN_HOME", raising=False)
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     # Deliberately DO NOT call kb.init_db().
 

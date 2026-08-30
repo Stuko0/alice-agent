@@ -29,7 +29,7 @@ def _seed(tmp_path, monkeypatch, value=False):
     monkeypatch.setenv("ALICE_HOME", str(hh))
     import cli
 
-    monkeypatch.setattr(cli, "_lydia_home", hh, raising=False)
+    monkeypatch.setattr(cli, "_alice_home", hh, raising=False)
     return hh
 
 

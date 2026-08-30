@@ -5,7 +5,7 @@ flip ``display.interface: tui`` in config.yaml to make the modern Ink TUI the
 default for bare ``alice`` / ``alice chat``. Explicit flags always win:
 
     --cli                forces the classic REPL (highest precedence)
-    --tui / LYDIA_TUI=1 forces the TUI
+    --tui / ALICE_TUI=1 forces the TUI
     display.interface    the configured default
     (unset)              classic REPL
 
@@ -33,9 +33,9 @@ from alice_cli import main as m
 @pytest.fixture(autouse=True)
 def _reset_early_cache(monkeypatch):
     # The early resolver memoizes the config read; clear it so each test sees
-    # a fresh value, and make sure no stray LYDIA_TUI leaks in.
+    # a fresh value, and make sure no stray ALICE_TUI leaks in.
     monkeypatch.setattr(m, "_EARLY_INTERFACE_CACHE", None)
-    monkeypatch.delenv("LYDIA_TUI", raising=False)
+    monkeypatch.delenv("ALICE_TUI", raising=False)
     yield
     monkeypatch.setattr(m, "_EARLY_INTERFACE_CACHE", None)
 
@@ -64,7 +64,7 @@ class TestResolveUseTui:
 
     def test_cli_flag_beats_tui_flag_and_env(self, monkeypatch):
         _patch_config(monkeypatch, "tui")
-        monkeypatch.setenv("LYDIA_TUI", "1")
+        monkeypatch.setenv("ALICE_TUI", "1")
         assert m._resolve_use_tui(_args(cli=True, tui=True)) is False
 
     def test_tui_flag_beats_config_cli(self, monkeypatch):
@@ -73,7 +73,7 @@ class TestResolveUseTui:
 
     def test_env_beats_config_cli(self, monkeypatch):
         _patch_config(monkeypatch, "cli")
-        monkeypatch.setenv("LYDIA_TUI", "1")
+        monkeypatch.setenv("ALICE_TUI", "1")
         assert m._resolve_use_tui(_args()) is True
 
     def test_config_tui_with_no_flags(self, monkeypatch):
@@ -127,7 +127,7 @@ class TestWantsTuiEarly:
 
     def test_env_with_config_cli(self, home_with_interface, monkeypatch):
         home_with_interface("cli")
-        monkeypatch.setenv("LYDIA_TUI", "1")
+        monkeypatch.setenv("ALICE_TUI", "1")
         assert m._wants_tui_early([]) is True
 
     def test_config_cli_bare_argv(self, home_with_interface):

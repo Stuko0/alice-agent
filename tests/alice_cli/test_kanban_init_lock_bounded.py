@@ -30,7 +30,7 @@ def kanban_home(tmp_path, monkeypatch):
     home = tmp_path / ".alice"
     home.mkdir()
     monkeypatch.setenv("ALICE_HOME", str(home))
-    monkeypatch.setenv("LYDIA_KANBAN_HOME", str(home))
+    monkeypatch.setenv("ALICE_KANBAN_HOME", str(home))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     db_path = kb.kanban_db_path(board="default")
     kb._INITIALIZED_PATHS.discard(str(db_path.resolve()))

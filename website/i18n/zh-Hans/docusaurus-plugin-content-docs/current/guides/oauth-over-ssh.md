@@ -10,7 +10,7 @@ description: "当 Alice 运行在远程机器、容器或跳板机后面时，�
 
 当 Alice 和浏览器在同一台机器上时，这一切运行正常。一旦两者不在同一台机器上就会出问题：你笔记本上的浏览器试图访问**你笔记本**上的 `127.0.0.1`，但监听器绑定的是**远程服务器**上的 `127.0.0.1`。
 
-解决方法是一行 SSH 本地端口转发——**或者**，当你没有真正的 SSH 客户端时（GCP Cloud Shell、GitHub Codespaces、EC2 Instance Connect、Gitpod、基于浏览器的 Web IDE），使用 [#26923](https://github.com/NousResearch/alice-agent/issues/26923) 中引入的新 `--manual-paste` 标志。
+解决方法是一行 SSH 本地端口转发——**或者**，当你没有真正的 SSH 客户端时（GCP Cloud Shell、GitHub Codespaces、EC2 Instance Connect、Gitpod、基于浏览器的 Web IDE），使用 [#26923](https://github.com/Stuko0/alice-agent/issues/26923) 中引入的新 `--manual-paste` 标志。
 
 ## 快速概览
 

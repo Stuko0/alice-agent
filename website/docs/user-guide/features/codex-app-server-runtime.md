@@ -66,7 +66,7 @@ Alice registers itself as an MCP server so codex can call back for tools codex d
 - **`skill_view` / `skills_list`** — read from Alice' skill library.
 - **`text_to_speech`** — TTS through Alice' configured provider.
 
-When the model wants one of these, codex spawns the `lydia_tools_mcp_server` subprocess via stdio MCP, the call is dispatched through `model_tools.handle_function_call()` (same code path as Alice' default runtime), and the result is returned to codex like any other MCP response.
+When the model wants one of these, codex spawns the `alice_tools_mcp_server` subprocess via stdio MCP, the call is dispatched through `model_tools.handle_function_call()` (same code path as Alice' default runtime), and the result is returned to codex like any other MCP response.
 
 ### What's NOT available on this runtime
 
@@ -95,11 +95,11 @@ What works inside a codex-runtime worker:
 - The Alice tool callback for browser_*, vision, image_gen, skills, TTS
 
 What also works because the MCP callback exposes them:
-- **`kanban_complete` / `kanban_block` / `kanban_comment` / `kanban_heartbeat`** — the worker handoff tools. These read `LYDIA_KANBAN_TASK` from env (set by the dispatcher), gate access correctly, and write to the per-board SQLite DB pinned by `LYDIA_KANBAN_DB`. Without these in the callback, a worker on this runtime could do its task but couldn't report back, hanging until the dispatcher's timeout.
+- **`kanban_complete` / `kanban_block` / `kanban_comment` / `kanban_heartbeat`** — the worker handoff tools. These read `ALICE_KANBAN_TASK` from env (set by the dispatcher), gate access correctly, and write to the per-board SQLite DB pinned by `ALICE_KANBAN_DB`. Without these in the callback, a worker on this runtime could do its task but couldn't report back, hanging until the dispatcher's timeout.
 - **`kanban_show` / `kanban_list`** — read-only board queries for the worker to check its own context.
 - **`kanban_create` / `kanban_unblock` / `kanban_link`** — orchestrator-only operations. Available for orchestrator agents running on the codex runtime that need to dispatch new tasks.
 
-The kanban tools are gated by `LYDIA_KANBAN_TASK` env var the dispatcher sets — that var is propagated to the codex subprocess (codex inherits env) and from there to the spawned `alice-tools` MCP server subprocess. So the tools see the right task id and gate correctly. For Codex app-server workers, Alice also passes narrow app-server sandbox overrides when `LYDIA_KANBAN_TASK` is present: keep `workspace-write` sandboxing, add the **board DB directory plus every Kanban path the dispatcher pinned** as extra writable roots (`LYDIA_KANBAN_WORKSPACES_ROOT`, `LYDIA_KANBAN_WORKSPACE`, legacy `LYDIA_KANBAN_ROOT` — deduplicated, DB-dir first), and keep network disabled by default. This avoids the brittle `:danger-no-sandbox` workaround while letting `kanban_complete` / `kanban_block` update the board DB **and** letting workers write reports/artifacts under workspace mounts that live outside the DB directory (e.g. `/media/.../kanban-workspaces/...` on a separate drive — [issue #27941](https://github.com/NousResearch/alice-agent/issues/27941)).
+The kanban tools are gated by `ALICE_KANBAN_TASK` env var the dispatcher sets — that var is propagated to the codex subprocess (codex inherits env) and from there to the spawned `alice-tools` MCP server subprocess. So the tools see the right task id and gate correctly. For Codex app-server workers, Alice also passes narrow app-server sandbox overrides when `ALICE_KANBAN_TASK` is present: keep `workspace-write` sandboxing, add the **board DB directory plus every Kanban path the dispatcher pinned** as extra writable roots (`ALICE_KANBAN_WORKSPACES_ROOT`, `ALICE_KANBAN_WORKSPACE`, legacy `ALICE_KANBAN_ROOT` — deduplicated, DB-dir first), and keep network disabled by default. This avoids the brittle `:danger-no-sandbox` workaround while letting `kanban_complete` / `kanban_block` update the board DB **and** letting workers write reports/artifacts under workspace mounts that live outside the DB directory (e.g. `/media/.../kanban-workspaces/...` on a separate drive — [issue #27941](https://github.com/Stuko0/alice-agent/issues/27941)).
 
 ### Cron jobs
 
@@ -353,13 +353,13 @@ Codex's built-in toolset covers shell/file ops/patches but doesn't have web sear
 ```toml
 [mcp_servers.alice-tools]
 command = "/path/to/python"
-args = ["-m", "agent.transports.lydia_tools_mcp_server"]
-env = { ALICE_HOME = "/your/.alice", PYTHONPATH = "...", LYDIA_QUIET = "1" }
+args = ["-m", "agent.transports.alice_tools_mcp_server"]
+env = { ALICE_HOME = "/your/.alice", PYTHONPATH = "...", ALICE_QUIET = "1" }
 startup_timeout_sec = 30.0
 tool_timeout_sec = 600.0
 ```
 
-When the model calls `web_search` (or another exposed Alice tool), codex spawns the `lydia_tools_mcp_server` subprocess via stdio, the request is dispatched through `model_tools.handle_function_call()`, and the result is projected back to codex like any other MCP response.
+When the model calls `web_search` (or another exposed Alice tool), codex spawns the `alice_tools_mcp_server` subprocess via stdio, the request is dispatched through `model_tools.handle_function_call()`, and the result is projected back to codex like any other MCP response.
 
 **Tools available via the callback:** `web_search`, `web_extract`, `browser_navigate`, `browser_click`, `browser_type`, `browser_press`, `browser_snapshot`, `browser_scroll`, `browser_back`, `browser_get_images`, `browser_console`, `browser_vision`, `vision_analyze`, `image_generate`, `skill_view`, `skills_list`, `text_to_speech`.
 
@@ -395,7 +395,7 @@ Known limitations:
 - **No inline patch preview in approval prompts when codex doesn't track the changeset.** Codex's `fileChange` approval params don't always carry the changeset. Alice caches the data from the corresponding `item/started` notification when possible, but if approval arrives before the item has streamed, the prompt falls back to whatever `reason` codex provides.
 - **Sub-second cancellation isn't guaranteed.** Mid-stream interrupts (Ctrl+C while codex is responding) are sent via `turn/interrupt`, but if codex has already flushed the final message, you get the response anyway.
 
-If you find a bug, [open an issue](https://github.com/NousResearch/alice-agent/issues) with the output of `alice logs --since 5m`. Mention `codex-runtime` in the title so it's easy to triage.
+If you find a bug, [open an issue](https://github.com/Stuko0/alice-agent/issues) with the output of `alice logs --since 5m`. Mention `codex-runtime` in the title so it's easy to triage.
 
 ## Architecture
 
@@ -436,10 +436,10 @@ If you find a bug, [open an issue](https://github.com/NousResearch/alice-agent/i
                                                         │
                                                         ▼
         ┌──────────────────────────────────────────────────────────┐
-        │  lydia_tools_mcp_server.py (subprocess on demand)        │
+        │  alice_tools_mcp_server.py (subprocess on demand)        │
         │   web_search, web_extract, browser_*, vision_analyze,    │
         │   image_generate, skill_view, skills_list, text_to_speech│
         └──────────────────────────────────────────────────────────┘
 ```
 
-For implementation details, see [PR #24182](https://github.com/NousResearch/alice-agent/pull/24182) and the [Codex app-server protocol README](https://github.com/openai/codex/blob/main/codex-rs/app-server/README.md).
+For implementation details, see [PR #24182](https://github.com/Stuko0/alice-agent/pull/24182) and the [Codex app-server protocol README](https://github.com/openai/codex/blob/main/codex-rs/app-server/README.md).

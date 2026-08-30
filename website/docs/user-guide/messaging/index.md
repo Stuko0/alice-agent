@@ -408,7 +408,7 @@ display:
 You can also set this via environment variable:
 
 ```bash
-LYDIA_BACKGROUND_NOTIFICATIONS=result
+ALICE_BACKGROUND_NOTIFICATIONS=result
 ```
 
 ### Use Cases

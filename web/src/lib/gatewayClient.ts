@@ -15,13 +15,13 @@
 
 import {
   JsonRpcGatewayClient,
-  buildLydiaWebSocketUrl,
+  buildAliceWebSocketUrl,
   type ConnectionState,
   type GatewayEvent,
   type GatewayEventName,
 } from "@alice/shared";
 
-import { LYDIA_BASE_PATH, buildWsAuthParam } from "@/lib/api";
+import { ALICE_BASE_PATH, buildWsAuthParam } from "@/lib/api";
 
 export type { ConnectionState, GatewayEvent, GatewayEventName };
 
@@ -51,9 +51,9 @@ export class GatewayClient extends JsonRpcGatewayClient {
     }
 
     await super.connect(
-      buildLydiaWebSocketUrl({
+      buildAliceWebSocketUrl({
         authParam,
-        basePath: LYDIA_BASE_PATH,
+        basePath: ALICE_BASE_PATH,
         path: "/api/ws",
       }),
     );

@@ -35,7 +35,7 @@ Ollama 可在纯 CPU 服务器上运行。现代 8 核 CPU 运行 9B 模型约�
 
 ```bash
 # ~/.alice/.env
-LYDIA_API_TIMEOUT=1800   # 30 分钟 — 为慢速本地模型留出充裕时间
+ALICE_API_TIMEOUT=1800   # 30 分钟 — 为慢速本地模型留出充裕时间
 ```
 :::
 

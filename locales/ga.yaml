@@ -318,7 +318,7 @@ Future messages in this room will use that transcript until `/reset` or another 
   update:
     platform_not_messaging:  "✗ Tá /update ar fáil amháin ó ardáin teachtaireachtaí. Rith `alice update` ón teirminéal."
     not_git_repo:            "✗ Ní stór git é seo — ní féidir nuashonrú."
-    lydia_cmd_not_found:    "✗ Níorbh fhéidir an t-ordú `alice` a aimsiú. Tá Alice ag rith, ach níorbh fhéidir leis an ordú nuashonraithe an inrite a aimsiú ar PATH ná tríd an léirmhínitheoir Python reatha. Bain triail as `alice update` a rith de láimh i do theirminéal."
+    alice_cmd_not_found:    "✗ Níorbh fhéidir an t-ordú `alice` a aimsiú. Tá Alice ag rith, ach níorbh fhéidir leis an ordú nuashonraithe an inrite a aimsiú ar PATH ná tríd an léirmhínitheoir Python reatha. Bain triail as `alice update` a rith de láimh i do theirminéal."
     start_failed:            "✗ Theip ar nuashonrú a thosú: {error}"
     starting:                "🌹 Ag tosú nuashonrú Alice… Cuirfidh mé an dul chun cinn ar shruth anseo."
 

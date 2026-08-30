@@ -11,7 +11,7 @@ import pytest
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def lydia_home(tmp_path, monkeypatch):
+def alice_home(tmp_path, monkeypatch):
     """Set up an isolated ALICE_HOME with minimal logs."""
     home = tmp_path / ".alice"
     home.mkdir()
@@ -144,7 +144,7 @@ class TestUploadToPastebin:
 class TestCaptureLogSnapshot:
     """Test _capture_log_snapshot for log reading and truncation."""
 
-    def test_reads_small_file(self, lydia_home):
+    def test_reads_small_file(self, alice_home):
         from alice_cli.debug import _capture_log_snapshot
 
         snap = _capture_log_snapshot("agent", tail_lines=10)
@@ -162,18 +162,18 @@ class TestCaptureLogSnapshot:
         assert snap.full_text is None
         assert snap.tail_text == "(file not found)"
 
-    def test_empty_primary_reports_file_empty(self, lydia_home):
+    def test_empty_primary_reports_file_empty(self, alice_home):
         """Empty primary (no .1 fallback) surfaces as '(file empty)', not missing."""
-        (lydia_home / "logs" / "agent.log").write_text("")
+        (alice_home / "logs" / "agent.log").write_text("")
 
         from alice_cli.debug import _capture_log_snapshot
         snap = _capture_log_snapshot("agent", tail_lines=10)
         assert snap.full_text is None
         assert snap.tail_text == "(file empty)"
 
-    def test_race_truncate_after_resolve_reports_empty(self, lydia_home, monkeypatch):
+    def test_race_truncate_after_resolve_reports_empty(self, alice_home, monkeypatch):
         """If the log is truncated between resolve and stat, say 'empty', not 'missing'."""
-        log_path = lydia_home / "logs" / "agent.log"
+        log_path = alice_home / "logs" / "agent.log"
         from alice_cli import debug
 
         monkeypatch.setattr(debug, "_resolve_log_path", lambda _name: log_path)
@@ -184,19 +184,19 @@ class TestCaptureLogSnapshot:
         assert snap.full_text is None
         assert snap.tail_text == "(file empty)"
 
-    def test_truncates_large_file(self, lydia_home):
+    def test_truncates_large_file(self, alice_home):
         """Files larger than max_bytes get tail-truncated."""
         from alice_cli.debug import _capture_log_snapshot
 
         # Write a file larger than 1KB
         big_content = "x" * 100 + "\n"
-        (lydia_home / "logs" / "agent.log").write_text(big_content * 200)
+        (alice_home / "logs" / "agent.log").write_text(big_content * 200)
 
         snap = _capture_log_snapshot("agent", tail_lines=10, max_bytes=1024)
         assert snap.full_text is not None
         assert "truncated" in snap.full_text
 
-    def test_keeps_first_line_when_truncation_on_boundary(self, lydia_home):
+    def test_keeps_first_line_when_truncation_on_boundary(self, alice_home):
         """When truncation lands on a line boundary, keep the first full line."""
         from alice_cli.debug import _capture_log_snapshot
 
@@ -204,7 +204,7 @@ class TestCaptureLogSnapshot:
         # backward-reading loop so the truncation path actually fires.
         line = "A" * 99 + "\n"  # 100 bytes per line
         num_lines = 200  # 20000 bytes
-        (lydia_home / "logs" / "agent.log").write_text(line * num_lines)
+        (alice_home / "logs" / "agent.log").write_text(line * num_lines)
 
         # max_bytes = 1000 = 100 * 10 → cut at byte 20000 - 1000 = 19000,
         # and byte 19000 - 1 is '\n'.  Boundary hit → keep all 10 lines.
@@ -215,13 +215,13 @@ class TestCaptureLogSnapshot:
         kept = [l for l in raw.strip().splitlines() if l.startswith("A")]
         assert len(kept) == 10
 
-    def test_drops_partial_when_truncation_mid_line(self, lydia_home):
+    def test_drops_partial_when_truncation_mid_line(self, alice_home):
         """When truncation lands mid-line, drop the partial fragment."""
         from alice_cli.debug import _capture_log_snapshot
 
         line = "A" * 99 + "\n"  # 100 bytes per line
         num_lines = 200  # 20000 bytes
-        (lydia_home / "logs" / "agent.log").write_text(line * num_lines)
+        (alice_home / "logs" / "agent.log").write_text(line * num_lines)
 
         # max_bytes = 950 doesn't divide evenly into 100 → mid-line cut.
         snap = _capture_log_snapshot("agent", tail_lines=5, max_bytes=950)
@@ -232,16 +232,16 @@ class TestCaptureLogSnapshot:
         # 950 / 100 = 9.5 → 9 complete lines after dropping partial
         assert len(kept) == 9
 
-    def test_unknown_log_returns_none(self, lydia_home):
+    def test_unknown_log_returns_none(self, alice_home):
         from alice_cli.debug import _capture_log_snapshot
         snap = _capture_log_snapshot("nonexistent", tail_lines=10)
         assert snap.full_text is None
 
-    def test_falls_back_to_rotated_file(self, lydia_home):
+    def test_falls_back_to_rotated_file(self, alice_home):
         """When gateway.log doesn't exist, falls back to gateway.log.1."""
         from alice_cli.debug import _capture_log_snapshot
 
-        logs_dir = lydia_home / "logs"
+        logs_dir = alice_home / "logs"
         # Remove the primary (if any) and create a .1 rotation
         (logs_dir / "gateway.log").unlink(missing_ok=True)
         (logs_dir / "gateway.log.1").write_text(
@@ -252,11 +252,11 @@ class TestCaptureLogSnapshot:
         assert snap.full_text is not None
         assert "rotated content" in snap.full_text
 
-    def test_prefers_primary_over_rotated(self, lydia_home):
+    def test_prefers_primary_over_rotated(self, alice_home):
         """Primary log is used when it exists, even if .1 also exists."""
         from alice_cli.debug import _capture_log_snapshot
 
-        logs_dir = lydia_home / "logs"
+        logs_dir = alice_home / "logs"
         (logs_dir / "gateway.log").write_text("primary content\n")
         (logs_dir / "gateway.log.1").write_text("rotated content\n")
 
@@ -264,11 +264,11 @@ class TestCaptureLogSnapshot:
         assert "primary content" in snap.full_text
         assert "rotated" not in snap.full_text
 
-    def test_falls_back_when_primary_empty(self, lydia_home):
+    def test_falls_back_when_primary_empty(self, alice_home):
         """Empty primary log falls back to .1 rotation."""
         from alice_cli.debug import _capture_log_snapshot
 
-        logs_dir = lydia_home / "logs"
+        logs_dir = alice_home / "logs"
         (logs_dir / "agent.log").write_text("")
         (logs_dir / "agent.log.1").write_text("rotated agent data\n")
 
@@ -278,7 +278,7 @@ class TestCaptureLogSnapshot:
 
 
 # ---------------------------------------------------------------------------
-# Capture log redaction (force=True applies regardless of LYDIA_REDACT_SECRETS)
+# Capture log redaction (force=True applies regardless of ALICE_REDACT_SECRETS)
 # ---------------------------------------------------------------------------
 
 # A vendor-prefixed token used across redaction tests. Long enough to clear
@@ -290,7 +290,7 @@ class TestCaptureLogSnapshotRedaction:
     """Pin upload-time redaction at the _capture_log_snapshot boundary."""
 
     @pytest.fixture
-    def lydia_home_with_secret(self, tmp_path, monkeypatch):
+    def alice_home_with_secret(self, tmp_path, monkeypatch):
         """Isolated ALICE_HOME whose agent.log contains a vendor-prefixed token."""
         home = tmp_path / ".alice"
         home.mkdir()
@@ -300,7 +300,7 @@ class TestCaptureLogSnapshotRedaction:
         # secure-default behaviour. The `force=True` regression test
         # setenvs to "false" inline to prove force=True works even when
         # the runtime flag is disabled.
-        monkeypatch.delenv("LYDIA_REDACT_SECRETS", raising=False)
+        monkeypatch.delenv("ALICE_REDACT_SECRETS", raising=False)
 
         logs_dir = home / "logs"
         logs_dir.mkdir()
@@ -311,7 +311,7 @@ class TestCaptureLogSnapshotRedaction:
         (logs_dir / "gateway.log").write_text("")
         return home
 
-    def test_default_redacts_tail_and_full_text(self, lydia_home_with_secret):
+    def test_default_redacts_tail_and_full_text(self, alice_home_with_secret):
         from alice_cli.debug import _capture_log_snapshot
 
         snap = _capture_log_snapshot("agent", tail_lines=10)
@@ -321,7 +321,7 @@ class TestCaptureLogSnapshotRedaction:
         assert snap.full_text is not None
         assert _REDACT_FIXTURE_TOKEN not in snap.full_text
 
-    def test_redact_false_passes_through(self, lydia_home_with_secret):
+    def test_redact_false_passes_through(self, alice_home_with_secret):
         from alice_cli.debug import _capture_log_snapshot
 
         snap = _capture_log_snapshot("agent", tail_lines=10, redact=False)
@@ -331,24 +331,24 @@ class TestCaptureLogSnapshotRedaction:
         assert _REDACT_FIXTURE_TOKEN in (snap.full_text or "")
 
     def test_force_true_works_when_redaction_disabled(
-        self, lydia_home_with_secret, monkeypatch
+        self, alice_home_with_secret, monkeypatch
     ):
         """Regression test: redact_sensitive_text short-circuits without force=True.
 
         If a future refactor drops `force=True` from `_redact_log_text`, this
         test fails immediately. Without `force=True`, the redactor returns the
-        input unchanged when LYDIA_REDACT_SECRETS=false, and the share-time
+        input unchanged when ALICE_REDACT_SECRETS=false, and the share-time
         redaction feature ships silently broken for users who opted out of
         runtime redaction (e.g. developers working on the redactor itself).
         """
 
         # Force the runtime flag off so we're exercising the force=True path,
         # not the default-on path.
-        monkeypatch.setenv("LYDIA_REDACT_SECRETS", "false")
+        monkeypatch.setenv("ALICE_REDACT_SECRETS", "false")
 
         from alice_cli.debug import _capture_log_snapshot
 
-        assert os.environ.get("LYDIA_REDACT_SECRETS", "") == "false"
+        assert os.environ.get("ALICE_REDACT_SECRETS", "") == "false"
 
         snap = _capture_log_snapshot("agent", tail_lines=10)
 
@@ -357,11 +357,11 @@ class TestCaptureLogSnapshotRedaction:
         assert _REDACT_FIXTURE_TOKEN not in snap.full_text
 
     def test_default_redacts_email_addresses_for_public_share(
-        self, lydia_home_with_secret
+        self, alice_home_with_secret
     ):
         from alice_cli.debug import _capture_log_snapshot
 
-        log_path = lydia_home_with_secret / "logs" / "agent.log"
+        log_path = alice_home_with_secret / "logs" / "agent.log"
         log_path.write_text(
             "2026-04-12 17:00:00 INFO gateway.run: "
             "inbound message: platform=bluebubbles "
@@ -375,10 +375,10 @@ class TestCaptureLogSnapshotRedaction:
         assert snap.full_text is not None
         assert "person@example.com" not in snap.full_text
 
-    def test_no_redact_preserves_email_addresses(self, lydia_home_with_secret):
+    def test_no_redact_preserves_email_addresses(self, alice_home_with_secret):
         from alice_cli.debug import _capture_log_snapshot
 
-        log_path = lydia_home_with_secret / "logs" / "agent.log"
+        log_path = alice_home_with_secret / "logs" / "agent.log"
         log_path.write_text(
             "2026-04-12 17:00:00 INFO gateway.run: "
             "inbound message: platform=bluebubbles "
@@ -391,7 +391,7 @@ class TestCaptureLogSnapshotRedaction:
         assert "person@example.com" in (snap.full_text or "")
 
     def test_capture_default_log_snapshots_threads_redact(
-        self, lydia_home_with_secret
+        self, alice_home_with_secret
     ):
         from alice_cli.debug import _capture_default_log_snapshots
 
@@ -402,7 +402,7 @@ class TestCaptureLogSnapshotRedaction:
         assert _REDACT_FIXTURE_TOKEN not in (snaps["agent"].full_text or "")
 
     def test_capture_default_log_snapshots_no_redact_passes_through(
-        self, lydia_home_with_secret
+        self, alice_home_with_secret
     ):
         from alice_cli.debug import _capture_default_log_snapshots
 
@@ -419,7 +419,7 @@ class TestCaptureLogSnapshotRedaction:
 class TestCollectDebugReport:
     """Test the debug report builder."""
 
-    def test_report_includes_dump_output(self, lydia_home):
+    def test_report_includes_dump_output(self, alice_home):
         from alice_cli.debug import collect_debug_report
 
         with patch("alice_cli.dump.run_dump") as mock_dump:
@@ -431,7 +431,7 @@ class TestCollectDebugReport:
         assert "--- alice dump ---" in report
         assert "version: 0.8.0" in report
 
-    def test_report_includes_agent_log(self, lydia_home):
+    def test_report_includes_agent_log(self, alice_home):
         from alice_cli.debug import collect_debug_report
 
         with patch("alice_cli.dump.run_dump"):
@@ -440,7 +440,7 @@ class TestCollectDebugReport:
         assert "--- agent.log" in report
         assert "session started" in report
 
-    def test_report_includes_errors_log(self, lydia_home):
+    def test_report_includes_errors_log(self, alice_home):
         from alice_cli.debug import collect_debug_report
 
         with patch("alice_cli.dump.run_dump"):
@@ -449,7 +449,7 @@ class TestCollectDebugReport:
         assert "--- errors.log" in report
         assert "connection lost" in report
 
-    def test_report_includes_gateway_log(self, lydia_home):
+    def test_report_includes_gateway_log(self, alice_home):
         from alice_cli.debug import collect_debug_report
 
         with patch("alice_cli.dump.run_dump"):
@@ -457,7 +457,7 @@ class TestCollectDebugReport:
 
         assert "--- gateway.log" in report
 
-    def test_report_includes_gui_log(self, lydia_home):
+    def test_report_includes_gui_log(self, alice_home):
         from alice_cli.debug import collect_debug_report
 
         with patch("alice_cli.dump.run_dump"):
@@ -466,7 +466,7 @@ class TestCollectDebugReport:
         assert "--- gui.log" in report
         assert "dashboard request" in report
 
-    def test_report_includes_desktop_log(self, lydia_home):
+    def test_report_includes_desktop_log(self, alice_home):
         from alice_cli.debug import collect_debug_report
 
         with patch("alice_cli.dump.run_dump"):
@@ -495,7 +495,7 @@ class TestCollectDebugReport:
 class TestRunDebugShare:
     """Test the run_debug_share CLI handler."""
 
-    def test_share_sweeps_expired_pastes(self, lydia_home, capsys):
+    def test_share_sweeps_expired_pastes(self, alice_home, capsys):
         """Slash-command path should sweep old pending deletes before uploading."""
         from alice_cli.debug import run_debug_share
 
@@ -514,7 +514,7 @@ class TestRunDebugShare:
         mock_sweep.assert_called_once()
         assert "Debug report uploaded" in capsys.readouterr().out
 
-    def test_share_survives_sweep_failure(self, lydia_home, capsys):
+    def test_share_survives_sweep_failure(self, alice_home, capsys):
         """Expired-paste cleanup is best-effort and must not block sharing."""
         from alice_cli.debug import run_debug_share
 
@@ -535,7 +535,7 @@ class TestRunDebugShare:
 
         assert "https://paste.rs/test" in capsys.readouterr().out
 
-    def test_local_flag_prints_full_logs(self, lydia_home, capsys):
+    def test_local_flag_prints_full_logs(self, alice_home, capsys):
         """--local prints the report plus full log contents."""
         from alice_cli.debug import run_debug_share
 
@@ -553,7 +553,7 @@ class TestRunDebugShare:
         assert "FULL agent.log" in out
         assert "FULL gateway.log" in out
 
-    def test_share_uploads_five_pastes(self, lydia_home, capsys):
+    def test_share_uploads_five_pastes(self, alice_home, capsys):
         """Successful share uploads report + agent.log + gateway.log + gui.log + desktop.log."""
         from alice_cli.debug import run_debug_share
 
@@ -604,11 +604,11 @@ class TestRunDebugShare:
         assert "--- alice dump ---" in desktop_paste
         assert "--- full desktop.log ---" in desktop_paste
 
-    def test_share_keeps_report_and_full_log_on_same_snapshot(self, lydia_home, capsys):
+    def test_share_keeps_report_and_full_log_on_same_snapshot(self, alice_home, capsys):
         """A mid-run rotation must not make full agent.log older than the report."""
         from alice_cli.debug import run_debug_share, collect_debug_report as real_collect_debug_report
 
-        logs_dir = lydia_home / "logs"
+        logs_dir = alice_home / "logs"
         (logs_dir / "agent.log").write_text(
             "2026-04-22 12:00:00 INFO agent: newest line\n"
         )
@@ -683,7 +683,7 @@ class TestRunDebugShare:
         assert call_count[0] == 1
         assert "Report" in out
 
-    def test_share_continues_on_log_upload_failure(self, lydia_home, capsys):
+    def test_share_continues_on_log_upload_failure(self, alice_home, capsys):
         """Log upload failure doesn't stop the report from being shared."""
         from alice_cli.debug import run_debug_share
 
@@ -710,7 +710,7 @@ class TestRunDebugShare:
         assert "paste.rs/report" in out
         assert "failed to upload" in out
 
-    def test_share_exits_on_report_upload_failure(self, lydia_home, capsys):
+    def test_share_exits_on_report_upload_failure(self, alice_home, capsys):
         """If the main report fails to upload, exit with code 1."""
         from alice_cli.debug import run_debug_share
 
@@ -739,12 +739,12 @@ class TestRunDebugShareRedaction:
     """End-to-end: --no-redact flag, banner injection, default behavior."""
 
     @pytest.fixture
-    def lydia_home_with_secret(self, tmp_path, monkeypatch):
+    def alice_home_with_secret(self, tmp_path, monkeypatch):
         """Isolated ALICE_HOME whose agent.log contains a vendor-prefixed token."""
         home = tmp_path / ".alice"
         home.mkdir()
         monkeypatch.setenv("ALICE_HOME", str(home))
-        monkeypatch.delenv("LYDIA_REDACT_SECRETS", raising=False)
+        monkeypatch.delenv("ALICE_REDACT_SECRETS", raising=False)
 
         logs_dir = home / "logs"
         logs_dir.mkdir()
@@ -758,7 +758,7 @@ class TestRunDebugShareRedaction:
         return home
 
     def test_default_share_redacts_uploaded_content(
-        self, lydia_home_with_secret, capsys
+        self, alice_home_with_secret, capsys
     ):
         """The uploaded report and full-log pastes do not contain the raw token."""
         from alice_cli.debug import run_debug_share
@@ -789,7 +789,7 @@ class TestRunDebugShareRedaction:
             )
 
     def test_default_share_includes_redaction_banner(
-        self, lydia_home_with_secret, capsys
+        self, alice_home_with_secret, capsys
     ):
         """Each upload-bound paste carries the visible redaction banner."""
         from alice_cli.debug import run_debug_share
@@ -818,7 +818,7 @@ class TestRunDebugShareRedaction:
             )
 
     def test_no_redact_flag_disables_redaction_and_banner(
-        self, lydia_home_with_secret, capsys
+        self, alice_home_with_secret, capsys
     ):
         """--no-redact preserves original log content and omits the banner."""
         from alice_cli.debug import run_debug_share
@@ -870,7 +870,7 @@ class TestRunDebug:
         assert "share" in out
         assert "delete" in out
 
-    def test_share_subcommand_routes(self, lydia_home):
+    def test_share_subcommand_routes(self, alice_home):
         from alice_cli.debug import run_debug
 
         args = MagicMock()
@@ -951,7 +951,7 @@ class TestScheduleAutoDelete:
     invocation.
     """
 
-    def test_does_not_spawn_subprocess(self, lydia_home):
+    def test_does_not_spawn_subprocess(self, alice_home):
         """Regression guard: _schedule_auto_delete must NEVER spawn subprocesses.
 
         We assert this structurally rather than by mocking Popen: the new
@@ -1013,7 +1013,7 @@ class TestScheduleAutoDelete:
                 except OSError:
                     pass  # process exited already
 
-    def test_records_pending_to_json(self, lydia_home):
+    def test_records_pending_to_json(self, alice_home):
         """Scheduled URLs are persisted to pending.json with expiration."""
         from alice_cli.debug import _schedule_auto_delete, _pending_file
         import json
@@ -1037,7 +1037,7 @@ class TestScheduleAutoDelete:
             assert e["expire_at"] > time.time()
             assert e["expire_at"] <= time.time() + 15
 
-    def test_skips_non_paste_rs_urls(self, lydia_home):
+    def test_skips_non_paste_rs_urls(self, alice_home):
         """dpaste.com URLs auto-expire — don't track them."""
         from alice_cli.debug import _schedule_auto_delete, _pending_file
 
@@ -1046,7 +1046,7 @@ class TestScheduleAutoDelete:
         # pending.json should not be created for non-paste.rs URLs
         assert not _pending_file().exists()
 
-    def test_merges_with_existing_pending(self, lydia_home):
+    def test_merges_with_existing_pending(self, alice_home):
         """Subsequent calls merge into existing pending.json."""
         from alice_cli.debug import _schedule_auto_delete, _load_pending
 
@@ -1057,7 +1057,7 @@ class TestScheduleAutoDelete:
         urls = {e["url"] for e in entries}
         assert urls == {"https://paste.rs/first", "https://paste.rs/second"}
 
-    def test_dedupes_same_url(self, lydia_home):
+    def test_dedupes_same_url(self, alice_home):
         """Same URL recorded twice → one entry with the later expire_at."""
         from alice_cli.debug import _schedule_auto_delete, _load_pending
 
@@ -1072,14 +1072,14 @@ class TestScheduleAutoDelete:
 class TestSweepExpiredPastes:
     """Test the opportunistic sweep that replaces the sleeping subprocess."""
 
-    def test_sweep_empty_is_noop(self, lydia_home):
+    def test_sweep_empty_is_noop(self, alice_home):
         from alice_cli.debug import _sweep_expired_pastes
 
         deleted, remaining = _sweep_expired_pastes()
         assert deleted == 0
         assert remaining == 0
 
-    def test_sweep_deletes_expired_entries(self, lydia_home):
+    def test_sweep_deletes_expired_entries(self, alice_home):
         from alice_cli.debug import (
             _sweep_expired_pastes,
             _save_pending,
@@ -1110,7 +1110,7 @@ class TestSweepExpiredPastes:
         urls = {e["url"] for e in entries}
         assert urls == {"https://paste.rs/future"}
 
-    def test_sweep_leaves_future_entries_alone(self, lydia_home):
+    def test_sweep_leaves_future_entries_alone(self, alice_home):
         from alice_cli.debug import _sweep_expired_pastes, _save_pending
         import time
 
@@ -1126,7 +1126,7 @@ class TestSweepExpiredPastes:
         assert deleted == 0
         assert remaining == 2
 
-    def test_sweep_survives_network_failure(self, lydia_home):
+    def test_sweep_survives_network_failure(self, alice_home):
         """Failed DELETEs stay in pending.json until the 24h grace window."""
         from alice_cli.debug import (
             _sweep_expired_pastes,
@@ -1150,7 +1150,7 @@ class TestSweepExpiredPastes:
         assert remaining == 1
         assert len(_load_pending()) == 1
 
-    def test_sweep_drops_entries_past_grace_window(self, lydia_home):
+    def test_sweep_drops_entries_past_grace_window(self, alice_home):
         """After 24h past expiration, give up even on network failures."""
         from alice_cli.debug import (
             _sweep_expired_pastes,
@@ -1179,7 +1179,7 @@ class TestSweepExpiredPastes:
 class TestRunDebugSweepsOnInvocation:
     """``run_debug`` must sweep expired pastes on every invocation."""
 
-    def test_run_debug_calls_sweep(self, lydia_home):
+    def test_run_debug_calls_sweep(self, alice_home):
         from alice_cli.debug import run_debug
 
         args = MagicMock()
@@ -1190,7 +1190,7 @@ class TestRunDebugSweepsOnInvocation:
 
         mock_sweep.assert_called_once()
 
-    def test_run_debug_survives_sweep_failure(self, lydia_home, capsys):
+    def test_run_debug_survives_sweep_failure(self, alice_home, capsys):
         """If the sweep throws, the subcommand still runs."""
         from alice_cli.debug import run_debug
 
@@ -1250,7 +1250,7 @@ class TestRunDebugDelete:
 class TestShareIncludesAutoDelete:
     """Verify that run_debug_share schedules auto-deletion and prints TTL."""
 
-    def test_share_schedules_auto_delete(self, lydia_home, capsys):
+    def test_share_schedules_auto_delete(self, alice_home, capsys):
         from alice_cli.debug import run_debug_share
 
         args = MagicMock()
@@ -1273,7 +1273,7 @@ class TestShareIncludesAutoDelete:
         out = capsys.readouterr().out
         assert "auto-delete" in out
 
-    def test_share_shows_privacy_notice(self, lydia_home, capsys):
+    def test_share_shows_privacy_notice(self, alice_home, capsys):
         from alice_cli.debug import run_debug_share
 
         args = MagicMock()
@@ -1291,7 +1291,7 @@ class TestShareIncludesAutoDelete:
         out = capsys.readouterr().out
         assert "public paste service" in out
 
-    def test_local_no_privacy_notice(self, lydia_home, capsys):
+    def test_local_no_privacy_notice(self, alice_home, capsys):
         from alice_cli.debug import run_debug_share
 
         args = MagicMock()
@@ -1320,7 +1320,7 @@ class TestBuildDebugShare:
     contract here is the return value, not stdout.
     """
 
-    def test_returns_structured_urls(self, lydia_home):
+    def test_returns_structured_urls(self, alice_home):
         from alice_cli.debug import build_debug_share, DebugShareResult
 
         count = [0]
@@ -1344,11 +1344,11 @@ class TestBuildDebugShare:
         assert result.redacted is True
         assert result.auto_delete_seconds == 21600
 
-    def test_skips_missing_logs_without_failure(self, lydia_home):
+    def test_skips_missing_logs_without_failure(self, alice_home):
         from alice_cli.debug import build_debug_share
 
         # Remove desktop.log so it should be neither uploaded nor reported failed.
-        (lydia_home / "logs" / "desktop.log").unlink()
+        (alice_home / "logs" / "desktop.log").unlink()
 
         with patch("alice_cli.dump.run_dump"), patch(
             "alice_cli.debug.upload_to_pastebin",
@@ -1359,11 +1359,11 @@ class TestBuildDebugShare:
         assert "desktop.log" not in result.urls
         assert result.failures == []
 
-    def test_redaction_keeps_secrets_out_of_payload(self, lydia_home):
+    def test_redaction_keeps_secrets_out_of_payload(self, alice_home):
         from alice_cli.debug import build_debug_share
 
         secret = "sk-proj-SUPERSECRETtoken1234567890"
-        (lydia_home / "logs" / "agent.log").write_text(
+        (alice_home / "logs" / "agent.log").write_text(
             f"line one\nauthorization token={secret}\nline three\n"
         )
 
@@ -1382,7 +1382,7 @@ class TestBuildDebugShare:
         joined = "\n".join(uploaded)
         assert secret not in joined, "secret leaked into upload payload"
 
-    def test_optional_log_failure_is_collected_not_raised(self, lydia_home):
+    def test_optional_log_failure_is_collected_not_raised(self, alice_home):
         from alice_cli.debug import build_debug_share
 
         count = [0]
@@ -1403,7 +1403,7 @@ class TestBuildDebugShare:
         assert len(result.failures) == 1
         assert "paste service hiccup" in result.failures[0]
 
-    def test_required_report_failure_raises(self, lydia_home):
+    def test_required_report_failure_raises(self, alice_home):
         from alice_cli.debug import build_debug_share
 
         with patch("alice_cli.dump.run_dump"), patch(
@@ -1419,7 +1419,7 @@ class TestBuildDebugShare:
 # ---------------------------------------------------------------------------
 
 class TestCollectShareBundle:
-    def test_returns_report_and_logs(self, lydia_home):
+    def test_returns_report_and_logs(self, alice_home):
         from alice_cli.debug import collect_share_bundle
 
         with patch("alice_cli.dump.run_dump"):
@@ -1433,7 +1433,7 @@ class TestCollectShareBundle:
         assert "redacted at upload time" in bundle["report"]
         assert "session started" in bundle["agent.log"]
 
-    def test_no_redact_omits_banner(self, lydia_home):
+    def test_no_redact_omits_banner(self, alice_home):
         from alice_cli.debug import collect_share_bundle
 
         with patch("alice_cli.dump.run_dump"):
@@ -1441,11 +1441,11 @@ class TestCollectShareBundle:
 
         assert "redacted at upload time" not in bundle["report"]
 
-    def test_redaction_keeps_secrets_out(self, lydia_home):
+    def test_redaction_keeps_secrets_out(self, alice_home):
         from alice_cli.debug import collect_share_bundle
 
         secret = "sk-proj-abcdefghijklmnopqrstuvwxyz1234567890"
-        (lydia_home / "logs" / "agent.log").write_text(
+        (alice_home / "logs" / "agent.log").write_text(
             f"line one\nOPENAI_API_KEY={secret}\nline three\n"
         )
         with patch("alice_cli.dump.run_dump"):
@@ -1458,7 +1458,7 @@ class TestCollectShareBundle:
         assert secret not in "\n".join(redacted.values())
 
 
-    def test_build_debug_share_uses_collector(self, lydia_home):
+    def test_build_debug_share_uses_collector(self, alice_home):
         # build_debug_share must produce the same report text the collector does
         # (i.e. the refactor preserved paste.rs behaviour).
         from alice_cli.debug import build_debug_share, collect_share_bundle
@@ -1483,7 +1483,7 @@ class TestCollectShareBundle:
 
 
 class TestBuildNousBundle:
-    def test_envelope_shape_and_gzip(self, lydia_home):
+    def test_envelope_shape_and_gzip(self, alice_home):
         import gzip
         import json as _json
 
@@ -1525,7 +1525,7 @@ class TestRunDebugShareNous:
             setattr(a, k, v)
         return a
 
-    def test_nous_success_prints_view_url(self, lydia_home, capsys):
+    def test_nous_success_prints_view_url(self, alice_home, capsys):
         from alice_cli.debug import run_debug_share
 
         res = {
@@ -1546,7 +1546,7 @@ class TestRunDebugShareNous:
         blob = share.call_args[0][0]
         assert isinstance(blob, (bytes, bytearray)) and blob[:2] == b"\x1f\x8b"
 
-    def test_nous_failure_suggests_local(self, lydia_home, capsys):
+    def test_nous_failure_suggests_local(self, alice_home, capsys):
         from alice_cli.debug import run_debug_share
 
         with patch("alice_cli.dump.run_dump"), patch(
@@ -1560,7 +1560,7 @@ class TestRunDebugShareNous:
         assert "Nous upload failed" in err
         assert "--local" in err
 
-    def test_nous_does_not_touch_pastebin(self, lydia_home):
+    def test_nous_does_not_touch_pastebin(self, alice_home):
         from alice_cli.debug import run_debug_share
 
         res = {"id": "id-1", "viewUrl": "https://v"}

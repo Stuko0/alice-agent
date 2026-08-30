@@ -38,9 +38,9 @@ WORK_DURATION_S = 2.0  # longer than TTL => reclaimer wins
 WT = str(Path(__file__).resolve().parents[2])
 
 
-def worker_loop(worker_id: int, lydia_home: str, result_file: str) -> None:
-    os.environ["ALICE_HOME"] = lydia_home
-    os.environ["HOME"] = lydia_home
+def worker_loop(worker_id: int, alice_home: str, result_file: str) -> None:
+    os.environ["ALICE_HOME"] = alice_home
+    os.environ["HOME"] = alice_home
     sys.path.insert(0, WT)
     from alice_cli import kanban_db as kb
 
@@ -95,9 +95,9 @@ def worker_loop(worker_id: int, lydia_home: str, result_file: str) -> None:
         json.dump(events, f)
 
 
-def reclaimer_loop(lydia_home: str, result_file: str) -> None:
-    os.environ["ALICE_HOME"] = lydia_home
-    os.environ["HOME"] = lydia_home
+def reclaimer_loop(alice_home: str, result_file: str) -> None:
+    os.environ["ALICE_HOME"] = alice_home
+    os.environ["HOME"] = alice_home
     sys.path.insert(0, WT)
     from alice_cli import kanban_db as kb
 
@@ -121,7 +121,7 @@ def reclaimer_loop(lydia_home: str, result_file: str) -> None:
 
 
 def main():
-    home = tempfile.mkdtemp(prefix="lydia_reclaim_race_")
+    home = tempfile.mkdtemp(prefix="alice_reclaim_race_")
     os.environ["ALICE_HOME"] = home
     os.environ["HOME"] = home
     sys.path.insert(0, WT)

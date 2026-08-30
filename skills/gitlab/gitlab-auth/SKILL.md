@@ -220,8 +220,8 @@ if command -v glab &>/dev/null && glab auth status &>/dev/null; then
   echo "AUTH_METHOD=glab"
 elif [ -n "$GITLAB_TOKEN" ]; then
   echo "AUTH_METHOD=curl"
-elif _lydia_env="${ALICE_HOME:-$HOME/.alice}/.env"; [ -f "$_lydia_env" ] && grep -q "^GITLAB_TOKEN=" "$_lydia_env"; then
-  export GITLAB_TOKEN=$(grep "^GITLAB_TOKEN=" "$_lydia_env" | head -1 | cut -d= -f2 | tr -d '\n\r')
+elif _alice_env="${ALICE_HOME:-$HOME/.alice}/.env"; [ -f "$_alice_env" ] && grep -q "^GITLAB_TOKEN=" "$_alice_env"; then
+  export GITLAB_TOKEN=$(grep "^GITLAB_TOKEN=" "$_alice_env" | head -1 | cut -d= -f2 | tr -d '\n\r')
   echo "AUTH_METHOD=curl"
 elif grep -q "github.com" ~/.git-credentials 2>/dev/null; then
   export GITLAB_TOKEN=$(grep "${GITLAB_HOST:-gitlab\.com}" ~/.git-credentials | head -1 | sed 's|https://[^:]*:\([^@]*\)@.*|\1|')

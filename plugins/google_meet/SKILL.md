@@ -63,7 +63,7 @@ pip install playwright websockets && python -m playwright install chromium
 #   Linux:  sudo apt install pulseaudio-utils
 #   macOS:  brew install blackhole-2ch ffmpeg
 #           → System Settings → Sound → Input → BlackHole 2ch
-#   Then set OPENAI_API_KEY or LYDIA_MEET_REALTIME_KEY in ~/.alice/.env
+#   Then set OPENAI_API_KEY or ALICE_MEET_REALTIME_KEY in ~/.alice/.env
 ```
 
 For a remote node:
@@ -106,7 +106,7 @@ Run `alice meet setup` to preflight local prereqs.
 
 - Captions are only as good as Google Meet's live captions. English-biased, lossy on overlapping speakers.
 - Guest mode sits in the lobby until a host admits. Warn the user; `alice meet auth` avoids this.
-- **Lobby timeout**: if the host doesn't admit the bot within 5 minutes (configurable via `LYDIA_MEET_LOBBY_TIMEOUT` env), the bot leaves and `meet_status` reports `leaveReason: "lobby_timeout"`.
+- **Lobby timeout**: if the host doesn't admit the bot within 5 minutes (configurable via `ALICE_MEET_LOBBY_TIMEOUT` env), the bot leaves and `meet_status` reports `leaveReason: "lobby_timeout"`.
 - **One active meeting per install per location.** A second `meet_join` leaves the first.
 - **Windows not supported.**
 - Realtime mode needs a virtual audio device. If the audio bridge setup fails, the bot falls back to transcribe mode and flags it in `meet_status().error`.
@@ -125,7 +125,7 @@ Run `alice meet setup` to preflight local prereqs.
 | `captioning` | Caption observer is installed. |
 | `transcriptLines` / `lastCaptionAt` | Transcript progress. |
 | `realtime` / `realtimeReady` | Realtime mode provisioned / WS connected. |
-| `realtimeDevice` | Audio device name the bot is feeding (e.g. `lydia_meet_src`). |
+| `realtimeDevice` | Audio device name the bot is feeding (e.g. `alice_meet_src`). |
 | `audioBytesOut` / `lastAudioOutAt` | How much PCM the OpenAI session has produced. |
 | `lastBargeInAt` | Timestamp of the most recent `response.cancel` sent. |
 | `leaveReason` | `duration_expired`, `lobby_timeout`, `denied`, `page_closed`, or null. |

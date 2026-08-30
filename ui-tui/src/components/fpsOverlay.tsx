@@ -1,4 +1,4 @@
-// FPS counter overlay (LYDIA_TUI_FPS=1). Zero-cost when disabled.
+// FPS counter overlay (ALICE_TUI_FPS=1). Zero-cost when disabled.
 
 import { Text } from '@alice/ink'
 import { useStore } from '@nanostores/react'

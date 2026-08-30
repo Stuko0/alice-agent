@@ -9,7 +9,7 @@ thought to model.
 Run manually:
     scripts/run_tests.sh tests/tools/test_browser_supervisor.py
 
-Automated: skipped in CI unless ``LYDIA_E2E_BROWSER=1`` is set.
+Automated: skipped in CI unless ``ALICE_E2E_BROWSER=1`` is set.
 """
 
 from __future__ import annotations

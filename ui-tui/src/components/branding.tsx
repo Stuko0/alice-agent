@@ -44,9 +44,9 @@ export function ArtLines({ lines }: { lines: [string, string][] }) {
 // Terminals can't scale glyphs, so "responsive" means picking a layout that
 // fits the available columns. Thresholds are picked so each tier reads
 // comfortably without forcing wrap or truncation drift on box-drawing edges.
-const TAG_FULL = 'Nous Research · Messenger of the Digital Gods'
+const TAG_FULL = 'Stuko · Messenger of the Digital Gods'
 const TAG_MID = 'Messenger of the Digital Gods'
-const TAG_TINY = 'Nous Research'
+const TAG_TINY = 'Stuko'
 const HIDE_BELOW = 34
 const COMPACT_FROM = 58
 
@@ -224,7 +224,7 @@ export function SessionPanel({ info, maxWidth, sid, t }: SessionPanelProps) {
 
   // MCP headline counts *connected* servers, not configured-but-disabled ones,
   // so it matches the classic CLI banner (`sum(s.connected)` in
-  // lydia_cli/banner.py) and the "connected" label on the collapse toggle.
+  // alice_cli/banner.py) and the "connected" label on the collapse toggle.
   const mcpServers = info.mcp_servers ?? []
   const mcpConnected = mcpServers.filter(s => s.connected).length
 
@@ -291,7 +291,7 @@ export function SessionPanel({ info, maxWidth, sid, t }: SessionPanelProps) {
 
           <Text color={t.color.accent}>
             {info.model.split('/').pop()}
-            <Text color={t.color.muted}> · Nous Research</Text>
+            <Text color={t.color.muted}> · Stuko</Text>
           </Text>
 
           <Text color={t.color.muted} wrap="truncate-end">
@@ -322,7 +322,7 @@ export function SessionPanel({ info, maxWidth, sid, t }: SessionPanelProps) {
           <Box flexDirection="column" marginBottom={1}>
             <Text color={t.color.accent} wrap="truncate-end">
               {info.model.split('/').pop()}
-              <Text color={t.color.muted}> · Nous Research</Text>
+              <Text color={t.color.muted}> · Stuko</Text>
             </Text>
             <Text color={t.color.muted} wrap="truncate-end">
               {info.cwd || process.cwd()}

@@ -7,7 +7,7 @@ import { getUiState, patchUiState, resetUiState } from '../app/uiStore.js'
 import type * as EnvModule from '../config/env.js'
 import { TUI_SESSION_MODEL_FLAG } from '../domain/slash.js'
 
-// DASHBOARD_TUI_MODE resolves once at module load from LYDIA_TUI_DASHBOARD,
+// DASHBOARD_TUI_MODE resolves once at module load from ALICE_TUI_DASHBOARD,
 // so toggling process.env in a test body can't move it. Mock just that one
 // export (everything else stays real) and flip the holder per test.
 const envState = { dashboardTuiMode: false }
@@ -822,7 +822,7 @@ describe('createSlashHandler', () => {
   it('/save forwards to session.save RPC and reports the returned file', async () => {
     patchUiState({ sid: 'sid-abc' })
 
-    const rpc = vi.fn(() => Promise.resolve({ file: '/tmp/lydia_conversation_test.json' }))
+    const rpc = vi.fn(() => Promise.resolve({ file: '/tmp/alice_conversation_test.json' }))
 
     const ctx = buildCtx({
       gateway: { ...buildGateway(), rpc },
@@ -842,7 +842,7 @@ describe('createSlashHandler', () => {
     expect(rpc).toHaveBeenCalledWith('session.save', { session_id: 'sid-abc' })
 
     await vi.waitFor(() => {
-      expect(ctx.transcript.sys).toHaveBeenCalledWith('conversation saved to: /tmp/lydia_conversation_test.json')
+      expect(ctx.transcript.sys).toHaveBeenCalledWith('conversation saved to: /tmp/alice_conversation_test.json')
     })
   })
 

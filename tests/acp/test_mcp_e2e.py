@@ -24,7 +24,7 @@ from acp.schema import (
     ToolCallStart,
 )
 
-from acp_adapter.server import LydiaACPAgent
+from acp_adapter.server import AliceACPAgent
 from acp_adapter.session import SessionManager
 from acp_adapter.tools import build_tool_start
 
@@ -41,7 +41,7 @@ def mock_manager():
 
 @pytest.fixture()
 def acp_agent(mock_manager):
-    return LydiaACPAgent(session_manager=mock_manager)
+    return AliceACPAgent(session_manager=mock_manager)
 
 
 # ---------------------------------------------------------------------------

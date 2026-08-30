@@ -7,7 +7,7 @@ import {
   type SessionDragPayload
 } from '@/app/chat/composer/inline-refs'
 
-import { type DroppedFile, extractDroppedFiles, LYDIA_PATHS_MIME } from './use-composer-actions'
+import { type DroppedFile, extractDroppedFiles, ALICE_PATHS_MIME } from './use-composer-actions'
 
 export type DragKind = 'files' | 'session' | null
 
@@ -16,7 +16,7 @@ const dragKindOf = (event: ReactDragEvent): DragKind => {
     return 'session'
   }
 
-  if (dragHasAttachments(event.dataTransfer, LYDIA_PATHS_MIME)) {
+  if (dragHasAttachments(event.dataTransfer, ALICE_PATHS_MIME)) {
     return 'files'
   }
 

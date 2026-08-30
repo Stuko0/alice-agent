@@ -80,7 +80,7 @@ def test_all_invalid_reports_each_and_the_zero_state():
     assert any("zero valid toolsets" in w for w in warnings)
 
 
-def test_real_validate_toolset_treats_alice_cli_valid_and_lydia_invalid():
+def test_real_validate_toolset_treats_alice_cli_valid_and_alice_invalid():
     # Ties the helper to reality: the canonical registry check agrees that
     # `alice-cli` is the real toolset and `alice` is not (the #38798 crux).
     from toolsets import validate_toolset

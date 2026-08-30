@@ -36,7 +36,7 @@ Alice Agent 通过基于浏览器的 OAuth 登录流程支持 xAI Grok，认证�
 - 本地机器上有可用的浏览器（远程会话可使用 `--no-browser`）
 
 :::warning xAI 可能按套餐限制 OAuth API 访问
-xAI 的后端对 OAuth API 接口维护自己的白名单，已有记录显示即使应用内订阅处于激活状态，标准 SuperGrok 订阅者也会收到 `HTTP 403`（见 issue [#26847](https://github.com/NousResearch/alice-agent/issues/26847)）。如果浏览器中 OAuth 登录成功但推理返回 403，请设置 `XAI_API_KEY` 并切换到 API 密钥路径（`provider: xai`）——该接口目前不受相同限制。
+xAI 的后端对 OAuth API 接口维护自己的白名单，已有记录显示即使应用内订阅处于激活状态，标准 SuperGrok 订阅者也会收到 `HTTP 403`（见 issue [#26847](https://github.com/Stuko0/alice-agent/issues/26847)）。如果浏览器中 OAuth 登录成功但推理返回 403，请设置 `XAI_API_KEY` 并切换到 API 密钥路径（`provider: xai`）——该接口目前不受相同限制。
 :::
 
 ## 快速开始
@@ -92,7 +92,7 @@ alice auth add xai-oauth --manual-paste
 alice model --manual-paste
 ```
 
-完整操作说明请参阅 [OAuth over SSH / Remote Hosts](./oauth-over-ssh.md#browser-only-remote-cloud-shell--codespaces--ec2-instance-connect)。此为 [#26923](https://github.com/NousResearch/alice-agent/issues/26923) 的回归修复。
+完整操作说明请参阅 [OAuth over SSH / Remote Hosts](./oauth-over-ssh.md#browser-only-remote-cloud-shell--codespaces--ec2-instance-connect)。此为 [#26923](https://github.com/Stuko0/alice-agent/issues/26923) 的回归修复。
 
 ## 登录流程说明
 
@@ -235,7 +235,7 @@ alice auth add xai-oauth --no-browser
 
 浏览器中 OAuth 完成，token 已保存，但推理或 token 刷新返回 `HTTP 403`，消息类似于 *"The caller does not have permission to execute the specified operation"*。
 
-这**不是** token 过期问题——重新运行 `alice model` 不会改变结果。xAI 的后端已被观察到将 OAuth API 访问限制在特定 SuperGrok 套餐，即使应用内订阅处于激活状态（issue [#26847](https://github.com/NousResearch/alice-agent/issues/26847)）。
+这**不是** token 过期问题——重新运行 `alice model` 不会改变结果。xAI 的后端已被观察到将 OAuth API 访问限制在特定 SuperGrok 套餐，即使应用内订阅处于激活状态（issue [#26847](https://github.com/Stuko0/alice-agent/issues/26847)）。
 
 **修复方法：** 设置 `XAI_API_KEY` 并切换到 API 密钥路径：
 

@@ -51,7 +51,7 @@ That does not stop Alice from working well as a phone-native CLI agent — it ju
 Alice now ships a Termux-aware installer path:
 
 ```bash
-curl -fsSL https://alice-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://alice-agent.stuko.dev/install.sh | bash
 ```
 
 On Termux, the installer automatically:
@@ -87,7 +87,7 @@ Why these packages?
 ### 2. Clone Alice
 
 ```bash
-git clone https://github.com/NousResearch/alice-agent.git
+git clone https://github.com/Stuko0/alice-agent.git
 cd alice-agent
 ```
 

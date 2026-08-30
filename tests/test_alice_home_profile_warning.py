@@ -1,6 +1,6 @@
 """Tests for get_alice_home() profile-mode fallback warning.
 
-Regression test for https://10.1.200.116:3000/arquant-admin/NewLydia/issues/18594.
+Regression test for https://10.1.200.116:3000/arquant-admin/NewAlice/issues/18594.
 
 When ALICE_HOME is unset but an active_profile file indicates a non-default
 profile is active, get_alice_home() should:
@@ -29,7 +29,7 @@ def fresh_constants(monkeypatch, tmp_path):
     return alice_constants
 
 
-class TestGetLydiaHomeProfileWarning:
+class TestGetAliceHomeProfileWarning:
     def test_classic_mode_no_active_profile_no_warning(
         self, fresh_constants, tmp_path, capsys
     ):
@@ -42,9 +42,9 @@ class TestGetLydiaHomeProfileWarning:
         self, fresh_constants, tmp_path, capsys
     ):
         """active_profile=default → still no warning, returns ~/.alice."""
-        lydia_dir = tmp_path / ".alice"
-        lydia_dir.mkdir()
-        (lydia_dir / "active_profile").write_text("default\n")
+        alice_dir = tmp_path / ".alice"
+        alice_dir.mkdir()
+        (alice_dir / "active_profile").write_text("default\n")
         result = fresh_constants.get_alice_home()
         assert result == tmp_path / ".alice"
         assert "ALICE_HOME fallback" not in capsys.readouterr().err
@@ -53,9 +53,9 @@ class TestGetLydiaHomeProfileWarning:
         self, fresh_constants, tmp_path, capsys
     ):
         """active_profile=coder + ALICE_HOME unset → warn loudly, still return fallback."""
-        lydia_dir = tmp_path / ".alice"
-        lydia_dir.mkdir()
-        (lydia_dir / "active_profile").write_text("coder\n")
+        alice_dir = tmp_path / ".alice"
+        alice_dir.mkdir()
+        (alice_dir / "active_profile").write_text("coder\n")
 
         result = fresh_constants.get_alice_home()
 
@@ -73,7 +73,7 @@ class TestGetLydiaHomeProfileWarning:
         err2 = capsys.readouterr().err
         assert "ALICE_HOME fallback" not in err2
 
-    def test_lydia_home_set_suppresses_warning(
+    def test_alice_home_set_suppresses_warning(
         self, fresh_constants, tmp_path, capsys, monkeypatch
     ):
         """Even if active_profile is 'coder', setting ALICE_HOME suppresses warning."""
@@ -91,10 +91,10 @@ class TestGetLydiaHomeProfileWarning:
         self, fresh_constants, tmp_path, capsys
     ):
         """active_profile that can't be decoded → fall through silently."""
-        lydia_dir = tmp_path / ".alice"
-        lydia_dir.mkdir()
+        alice_dir = tmp_path / ".alice"
+        alice_dir.mkdir()
         # Write bytes that aren't valid utf-8
-        (lydia_dir / "active_profile").write_bytes(b"\xff\xfe\x00\x00")
+        (alice_dir / "active_profile").write_bytes(b"\xff\xfe\x00\x00")
 
         result = fresh_constants.get_alice_home()
 
@@ -106,9 +106,9 @@ class TestGetLydiaHomeProfileWarning:
         self, fresh_constants, tmp_path, capsys
     ):
         """Empty active_profile file → treated as default, no warning."""
-        lydia_dir = tmp_path / ".alice"
-        lydia_dir.mkdir()
-        (lydia_dir / "active_profile").write_text("")
+        alice_dir = tmp_path / ".alice"
+        alice_dir.mkdir()
+        (alice_dir / "active_profile").write_text("")
 
         result = fresh_constants.get_alice_home()
 

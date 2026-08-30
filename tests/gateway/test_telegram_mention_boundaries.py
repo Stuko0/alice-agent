@@ -2,7 +2,7 @@
 
 The old implementation used a naive substring check
 (`f"@{bot_username}" in text.lower()`), which incorrectly matched partial
-substrings like 'foo@lydia_bot.example'.
+substrings like 'foo@alice_bot.example'.
 
 Detection now relies entirely on the MessageEntity objects Telegram's server
 emits for real mentions. A bare `@username` substring in message text without
@@ -21,11 +21,11 @@ def _make_adapter():
     adapter = object.__new__(TelegramAdapter)
     adapter.platform = Platform.TELEGRAM
     adapter.config = PlatformConfig(enabled=True, token="***", extra={})
-    adapter._bot = SimpleNamespace(id=999, username="lydia_bot")
+    adapter._bot = SimpleNamespace(id=999, username="alice_bot")
     return adapter
 
 
-def _mention_entity(text, mention="@lydia_bot"):
+def _mention_entity(text, mention="@alice_bot"):
     """Build a MENTION entity pointing at a literal `@username` in `text`."""
     offset = text.index(mention)
     return SimpleNamespace(type="mention", offset=offset, length=len(mention))
@@ -58,25 +58,25 @@ class TestRealMentionsAreDetected:
 
     def test_mention_at_start_of_message(self):
         adapter = _make_adapter()
-        text = "@lydia_bot hello world"
+        text = "@alice_bot hello world"
         msg = _message(text=text, entities=[_mention_entity(text)])
         assert adapter._message_mentions_bot(msg) is True
 
     def test_mention_mid_sentence(self):
         adapter = _make_adapter()
-        text = "hey @lydia_bot, can you help?"
+        text = "hey @alice_bot, can you help?"
         msg = _message(text=text, entities=[_mention_entity(text)])
         assert adapter._message_mentions_bot(msg) is True
 
     def test_mention_at_end_of_message(self):
         adapter = _make_adapter()
-        text = "thanks for looking @lydia_bot"
+        text = "thanks for looking @alice_bot"
         msg = _message(text=text, entities=[_mention_entity(text)])
         assert adapter._message_mentions_bot(msg) is True
 
     def test_mention_in_caption(self):
         adapter = _make_adapter()
-        caption = "photo for @lydia_bot"
+        caption = "photo for @alice_bot"
         msg = _message(caption=caption, caption_entities=[_mention_entity(caption)])
         assert adapter._message_mentions_bot(msg) is True
 
@@ -97,38 +97,38 @@ class TestSubstringFalsePositivesAreRejected:
     """
 
     def test_email_like_substring(self):
-        """bug #12545 exact repro: 'foo@lydia_bot.example'."""
+        """bug #12545 exact repro: 'foo@alice_bot.example'."""
         adapter = _make_adapter()
-        msg = _message(text="email me at foo@lydia_bot.example")
+        msg = _message(text="email me at foo@alice_bot.example")
         assert adapter._message_mentions_bot(msg) is False
 
     def test_hostname_substring(self):
         adapter = _make_adapter()
-        msg = _message(text="contact user@lydia_bot.domain.com")
+        msg = _message(text="contact user@alice_bot.domain.com")
         assert adapter._message_mentions_bot(msg) is False
 
     def test_superstring_username(self):
-        """`@lydia_botx` is a different username; Telegram would emit a mention
-        entity for `@lydia_botx`, not `@lydia_bot`."""
+        """`@alice_botx` is a different username; Telegram would emit a mention
+        entity for `@alice_botx`, not `@alice_bot`."""
         adapter = _make_adapter()
-        msg = _message(text="@lydia_botx hello")
+        msg = _message(text="@alice_botx hello")
         assert adapter._message_mentions_bot(msg) is False
 
     def test_underscore_suffix_substring(self):
         adapter = _make_adapter()
-        msg = _message(text="see @lydia_bot_admin for help")
+        msg = _message(text="see @alice_bot_admin for help")
         assert adapter._message_mentions_bot(msg) is False
 
     def test_substring_inside_url_without_entity(self):
         """@handle inside a URL produces a URL entity, not a MENTION entity."""
         adapter = _make_adapter()
-        msg = _message(text="see https://example.com/@lydia_bot for details")
+        msg = _message(text="see https://example.com/@alice_bot for details")
         assert adapter._message_mentions_bot(msg) is False
 
     def test_substring_inside_code_block_without_entity(self):
         """Telegram doesn't emit mention entities inside code/pre entities."""
         adapter = _make_adapter()
-        msg = _message(text="use the string `@lydia_bot` in config")
+        msg = _message(text="use the string `@alice_bot` in config")
         assert adapter._message_mentions_bot(msg) is False
 
     def test_plain_text_with_no_at_sign(self):
@@ -138,7 +138,7 @@ class TestSubstringFalsePositivesAreRejected:
 
     def test_email_substring_in_caption(self):
         adapter = _make_adapter()
-        msg = _message(caption="foo@lydia_bot.example")
+        msg = _message(caption="foo@alice_bot.example")
         assert adapter._message_mentions_bot(msg) is False
 
 
@@ -158,13 +158,13 @@ class TestEntityEdgeCases:
 
     def test_malformed_entity_with_negative_offset(self):
         adapter = _make_adapter()
-        msg = _message(text="@lydia_bot hi",
+        msg = _message(text="@alice_bot hi",
                        entities=[SimpleNamespace(type="mention", offset=-1, length=11)])
         assert adapter._message_mentions_bot(msg) is False
 
     def test_malformed_entity_with_zero_length(self):
         adapter = _make_adapter()
-        msg = _message(text="@lydia_bot hi",
+        msg = _message(text="@alice_bot hi",
                        entities=[SimpleNamespace(type="mention", offset=0, length=0)])
         assert adapter._message_mentions_bot(msg) is False
 
@@ -174,12 +174,12 @@ class TestCaseInsensitivity:
 
     def test_uppercase_mention(self):
         adapter = _make_adapter()
-        text = "hi @LYDIA_BOT"
-        msg = _message(text=text, entities=[_mention_entity(text, mention="@LYDIA_BOT")])
+        text = "hi @ALICE_BOT"
+        msg = _message(text=text, entities=[_mention_entity(text, mention="@ALICE_BOT")])
         assert adapter._message_mentions_bot(msg) is True
 
     def test_mixed_case_mention(self):
         adapter = _make_adapter()
-        text = "hi @Lydia_Bot"
-        msg = _message(text=text, entities=[_mention_entity(text, mention="@Lydia_Bot")])
+        text = "hi @Alice_Bot"
+        msg = _message(text=text, entities=[_mention_entity(text, mention="@Alice_Bot")])
         assert adapter._message_mentions_bot(msg) is True

@@ -40,7 +40,7 @@ from typing import Any, Dict, List, Optional
 from agent.web_search_provider import WebSearchProvider
 from tools.xai_http import (
     has_xai_credentials,
-    lydia_xai_user_agent,
+    alice_xai_user_agent,
     resolve_xai_http_credentials,
 )
 
@@ -223,7 +223,7 @@ class XAIWebSearchProvider(WebSearchProvider):
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
-            "User-Agent": lydia_xai_user_agent(),
+            "User-Agent": alice_xai_user_agent(),
         }
 
         try:

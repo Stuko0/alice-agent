@@ -6,7 +6,7 @@
 # stderr from the container.
 #
 # Shebang note: /init scrubs env before invoking CMD, so a plain
-# `#!/bin/sh` wrapper sees an empty environ and `ENV LYDIA_HOME=/opt/data`
+# `#!/bin/sh` wrapper sees an empty environ and `ENV ALICE_HOME=/opt/data`
 # from the Dockerfile never reaches `alice`. with-contenv repopulates
 # the env from /run/s6/container_environment before exec'ing, which is
 # what s6-supervised services use too (see main-alice/run).
@@ -36,7 +36,7 @@ if [ "$cur_uid" != 0 ] && [ "$cur_uid" != "$(id -u alice)" ]; then
 To make container-written files match your HOST user, don't use --user.
 Start as root (the default) and pass your host UID/GID instead:
 
-    docker run -e LYDIA_UID=\$(id -u) -e LYDIA_GID=\$(id -g) ...
+    docker run -e ALICE_UID=\$(id -u) -e ALICE_GID=\$(id -g) ...
 
 NAS users (Synology / unRAID / UGOS) can use the PUID/PGID aliases:
 
@@ -58,7 +58,7 @@ export HOME=/opt/data
 # Save the Docker -w (or default) working directory before init
 # scripts cd to /opt/data, so the container starts in the
 # directory the user requested.
-_lydia_orig_cwd="${LYDIA_ORIG_CWD:-$PWD}"
+_alice_orig_cwd="${ALICE_ORIG_CWD:-$PWD}"
 
 cd /opt/data
 # shellcheck disable=SC1091
@@ -67,7 +67,7 @@ cd /opt/data
 # Restore the original working directory before handing off to
 # the user's command so `alice chat` starts in the Docker -w
 # directory, not /opt/data.
-cd "$_lydia_orig_cwd"
+cd "$_alice_orig_cwd"
 
 if [ $# -eq 0 ]; then
     drop alice

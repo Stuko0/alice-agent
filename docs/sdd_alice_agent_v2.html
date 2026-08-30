@@ -3,14 +3,14 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Lydia Agent V2 — SDD</title>
+  <title>Alice Agent V2 — SDD</title>
   <style>
     @page {
       size: A4;
       margin: 20mm 18mm 22mm 18mm;
 
       @footers note {
-        content: "Confidencial — Uso Interno — Lydia Agent V2 SDD";
+        content: "Confidencial — Uso Interno — Alice Agent V2 SDD";
         font-size: 8pt;
         color: #999;
       }
@@ -222,24 +222,24 @@
   <!-- ===================== COVER PAGE ===================== -->
   <div class="cover">
     <div class="meta">DOCUMENTO DE DISEÑO DE SOFTWARE</div>
-    <div class="title" style="margin-top:16px;">Lydia Agent V2</div>
+    <div class="title" style="margin-top:16px;">Alice Agent V2</div>
     <div class="subtitle">System Design Document (SDD)</div>
 
     <div class="meta">
       <b>Versión:</b> 0.17.0<br>
       <b>Fecha:</b> 01/07/2026<br>
-      <b>Proyecto:</b> Jobs/Arquant/lydia-agent<br>
+      <b>Proyecto:</b> Jobs/Arquant/alice-agent<br>
       <b>Proveedor de modelo:</b> Rafw007/Qwen3.6-A3B-CLaude Coder (custom)<br>
-      <b>Repositorio:</b> Jobs/Arquant/lydia-agent
+      <b>Repositorio:</b> Jobs/Arquant/alice-agent
     </div>
   </div>
   <div class="page"></div>
 
   <!-- ===================== SECTION 1 — INTRODUCCIÓN ===================== -->
-  <h1 class="first-section">1. ¿Qué es Lydia Agent V2?</h1>
+  <h1 class="first-section">1. ¿Qué es Alice Agent V2?</h1>
 
   <p>
-    <strong>Lydia Agent V2</strong> es un agente de IA personal
+    <strong>Alice Agent V2</strong> es un agente de IA personal
     de código abierto construido por <b>Alexnader Villanueva</b>. Ejecuta el mismo core de agente a través de múltiples
     interfaces: CLI, gateway de mensajería, TUI terminal y aplicación de escritorio Electron. Aprende entre
     sesiones (memoria + skills), delega a subagentes, ejecuta tareas programadas y controla un terminal y
@@ -288,8 +288,8 @@
       <td>141 archivos Python, ~7 MB</td>
     </tr>
     <tr>
-      <td><b>CLI</b> (<tt>lydia_cli/</tt>)</td>
-      <td>Subcomandos `lydia`, configuración, setup wizard, dashboards, modelos</td>
+      <td><b>CLI</b> (<tt>alice_cli/</tt>)</td>
+      <td>Subcomandos `alice`, configuración, setup wizard, dashboards, modelos</td>
       <td>195 archivos Python, ~12 MB</td>
     </tr>
     <tr>
@@ -360,7 +360,7 @@
     </tr>
     <tr>
       <td><b>1. Entrada</b></td>
-      <td><tt>lydia_cli/main.py</tt> (13,668 líneas) o <tt>gateway/run.py</tt> (19,114 líneas)</td>
+      <td><tt>alice_cli/main.py</tt> (13,668 líneas) o <tt>gateway/run.py</tt> (19,114 líneas)</td>
       <td>Lee el mensaje del usuario desde CLI, TUI o plataforma (Telegram, Discord, etc.)</td>
     </tr>
     <tr>
@@ -385,7 +385,7 @@
     </tr>
     <tr>
       <td><b>6. Feedback loop</b></td>
-      <td><tt>run_agent.py</tt> + <tt>lydia_state.py</tt> (5,659 líneas)</td>
+      <td><tt>run_agent.py</tt> + <tt>alice_state.py</tt> (5,659 líneas)</td>
       <td>El resultado de la herramienta se envía al modelo como mensaje de sistema, loop de tool-call</td>
     </tr>
   </table>
@@ -402,7 +402,7 @@ Usuario (Telegram/Discord/Slack/WhatsApp/Signal/etc.)
      |   adapters     |-- api_server.py (REST API propia)
      |                |-- webhook.py (webhook genérico)
      v                v
-[Message Received]  →  lydia_state.py (session DB, estado)
+[Message Received]  →  alice_state.py (session DB, estado)
      |
      v
 [run_agent.py]     →  AIAgent core (5,709 líneas)
@@ -462,22 +462,22 @@ Usuario (Telegram/Discord/Slack/WhatsApp/Signal/etc.)
       <td>Audit trail de cada acción</td>
     </tr>
     <tr>
-      <td><tt>lydia_state.py</tt> (5,659 líneas)</td>
+      <td><tt>alice_state.py</tt> (5,659 líneas)</td>
       <td>Gestión de estado persistente de la sesión</td>
       <td>Conversaciones, historial, herramientas activas, cron</td>
     </tr>
     <tr>
-      <td><tt>lydia_constants.py</tt> (997 líneas)</td>
+      <td><tt>alice_constants.py</tt> (997 líneas)</td>
       <td>Constantes compartidas, paths de HOME, perfiles</td>
-      <td><tt>~/.lydia</tt> (nuevo)
+      <td><tt>~/.alice</tt> (nuevo)
     </tr>
     <tr>
-      <td><tt>lydia_logging.py</tt> (613 líneas)</td>
+      <td><tt>alice_logging.py</tt> (613 líneas)</td>
       <td>Centrificación de logging</td>
       <td>Configuración unificada de logs</td>
     </tr>
     <tr>
-      <td><tt>lydia_time.py</tt> (125 líneas)</td>
+      <td><tt>alice_time.py</tt> (125 líneas)</td>
       <td>Gestión de zonas horarias</td>
       <td>Fallback a tzdata en Windows</td>
     </tr>
@@ -664,7 +664,7 @@ Usuario (Telegram/Discord/Slack/WhatsApp/Signal/etc.)
   <h2>4.1 Estructura del Proyecto</h2>
 
   <pre>
-lydia-agent/                          # Directorio raíz del proyecto
+alice-agent/                          # Directorio raíz del proyecto
 │
 ├── agent/                             # Core del agente (141 .py files, ~7 MB)
 │   ├── server.py                      # Server HTTP/gateway para agente
@@ -676,7 +676,7 @@ lydia-agent/                          # Directorio raíz del proyecto
 │   ├── permissions.py                 # Permisos (169 líneas)
 │   └── provenance.py                  # Procedencia (128 líneas)
 │
-├── lydia_cli/                        # CLI (195 .py files, ~12 MB)
+├── alice_cli/                        # CLI (195 .py files, ~12 MB)
 │   ├── main.py                        # Punto de entrada principal (13,668 líneas)
 │   ├── auth.py                        # Autenticación CLI (8,411 líneas)
 │   ├── config.py                      # Configuración (7,801 líneas)
@@ -742,7 +742,7 @@ lydia-agent/                          # Directorio raíz del proyecto
 │   ├── dashboard_auth/                  # Auth dashboard (4 .py, 20 items)
 │   ├── disk-cleanup/                    # Disk cleanup (2 .py)
 │   ├── google_meet/                     # Google Meet (14 .py, 19 items)
-│   ├── lydia-achievements/             # Logros (2 .py, 19 items)
+│   ├── alice-achievements/             # Logros (2 .py, 19 items)
 │   ├── kanban/                          # Kanban plugin (1 .py)
 │   ├── observability/                   # Observabilidad (2 .py, 8 items)
 │   ├── spotify/                         # Spotify (3 .py, 8 items)
@@ -835,10 +835,10 @@ lydia-agent/                          # Directorio raíz del proyecto
 ├── tests/                              # Tests (1,864 .py, 25 MB)
 ├── assets/                             # Assets estáticos (12 KB)
 ├── .github/                            # GitHub config (958 KB)
-├── .lydia/                            # lydia config
+├── .alice/                            # alice config
 ├── .logs/                              # Logs del sistema (221 KB)
 ├── .plans/                             # Planes de desarrollo (33 KB)
-├── lydia_agent.egg-info/               # Package metadata
+├── alice_agent.egg-info/               # Package metadata
 ├── AGENTS.md                           # Guía de desarrollo (1,356 líneas)
 ├── CONTRIBUTING.md                     # Guía de contribución
 ├── pyproject.toml                      # Dependencias exactas (391 líneas)
@@ -921,17 +921,17 @@ lydia-agent/                          # Directorio raíz del proyecto
       <th>Valores típicos</th>
     </tr>
     <tr>
-      <td><code>LYDIA_HOME</code></td>
+      <td><code>ALICE_HOME</code></td>
       <td>Directorio raíz de datos del agente</td>
-      <td><code>~/.lydia</code> (nuevo) o <code>~/.lydia</code> (legacy)</td>
+      <td><code>~/.alice</code> (nuevo) o <code>~/.alice</code> (legacy)</td>
     </tr>
     <tr>
-      <td><code>LYDIA_MODEL</code></td>
+      <td><code>ALICE_MODEL</code></td>
       <td>Modelo predeterminado</td>
       <td><code>custom/qwen3.6-a3b-claude-coder</code></td>
     </tr>
     <tr>
-      <td><code>LYDIA_PROVIDER</code></td>
+      <td><code>ALICE_PROVIDER</code></td>
       <td>Proveedor de modelo</td>
       <td><code>custom</code> (proveedores personalizados)</td>
     </tr>
@@ -966,15 +966,15 @@ lydia-agent/                          # Directorio raíz del proyecto
       <th>Propósito</th>
     </tr>
     <tr>
-      <td><code>lydia profile create</code></td>
+      <td><code>alice profile create</code></td>
       <td>Crear nuevo perfil</td>
     </tr>
     <tr>
-      <td><code>lydia profile switch &lt;name&gt;</code></td>
+      <td><code>alice profile switch &lt;name&gt;</code></td>
       <td>Cambiar a perfil existente</td>
     </tr>
     <tr>
-      <td><code>lydia profile list</code></td>
+      <td><code>alice profile list</code></td>
       <td>Listar todos los perfiles</td>
     </tr>
     <tr>
@@ -989,7 +989,7 @@ lydia-agent/                          # Directorio raíz del proyecto
   <h1 class="page-break-avoid">5. Sistema de Herramientas y Skills</h1>
 
   <p>
-    Lydia Agent V2 cuenta con <strong>89 herramientas</strong> (model tools) en el core y
+    Alice Agent V2 cuenta con <strong>89 herramientas</strong> (model tools) en el core y
     <strong>57 skills de dominio</strong> en <code>optional-skills/</code>. Las herramientas son
     la interfaz que el modelo usa para interactuar con el mundo real; las skills son procedimientos
     reutilizables que el agente carga según la tarea.
@@ -1046,7 +1046,7 @@ lydia-agent/                          # Directorio raíz del proyecto
 
   <h2>5.3 Footprint Ladder (Jerarquía de Implementación)</h2>
   <p>
-    Para evitar inflar el core, Lydia sigue esta jerarquía al añadir nueva capacidad:
+    Para evitar inflar el core, Alice sigue esta jerarquía al añadir nueva capacidad:
   </p>
   <ol>
     <li><b>Extender código existente</b> — la opción más barata</li>
@@ -1063,7 +1063,7 @@ lydia-agent/                          # Directorio raíz del proyecto
   <h1 class="page-break-avoid">6. Memoria y Aprendizaje Continuo</h1>
 
   <p>
-    Lydia es el único agente con un <b>bucle de aprendizaje incorporado</b>: crea skills
+    Alice es el único agente con un <b>bucle de aprendizaje incorporado</b>: crea skills
     desde la experiencia, las mejora durante el uso, persiste conocimiento entre sesiones,
     busca sus propias conversaciones pasadas y construye un modelo profundo del usuario.
   </p>
@@ -1142,7 +1142,7 @@ lydia-agent/                          # Directorio raíz del proyecto
   <h1 class="page-break-avoid">8. Ecosistema de Plugins</h1>
 
   <p>
-    Lydia Agent V2 cuenta con <strong>175 plugins</strong> (~10.8 MB) organizados en
+    Alice Agent V2 cuenta con <strong>175 plugins</strong> (~10.8 MB) organizados en
     categorías funcionales. Los plugins son la vía principal para extender el agente sin
     modificar el core.
   </p>
@@ -1166,8 +1166,8 @@ lydia-agent/                          # Directorio raíz del proyecto
   </table>
 
   <p>
-    Los plugins se instalan vía <tt>lydia plugin install &lt;name&gt;</tt> y se gestionan
-    con <tt>lydia plugin list/enable/disable</tt>. Cada plugin vive en su propio directorio
+    Los plugins se instalan vía <tt>alice plugin install &lt;name&gt;</tt> y se gestionan
+    con <tt>alice plugin list/enable/disable</tt>. Cada plugin vive en su propio directorio
     bajo <tt>plugins/</tt> y se comunica con el core a través de ABCs y hooks definidos.
   </p>
 
@@ -1227,8 +1227,8 @@ lydia-agent/                          # Directorio raíz del proyecto
   <h2>10.1 Instalación Estándar</h2>
   <pre>
 # Clonar repositorio
-git clone https://github.com/Stuko0/lydia-agent.git
-cd lydia-agent
+git clone https://github.com/Stuko0/alice-agent.git
+cd alice-agent
 
 # Crear y activar virtualenv
 python3 -m venv venv
@@ -1242,26 +1242,26 @@ cp .env.example .env   # Editar con API keys
 cp config.example.yaml config.yaml
 
 # Inicializar
-lydia setup
+alice setup
 
 # Ejecutar
-lydia
+alice
 </pre>
 
   <h2>10.2 Modos de Ejecución</h2>
   <table>
     <tr><th>Modo</th><th>Comando</th><th>Uso</th></tr>
-    <tr><td><b>CLI</b></td><td><tt>lydia</tt> / <tt>lydia run</tt></td><td>Modo interactivo en terminal</td></tr>
-    <tr><td><b>Gateway daemon</b></td><td><tt>lydia gateway start</tt></td><td>Daemon 24/7 para Telegram, Discord, Slack, etc.</td></tr>
-    <tr><td><b>TUI</b></td><td><tt>lydia tui</tt></td><td>Interfaz de terminal con paneles</td></tr>
-    <tr><td><b>Desktop</b></td><td><tt>lydia-desktop</tt></td><td>Aplicación Electron con UI gráfica</td></tr>
-    <tr><td><b>Web Dashboard</b></td><td><tt>lydia web-server</tt></td><td>Dashboard web para gestión</td></tr>
-    <tr><td><b>MCP Server</b></td><td><tt>lydia mcp-serve</tt></td><td>Sirve herramientas vía MCP</td></tr>
+    <tr><td><b>CLI</b></td><td><tt>alice</tt> / <tt>alice run</tt></td><td>Modo interactivo en terminal</td></tr>
+    <tr><td><b>Gateway daemon</b></td><td><tt>alice gateway start</tt></td><td>Daemon 24/7 para Telegram, Discord, Slack, etc.</td></tr>
+    <tr><td><b>TUI</b></td><td><tt>alice tui</tt></td><td>Interfaz de terminal con paneles</td></tr>
+    <tr><td><b>Desktop</b></td><td><tt>alice-desktop</tt></td><td>Aplicación Electron con UI gráfica</td></tr>
+    <tr><td><b>Web Dashboard</b></td><td><tt>alice web-server</tt></td><td>Dashboard web para gestión</td></tr>
+    <tr><td><b>MCP Server</b></td><td><tt>alice mcp-serve</tt></td><td>Sirve herramientas vía MCP</td></tr>
   </table>
 
   <h2>10.3 Proveedores de Modelo</h2>
   <p>
-    Lydia soporta múltiples backends de inferencia a través de 28 plugins de model-providers:
+    Alice soporta múltiples backends de inferencia a través de 28 plugins de model-providers:
   </p>
   <ul>
     <li><b>OpenAI</b> — GPT-4o, GPT-4.1, o1, o3</li>
@@ -1284,7 +1284,7 @@ lydia
     <tr><td>Versión</td><td><b>0.17.0</b></td></tr>
     <tr><td>Líneas de código Python (total)</td><td><b>867,344 LOC</b></td></tr>
     <tr><td>Módulos del core agente (<tt>agent/</tt>)</td><td>106 archivos</td></tr>
-    <tr><td>Módulos CLI (<tt>lydia_cli/</tt>)</td><td>195 archivos</td></tr>
+    <tr><td>Módulos CLI (<tt>alice_cli/</tt>)</td><td>195 archivos</td></tr>
     <tr><td>Herramientas (<tt>tools/</tt>)</td><td><b>89</b> (77,703 LOC)</td></tr>
     <tr><td>Plugins</td><td><b>175</b> (~10.8 MB)</td></tr>
     <tr><td>Skills de dominio</td><td><b>57</b> (~5.9 MB)</td></tr>
@@ -1314,7 +1314,7 @@ lydia
 
   <h2>11.3 Arquitectura de Modelos (Local)</h2>
   <p>
-    Lydia se conecta a un servidor <b>Ollama remoto</b> con RTX A6000 (48GB VRAM)
+    Alice se conecta a un servidor <b>Ollama remoto</b> con RTX A6000 (48GB VRAM)
     para inferencia local. Los modelos disponibles son:
   </p>
   <table>
@@ -1331,7 +1331,7 @@ lydia
   </p>
 
   <div class="page-footer">
-    <span>Lydia Agent V2 — SDD v0.17.0</span>
+    <span>Alice Agent V2 — SDD v0.17.0</span>
     <span>Generado el 03/07/2026</span>
     <span>Confidencial — Uso Interno — Arquant</span>
   </div>

@@ -7,7 +7,7 @@
   perSystem = { pkgs, lib, self', ... }:
     let
       alice-agent = self'.packages.default;
-      lydiaVenv = alice-agent.lydiaVenv;
+      aliceVenv = alice-agent.aliceVenv;
 
       configMergeScript = pkgs.callPackage ./configMergeScript.nix { };
 
@@ -15,9 +15,9 @@
       configKeys = pkgs.runCommand "alice-config-keys" {} ''
         set -euo pipefail
         export HOME=$TMPDIR
-        ${lydiaVenv}/bin/python3 -c '
+        ${aliceVenv}/bin/python3 -c '
 import json, sys
-from lydia_cli.config import DEFAULT_CONFIG
+from alice_cli.config import DEFAULT_CONFIG
 
 def leaf_paths(d, prefix=""):
     paths = []
@@ -131,9 +131,9 @@ json.dump(sorted(leaf_paths(DEFAULT_CONFIG)), sys.stdout, indent=2)
           test "$SKILL_COUNT" -gt 0 || (echo "FAIL: no SKILL.md files found in skills directory"; exit 1)
           echo "PASS: $SKILL_COUNT bundled skills found"
 
-          grep -q "LYDIA_BUNDLED_SKILLS" ${alice-agent}/bin/alice || \
-            (echo "FAIL: LYDIA_BUNDLED_SKILLS not in wrapper"; exit 1)
-          echo "PASS: LYDIA_BUNDLED_SKILLS set in wrapper"
+          grep -q "ALICE_BUNDLED_SKILLS" ${alice-agent}/bin/alice || \
+            (echo "FAIL: ALICE_BUNDLED_SKILLS not in wrapper"; exit 1)
+          echo "PASS: ALICE_BUNDLED_SKILLS set in wrapper"
 
           echo "=== All bundled skills checks passed ==="
           mkdir -p $out
@@ -151,9 +151,9 @@ json.dump(sorted(leaf_paths(DEFAULT_CONFIG)), sys.stdout, indent=2)
             (echo "FAIL: irc plugin manifest missing"; exit 1)
           echo "PASS: irc plugin manifest present"
 
-          grep -q "LYDIA_BUNDLED_PLUGINS" ${alice-agent}/bin/alice || \
-            (echo "FAIL: LYDIA_BUNDLED_PLUGINS not in wrapper"; exit 1)
-          echo "PASS: LYDIA_BUNDLED_PLUGINS set in wrapper"
+          grep -q "ALICE_BUNDLED_PLUGINS" ${alice-agent}/bin/alice || \
+            (echo "FAIL: ALICE_BUNDLED_PLUGINS not in wrapper"; exit 1)
+          echo "PASS: ALICE_BUNDLED_PLUGINS set in wrapper"
 
           echo "=== All bundled plugins checks passed ==="
           mkdir -p $out
@@ -176,16 +176,16 @@ json.dump(sorted(leaf_paths(DEFAULT_CONFIG)), sys.stdout, indent=2)
           test -f ${alice-agent}/share/alice-agent/locales/en.yaml || (echo "FAIL: en.yaml missing"; exit 1)
           echo "PASS: en.yaml present"
 
-          grep -q "LYDIA_BUNDLED_LOCALES" ${alice-agent}/bin/alice || \
-            (echo "FAIL: LYDIA_BUNDLED_LOCALES not in wrapper"; exit 1)
-          echo "PASS: LYDIA_BUNDLED_LOCALES set in wrapper"
+          grep -q "ALICE_BUNDLED_LOCALES" ${alice-agent}/bin/alice || \
+            (echo "FAIL: ALICE_BUNDLED_LOCALES not in wrapper"; exit 1)
+          echo "PASS: ALICE_BUNDLED_LOCALES set in wrapper"
 
-          echo "=== Rendering via the wrapper override (LYDIA_BUNDLED_LOCALES) ==="
+          echo "=== Rendering via the wrapper override (ALICE_BUNDLED_LOCALES) ==="
           export HOME=$(mktemp -d)
-          RENDERED=$(cd "$HOME" && LYDIA_BUNDLED_LOCALES=${alice-agent}/share/alice-agent/locales \
-            ${lydiaVenv}/bin/python3 -c "from agent import i18n; print(i18n.t('gateway.reset.header_default', lang='en'))")
+          RENDERED=$(cd "$HOME" && ALICE_BUNDLED_LOCALES=${alice-agent}/share/alice-agent/locales \
+            ${aliceVenv}/bin/python3 -c "from agent import i18n; print(i18n.t('gateway.reset.header_default', lang='en'))")
           echo "rendered: $RENDERED"
-          test "$RENDERED" != "gateway.reset.header_default" || (echo "FAIL: i18n returned the raw key with LYDIA_BUNDLED_LOCALES set"; exit 1)
+          test "$RENDERED" != "gateway.reset.header_default" || (echo "FAIL: i18n returned the raw key with ALICE_BUNDLED_LOCALES set"; exit 1)
           echo "PASS: i18n renders a human string via the wrapper override"
 
           # Defense-in-depth check: the sealed venv must ALSO resolve catalogs
@@ -194,12 +194,12 @@ json.dump(sorted(leaf_paths(DEFAULT_CONFIG)), sys.stdout, indent=2)
           # the wrapper override above would mask the regression at runtime while
           # `pip install`/other sealed paths silently break — this catches it.
           echo "=== Rendering WITHOUT the env var (data-files materialization) ==="
-          BARE_DIR=$(cd "$HOME" && ${lydiaVenv}/bin/python3 -c "from agent import i18n; print(i18n._locales_dir())")
-          BARE=$(cd "$HOME" && ${lydiaVenv}/bin/python3 -c "from agent import i18n; print(i18n.t('gateway.reset.header_default', lang='en'))")
+          BARE_DIR=$(cd "$HOME" && ${aliceVenv}/bin/python3 -c "from agent import i18n; print(i18n._locales_dir())")
+          BARE=$(cd "$HOME" && ${aliceVenv}/bin/python3 -c "from agent import i18n; print(i18n.t('gateway.reset.header_default', lang='en'))")
           echo "resolved dir (no env var): $BARE_DIR"
           echo "rendered: $BARE"
           test "$BARE" != "gateway.reset.header_default" || \
-            (echo "FAIL: sealed venv could not resolve locales without LYDIA_BUNDLED_LOCALES — data-files materialization regressed"; exit 1)
+            (echo "FAIL: sealed venv could not resolve locales without ALICE_BUNDLED_LOCALES — data-files materialization regressed"; exit 1)
           echo "PASS: sealed venv resolves locales via data-files without the env var"
 
           echo "=== All bundled locales checks passed ==="
@@ -219,39 +219,39 @@ json.dump(sorted(leaf_paths(DEFAULT_CONFIG)), sys.stdout, indent=2)
 
           # self-contained bundle; no runtime node_modules expected
 
-          grep -q "LYDIA_TUI_DIR" ${alice-agent}/bin/alice || \
-            (echo "FAIL: LYDIA_TUI_DIR not in wrapper"; exit 1)
-          echo "PASS: LYDIA_TUI_DIR set in wrapper"
+          grep -q "ALICE_TUI_DIR" ${alice-agent}/bin/alice || \
+            (echo "FAIL: ALICE_TUI_DIR not in wrapper"; exit 1)
+          echo "PASS: ALICE_TUI_DIR set in wrapper"
 
           echo "=== All bundled TUI checks passed ==="
           mkdir -p $out
           echo "ok" > $out/result
         '';
 
-        # Verify LYDIA_NODE is set in wrapper and points to Node 20+
+        # Verify ALICE_NODE is set in wrapper and points to Node 20+
         # (string-width uses the /v regex flag which requires Node 20+)
         alice-node = pkgs.runCommand "alice-node-version" { } ''
           set -e
-          echo "=== Checking LYDIA_NODE in wrapper ==="
-          grep -q "LYDIA_NODE" ${alice-agent}/bin/alice || \
-            (echo "FAIL: LYDIA_NODE not set in wrapper"; exit 1)
-          echo "PASS: LYDIA_NODE present in wrapper"
+          echo "=== Checking ALICE_NODE in wrapper ==="
+          grep -q "ALICE_NODE" ${alice-agent}/bin/alice || \
+            (echo "FAIL: ALICE_NODE not set in wrapper"; exit 1)
+          echo "PASS: ALICE_NODE present in wrapper"
 
-          LYDIA_NODE=$(sed -n "s/^export LYDIA_NODE='\(.*\)'/\1/p" ${alice-agent}/bin/alice)
-          test -x "$LYDIA_NODE" || (echo "FAIL: LYDIA_NODE=$LYDIA_NODE not executable"; exit 1)
-          echo "PASS: LYDIA_NODE executable at $LYDIA_NODE"
+          ALICE_NODE=$(sed -n "s/^export ALICE_NODE='\(.*\)'/\1/p" ${alice-agent}/bin/alice)
+          test -x "$ALICE_NODE" || (echo "FAIL: ALICE_NODE=$ALICE_NODE not executable"; exit 1)
+          echo "PASS: ALICE_NODE executable at $ALICE_NODE"
 
-          NODE_MAJOR=$("$LYDIA_NODE" --version | sed 's/^v//' | cut -d. -f1)
+          NODE_MAJOR=$("$ALICE_NODE" --version | sed 's/^v//' | cut -d. -f1)
           test "$NODE_MAJOR" -ge 20 || \
             (echo "FAIL: Node v$NODE_MAJOR < 20, TUI needs /v regex flag support"; exit 1)
           echo "PASS: Node v$NODE_MAJOR >= 20"
 
-          echo "=== All LYDIA_NODE checks passed ==="
+          echo "=== All ALICE_NODE checks passed ==="
           mkdir -p $out
           echo "ok" > $out/result
         '';
 
-        # Verify LYDIA_MANAGED guard works on all mutation commands
+        # Verify ALICE_MANAGED guard works on all mutation commands
         managed-guard = pkgs.runCommand "alice-managed-guard" { } ''
           set -e
           export HOME=$(mktemp -d)
@@ -259,12 +259,12 @@ json.dump(sorted(leaf_paths(DEFAULT_CONFIG)), sys.stdout, indent=2)
           check_blocked() {
             local label="$1"
             shift
-            OUTPUT=$(LYDIA_MANAGED=true "$@" 2>&1 || true)
+            OUTPUT=$(ALICE_MANAGED=true "$@" 2>&1 || true)
             echo "$OUTPUT" | grep -q "managed by NixOS" || (echo "FAIL: $label not guarded"; echo "$OUTPUT"; exit 1)
             echo "PASS: $label blocked in managed mode"
           }
 
-          echo "=== Checking LYDIA_MANAGED guards ==="
+          echo "=== Checking ALICE_MANAGED guards ==="
           check_blocked "config set" ${alice-agent}/bin/alice config set model foo
           check_blocked "config edit" ${alice-agent}/bin/alice config edit
 
@@ -276,18 +276,18 @@ json.dump(sorted(leaf_paths(DEFAULT_CONFIG)), sys.stdout, indent=2)
         # Verify extraPythonPackages PYTHONPATH injection
         extra-python-packages = let
           testPkg = pkgs.python312Packages.pyfiglet;
-          lydiaWithExtra = alice-agent.override {
+          aliceWithExtra = alice-agent.override {
             extraPythonPackages = [ testPkg ];
           };
         in pkgs.runCommand "alice-extra-python-packages" { } ''
           set -e
           echo "=== Checking extraPythonPackages PYTHONPATH injection ==="
 
-          grep -q "PYTHONPATH" ${lydiaWithExtra}/bin/alice || \
+          grep -q "PYTHONPATH" ${aliceWithExtra}/bin/alice || \
             (echo "FAIL: PYTHONPATH not in wrapper"; exit 1)
           echo "PASS: PYTHONPATH present in wrapper"
 
-          grep -q "${testPkg}" ${lydiaWithExtra}/bin/alice || \
+          grep -q "${testPkg}" ${aliceWithExtra}/bin/alice || \
             (echo "FAIL: test package path not in PYTHONPATH"; exit 1)
           echo "PASS: test package path found in wrapper"
 
@@ -304,7 +304,7 @@ json.dump(sorted(leaf_paths(DEFAULT_CONFIG)), sys.stdout, indent=2)
 
         # Verify extraDependencyGroups passes through to python.nix
         extra-dependency-groups = let
-          lydiaWithGroups = alice-agent.override {
+          aliceWithGroups = alice-agent.override {
             extraDependencyGroups = [ "honcho" ];
           };
         in pkgs.runCommand "alice-extra-dependency-groups" { } ''
@@ -314,8 +314,8 @@ json.dump(sorted(leaf_paths(DEFAULT_CONFIG)), sys.stdout, indent=2)
           # Eval-only: verify the override produces valid derivation paths
           # without building the full venv (which is expensive and redundant
           # since the mechanism is just list concatenation into python.nix).
-          echo "derivation: ${lydiaWithGroups}"
-          echo "venv: ${lydiaWithGroups.lydiaVenv}"
+          echo "derivation: ${aliceWithGroups}"
+          echo "venv: ${aliceWithGroups.aliceVenv}"
           echo "PASS: extraDependencyGroups override evaluates cleanly"
 
           echo "=== All extraDependencyGroups checks passed ==="
@@ -329,7 +329,7 @@ json.dump(sorted(leaf_paths(DEFAULT_CONFIG)), sys.stdout, indent=2)
         messaging-variant = pkgs.runCommand "alice-messaging-variant" { } ''
           set -e
           echo "=== Checking discord.py importable from messaging variant ==="
-          ${self'.packages.messaging.lydiaVenv}/bin/python3 -c \
+          ${self'.packages.messaging.aliceVenv}/bin/python3 -c \
             "import discord; print(discord.__version__)"
           echo "PASS: discord.py importable from messaging variant venv"
           mkdir -p $out
@@ -407,12 +407,12 @@ json.dump(sorted(leaf_paths(DEFAULT_CONFIG)), sys.stdout, indent=2)
 
           # Helper: run merge then load with Python, output merged JSON
           merge_and_load() {
-            local lydia_home="$1"
-            export LYDIA_HOME="$lydia_home"
-            ${configMergeScript} ${nixSettings} "$lydia_home/config.yaml"
-            ${lydiaVenv}/bin/python3 -c '
+            local alice_home="$1"
+            export ALICE_HOME="$alice_home"
+            ${configMergeScript} ${nixSettings} "$alice_home/config.yaml"
+            ${aliceVenv}/bin/python3 -c '
 import json, sys
-from lydia_cli.config import load_config
+from alice_cli.config import load_config
 json.dump(load_config(), sys.stdout, default=str)
 '
           }

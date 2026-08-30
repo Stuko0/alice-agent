@@ -130,10 +130,10 @@ class TestGmiModelCatalog:
 
 class TestGmiProvidersModule:
     def test_overlay_exists(self):
-        from alice_cli.providers import LYDIA_OVERLAYS
+        from alice_cli.providers import ALICE_OVERLAYS
 
-        assert "gmi" in LYDIA_OVERLAYS
-        overlay = LYDIA_OVERLAYS["gmi"]
+        assert "gmi" in ALICE_OVERLAYS
+        overlay = ALICE_OVERLAYS["gmi"]
         assert overlay.transport == "openai_chat"
         assert overlay.extra_env_vars == ("GMI_API_KEY",)
         assert overlay.base_url_override == "https://api.gmi-serving.com/v1"
@@ -282,7 +282,7 @@ class TestGmiAuxiliary:
         headers = mock_openai.call_args.kwargs.get("default_headers", {})
         assert headers.get("User-Agent", "").startswith("AliceAgent/")
 
-    def test_gmi_profile_declares_lydia_user_agent(self):
+    def test_gmi_profile_declares_alice_user_agent(self):
         """The GMI plugin sets a AliceAgent/<ver> User-Agent on its profile."""
         from providers import get_provider_profile
 

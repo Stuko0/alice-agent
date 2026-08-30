@@ -314,7 +314,7 @@ Future messages in this room will use that transcript until `/reset` or another 
   update:
     platform_not_messaging:  "✗ /update yalnızca mesajlaşma platformlarında kullanılabilir. Terminalden `alice update` komutunu çalıştırın."
     not_git_repo:            "✗ Git deposu değil — güncellenemiyor."
-    lydia_cmd_not_found:    "✗ `alice` komutu bulunamadı. Alice çalışıyor, ancak güncelleme komutu yürütülebilir dosyayı PATH'te veya mevcut Python yorumlayıcısı aracılığıyla bulamadı. Terminalde `alice update` komutunu manuel olarak çalıştırmayı deneyin."
+    alice_cmd_not_found:    "✗ `alice` komutu bulunamadı. Alice çalışıyor, ancak güncelleme komutu yürütülebilir dosyayı PATH'te veya mevcut Python yorumlayıcısı aracılığıyla bulamadı. Terminalde `alice update` komutunu manuel olarak çalıştırmayı deneyin."
     start_failed:            "✗ Güncelleme başlatılamadı: {error}"
     starting:                "🌹 Alice güncellemesi başlatılıyor… İlerlemeyi buraya akıtacağım."
 

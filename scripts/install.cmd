@@ -1,27 +1,27 @@
 @echo off
 REM ============================================================================
-REM Lydia Agent Installer for Windows (CMD wrapper)
+REM Alice Agent Installer for Windows (CMD wrapper)
 REM ============================================================================
 REM This batch file launches the PowerShell installer for users running CMD.
 REM
 REM Usage:
-REM   curl -fsSL https://raw.githubusercontent.com/Stuko/lydia-agent/main/scripts/install.cmd -o install.cmd && install.cmd && del install.cmd
+REM   curl -fsSL https://raw.githubusercontent.com/Stuko/alice-agent/main/scripts/install.cmd -o install.cmd && install.cmd && del install.cmd
 REM
 REM Or if you're already in PowerShell, use the direct command instead:
-REM   iex (irm https://lydia-agent.stuko.dev/install.ps1)
+REM   iex (irm https://alice-agent.stuko.dev/install.ps1)
 REM ============================================================================
 
 echo.
-echo  Lydia Agent Installer
+echo  Alice Agent Installer
 echo  Launching PowerShell installer...
 echo.
 
-powershell -ExecutionPolicy ByPass -NoProfile -Command "iex (irm https://lydia-agent.stuko.dev/install.ps1)"
+powershell -ExecutionPolicy ByPass -NoProfile -Command "iex (irm https://alice-agent.stuko.dev/install.ps1)"
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo  Installation failed. Please try running PowerShell directly:
-    echo    powershell -ExecutionPolicy ByPass -c "iex (irm https://lydia-agent.stuko.dev/install.ps1)"
+    echo    powershell -ExecutionPolicy ByPass -c "iex (irm https://alice-agent.stuko.dev/install.ps1)"
     echo.
     pause
     exit /b 1

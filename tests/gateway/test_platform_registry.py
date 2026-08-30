@@ -435,10 +435,10 @@ class TestApplyYamlConfigFnDispatch:
     """
 
     def _write_config(self, tmp_path, content: str):
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / "config.yaml").write_text(content, encoding="utf-8")
-        return lydia_home
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / "config.yaml").write_text(content, encoding="utf-8")
+        return alice_home
 
     def _register_hook(self, name, hook_fn):
         from gateway.platform_registry import platform_registry as _reg
@@ -667,10 +667,10 @@ class TestPluginPlatformSharedKeyBridge:
     """
 
     def _write_config(self, tmp_path, content: str):
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / "config.yaml").write_text(content, encoding="utf-8")
-        return lydia_home
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / "config.yaml").write_text(content, encoding="utf-8")
+        return alice_home
 
     def test_shared_keys_bridged_for_plugin_platform(self, tmp_path, monkeypatch):
         """A plugin platform's ``require_mention``/``dm_policy``/etc. flow into
@@ -722,10 +722,10 @@ class TestPluginEnablementGate:
     """
 
     def _write_config(self, tmp_path, content: str = ""):
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / "config.yaml").write_text(content, encoding="utf-8")
-        return lydia_home
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / "config.yaml").write_text(content, encoding="utf-8")
+        return alice_home
 
     def test_plugin_with_is_connected_false_is_NOT_enabled(
         self, tmp_path, monkeypatch

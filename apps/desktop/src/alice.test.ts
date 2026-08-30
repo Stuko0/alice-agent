@@ -14,7 +14,7 @@ describe('Alice REST session helpers', () => {
 
   beforeEach(() => {
     api = vi.fn().mockResolvedValue(emptySessionsResponse)
-    Object.defineProperty(window, 'lydiaDesktop', {
+    Object.defineProperty(window, 'aliceDesktop', {
       configurable: true,
       value: { api }
     })
@@ -22,7 +22,7 @@ describe('Alice REST session helpers', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
-    Reflect.deleteProperty(window, 'lydiaDesktop')
+    Reflect.deleteProperty(window, 'aliceDesktop')
   })
 
   it('uses a longer timeout for the single-profile session list', async () => {

@@ -5,9 +5,9 @@ keep the user's real HOME by default so external CLIs find existing credentials.
 Containers still use the profile home for persistence, and users can explicitly
 opt into profile HOME isolation on the host.
 
-See: https://10.1.200.116:3000/arquant-admin/NewLydia/issues/25114
-See: https://10.1.200.116:3000/arquant-admin/NewLydia/issues/36144
-See: https://10.1.200.116:3000/arquant-admin/NewLydia/issues/29015
+See: https://10.1.200.116:3000/arquant-admin/NewAlice/issues/25114
+See: https://10.1.200.116:3000/arquant-admin/NewAlice/issues/36144
+See: https://10.1.200.116:3000/arquant-admin/NewAlice/issues/29015
 """
 
 import os
@@ -28,22 +28,22 @@ class TestGetSubprocessHome:
     def _host_mode(self, monkeypatch):
         monkeypatch.setattr(alice_constants, "is_container", lambda: False)
         monkeypatch.delenv("TERMINAL_HOME_MODE", raising=False)
-        monkeypatch.delenv("LYDIA_REAL_HOME", raising=False)
+        monkeypatch.delenv("ALICE_REAL_HOME", raising=False)
 
     def _container_mode(self, monkeypatch):
         monkeypatch.setattr(alice_constants, "is_container", lambda: True)
         monkeypatch.delenv("TERMINAL_HOME_MODE", raising=False)
-        monkeypatch.delenv("LYDIA_REAL_HOME", raising=False)
+        monkeypatch.delenv("ALICE_REAL_HOME", raising=False)
 
-    def test_returns_none_when_lydia_home_unset(self, monkeypatch):
+    def test_returns_none_when_alice_home_unset(self, monkeypatch):
         monkeypatch.delenv("ALICE_HOME", raising=False)
         from alice_constants import get_subprocess_home
         assert get_subprocess_home() is None
 
     def test_returns_none_when_home_dir_missing(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         # No home/ subdirectory created
         from alice_constants import get_subprocess_home
         assert get_subprocess_home() is None
@@ -52,20 +52,20 @@ class TestGetSubprocessHome:
         """Host installs should not hide real ~/.ssh, ~/.gitconfig, ~/.azure, etc."""
         self._host_mode(monkeypatch)
         real_home = tmp_path / "real-home"
-        lydia_home = real_home / ".alice" / "profiles" / "coder"
-        profile_home = lydia_home / "home"
+        alice_home = real_home / ".alice" / "profiles" / "coder"
+        profile_home = alice_home / "home"
         profile_home.mkdir(parents=True)
         monkeypatch.setenv("HOME", str(real_home))
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         from alice_constants import get_subprocess_home
         assert get_subprocess_home() is None
 
     def test_container_auto_uses_profile_home_when_home_dir_exists(self, tmp_path, monkeypatch):
         self._container_mode(monkeypatch)
-        lydia_home = tmp_path / ".alice"
-        profile_home = lydia_home / "home"
+        alice_home = tmp_path / ".alice"
+        profile_home = alice_home / "home"
         profile_home.mkdir(parents=True)
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         from alice_constants import get_subprocess_home
         assert get_subprocess_home() == str(profile_home)
 
@@ -91,7 +91,7 @@ class TestGetSubprocessHome:
         monkeypatch.setenv("TERMINAL_HOME_MODE", "real")
         monkeypatch.setenv("ALICE_HOME", str(profile_dir))
         monkeypatch.setenv("HOME", str(profile_home))
-        monkeypatch.setenv("LYDIA_REAL_HOME", str(real_home))
+        monkeypatch.setenv("ALICE_REAL_HOME", str(real_home))
 
         from alice_constants import get_subprocess_home, get_real_home
 
@@ -141,8 +141,8 @@ class TestGetSubprocessHome:
 
         from alice_constants import (
             get_alice_home,
-            reset_lydia_home_override,
-            set_lydia_home_override,
+            reset_alice_home_override,
+            set_alice_home_override,
         )
 
         ready = threading.Event()
@@ -158,13 +158,13 @@ class TestGetSubprocessHome:
         thread.start()
         assert ready.wait(timeout=5)
 
-        token = set_lydia_home_override(profile)
+        token = set_alice_home_override(profile)
         try:
             assert get_alice_home() == profile
             release.set()
             thread.join(timeout=5)
         finally:
-            reset_lydia_home_override(token)
+            reset_alice_home_override(token)
             release.set()
 
         assert seen == [str(root)]
@@ -179,13 +179,13 @@ class TestMakeRunEnvHomeInjection:
     """Verify _make_run_env() applies the subprocess HOME policy."""
 
     def test_host_auto_preserves_real_home_when_profile_home_exists(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir()
-        (lydia_home / "home").mkdir()
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir()
+        (alice_home / "home").mkdir()
         real_home = tmp_path / "real-home"
         real_home.mkdir()
         monkeypatch.setattr(alice_constants, "is_container", lambda: False)
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setenv("HOME", str(real_home))
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
 
@@ -193,31 +193,31 @@ class TestMakeRunEnvHomeInjection:
         result = _make_run_env({})
 
         assert result["HOME"] == str(real_home)
-        assert result["LYDIA_REAL_HOME"] == str(real_home)
+        assert result["ALICE_REAL_HOME"] == str(real_home)
 
     def test_profile_mode_injects_profile_home_when_profile_home_exists(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir()
-        (lydia_home / "home").mkdir()
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir()
+        (alice_home / "home").mkdir()
         real_home = tmp_path / "real-home"
         real_home.mkdir()
         monkeypatch.setattr(alice_constants, "is_container", lambda: False)
         monkeypatch.setenv("TERMINAL_HOME_MODE", "profile")
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setenv("HOME", str(real_home))
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
 
         from tools.environments.local import _make_run_env
         result = _make_run_env({})
 
-        assert result["HOME"] == str(lydia_home / "home")
-        assert result["LYDIA_REAL_HOME"] == str(real_home)
+        assert result["HOME"] == str(alice_home / "home")
+        assert result["ALICE_REAL_HOME"] == str(real_home)
 
     def test_no_injection_when_home_dir_missing(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir()
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir()
         # No home/ subdirectory
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setenv("HOME", "/root")
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
 
@@ -226,7 +226,7 @@ class TestMakeRunEnvHomeInjection:
 
         assert result["HOME"] == "/root"
 
-    def test_no_injection_when_lydia_home_unset(self, monkeypatch):
+    def test_no_injection_when_alice_home_unset(self, monkeypatch):
         monkeypatch.delenv("ALICE_HOME", raising=False)
         monkeypatch.setenv("HOME", "/home/user")
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
@@ -247,14 +247,14 @@ class TestMakeRunEnvHomeInjection:
         monkeypatch.setenv("HOME", "/root")
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
 
-        from alice_constants import reset_lydia_home_override, set_lydia_home_override
+        from alice_constants import reset_alice_home_override, set_alice_home_override
         from tools.environments.local import _make_run_env
 
-        token = set_lydia_home_override(profile)
+        token = set_alice_home_override(profile)
         try:
             result = _make_run_env({})
         finally:
-            reset_lydia_home_override(token)
+            reset_alice_home_override(token)
 
         assert result["ALICE_HOME"] == str(profile)
         assert result["HOME"] == str(profile / "home")
@@ -268,42 +268,42 @@ class TestSanitizeSubprocessEnvHomeInjection:
     """Verify _sanitize_subprocess_env() applies the subprocess HOME policy."""
 
     def test_host_auto_preserves_real_home_when_profile_home_exists(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir()
-        (lydia_home / "home").mkdir()
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir()
+        (alice_home / "home").mkdir()
         real_home = tmp_path / "real-home"
         real_home.mkdir()
         monkeypatch.setattr(alice_constants, "is_container", lambda: False)
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
         base_env = {"HOME": str(real_home), "PATH": "/usr/bin", "USER": "root"}
         from tools.environments.local import _sanitize_subprocess_env
         result = _sanitize_subprocess_env(base_env)
 
         assert result["HOME"] == str(real_home)
-        assert result["LYDIA_REAL_HOME"] == str(real_home)
+        assert result["ALICE_REAL_HOME"] == str(real_home)
 
     def test_profile_mode_injects_profile_home_when_profile_home_exists(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir()
-        (lydia_home / "home").mkdir()
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir()
+        (alice_home / "home").mkdir()
         real_home = tmp_path / "real-home"
         real_home.mkdir()
         monkeypatch.setattr(alice_constants, "is_container", lambda: False)
         monkeypatch.setenv("TERMINAL_HOME_MODE", "profile")
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
         base_env = {"HOME": str(real_home), "PATH": "/usr/bin", "USER": "root"}
         from tools.environments.local import _sanitize_subprocess_env
         result = _sanitize_subprocess_env(base_env)
 
-        assert result["HOME"] == str(lydia_home / "home")
-        assert result["LYDIA_REAL_HOME"] == str(real_home)
+        assert result["HOME"] == str(alice_home / "home")
+        assert result["ALICE_REAL_HOME"] == str(real_home)
 
     def test_no_injection_when_home_dir_missing(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
         base_env = {"HOME": "/root", "PATH": "/usr/bin"}
         from tools.environments.local import _sanitize_subprocess_env
@@ -321,14 +321,14 @@ class TestSanitizeSubprocessEnvHomeInjection:
         monkeypatch.setenv("ALICE_HOME", str(root))
 
         base_env = {"HOME": "/root", "PATH": "/usr/bin"}
-        from alice_constants import reset_lydia_home_override, set_lydia_home_override
+        from alice_constants import reset_alice_home_override, set_alice_home_override
         from tools.environments.local import _sanitize_subprocess_env
 
-        token = set_lydia_home_override(profile)
+        token = set_alice_home_override(profile)
         try:
             result = _sanitize_subprocess_env(base_env)
         finally:
-            reset_lydia_home_override(token)
+            reset_alice_home_override(token)
 
         assert result["ALICE_HOME"] == str(profile)
         assert result["HOME"] == str(profile / "home")
@@ -367,10 +367,10 @@ class TestPythonProcessUnchanged:
     def test_path_home_unchanged_after_subprocess_home_resolved(
         self, tmp_path, monkeypatch
     ):
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir()
-        (lydia_home / "home").mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir()
+        (alice_home / "home").mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
         original_home = os.environ.get("HOME")
         original_path_home = str(Path.home())
@@ -379,6 +379,6 @@ class TestPythonProcessUnchanged:
         sub_home = get_subprocess_home()
 
         # Resolving subprocess HOME must not mutate the Python process env.
-        assert sub_home in (None, str(lydia_home / "home"), original_home)
+        assert sub_home in (None, str(alice_home / "home"), original_home)
         assert os.environ.get("HOME") == original_home
         assert str(Path.home()) == original_path_home

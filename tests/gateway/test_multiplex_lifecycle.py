@@ -49,7 +49,7 @@ class TestNamedProfileMultiplexerGuard:
         from alice_cli import gateway as gw
         monkeypatch.setattr(gw, "_profile_suffix", lambda: "coder")
         monkeypatch.setattr(
-            "alice_constants.get_default_lydia_root", lambda: tmp_path
+            "alice_constants.get_default_alice_root", lambda: tmp_path
         )
         # No gateway.pid in tmp_path => no running default gateway => no raise.
         gw._guard_named_profile_under_multiplexer(force=False)

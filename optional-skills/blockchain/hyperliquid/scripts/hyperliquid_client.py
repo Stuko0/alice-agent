@@ -45,7 +45,7 @@ DEFAULT_USER_ENV = "HYPERLIQUID_USER_ADDRESS"
 DEFAULT_API_BASE = "https://api.hyperliquid.xyz"
 
 
-def _lydia_home() -> Path:
+def _alice_home() -> Path:
     return Path(os.environ.get("ALICE_HOME", "~/.alice")).expanduser()
 
 
@@ -55,7 +55,7 @@ def _dotenv_paths() -> List[Path]:
     if project_env.exists():
         paths.append(project_env)
 
-    user_env = _lydia_home() / ".env"
+    user_env = _alice_home() / ".env"
     if user_env.exists():
         paths.append(user_env)
 
@@ -115,7 +115,7 @@ def _resolve_user(user: Optional[str]) -> str:
 
     sys.exit(
         "Missing Hyperliquid address. Pass <address> explicitly or set "
-        f"{DEFAULT_USER_ENV} in your environment or {_lydia_home() / '.env'}."
+        f"{DEFAULT_USER_ENV} in your environment or {_alice_home() / '.env'}."
     )
 
 

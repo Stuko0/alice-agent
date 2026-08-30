@@ -34,7 +34,7 @@ def _make_restart_event(update_id: int | None = 100) -> MessageEvent:
 
 
 def _make_runner_with_mock_restart(tmp_path, monkeypatch):
-    monkeypatch.setattr(gateway_run, "_lydia_home", tmp_path)
+    monkeypatch.setattr(gateway_run, "_alice_home", tmp_path)
     monkeypatch.delenv("INVOCATION_ID", raising=False)
     monkeypatch.delenv("XPC_SERVICE_NAME", raising=False)
     runner, _adapter = make_restart_runner()

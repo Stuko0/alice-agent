@@ -2,7 +2,7 @@ Metadata-Version: 2.4
 Name: alice-agent
 Version: 0.17.0
 Summary: Alice — AI agent fork for Arquant, based on Alice Agent
-Author: Nous Research
+Author: Stuko
 License-Expression: MIT
 Requires-Python: >=3.11
 Description-Content-Type: text/markdown
@@ -178,7 +178,7 @@ Dynamic: license-file
 <p align="center">
   <a href="https://alice-agent.stuko.dev/en/docs/"><img src="https://img.shields.io/badge/Docs-alice--agent.stuko.dev-FFD700?style=for-the-badge" alt="Documentation"></a>
   <a href="https://discord.gg/Stuko"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="https://10.1.200.116:3000/arquant-admin/NewLydia/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://10.1.200.116:3000/arquant-admin/NewAlice/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
   <a href="https://stuko.dev"><img src="https://img.shields.io/badge/Built%20by-Stuko0-blueviolet?style=for-the-badge" alt="Built by Stuko"></a>
   <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/Lang-中文-red?style=for-the-badge" alt="中文"></a>
   <a href="README.ur-pk.md"><img src="https://img.shields.io/badge/Lang-اردو-green?style=for-the-badge" alt="اردو"></a>
@@ -408,7 +408,7 @@ scripts/run_tests.sh
 - 📚 [Skills Hub](https://agentskills.io)
 - 🐛 [Issues]([https://github.com/Stuko0/alice-agent/issues])
 - 🔌 [computer-use-linux](https://github.com/avifenesh/computer-use-linux) — Linux desktop-control MCP server for Alice and other MCP hosts, with AT-SPI accessibility trees, Wayland/X11 input, screenshots, and compositor window targeting.
-- 🔌 [LydiaClaw](https://github.com/AaronWong1999/lydiaclaw) — Community WeChat bridge: Run Alice Agent and OpenClaw on the same WeChat account.
+- 🔌 [AliceClaw](https://github.com/AaronWong1999/aliceclaw) — Community WeChat bridge: Run Alice Agent and OpenClaw on the same WeChat account.
 
 ---
 

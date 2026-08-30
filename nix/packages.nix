@@ -55,9 +55,9 @@
           extraDependencyGroups = [ "messaging" ];
         };
 
-        tui = full.lydiaTui;
-        web = full.lydiaWeb;
-        desktop = full.lydiaDesktop;
+        tui = full.aliceTui;
+        web = full.aliceWeb;
+        desktop = full.aliceDesktop;
       };
     };
 }

@@ -137,14 +137,14 @@ class TestFirecrawlClientConfig:
                     api_url="https://firecrawl-gateway.nousresearch.com",
                 )
 
-    def test_nous_auth_token_respects_lydia_home_override(self, tmp_path):
+    def test_nous_auth_token_respects_alice_home_override(self, tmp_path):
         """Auth lookup should read from ALICE_HOME/auth.json, not ~/.alice/auth.json."""
         real_home = tmp_path / "real-home"
         (real_home / ".alice").mkdir(parents=True)
 
-        lydia_home = tmp_path / "alice-home"
-        lydia_home.mkdir()
-        (lydia_home / "auth.json").write_text(json.dumps({
+        alice_home = tmp_path / "alice-home"
+        alice_home.mkdir()
+        (alice_home / "auth.json").write_text(json.dumps({
             "providers": {
                 "nous": {
                     "access_token": "nous-token",
@@ -154,7 +154,7 @@ class TestFirecrawlClientConfig:
 
         with patch.dict(os.environ, {
             "HOME": str(real_home),
-            "ALICE_HOME": str(lydia_home),
+            "ALICE_HOME": str(alice_home),
         }, clear=False):
             import tools.web_tools
             importlib.reload(tools.web_tools)

@@ -97,7 +97,7 @@ research-bot chat                     # dogfood until it feels right
 name: research-bot
 version: 1.0.0
 description: "Autonomous research assistant with arXiv and web tools"
-lydia_requires: ">=0.12.0"
+alice_requires: ">=0.12.0"
 author: "Your Name"
 license: "MIT"
 
@@ -413,7 +413,7 @@ alice profile install github.com/you/alice-polymarket-trader --alias
 name: telemetry-harness
 version: 2.3.1
 description: "Compliance telemetry harness — monitors and reviews regulated workflows"
-lydia_requires: ">=0.13.0"
+alice_requires: ">=0.13.0"
 author: "Acme Compliance Inc."
 license: "Commercial"
 

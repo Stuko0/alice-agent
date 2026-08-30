@@ -1,29 +1,29 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { LydiaReadDirResult } from '@/global'
+import type { AliceReadDirResult } from '@/global'
 import { $connection } from '@/store/session'
 
 import { clearProjectDirCache, readProjectDir } from './ipc'
 import { resetProjectTreeState, useProjectTree } from './use-project-tree'
 
-const readDir = vi.fn<(path: string) => Promise<LydiaReadDirResult>>()
+const readDir = vi.fn<(path: string) => Promise<AliceReadDirResult>>()
 
 beforeEach(() => {
   $connection.set(null)
   resetProjectTreeState()
   readDir.mockReset()
-  ;(window as unknown as { lydiaDesktop: { readDir: typeof readDir } }).lydiaDesktop = { readDir }
+  ;(window as unknown as { aliceDesktop: { readDir: typeof readDir } }).aliceDesktop = { readDir }
 })
 
 afterEach(() => {
   cleanup()
   $connection.set(null)
   resetProjectTreeState()
-  delete (window as unknown as { lydiaDesktop?: unknown }).lydiaDesktop
+  delete (window as unknown as { aliceDesktop?: unknown }).aliceDesktop
 })
 
-function ok(entries: { name: string; path: string; isDirectory: boolean }[]): LydiaReadDirResult {
+function ok(entries: { name: string; path: string; isDirectory: boolean }[]): AliceReadDirResult {
   return { entries }
 }
 
@@ -128,7 +128,7 @@ describe('useProjectTree', () => {
 
       throw new Error(`unexpected path ${path}`)
     })
-    ;(window as unknown as { lydiaDesktop: unknown }).lydiaDesktop = { gitRoot, readDir, readFileDataUrl }
+    ;(window as unknown as { aliceDesktop: unknown }).aliceDesktop = { gitRoot, readDir, readFileDataUrl }
 
     $connection.set({ baseUrl: 'local-a', mode: 'local' } as never)
     await expect(readProjectDir('/repo/src', '/repo')).resolves.toMatchObject({
@@ -171,10 +171,10 @@ describe('useProjectTree', () => {
   it('dedupes concurrent loadChildren calls for the same id', async () => {
     readDir.mockResolvedValueOnce(ok([{ name: 'src', path: '/p/src', isDirectory: true }]))
 
-    let resolveChildren: ((value: LydiaReadDirResult) => void) | undefined
+    let resolveChildren: ((value: AliceReadDirResult) => void) | undefined
     readDir.mockImplementationOnce(
       () =>
-        new Promise<LydiaReadDirResult>(resolve => {
+        new Promise<AliceReadDirResult>(resolve => {
           resolveChildren = resolve
         })
     )
@@ -238,7 +238,7 @@ describe('useProjectTree', () => {
 
       throw new Error(`unexpected path ${path}`)
     })
-    ;(window as unknown as { lydiaDesktop: unknown }).lydiaDesktop = { readDir, sanitizeWorkspaceCwd }
+    ;(window as unknown as { aliceDesktop: unknown }).aliceDesktop = { readDir, sanitizeWorkspaceCwd }
 
     const { result } = renderHook(() => useProjectTree('/deleted/worktree'))
 
@@ -253,7 +253,7 @@ describe('useProjectTree', () => {
   it('keeps the root error when sanitize offers no usable fallback', async () => {
     const sanitizeWorkspaceCwd = vi.fn(async () => ({ cwd: '/deleted/worktree', sanitized: false }))
     readDir.mockResolvedValue({ entries: [], error: 'ENOENT' })
-    ;(window as unknown as { lydiaDesktop: unknown }).lydiaDesktop = { readDir, sanitizeWorkspaceCwd }
+    ;(window as unknown as { aliceDesktop: unknown }).aliceDesktop = { readDir, sanitizeWorkspaceCwd }
 
     const { result } = renderHook(() => useProjectTree('/deleted/worktree'))
 
@@ -261,8 +261,8 @@ describe('useProjectTree', () => {
     expect(result.current.effectiveCwd).toBe('/deleted/worktree')
   })
 
-  it('returns no-bridge gracefully when window.lydiaDesktop is missing', async () => {
-    delete (window as unknown as { lydiaDesktop?: unknown }).lydiaDesktop
+  it('returns no-bridge gracefully when window.aliceDesktop is missing', async () => {
+    delete (window as unknown as { aliceDesktop?: unknown }).aliceDesktop
 
     const { result } = renderHook(() => useProjectTree('/p'))
 

@@ -524,12 +524,12 @@ class TestDisabledToolsetsPlatformBundle:
     def test_disabling_bundle_removes_platform_tools_but_keeps_core(self):
         """Disabling alice-discord (when enabled) removes discord/discord_admin
         from the resolved delta but keeps core tools — via bundle_non_core_tools."""
-        from toolsets import bundle_non_core_tools, _LYDIA_CORE_TOOLS
+        from toolsets import bundle_non_core_tools, _ALICE_CORE_TOOLS
 
         delta = bundle_non_core_tools("alice-yuanbao")
         # The delta is the bundle's platform-specific tools, NOT core.
         assert "yb_send_dm" in delta
-        assert not (delta & set(_LYDIA_CORE_TOOLS)), "core tools must not be in the removal delta"
+        assert not (delta & set(_ALICE_CORE_TOOLS)), "core tools must not be in the removal delta"
 
     def test_bundle_non_core_tools_unknown_falls_back(self):
         """An unknown/garbage bundle name falls back to full resolution (best effort)."""

@@ -15,7 +15,7 @@ Alice Agent 与 Telegram 集成，作为功能完整的对话机器人。连接�
 1. 打开 Telegram，搜索 **@BotFather**，或访问 [t.me/BotFather](https://t.me/BotFather)
 2. 发送 `/newbot`
 3. 选择一个**显示名称**（例如 "Alice Agent"）——可以是任意名称
-4. 选择一个**用户名**——必须唯一且以 `bot` 结尾（例如 `my_lydia_bot`）
+4. 选择一个**用户名**——必须唯一且以 `bot` 结尾（例如 `my_alice_bot`）
 5. BotFather 会回复你的 **API token**，格式如下：
 
 ```
@@ -207,7 +207,7 @@ TELEGRAM_WEBHOOK_SECRET="$(openssl rand -hex 32)"  # 必填
 | 变量 | 是否必填 | 说明 |
 |----------|----------|-------------|
 | `TELEGRAM_WEBHOOK_URL` | 是 | Telegram 发送更新的公开 HTTPS URL。URL 路径会自动提取（例如上例中的 `/telegram`）。 |
-| `TELEGRAM_WEBHOOK_SECRET` | **是**（设置 `TELEGRAM_WEBHOOK_URL` 时） | Telegram 在每个 webhook 请求中回显的密钥 token，用于验证。gateway 在没有该密钥时拒绝启动——参见 [GHSA-3vpc-7q5r-276h](https://github.com/NousResearch/alice-agent/security/advisories/GHSA-3vpc-7q5r-276h)。使用 `openssl rand -hex 32` 生成。 |
+| `TELEGRAM_WEBHOOK_SECRET` | **是**（设置 `TELEGRAM_WEBHOOK_URL` 时） | Telegram 在每个 webhook 请求中回显的密钥 token，用于验证。gateway 在没有该密钥时拒绝启动——参见 [GHSA-3vpc-7q5r-276h](https://github.com/Stuko0/alice-agent/security/advisories/GHSA-3vpc-7q5r-276h)。使用 `openssl rand -hex 32` 生成。 |
 | `TELEGRAM_WEBHOOK_PORT` | 否 | webhook 服务器监听的本地端口（默认：`8443`）。 |
 
 设置 `TELEGRAM_WEBHOOK_URL` 后，gateway 会启动 HTTP webhook 服务器而非轮询。未设置时使用轮询模式——与之前版本行为无变化。
@@ -1219,7 +1219,7 @@ display:
 环境变量覆盖（便于快速 A/B 测试）：
 
 ```bash
-LYDIA_TELEGRAM_NOTIFICATIONS=all
+ALICE_TELEGRAM_NOTIFICATIONS=all
 ```
 
 未知值会记录警告并回退到 `important`。

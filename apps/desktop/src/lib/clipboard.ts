@@ -4,7 +4,7 @@
 // path runs in the main process and is unconditional.
 
 export function installClipboardShim() {
-  const ipc = window.lydiaDesktop?.writeClipboard
+  const ipc = window.aliceDesktop?.writeClipboard
 
   if (!ipc || !navigator.clipboard) {
     return

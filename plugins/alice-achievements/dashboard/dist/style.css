@@ -1,6 +1,6 @@
-/* lydia-achievements dashboard styles
- * Originally authored by @PCinkusz — https://github.com/PCinkusz/lydia-achievements (MIT).
- * Bundled into lydia-agent. The in-progress scan banner rules at the bottom
+/* alice-achievements dashboard styles
+ * Originally authored by @PCinkusz — https://github.com/PCinkusz/alice-achievements (MIT).
+ * Bundled into alice-agent. The in-progress scan banner rules at the bottom
  * (.ha-scan-banner*) are a small addition layered on top of the original bundle.
  */
 .ha-page { display: flex; flex-direction: column; gap: 1rem; }

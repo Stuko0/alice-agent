@@ -16,9 +16,9 @@ def config_home(tmp_path, monkeypatch):
     monkeypatch.setenv("ALICE_HOME", str(home))
     # Clear any ambient env that could alter provider resolution
     for var in (
-        "LYDIA_MODEL",
+        "ALICE_MODEL",
         "LLM_MODEL",
-        "LYDIA_INFERENCE_PROVIDER",
+        "ALICE_INFERENCE_PROVIDER",
         "OPENAI_BASE_URL",
         "OPENAI_API_KEY",
         "GEMINI_BASE_URL",

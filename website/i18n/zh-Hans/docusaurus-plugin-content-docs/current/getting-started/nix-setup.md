@@ -35,11 +35,11 @@ Alice Agent 提供了一个 Nix flake，支持三个层级的集成：
 
 ```bash
 # 直接运行（首次使用时构建，之后使用缓存）
-nix run github:NousResearch/alice-agent -- setup
-nix run github:NousResearch/alice-agent -- chat
+nix run github:Stuko0/alice-agent -- setup
+nix run github:Stuko0/alice-agent -- chat
 
 # 或持久化安装
-nix profile install github:NousResearch/alice-agent
+nix profile install github:Stuko0/alice-agent
 alice setup
 alice chat
 ```
@@ -50,7 +50,7 @@ alice chat
 <summary><strong>从本地克隆构建</strong></summary>
 
 ```bash
-git clone https://github.com/NousResearch/alice-agent.git
+git clone https://github.com/Stuko0/alice-agent.git
 cd alice-agent
 nix build
 ./result/bin/alice setup
@@ -75,7 +75,7 @@ nix build
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    alice-agent.url = "github:NousResearch/alice-agent";
+    alice-agent.url = "github:Stuko0/alice-agent";
   };
 
   outputs = { nixpkgs, alice-agent, ... }: {
@@ -130,7 +130,7 @@ services.alice-agent.environmentFiles = [ "/var/lib/alice/env" ];
 - 路由是透明的：`alice chat`、`alice sessions list`、`alice version` 等命令都会在底层 exec 进容器
 - 所有 CLI 参数原样转发
 - 如果容器未运行，CLI 会短暂重试（交互式使用时显示 5 秒 spinner，脚本中静默等待 10 秒），然后以明确的错误退出——不会静默回退
-- 对于在 alice 代码库上工作的开发者，设置 `LYDIA_DEV=1` 可绕过容器路由，直接运行本地检出版本
+- 对于在 alice 代码库上工作的开发者，设置 `ALICE_DEV=1` 可绕过容器路由，直接运行本地检出版本
 
 设置 `container.hostUsers` 可创建 `~/.alice` 到服务状态目录的符号链接，使主机 CLI 和容器共享会话、配置和记忆：
 
@@ -534,7 +534,7 @@ scp ~/.alice/mcp-tokens/my-oauth-server{,.client}.json \
 
 这可以防止 Nix 声明的内容与磁盘上实际内容之间产生漂移。检测使用两个信号：
 
-1. **`LYDIA_MANAGED=true`** 环境变量——由 systemd 服务设置，对 gateway 进程可见
+1. **`ALICE_MANAGED=true`** 环境变量——由 systemd 服务设置，对 gateway 进程可见
 2. **`.managed` 标记文件**，位于 `ALICE_HOME` 中——由激活脚本设置，对交互式 shell 可见（例如 `docker exec -it alice-agent alice config set ...` 也会被屏蔽）
 
 要更改配置，请编辑你的 Nix 配置并运行 `sudo nixos-rebuild switch`。
@@ -685,7 +685,7 @@ services.alice-agent = {
 
 ```nix
 {
-  inputs.alice-agent.url = "github:NousResearch/alice-agent";
+  inputs.alice-agent.url = "github:Stuko0/alice-agent";
   outputs = { alice-agent, nixpkgs, ... }: {
     nixpkgs.overlays = [ alice-agent.overlays.default ];
     # 然后：
@@ -753,7 +753,7 @@ nix flake check
 nix build .#checks.x86_64-linux.package-contents   # 二进制文件存在 + 版本
 nix build .#checks.x86_64-linux.entry-points-sync  # pyproject.toml ↔ Nix 包同步
 nix build .#checks.x86_64-linux.cli-commands        # gateway/config 子命令
-nix build .#checks.x86_64-linux.managed-guard       # LYDIA_MANAGED 屏蔽变更操作
+nix build .#checks.x86_64-linux.managed-guard       # ALICE_MANAGED 屏蔽变更操作
 nix build .#checks.x86_64-linux.bundled-skills      # 包中存在 skills
 nix build .#checks.x86_64-linux.config-roundtrip    # 合并脚本保留用户键
 ```
@@ -766,8 +766,8 @@ nix build .#checks.x86_64-linux.config-roundtrip    # 合并脚本保留用户�
 | `package-contents` | `alice` 和 `alice-agent` 二进制文件存在且 `alice version` 可运行 |
 | `entry-points-sync` | `pyproject.toml` 中 `[project.scripts]` 的每个条目在 Nix 包中都有对应的封装二进制文件 |
 | `cli-commands` | `alice --help` 暴露 `gateway` 和 `config` 子命令 |
-| `managed-guard` | `LYDIA_MANAGED=true alice config set ...` 打印 NixOS 错误 |
-| `bundled-skills` | skills 目录存在，包含 SKILL.md 文件，wrapper 中设置了 `LYDIA_BUNDLED_SKILLS` |
+| `managed-guard` | `ALICE_MANAGED=true alice config set ...` 打印 NixOS 错误 |
+| `bundled-skills` | skills 目录存在，包含 SKILL.md 文件，wrapper 中设置了 `ALICE_BUNDLED_SKILLS` |
 | `config-roundtrip` | 7 种合并场景：全新安装、Nix 覆盖、用户键保留、混合合并、MCP 累加合并、嵌套深度合并、幂等性 |
 
 </details>

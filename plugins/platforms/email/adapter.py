@@ -134,13 +134,13 @@ def _send_imap_id(imap: "imaplib.IMAP4") -> None:
     """
     try:
         try:
-            from alice_cli import __version__ as _lydia_version
+            from alice_cli import __version__ as _alice_version
         except Exception:  # noqa: BLE001 — keep ID best-effort if import fails
-            _lydia_version = "0"
+            _alice_version = "0"
         imap.xatom(
             "ID",
-            f'("name" "alice-agent" "version" "{_lydia_version}" '
-            '"vendor" "NousResearch" '
+            f'("name" "alice-agent" "version" "{_alice_version}" '
+            '"vendor" "Stuko0" '
             '"support-email" "noreply@nousresearch.com")',
         )
     except Exception as e:  # noqa: BLE001 — best-effort, never fatal

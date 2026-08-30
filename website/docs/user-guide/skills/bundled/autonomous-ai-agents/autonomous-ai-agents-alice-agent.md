@@ -31,7 +31,7 @@ The following is the complete skill definition that Alice loads when this skill 
 
 # Alice Agent
 
-Alice Agent is an open-source AI agent framework by Nous Research that runs in your terminal, messaging platforms, and IDEs. It belongs to the same category as Claude Code (Anthropic), Codex (OpenAI), and OpenClaw — autonomous coding and task-execution agents that use tool calling to interact with your system. Alice works with any LLM provider (OpenRouter, Anthropic, OpenAI, DeepSeek, local models, and 15+ others) and runs on Linux, macOS, and WSL.
+Alice Agent is an open-source AI agent framework by Stuko that runs in your terminal, messaging platforms, and IDEs. It belongs to the same category as Claude Code (Anthropic), Codex (OpenAI), and OpenClaw — autonomous coding and task-execution agents that use tool calling to interact with your system. Alice works with any LLM provider (OpenRouter, Anthropic, OpenAI, DeepSeek, local models, and 15+ others) and runs on Linux, macOS, and WSL.
 
 What makes Alice different:
 
@@ -46,13 +46,13 @@ People use Alice for software development, research, system administration, data
 
 **This skill helps you work with Alice Agent effectively** — setting it up, configuring features, spawning additional agent instances, troubleshooting issues, finding the right commands and settings, and understanding how the system works when you need to extend or contribute to it.
 
-**Docs:** https://alice-agent.nousresearch.com/docs/
+**Docs:** https://alice-agent.stuko.dev/docs/
 
 ## Quick Start
 
 ```bash
 # Install
-curl -fsSL https://alice-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://alice-agent.stuko.dev/install.sh | bash
 
 # Interactive chat (default)
 alice
@@ -174,7 +174,7 @@ alice gateway setup        Configure platforms
 
 Supported platforms: Telegram, Discord, Slack, WhatsApp, Signal, Email, SMS, Matrix, Mattermost, Home Assistant, DingTalk, Feishu, WeCom, BlueBubbles (iMessage), Weixin (WeChat), API Server, Webhooks. Open WebUI connects via the API Server adapter.
 
-Platform docs: https://alice-agent.nousresearch.com/docs/user-guide/messaging/
+Platform docs: https://alice-agent.stuko.dev/docs/user-guide/messaging/
 
 ### Sessions
 
@@ -256,7 +256,7 @@ alice uninstall            Uninstall Alice
 
 Type these during an interactive chat session. New commands land fairly
 often; if something below looks stale, run `/help` in-session for the
-authoritative list or see the [live slash commands reference](https://alice-agent.nousresearch.com/docs/reference/slash-commands).
+authoritative list or see the [live slash commands reference](https://alice-agent.stuko.dev/docs/reference/slash-commands).
 The registry of record is `alice_cli/commands.py` — every consumer
 (autocomplete, Telegram menu, Slack mapping, `/help`) derives from it.
 
@@ -388,7 +388,7 @@ Edit with `alice config edit` or `alice config set section.key value`.
 | `delegation` | `model`, `provider`, `base_url`, `api_key`, `max_iterations` (50), `reasoning_effort` |
 | `checkpoints` | `enabled`, `max_snapshots` (50) |
 
-Full config reference: https://alice-agent.nousresearch.com/docs/user-guide/configuration
+Full config reference: https://alice-agent.stuko.dev/docs/user-guide/configuration
 
 ### Providers
 
@@ -418,7 +418,7 @@ Full config reference: https://alice-agent.nousresearch.com/docs/user-guide/conf
 | Custom endpoint | Config | `model.base_url` + `model.api_key` in config.yaml |
 | GitHub Copilot ACP | External | `COPILOT_CLI_PATH` or Copilot CLI |
 
-Full provider docs: https://alice-agent.nousresearch.com/docs/integrations/providers
+Full provider docs: https://alice-agent.stuko.dev/docs/integrations/providers
 
 ### Toolsets
 
@@ -456,7 +456,7 @@ Enable/disable via `alice native` (interactive) or `alice native enable/disable 
 | `yuanbao` | Yuanbao integration tools |
 | `rl` | Reinforcement learning tools (off by default) |
 
-Full enumeration lives in `toolsets.py` as the `TOOLSETS` dict; `_LYDIA_CORE_TOOLS` is the default bundle most platforms inherit from.
+Full enumeration lives in `toolsets.py` as the `TOOLSETS` dict; `_ALICE_CORE_TOOLS` is the default bundle most platforms inherit from.
 
 Tool changes take effect on `/reset` (new session). They do NOT apply mid-conversation to preserve prompt caching.
 
@@ -474,7 +474,7 @@ Secret redaction is **on by default** — tool output (terminal stdout, `read_fi
 alice config set security.redact_secrets true       # keep enabled globally
 ```
 
-**Restart required.** `security.redact_secrets` is snapshotted at import time — toggling it mid-session (e.g. via `export LYDIA_REDACT_SECRETS=false` from a tool call) will NOT take effect for the running process. Tell the user to change it in config from a terminal, then start a new session. This is deliberate — it prevents an LLM from flipping the toggle on itself mid-task.
+**Restart required.** `security.redact_secrets` is snapshotted at import time — toggling it mid-session (e.g. via `export ALICE_REDACT_SECRETS=false` from a tool call) will NOT take effect for the running process. Tell the user to change it in config from a terminal, then start a new session. This is deliberate — it prevents an LLM from flipping the toggle on itself mid-task.
 
 Disable only when you deliberately need raw credential-like strings for debugging or redactor development:
 ```bash
@@ -505,7 +505,7 @@ alice config set approvals.mode off         # bypass everything (not recommended
 
 Per-invocation bypass without changing config:
 - `alice --yolo …`
-- `export LYDIA_YOLO_MODE=1`
+- `export ALICE_YOLO_MODE=1`
 
 Note: YOLO / `approvals.mode: off` does NOT turn off secret redaction. They are independent.
 
@@ -677,7 +677,7 @@ the `cronjob` tool, the `alice cron` CLI (`list`, `add`, `edit`,
   header/footer instead of being mirrored into the target gateway
   session (keeps role alternation intact).
 
-User docs: https://alice-agent.nousresearch.com/docs/user-guide/features/cron
+User docs: https://alice-agent.stuko.dev/docs/user-guide/features/cron
 
 ### Curator (skill lifecycle)
 
@@ -698,13 +698,13 @@ so nothing is lost.
 
 Config: `curator.*` (`enabled`, `interval_hours`, `min_idle_hours`,
 `stale_after_days`, `archive_after_days`, `backup.*`).
-User docs: https://alice-agent.nousresearch.com/docs/user-guide/features/curator
+User docs: https://alice-agent.stuko.dev/docs/user-guide/features/curator
 
 ### Kanban (multi-agent work queue)
 
 Durable SQLite board for multi-profile / multi-worker collaboration.
 Users drive it via `alice kanban <verb>`; dispatcher-spawned workers
-see a focused `kanban_*` toolset gated by `LYDIA_KANBAN_TASK`, and
+see a focused `kanban_*` toolset gated by `ALICE_KANBAN_TASK`, and
 orchestrator profiles can opt into the broader `kanban` toolset. Normal
 sessions still have zero `kanban_*` schema footprint unless configured.
 
@@ -724,10 +724,10 @@ sessions still have zero `kanban_*` schema footprint unless configured.
   (default 2; configurable via `kanban.failure_limit` or per-task
   `max_retries`).
 - **Isolation:** board is the hard boundary (workers get
-  `LYDIA_KANBAN_BOARD` pinned in env); tenant is a soft namespace
+  `ALICE_KANBAN_BOARD` pinned in env); tenant is a soft namespace
   within a board for workspace-path + memory-key isolation.
 
-User docs: https://alice-agent.nousresearch.com/docs/user-guide/features/kanban
+User docs: https://alice-agent.stuko.dev/docs/user-guide/features/kanban
 
 ---
 
@@ -894,18 +894,18 @@ multi-source resolution chain (highest priority first):
 
 | Looking for... | Location |
 |----------------|----------|
-| Config options | `alice config edit` or [Configuration docs](https://alice-agent.nousresearch.com/docs/user-guide/configuration) |
-| Available tools | `alice native list` or [Tools reference](https://alice-agent.nousresearch.com/docs/reference/tools-reference) |
-| Slash commands | `/help` in session or [Slash commands reference](https://alice-agent.nousresearch.com/docs/reference/slash-commands) |
-| Skills catalog | `alice skills browse` or [Skills catalog](https://alice-agent.nousresearch.com/docs/reference/skills-catalog) |
-| Provider setup | `alice model` or [Providers guide](https://alice-agent.nousresearch.com/docs/integrations/providers) |
-| Platform setup | `alice gateway setup` or [Messaging docs](https://alice-agent.nousresearch.com/docs/user-guide/messaging/) |
-| MCP servers | `alice mcp list` or [MCP guide](https://alice-agent.nousresearch.com/docs/user-guide/features/mcp) |
-| Profiles | `alice profile list` or [Profiles docs](https://alice-agent.nousresearch.com/docs/user-guide/profiles) |
-| Cron jobs | `alice cron list` or [Cron docs](https://alice-agent.nousresearch.com/docs/user-guide/features/cron) |
-| Memory | `alice memory status` or [Memory docs](https://alice-agent.nousresearch.com/docs/user-guide/features/memory) |
-| Env variables | `alice config env-path` or [Env vars reference](https://alice-agent.nousresearch.com/docs/reference/environment-variables) |
-| CLI commands | `alice --help` or [CLI reference](https://alice-agent.nousresearch.com/docs/reference/cli-commands) |
+| Config options | `alice config edit` or [Configuration docs](https://alice-agent.stuko.dev/docs/user-guide/configuration) |
+| Available tools | `alice native list` or [Tools reference](https://alice-agent.stuko.dev/docs/reference/tools-reference) |
+| Slash commands | `/help` in session or [Slash commands reference](https://alice-agent.stuko.dev/docs/reference/slash-commands) |
+| Skills catalog | `alice skills browse` or [Skills catalog](https://alice-agent.stuko.dev/docs/reference/skills-catalog) |
+| Provider setup | `alice model` or [Providers guide](https://alice-agent.stuko.dev/docs/integrations/providers) |
+| Platform setup | `alice gateway setup` or [Messaging docs](https://alice-agent.stuko.dev/docs/user-guide/messaging/) |
+| MCP servers | `alice mcp list` or [MCP guide](https://alice-agent.stuko.dev/docs/user-guide/features/mcp) |
+| Profiles | `alice profile list` or [Profiles docs](https://alice-agent.stuko.dev/docs/user-guide/profiles) |
+| Cron jobs | `alice cron list` or [Cron docs](https://alice-agent.stuko.dev/docs/user-guide/features/cron) |
+| Memory | `alice memory status` or [Memory docs](https://alice-agent.stuko.dev/docs/user-guide/features/memory) |
+| Env variables | `alice config env-path` or [Env vars reference](https://alice-agent.stuko.dev/docs/reference/environment-variables) |
+| CLI commands | `alice --help` or [CLI reference](https://alice-agent.stuko.dev/docs/reference/cli-commands) |
 | Gateway logs | `~/.alice/logs/gateway.log` |
 | Session files | `alice sessions browse` (reads state.db) |
 | Source code | `~/.alice/alice-agent/` |
@@ -914,7 +914,7 @@ multi-source resolution chain (highest priority first):
 
 ## Contributor Quick Reference
 
-For occasional contributors and PR authors. Full developer docs: https://alice-agent.nousresearch.com/docs/developer-guide/
+For occasional contributors and PR authors. Full developer docs: https://alice-agent.stuko.dev/docs/developer-guide/
 
 ### Project Layout
 
@@ -967,7 +967,7 @@ registry.register(
 )
 ```
 
-**2. Add to `toolsets.py`** → `_LYDIA_CORE_TOOLS` list.
+**2. Add to `toolsets.py`** → `_ALICE_CORE_TOOLS` list.
 
 Auto-discovery: any `tools/*.py` file with a top-level `registry.register()` call is imported automatically — no manual list needed.
 

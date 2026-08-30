@@ -90,8 +90,8 @@ async def test_draining_rejects_new_session_messages():
 
 
 def test_load_busy_input_mode_prefers_env_then_config_then_default(tmp_path, monkeypatch):
-    monkeypatch.setattr(gateway_run, "_lydia_home", tmp_path)
-    monkeypatch.delenv("LYDIA_GATEWAY_BUSY_INPUT_MODE", raising=False)
+    monkeypatch.setattr(gateway_run, "_alice_home", tmp_path)
+    monkeypatch.delenv("ALICE_GATEWAY_BUSY_INPUT_MODE", raising=False)
 
     assert gateway_run.GatewayRunner._load_busy_input_mode() == "interrupt"
 
@@ -105,21 +105,21 @@ def test_load_busy_input_mode_prefers_env_then_config_then_default(tmp_path, mon
     )
     assert gateway_run.GatewayRunner._load_busy_input_mode() == "steer"
 
-    monkeypatch.setenv("LYDIA_GATEWAY_BUSY_INPUT_MODE", "interrupt")
+    monkeypatch.setenv("ALICE_GATEWAY_BUSY_INPUT_MODE", "interrupt")
     assert gateway_run.GatewayRunner._load_busy_input_mode() == "interrupt"
 
-    monkeypatch.setenv("LYDIA_GATEWAY_BUSY_INPUT_MODE", "steer")
+    monkeypatch.setenv("ALICE_GATEWAY_BUSY_INPUT_MODE", "steer")
     assert gateway_run.GatewayRunner._load_busy_input_mode() == "steer"
 
     # Unknown values fall through to the safe default
-    monkeypatch.setenv("LYDIA_GATEWAY_BUSY_INPUT_MODE", "bogus")
+    monkeypatch.setenv("ALICE_GATEWAY_BUSY_INPUT_MODE", "bogus")
     assert gateway_run.GatewayRunner._load_busy_input_mode() == "interrupt"
 
 
 def test_load_busy_text_mode_follows_input_mode_and_honors_legacy(tmp_path, monkeypatch):
-    monkeypatch.setattr(gateway_run, "_lydia_home", tmp_path)
-    monkeypatch.delenv("LYDIA_GATEWAY_BUSY_TEXT_MODE", raising=False)
-    monkeypatch.delenv("LYDIA_GATEWAY_BUSY_INPUT_MODE", raising=False)
+    monkeypatch.setattr(gateway_run, "_alice_home", tmp_path)
+    monkeypatch.delenv("ALICE_GATEWAY_BUSY_TEXT_MODE", raising=False)
+    monkeypatch.delenv("ALICE_GATEWAY_BUSY_INPUT_MODE", raising=False)
 
     # No knobs set → follows busy_input_mode, which defaults to interrupt.
     assert gateway_run.GatewayRunner._load_busy_text_mode() == "interrupt"
@@ -141,19 +141,19 @@ def test_load_busy_text_mode_follows_input_mode_and_honors_legacy(tmp_path, monk
     (tmp_path / "config.yaml").write_text(
         "display:\n  busy_input_mode: interrupt\n", encoding="utf-8"
     )
-    monkeypatch.setenv("LYDIA_GATEWAY_BUSY_TEXT_MODE", "queue")
+    monkeypatch.setenv("ALICE_GATEWAY_BUSY_TEXT_MODE", "queue")
     assert gateway_run.GatewayRunner._load_busy_text_mode() == "queue"
 
     # Bogus legacy value is ignored → falls through to busy_input_mode (interrupt).
-    monkeypatch.setenv("LYDIA_GATEWAY_BUSY_TEXT_MODE", "bogus")
+    monkeypatch.setenv("ALICE_GATEWAY_BUSY_TEXT_MODE", "bogus")
     assert gateway_run.GatewayRunner._load_busy_text_mode() == "interrupt"
 
 
 def test_load_restart_drain_timeout_prefers_env_then_config_then_default(
     tmp_path, monkeypatch, caplog
 ):
-    monkeypatch.setattr(gateway_run, "_lydia_home", tmp_path)
-    monkeypatch.delenv("LYDIA_RESTART_DRAIN_TIMEOUT", raising=False)
+    monkeypatch.setattr(gateway_run, "_alice_home", tmp_path)
+    monkeypatch.delenv("ALICE_RESTART_DRAIN_TIMEOUT", raising=False)
 
     assert (
         gateway_run.GatewayRunner._load_restart_drain_timeout()
@@ -165,10 +165,10 @@ def test_load_restart_drain_timeout_prefers_env_then_config_then_default(
     )
     assert gateway_run.GatewayRunner._load_restart_drain_timeout() == 12.0
 
-    monkeypatch.setenv("LYDIA_RESTART_DRAIN_TIMEOUT", "7")
+    monkeypatch.setenv("ALICE_RESTART_DRAIN_TIMEOUT", "7")
     assert gateway_run.GatewayRunner._load_restart_drain_timeout() == 7.0
 
-    monkeypatch.setenv("LYDIA_RESTART_DRAIN_TIMEOUT", "invalid")
+    monkeypatch.setenv("ALICE_RESTART_DRAIN_TIMEOUT", "invalid")
     assert (
         gateway_run.GatewayRunner._load_restart_drain_timeout()
         == DEFAULT_GATEWAY_RESTART_DRAIN_TIMEOUT
@@ -247,9 +247,9 @@ async def test_launch_detached_restart_command_uses_setsid(monkeypatch):
     popen_calls = []
 
     monkeypatch.setattr(gateway_run.sys, "platform", "linux")
-    monkeypatch.setattr(gateway_run, "_resolve_lydia_bin", lambda: ["/usr/bin/alice"])
+    monkeypatch.setattr(gateway_run, "_resolve_alice_bin", lambda: ["/usr/bin/alice"])
     monkeypatch.setattr(gateway_run.os, "getpid", lambda: 321)
-    monkeypatch.setenv("_LYDIA_GATEWAY", "1")
+    monkeypatch.setenv("_ALICE_GATEWAY", "1")
     monkeypatch.setattr(shutil, "which", lambda cmd: "/usr/bin/setsid" if cmd == "setsid" else None)
 
     def fake_popen(cmd, **kwargs):
@@ -271,7 +271,7 @@ async def test_launch_detached_restart_command_uses_setsid(monkeypatch):
     assert kwargs["stderr"] is subprocess.DEVNULL
     # The watcher must NOT inherit the gateway marker, or the CLI's
     # self-restart loop guard refuses to run `alice gateway restart`.
-    assert kwargs["env"].get("_LYDIA_GATEWAY") is None
+    assert kwargs["env"].get("_ALICE_GATEWAY") is None
 
 
 @pytest.mark.asyncio
@@ -279,7 +279,7 @@ async def test_detached_restart_helper_is_idempotent(monkeypatch):
     runner, _adapter = make_restart_runner()
     popen_calls = []
 
-    monkeypatch.setattr(gateway_run, "_resolve_lydia_bin", lambda: ["/usr/bin/alice"])
+    monkeypatch.setattr(gateway_run, "_resolve_alice_bin", lambda: ["/usr/bin/alice"])
     monkeypatch.setattr(gateway_run.os, "getpid", lambda: 321)
     monkeypatch.setattr(shutil, "which", lambda cmd: None)
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: popen_calls.append((a, k)))
@@ -322,9 +322,9 @@ async def test_windows_detached_restart_scrubs_gateway_marker(monkeypatch, tmp_p
     site_packages.mkdir(parents=True)
 
     monkeypatch.setattr(gateway_run.sys, "platform", "win32")
-    monkeypatch.setattr(gateway_run, "_resolve_lydia_bin", lambda: ["alice"])
+    monkeypatch.setattr(gateway_run, "_resolve_alice_bin", lambda: ["alice"])
     monkeypatch.setattr(gateway_run.os, "getpid", lambda: 321)
-    monkeypatch.setenv("_LYDIA_GATEWAY", "1")
+    monkeypatch.setenv("_ALICE_GATEWAY", "1")
     monkeypatch.setenv("VIRTUAL_ENV", str(venv_dir))
 
     import alice_cli._subprocess_compat as subprocess_compat
@@ -346,7 +346,7 @@ async def test_windows_detached_restart_scrubs_gateway_marker(monkeypatch, tmp_p
     assert len(popen_calls) == 1
     cmd, kwargs = popen_calls[0]
     assert cmd[-3:] == ["alice", "gateway", "restart"]
-    assert kwargs["env"].get("_LYDIA_GATEWAY") is None
+    assert kwargs["env"].get("_ALICE_GATEWAY") is None
     assert kwargs["env"]["VIRTUAL_ENV"] == str(venv_dir)
     assert str(site_packages) in kwargs["env"]["PYTHONPATH"].split(gateway_run.os.pathsep)
     assert kwargs["stdout"] is subprocess.DEVNULL
@@ -363,7 +363,7 @@ async def test_windows_detached_restart_uses_pythonw_for_watcher(monkeypatch, tm
 
     monkeypatch.setattr(gateway_run.sys, "platform", "win32")
     monkeypatch.setattr(gateway_run.sys, "executable", r"C:\venv\Scripts\python.exe")
-    monkeypatch.setattr(gateway_run, "_resolve_lydia_bin", lambda: ["alice"])
+    monkeypatch.setattr(gateway_run, "_resolve_alice_bin", lambda: ["alice"])
     monkeypatch.setattr(gateway_run.os, "getpid", lambda: 321)
     monkeypatch.setenv("VIRTUAL_ENV", str(venv_dir))
 

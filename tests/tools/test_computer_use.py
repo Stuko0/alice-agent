@@ -22,7 +22,7 @@ def _reset_backend():
     from tools.computer_use.tool import reset_backend_for_tests
     reset_backend_for_tests()
     # Force the noop backend.
-    with patch.dict(os.environ, {"LYDIA_COMPUTER_USE_BACKEND": "noop"}, clear=False):
+    with patch.dict(os.environ, {"ALICE_COMPUTER_USE_BACKEND": "noop"}, clear=False):
         yield
     reset_backend_for_tests()
 
@@ -1681,7 +1681,7 @@ class TestCuaEnvironmentScrubbing:
 
 
 class TestClickButtonPassthrough:
-    """Surface 5 (arquant-admin/NewLydia#47072) — `middle_click` must
+    """Surface 5 (arquant-admin/NewAlice#47072) — `middle_click` must
     actually reach cua-driver as a middle button, not silently degrade to
     left. Pre-fix, the backend's `click()` chose the tool by name
     (`button == "right"` → `right_click`, everything else → `click` with
@@ -1770,7 +1770,7 @@ class TestClickButtonPassthrough:
 
 
 class TestImageMimeTypePropagation:
-    """Surface 7 (arquant-admin/NewLydia#47072): trycua/cua#1961 made
+    """Surface 7 (arquant-admin/NewAlice#47072): trycua/cua#1961 made
     `mimeType` part of every MCP image-part response, so the wrapper no
     longer has to sniff PNG vs JPEG by inspecting the first base64 bytes
     (`/9j/` for JPEG / `iVBOR` for PNG). The sniff is preserved as a
@@ -1875,7 +1875,7 @@ class TestImageMimeTypePropagation:
 
 
 class TestMcpInvocationResolution:
-    """Surface 8 (arquant-admin/NewLydia#47072): instead of hardcoding
+    """Surface 8 (arquant-admin/NewAlice#47072): instead of hardcoding
     `["mcp"]` as the cua-driver subcommand, we ask the driver via its
     `manifest` JSON (trycua/cua#1961) so a future rename or relocation of
     the MCP subcommand doesn't require a Alice patch.
@@ -1927,7 +1927,7 @@ class TestMcpInvocationResolution:
 
     def test_falls_back_when_manifest_missing_command(self):
         """If the manifest knows the args but not the command, keep our
-        resolved driver path (so LYDIA_CUA_DRIVER_CMD still wins)."""
+        resolved driver path (so ALICE_CUA_DRIVER_CMD still wins)."""
         from unittest.mock import patch
         from tools.computer_use.cua_backend import _resolve_mcp_invocation
 
@@ -1994,7 +1994,7 @@ class TestMcpInvocationResolution:
 
 
 class TestStructuredElementsConsumption:
-    """Surface 2 (arquant-admin/NewLydia#47072): trycua/cua#1961 made
+    """Surface 2 (arquant-admin/NewAlice#47072): trycua/cua#1961 made
     `structuredContent.elements` part of every `get_window_state` MCP
     response. The wrapper used to parse the markdown AX tree with a
     regex — lossy because bounds always came back (0,0,0,0). The
@@ -2258,7 +2258,7 @@ class TestStructuredElementsConsumption:
 
 
 class TestCapabilityDiscovery:
-    """Surface 4 (arquant-admin/NewLydia#47072): the wrapper learns
+    """Surface 4 (arquant-admin/NewAlice#47072): the wrapper learns
     what cua-driver supports from the per-tool `capabilities[]` array on
     `tools/list` (trycua/cua#1961) instead of name-checking. The infra
     here is consumed by other surfaces (e.g. Surface 6 only carries
@@ -2307,7 +2307,7 @@ class TestCapabilityDiscovery:
 
 
 class TestElementTokenAttachment:
-    """Surface 6 (arquant-admin/NewLydia#47072): trycua/cua#1961 added
+    """Surface 6 (arquant-admin/NewAlice#47072): trycua/cua#1961 added
     an opaque `element_token` alongside `element_index` so the wrapper
     can carry per-snapshot handles instead of relying on raw indices that
     silently re-resolve when the snapshot is superseded.

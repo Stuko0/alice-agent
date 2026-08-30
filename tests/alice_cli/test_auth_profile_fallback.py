@@ -334,11 +334,11 @@ def test_load_provider_state_classic_mode_no_fallback(tmp_path, monkeypatch):
     fake_home = tmp_path / "home"
     fake_home.mkdir()
     monkeypatch.setattr(Path, "home", lambda: fake_home)
-    lydia_home = tmp_path / "classic"
-    lydia_home.mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    alice_home = tmp_path / "classic"
+    alice_home.mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
-    _write(lydia_home / "auth.json", _make_auth_store(providers={
+    _write(alice_home / "auth.json", _make_auth_store(providers={
         "nous": {"access_token": "classic-token"},
     }))
 
@@ -384,11 +384,11 @@ def test_classic_mode_does_not_double_read_same_file(tmp_path, monkeypatch):
     fake_home = tmp_path / "home"
     fake_home.mkdir()
     monkeypatch.setattr(Path, "home", lambda: fake_home)
-    lydia_home = tmp_path / "classic"
-    lydia_home.mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    alice_home = tmp_path / "classic"
+    alice_home.mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
-    _write(lydia_home / "auth.json", _make_auth_store(pool={
+    _write(alice_home / "auth.json", _make_auth_store(pool={
         "openrouter": [{
             "id": "only",
             "label": "classic",
@@ -402,7 +402,7 @@ def test_classic_mode_does_not_double_read_same_file(tmp_path, monkeypatch):
     from alice_cli.auth import read_credential_pool, _global_auth_file_path
 
     # Classic mode: ALICE_HOME is set to a custom path that is NOT under
-    # ~/.alice/profiles/ — get_default_lydia_root() returns ALICE_HOME
+    # ~/.alice/profiles/ — get_default_alice_root() returns ALICE_HOME
     # itself, so the profile root and global root are the same directory,
     # and the helper correctly returns None (no fallback).
     assert _global_auth_file_path() is None

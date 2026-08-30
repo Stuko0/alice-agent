@@ -12,7 +12,7 @@ export function RemoteDisplayBanner() {
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    void window.lydiaDesktop?.getRemoteDisplayReason?.().then(result => setReason(result))
+    void window.aliceDesktop?.getRemoteDisplayReason?.().then(result => setReason(result))
   }, [])
 
   if (!reason || dismissed) {

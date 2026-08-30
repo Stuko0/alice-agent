@@ -29,16 +29,16 @@ def _make_fake_jwt(expiry_offset: int = 3600) -> str:
 
 
 @pytest.fixture()
-def lydia_auth_only_env(tmp_path, monkeypatch):
+def alice_auth_only_env(tmp_path, monkeypatch):
     """Tokens already in Alice auth store (no Codex CLI needed)."""
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
 
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
     # Point CODEX_HOME to nonexistent dir to prove it's not needed
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "no_codex"))
 
-    (lydia_home / "auth.json").write_text(json.dumps({
+    (alice_home / "auth.json").write_text(json.dumps({
         "version": 2,
         "providers": {
             "openai-codex": {
@@ -57,10 +57,10 @@ def lydia_auth_only_env(tmp_path, monkeypatch):
     ]:
         monkeypatch.delenv(var, raising=False)
 
-    return lydia_home
+    return alice_home
 
 
-def test_normal_path_still_works(lydia_auth_only_env):
+def test_normal_path_still_works(alice_auth_only_env):
     """openai-codex appears when tokens are already in Alice auth store."""
     from alice_cli.model_switch import list_authenticated_providers
 
@@ -72,7 +72,7 @@ def test_normal_path_still_works(lydia_auth_only_env):
     assert "openai-codex" in slugs
 
 
-def test_codex_picker_uses_live_codex_catalog(lydia_auth_only_env, tmp_path, monkeypatch):
+def test_codex_picker_uses_live_codex_catalog(alice_auth_only_env, tmp_path, monkeypatch):
     """The gateway /model picker should surface Codex CLI-only listed models."""
     from alice_cli.model_switch import list_authenticated_providers
 
@@ -108,14 +108,14 @@ def claude_code_only_env(tmp_path, monkeypatch):
     """Set up an environment where Anthropic credentials only exist in
     ~/.claude/.credentials.json (Claude Code) — not in env vars or Alice
     auth store."""
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
 
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
     # No Codex CLI
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "no_codex"))
 
-    (lydia_home / "auth.json").write_text(
+    (alice_home / "auth.json").write_text(
         json.dumps({"version": 2, "providers": {}})
     )
 
@@ -140,7 +140,7 @@ def claude_code_only_env(tmp_path, monkeypatch):
     ]:
         monkeypatch.delenv(var, raising=False)
 
-    return lydia_home
+    return alice_home
 
 
 def test_claude_code_file_detected_by_model_picker(claude_code_only_env):
@@ -163,13 +163,13 @@ def test_claude_code_file_detected_by_model_picker(claude_code_only_env):
 
 def test_no_codex_when_no_credentials(tmp_path, monkeypatch):
     """openai-codex should NOT appear when no credentials exist anywhere."""
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
 
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "no_codex"))
 
-    (lydia_home / "auth.json").write_text(
+    (alice_home / "auth.json").write_text(
         json.dumps({"version": 2, "providers": {}})
     )
 

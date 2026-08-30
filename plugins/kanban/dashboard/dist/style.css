@@ -1,11 +1,11 @@
 /*
- * Lydia Kanban — dashboard plugin styles.
+ * Alice Kanban — dashboard plugin styles.
  *
  * All colors reference theme CSS vars so the board reskins with the
  * active dashboard theme. No hardcoded palette.
  */
 
-.lydia-kanban {
+.alice-kanban {
   width: 100%;
 }
 
@@ -18,11 +18,11 @@
  * surfaces that must read as plain text on the board's own background.
  *
  * Rather than play whack-a-mole with theme rules (the pre-#21086 approach
- * was a single ``.lydia-kanban code { background: transparent }`` rule
+ * was a single ``.alice-kanban code { background: transparent }`` rule
  * that lost specificity fights in the drawer context), reset EVERY
  * <code>/<pre> inside the kanban plugin container to transparent with
  * ``!important``, then opt back in ONLY on the class that carries
- * intentional styling (``.lydia-kanban-md code``, the inline code pill
+ * intentional styling (``.alice-kanban-md code``, the inline code pill
  * inside rendered task-body Markdown).
  *
  * Net effect: any new theme, shipped or third-party, can introduce
@@ -31,16 +31,16 @@
  * Regression coverage: #21086 (task-drawer event payloads unreadable
  * across every shipped theme).
  */
-.lydia-kanban code,
-.lydia-kanban pre,
-.lydia-kanban-drawer code,
-.lydia-kanban-drawer pre {
+.alice-kanban code,
+.alice-kanban pre,
+.alice-kanban-drawer code,
+.alice-kanban-drawer pre {
   background: transparent !important;
   color: inherit;
 }
 /* The Markdown renderer intentionally paints a subtle code pill behind
  * inline ``<code>`` inside task-body prose — but NOT inside a fenced
- * block (those are a ``<pre class="lydia-kanban-md-code">`` with a
+ * block (those are a ``<pre class="alice-kanban-md-code">`` with a
  * bare ``<code>`` inside, and the pill would double up with the pre
  * background). ``:not()`` scopes this opt-back-in to inline code only.
  *
@@ -48,28 +48,28 @@
  * so the pill renders consistently even when a theme forgets to set
  * ``--color-foreground`` (pre-existing safeguard from #18576).
  */
-.lydia-kanban .lydia-kanban-md code:not(.lydia-kanban-md-code *) {
+.alice-kanban .alice-kanban-md code:not(.alice-kanban-md-code *) {
   background: color-mix(in srgb, currentColor 8%, transparent) !important;
 }
 /* Tighten contrast on the drawer-specific payload class — it lives on
  * its own line in the events list, so matching the muted-foreground
  * color keeps it visually distinct from the event title without
  * screaming for attention. */
-.lydia-kanban-event-payload,
-.lydia-kanban-drawer .lydia-kanban-event-payload {
+.alice-kanban-event-payload,
+.alice-kanban-drawer .alice-kanban-event-payload {
   color: var(--color-muted-foreground) !important;
 }
 
 /* ---- Columns layout -------------------------------------------------- */
 
-.lydia-kanban-columns {
+.alice-kanban-columns {
   display: flex;
   gap: 0.75rem;
   align-items: start;
   overflow-x: auto;
 }
 
-.lydia-kanban-column {
+.alice-kanban-column {
   flex: 0 0 280px;
   display: flex;
   flex-direction: column;
@@ -82,12 +82,12 @@
   transition: border-color 120ms ease, background-color 120ms ease;
 }
 
-.lydia-kanban-column--drop {
+.alice-kanban-column--drop {
   border-color: var(--color-ring);
   background: color-mix(in srgb, var(--color-ring) 8%, var(--color-card));
 }
 
-.lydia-kanban-column-header {
+.alice-kanban-column-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -97,19 +97,19 @@
   color: var(--color-foreground);
 }
 
-.lydia-kanban-column-label {
+.alice-kanban-column-label {
   flex: 1;
   letter-spacing: 0.01em;
 }
 
-.lydia-kanban-column-count {
+.alice-kanban-column-count {
   font-variant-numeric: tabular-nums;
   color: var(--color-muted-foreground);
   font-size: 0.75rem;
   font-weight: 500;
 }
 
-.lydia-kanban-column-add {
+.alice-kanban-column-add {
   appearance: none;
   background: transparent;
   border: 1px solid var(--color-border);
@@ -121,11 +121,11 @@
   font-size: 1rem;
   cursor: pointer;
 }
-.lydia-kanban-column-add:hover {
+.alice-kanban-column-add:hover {
   background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
 }
 
-.lydia-kanban-column-sub {
+.alice-kanban-column-sub {
   padding: 0 0.25rem 0.5rem;
   font-size: 0.7rem;
   color: var(--color-muted-foreground);
@@ -133,7 +133,7 @@
   margin-bottom: 0.5rem;
 }
 
-.lydia-kanban-column-body {
+.alice-kanban-column-body {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -143,7 +143,7 @@
   min-height: 0;
 }
 
-.lydia-kanban-empty {
+.alice-kanban-empty {
   padding: 1.5rem 0.5rem;
   text-align: center;
   font-size: 0.75rem;
@@ -154,24 +154,24 @@
 
 /* ---- Status dots ----------------------------------------------------- */
 
-.lydia-kanban-dot {
+.alice-kanban-dot {
   display: inline-block;
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 999px;
   background: var(--color-muted-foreground);
 }
-.lydia-kanban-dot-triage   { background: #b47dd6; }  /* lilac — fresh/unspecified */
-.lydia-kanban-dot-todo     { background: var(--color-muted-foreground); }
-.lydia-kanban-dot-ready    { background: #d4b348; }  /* amber */
-.lydia-kanban-dot-running  { background: #3fb97d; }  /* green */
-.lydia-kanban-dot-blocked  { background: var(--color-destructive, #d14a4a); }
-.lydia-kanban-dot-done     { background: #4a8cd1; }  /* blue */
-.lydia-kanban-dot-archived { background: var(--color-border); }
+.alice-kanban-dot-triage   { background: #b47dd6; }  /* lilac — fresh/unspecified */
+.alice-kanban-dot-todo     { background: var(--color-muted-foreground); }
+.alice-kanban-dot-ready    { background: #d4b348; }  /* amber */
+.alice-kanban-dot-running  { background: #3fb97d; }  /* green */
+.alice-kanban-dot-blocked  { background: var(--color-destructive, #d14a4a); }
+.alice-kanban-dot-done     { background: #4a8cd1; }  /* blue */
+.alice-kanban-dot-archived { background: var(--color-border); }
 
 /* ---- Progress pill (N/M child tasks done) --------------------------- */
 
-.lydia-kanban-progress {
+.alice-kanban-progress {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 0.62rem;
   padding: 0.05rem 0.35rem;
@@ -181,7 +181,7 @@
   color: var(--color-muted-foreground);
   letter-spacing: 0.02em;
 }
-.lydia-kanban-progress--full {
+.alice-kanban-progress--full {
   background: color-mix(in srgb, #3fb97d 22%, transparent);
   border-color: color-mix(in srgb, #3fb97d 45%, transparent);
   color: var(--color-foreground);
@@ -189,18 +189,18 @@
 
 /* ---- Lanes (per-profile sub-grouping inside Running) ---------------- */
 
-.lydia-kanban-lane {
+.alice-kanban-lane {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   padding: 0.25rem 0 0.35rem;
   border-top: 1px dashed color-mix(in srgb, var(--color-border) 70%, transparent);
 }
-.lydia-kanban-lane:first-child {
+.alice-kanban-lane:first-child {
   border-top: 0;
   padding-top: 0;
 }
-.lydia-kanban-lane-head {
+.alice-kanban-lane-head {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -212,51 +212,51 @@
   color: var(--color-muted-foreground);
   padding: 0 0.1rem;
 }
-.lydia-kanban-lane-name {
+.alice-kanban-lane-name {
   font-weight: 600;
   font-family: var(--font-mono, ui-monospace, monospace);
 }
-.lydia-kanban-lane-count {
+.alice-kanban-lane-count {
   margin-left: auto;
   font-variant-numeric: tabular-nums;
 }
 
 /* ---- Card ------------------------------------------------------------ */
 
-.lydia-kanban-card {
+.alice-kanban-card {
   cursor: grab;
   transition: transform 100ms ease, box-shadow 100ms ease;
 }
-.lydia-kanban-card:hover {
+.alice-kanban-card:hover {
   box-shadow: 0 1px 0 0 var(--color-ring) inset, 0 0 0 1px var(--color-ring) inset;
 }
-.lydia-kanban-card:active {
+.alice-kanban-card:active {
   cursor: grabbing;
   transform: scale(0.995);
 }
 
-.lydia-kanban-card-content {
+.alice-kanban-card-content {
   padding: 0.5rem 0.6rem !important;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
 }
 
-.lydia-kanban-card-row {
+.alice-kanban-card-row {
   display: flex;
   align-items: center;
   gap: 0.35rem;
   flex-wrap: wrap;
 }
 
-.lydia-kanban-card-id {
+.alice-kanban-card-id {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 0.65rem;
   color: var(--color-muted-foreground);
   letter-spacing: 0.03em;
 }
 
-.lydia-kanban-card-title {
+.alice-kanban-card-title {
   font-size: 0.85rem;
   font-weight: 500;
   line-height: 1.3;
@@ -264,13 +264,13 @@
   word-break: break-word;
 }
 
-.lydia-kanban-card-meta {
+.alice-kanban-card-meta {
   font-size: 0.7rem;
   color: var(--color-muted-foreground);
   gap: 0.55rem;
 }
 
-.lydia-kanban-priority {
+.alice-kanban-priority {
   font-size: 0.6rem !important;
   padding: 0.05rem 0.3rem !important;
   background: color-mix(in srgb, var(--color-ring) 18%, transparent);
@@ -278,12 +278,12 @@
   border: 1px solid color-mix(in srgb, var(--color-ring) 40%, transparent);
 }
 
-.lydia-kanban-tag {
+.alice-kanban-tag {
   font-size: 0.6rem !important;
   padding: 0.05rem 0.3rem !important;
 }
 
-.lydia-kanban-needs-assignee {
+.alice-kanban-needs-assignee {
   font-size: 0.6rem !important;
   padding: 0.05rem 0.3rem !important;
   background: color-mix(in srgb, var(--color-warning, #d4b348) 16%, transparent);
@@ -291,20 +291,20 @@
   color: var(--color-foreground);
 }
 
-.lydia-kanban-assignee {
+.alice-kanban-assignee {
   font-weight: 500;
   color: color-mix(in srgb, var(--color-foreground) 80%, var(--color-muted-foreground));
 }
-.lydia-kanban-unassigned {
+.alice-kanban-unassigned {
   font-style: italic;
 }
-.lydia-kanban-ago {
+.alice-kanban-ago {
   margin-left: auto;
 }
 
 /* ---- Inline create --------------------------------------------------- */
 
-.lydia-kanban-inline-create {
+.alice-kanban-inline-create {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -315,14 +315,14 @@
   border-radius: var(--radius-sm, 0.25rem);
 }
 
-.lydia-kanban-inline-create > .flex.gap-2:last-child > button:first-of-type {
+.alice-kanban-inline-create > .flex.gap-2:last-child > button:first-of-type {
   flex: 1;
   min-width: 0;
 }
 
 /* ---- Drawer (task detail side panel) --------------------------------- */
 
-.lydia-kanban-drawer-shade {
+.alice-kanban-drawer-shade {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
@@ -331,8 +331,8 @@
   justify-content: flex-end;
 }
 
-.lydia-kanban-drawer {
-  width: min(var(--lydia-kanban-drawer-width, 640px), 92vw);
+.alice-kanban-drawer {
+  width: min(var(--alice-kanban-drawer-width, 640px), 92vw);
   height: 100vh;
   /* Dynamic viewport unit excludes the mobile browser's collapsing chrome
      (URL/nav bars) so the drawer's bottom row stays reachable. Falls back to
@@ -344,15 +344,15 @@
   display: flex;
   flex-direction: column;
   box-shadow: -4px 0 18px rgba(0, 0, 0, 0.35);
-  animation: lydia-kanban-drawer-in 180ms ease-out;
+  animation: alice-kanban-drawer-in 180ms ease-out;
 }
 
-@keyframes lydia-kanban-drawer-in {
+@keyframes alice-kanban-drawer-in {
   from { transform: translateX(100%); opacity: 0.3; }
   to   { transform: translateX(0);    opacity: 1; }
 }
 
-.lydia-kanban-drawer-head {
+.alice-kanban-drawer-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -369,12 +369,12 @@
    viewport top, so its header would sit behind that bar. Push the header down
    by the bar height (3.5rem) plus the top safe-area inset. */
 @media (max-width: 1023px) {
-  .lydia-kanban-drawer-head {
+  .alice-kanban-drawer-head {
     padding-top: calc(3.5rem + env(safe-area-inset-top));
   }
 }
 
-.lydia-kanban-drawer-close {
+.alice-kanban-drawer-close {
   appearance: none;
   background: transparent;
   border: 0;
@@ -384,11 +384,11 @@
   cursor: pointer;
   padding: 0 0.25rem;
 }
-.lydia-kanban-drawer-close:hover { color: var(--color-foreground); }
+.alice-kanban-drawer-close:hover { color: var(--color-foreground); }
 
 /* Attachment download trigger — styled as a link, rendered as a <button>
    so the click handler can fetch with the session token (#35338). */
-.lydia-kanban-attachment-link {
+.alice-kanban-attachment-link {
   appearance: none;
   background: transparent;
   border: 0;
@@ -403,9 +403,9 @@
   white-space: nowrap;
   flex: 1;
 }
-.lydia-kanban-attachment-link:hover { text-decoration: underline; }
+.alice-kanban-attachment-link:hover { text-decoration: underline; }
 
-.lydia-kanban-drawer-body {
+.alice-kanban-drawer-body {
   flex: 1;
   overflow-y: auto;
   padding: 0.9rem;
@@ -418,7 +418,7 @@
   gap: 0.85rem;
 }
 
-.lydia-kanban-drawer-title {
+.alice-kanban-drawer-title {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -426,7 +426,7 @@
   font-weight: 600;
 }
 
-.lydia-kanban-drawer-meta {
+.alice-kanban-drawer-meta {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
@@ -436,41 +436,41 @@
   border-radius: var(--radius-sm, 0.25rem);
 }
 
-.lydia-kanban-meta-row {
+.alice-kanban-meta-row {
   display: flex;
   gap: 0.5rem;
   font-size: 0.8rem;
 }
-.lydia-kanban-meta-label {
+.alice-kanban-meta-label {
   width: 92px;
   color: var(--color-muted-foreground);
 }
-.lydia-kanban-meta-value {
+.alice-kanban-meta-value {
   color: var(--color-foreground);
   word-break: break-word;
 }
 
-.lydia-kanban-actions {
+.alice-kanban-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
 }
 
 /* Specifier result banner — sits directly under the status action row. */
-.lydia-kanban-msg-ok,
-.lydia-kanban-msg-err {
+.alice-kanban-msg-ok,
+.alice-kanban-msg-err {
   margin-top: 0.4rem;
   padding: 0.35rem 0.55rem;
   border-radius: 0.375rem;
   font-size: 0.85rem;
   line-height: 1.3;
 }
-.lydia-kanban-msg-ok {
+.alice-kanban-msg-ok {
   background: rgba(46, 160, 67, 0.12);
   color: #2ea043;
   border: 1px solid rgba(46, 160, 67, 0.35);
 }
-.lydia-kanban-msg-err {
+.alice-kanban-msg-err {
   background: rgba(248, 81, 73, 0.12);
   color: #f85149;
   border: 1px solid rgba(248, 81, 73, 0.35);
@@ -478,17 +478,17 @@
 
 /* ---- Home channel subscription toggles (per-platform, per-task) ----- */
 
-.lydia-kanban-home-subs {
+.alice-kanban-home-subs {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
 }
-.lydia-kanban-home-sub {
+.alice-kanban-home-sub {
   font-family: var(--font-mono, ui-monospace, monospace);
   text-transform: lowercase;
   letter-spacing: 0.02em;
 }
-.lydia-kanban-home-sub--on {
+.alice-kanban-home-sub--on {
   /* Subscribed toggle — use a strong ring-colored accent so the on/off
    * distinction reads at a glance, not just from the ✓ prefix. Border +
    * filled background + bolder weight keep the state obvious across
@@ -500,20 +500,20 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-ring) 40%, transparent);
 }
 
-.lydia-kanban-section {
+.alice-kanban-section {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
 }
 
-.lydia-kanban-section-head {
+.alice-kanban-section-head {
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.07em;
   color: var(--color-muted-foreground);
 }
 
-.lydia-kanban-pre {
+.alice-kanban-pre {
   margin: 0;
   padding: 0.5rem 0.6rem;
   white-space: pre-wrap;
@@ -527,7 +527,7 @@
   color: var(--color-foreground);
 }
 
-.lydia-kanban-comment {
+.alice-kanban-comment {
   border-left: 2px solid color-mix(in srgb, var(--color-ring) 35%, transparent);
   padding-left: 0.5rem;
   display: flex;
@@ -535,31 +535,31 @@
   gap: 0.2rem;
 }
 
-.lydia-kanban-comment-head {
+.alice-kanban-comment-head {
   display: flex;
   gap: 0.5rem;
   font-size: 0.7rem;
 }
-.lydia-kanban-comment-author {
+.alice-kanban-comment-author {
   font-weight: 600;
   color: var(--color-foreground);
 }
-.lydia-kanban-comment-ago {
+.alice-kanban-comment-ago {
   color: var(--color-muted-foreground);
 }
 
-.lydia-kanban-event {
+.alice-kanban-event {
   display: flex;
   gap: 0.5rem;
   font-size: 0.7rem;
   color: var(--color-muted-foreground);
   font-family: var(--font-mono, ui-monospace, monospace);
 }
-.lydia-kanban-event-kind {
+.alice-kanban-event-kind {
   color: var(--color-foreground);
   min-width: 6rem;
 }
-.lydia-kanban-event-payload {
+.alice-kanban-event-payload {
   color: var(--color-muted-foreground);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -567,7 +567,7 @@
   max-width: 280px;
 }
 
-.lydia-kanban-drawer-comment-row {
+.alice-kanban-drawer-comment-row {
   display: flex;
   gap: 0.4rem;
   padding: 0.55rem 0.75rem;
@@ -578,7 +578,7 @@
   background: color-mix(in srgb, var(--color-card) 90%, transparent);
 }
 
-.lydia-kanban-count {
+.alice-kanban-count {
   display: inline-flex;
   gap: 0.2rem;
   align-items: center;
@@ -586,7 +586,7 @@
 
 /* ---- Selection chrome ----------------------------------------------- */
 
-.lydia-kanban-card--selected :where(.lydia-kanban-card-content) {
+.alice-kanban-card--selected :where(.alice-kanban-card-content) {
   box-shadow: 0 0 0 2px var(--color-ring) inset,
               0 0 0 1px var(--color-ring) inset;
   background: color-mix(in srgb, var(--color-ring) 6%, var(--color-card));
@@ -595,13 +595,13 @@
 /* Batch drag source styling — cards that are part of the current multi-drag.
    The browser ghost image floats; we dim the original DOM nodes so the user
    sees the whole set is in-flight. */
-.lydia-kanban-card--dragging-source :where(.lydia-kanban-card-content) {
+.alice-kanban-card--dragging-source :where(.alice-kanban-card-content) {
   opacity: 0.45;
   filter: grayscale(0.6);
   transition: opacity 120ms ease, filter 120ms ease;
 }
 
-.lydia-kanban-card-check {
+.alice-kanban-card-check {
   width: 0.85rem;
   height: 0.85rem;
   margin: 0;
@@ -611,7 +611,7 @@
 
 /* ---- Bulk action bar ------------------------------------------------ */
 
-.lydia-kanban-bulk {
+.alice-kanban-bulk {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -621,25 +621,25 @@
   border-radius: var(--radius-sm, 0.25rem);
   flex-wrap: wrap;
 }
-.lydia-kanban-bulk-count {
+.alice-kanban-bulk-count {
   font-weight: 600;
   font-size: 0.75rem;
   padding-right: 0.25rem;
 }
 
-.lydia-kanban-bulk > button,
-.lydia-kanban-bulk-reassign > button {
+.alice-kanban-bulk > button,
+.alice-kanban-bulk-reassign > button {
   height: 1.7rem !important;
   padding: 0 0.5rem !important;
   font-size: 0.7rem !important;
   border: 1px solid var(--color-border);
   cursor: pointer;
 }
-.lydia-kanban-bulk > button:hover:not(:disabled),
-.lydia-kanban-bulk-reassign > button:hover:not(:disabled) {
+.alice-kanban-bulk > button:hover:not(:disabled),
+.alice-kanban-bulk-reassign > button:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
 }
-.lydia-kanban-bulk-reassign {
+.alice-kanban-bulk-reassign {
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -649,30 +649,30 @@
 
 /* ---- Dependency editor chips --------------------------------------- */
 
-.lydia-kanban-deps-row {
+.alice-kanban-deps-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.4rem;
 }
-.lydia-kanban-deps-label {
+.alice-kanban-deps-label {
   font-size: 0.68rem;
   letter-spacing: 0.08em;
   color: var(--color-muted-foreground);
   min-width: 4rem;
 }
-.lydia-kanban-deps-chips {
+.alice-kanban-deps-chips {
   display: flex;
   gap: 0.3rem;
   flex-wrap: wrap;
   flex: 1;
 }
-.lydia-kanban-deps-empty {
+.alice-kanban-deps-empty {
   font-size: 0.7rem;
   color: var(--color-muted-foreground);
   font-style: italic;
 }
-.lydia-kanban-dep-chip {
+.alice-kanban-dep-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.15rem;
@@ -684,7 +684,7 @@
   font-size: 0.68rem;
   color: var(--color-foreground);
 }
-.lydia-kanban-dep-chip-x {
+.alice-kanban-dep-chip-x {
   appearance: none;
   background: transparent;
   border: 0;
@@ -694,43 +694,43 @@
   line-height: 1;
   padding: 0 0.15rem;
 }
-.lydia-kanban-dep-chip-x:hover { color: var(--color-destructive, #d14a4a); }
+.alice-kanban-dep-chip-x:hover { color: var(--color-destructive, #d14a4a); }
 
 /* ---- Inline edit affordances --------------------------------------- */
 
-.lydia-kanban-editable {
+.alice-kanban-editable {
   cursor: pointer;
   border-bottom: 1px dotted color-mix(in srgb, var(--color-border) 80%, transparent);
 }
-.lydia-kanban-editable:hover {
+.alice-kanban-editable:hover {
   color: var(--color-foreground);
   border-bottom-color: var(--color-ring);
 }
 
-.lydia-kanban-drawer-title-text {
+.alice-kanban-drawer-title-text {
   cursor: pointer;
 }
-.lydia-kanban-drawer-title-text:hover {
+.alice-kanban-drawer-title-text:hover {
   text-decoration: underline;
   text-decoration-color: var(--color-ring);
   text-decoration-style: dotted;
   text-underline-offset: 3px;
 }
 
-.lydia-kanban-edit-row {
+.alice-kanban-edit-row {
   display: flex;
   align-items: center;
   gap: 0.35rem;
   width: 100%;
 }
 
-.lydia-kanban-section-head-row {
+.alice-kanban-section-head-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
 }
-.lydia-kanban-edit-link {
+.alice-kanban-edit-link {
   appearance: none;
   background: transparent;
   border: 0;
@@ -740,9 +740,9 @@
   cursor: pointer;
   padding: 0;
 }
-.lydia-kanban-edit-link:hover { color: var(--color-ring); }
+.alice-kanban-edit-link:hover { color: var(--color-ring); }
 
-.lydia-kanban-textarea {
+.alice-kanban-textarea {
   width: 100%;
   min-height: 8rem;
   background: var(--color-card);
@@ -755,7 +755,7 @@
   line-height: 1.5;
   resize: vertical;
 }
-.lydia-kanban-textarea:focus {
+.alice-kanban-textarea:focus {
   outline: none;
   border-color: var(--color-ring);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-ring) 30%, transparent);
@@ -763,33 +763,33 @@
 
 /* ---- Markdown rendering -------------------------------------------- */
 
-.lydia-kanban-md {
+.alice-kanban-md {
   font-size: 0.85rem;
   line-height: 1.6;
   color: var(--color-foreground);
 }
-.lydia-kanban-md p  { margin: 0.25rem 0; }
-.lydia-kanban-md h1,
-.lydia-kanban-md h2,
-.lydia-kanban-md h3,
-.lydia-kanban-md h4 {
+.alice-kanban-md p  { margin: 0.25rem 0; }
+.alice-kanban-md h1,
+.alice-kanban-md h2,
+.alice-kanban-md h3,
+.alice-kanban-md h4 {
   margin: 0.6rem 0 0.2rem;
   line-height: 1.25;
 }
-.lydia-kanban-md h1 { font-size: 1.05rem; }
-.lydia-kanban-md h2 { font-size: 0.95rem; }
-.lydia-kanban-md h3 { font-size: 0.88rem; }
-.lydia-kanban-md h4 { font-size: 0.82rem; }
-.lydia-kanban-md ul {
+.alice-kanban-md h1 { font-size: 1.05rem; }
+.alice-kanban-md h2 { font-size: 0.95rem; }
+.alice-kanban-md h3 { font-size: 0.88rem; }
+.alice-kanban-md h4 { font-size: 0.82rem; }
+.alice-kanban-md ul {
   margin: 0.25rem 0 0.25rem 1.1rem;
   padding: 0;
 }
-.lydia-kanban-md li { margin: 0.1rem 0; }
-.lydia-kanban-md a {
+.alice-kanban-md li { margin: 0.1rem 0; }
+.alice-kanban-md a {
   color: var(--color-ring);
   text-decoration: underline;
 }
-.lydia-kanban-md code {
+.alice-kanban-md code {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 0.8rem;
   padding: 0.05rem 0.3rem;
@@ -805,11 +805,11 @@
  * UA default on <code> elements — otherwise themes that don't set
  * --color-foreground leave code text rendering near-black on dark themes
  * (see issue #18576). */
-.lydia-kanban pre.lydia-kanban-md-code {
+.alice-kanban pre.alice-kanban-md-code {
   margin: 0.35rem 0;
   padding: 0.5rem 0.6rem;
-  /* Higher specificity (``.lydia-kanban pre.lydia-kanban-md-code`` vs
-   * the reset's ``.lydia-kanban pre``) so this intentional pill wins
+  /* Higher specificity (``.alice-kanban pre.alice-kanban-md-code`` vs
+   * the reset's ``.alice-kanban pre``) so this intentional pill wins
    * over our own ``<pre>`` reset. ``!important`` also needed so theme
    * rules that drop their own ``code``/``pre`` fill don't knock it out
    * either. #21086. */
@@ -818,18 +818,18 @@
   border-radius: var(--radius-sm, 0.25rem);
   overflow-x: auto;
 }
-.lydia-kanban-md-code code {
+.alice-kanban-md-code code {
   background: transparent;
   padding: 0;
   font-size: 0.8rem;
   white-space: pre;
   color: inherit;
 }
-.lydia-kanban-md strong { font-weight: 600; }
+.alice-kanban-md strong { font-weight: 600; }
 
 /* ---- Touch-drag proxy ---------------------------------------------- */
 
-.lydia-kanban-touch-proxy {
+.alice-kanban-touch-proxy {
   pointer-events: none;
   opacity: 0.85;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
@@ -839,7 +839,7 @@
 
 /* ---- Multi-drag ghost ----------------------------------------------- */
 
-.lydia-kanban-drag-ghost {
+.alice-kanban-drag-ghost {
   position: fixed;
   left: -9999px;
   padding: 0.45rem 0.8rem;
@@ -856,24 +856,24 @@
 
 /* ---- Staleness tiers ------------------------------------------------ */
 
-.lydia-kanban-card--stale-amber :where(.lydia-kanban-card-content) {
+.alice-kanban-card--stale-amber :where(.alice-kanban-card-content) {
   box-shadow: 0 0 0 1px #d4b34888 inset;
 }
-.lydia-kanban-card--stale-amber:hover :where(.lydia-kanban-card-content) {
+.alice-kanban-card--stale-amber:hover :where(.alice-kanban-card-content) {
   box-shadow: 0 0 0 2px #d4b348 inset;
 }
-.lydia-kanban-card--stale-red :where(.lydia-kanban-card-content) {
+.alice-kanban-card--stale-red :where(.alice-kanban-card-content) {
   box-shadow: 0 0 0 1px var(--color-destructive, #d14a4a) inset,
               0 0 8px color-mix(in srgb, var(--color-destructive, #d14a4a) 30%, transparent);
 }
-.lydia-kanban-card--stale-red:hover :where(.lydia-kanban-card-content) {
+.alice-kanban-card--stale-red:hover :where(.alice-kanban-card-content) {
   box-shadow: 0 0 0 2px var(--color-destructive, #d14a4a) inset,
               0 0 10px color-mix(in srgb, var(--color-destructive, #d14a4a) 45%, transparent);
 }
 
 /* ---- Worker log pane ------------------------------------------------ */
 
-.lydia-kanban-log {
+.alice-kanban-log {
   max-height: 360px;
   overflow: auto;
   white-space: pre;
@@ -884,56 +884,56 @@
 
 /* ---- Run history (per-attempt log in the drawer) ------------------- */
 
-.lydia-kanban-run {
+.alice-kanban-run {
   border-left: 2px solid var(--color-border);
   padding: 0.35rem 0.5rem;
   margin-bottom: 0.4rem;
   background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
   border-radius: var(--radius-sm, 0.25rem);
 }
-.lydia-kanban-run--active  { border-left-color: #3fb97d; }
-.lydia-kanban-run--completed { border-left-color: #4a8cd1; }
-.lydia-kanban-run--ended { border-left-color: #6b7280; }  /* generic fallback when outcome is unset */
-.lydia-kanban-run--blocked { border-left-color: var(--color-destructive, #d14a4a); }
-.lydia-kanban-run--crashed,
-.lydia-kanban-run--timed_out,
-.lydia-kanban-run--gave_up,
-.lydia-kanban-run--spawn_failed {
+.alice-kanban-run--active  { border-left-color: #3fb97d; }
+.alice-kanban-run--completed { border-left-color: #4a8cd1; }
+.alice-kanban-run--ended { border-left-color: #6b7280; }  /* generic fallback when outcome is unset */
+.alice-kanban-run--blocked { border-left-color: var(--color-destructive, #d14a4a); }
+.alice-kanban-run--crashed,
+.alice-kanban-run--timed_out,
+.alice-kanban-run--gave_up,
+.alice-kanban-run--spawn_failed {
   border-left-color: var(--color-destructive, #d14a4a);
   background: color-mix(in srgb, var(--color-destructive, #d14a4a) 6%, transparent);
 }
-.lydia-kanban-run--reclaimed { border-left-color: #d4b348; }
+.alice-kanban-run--reclaimed { border-left-color: #d4b348; }
 
-.lydia-kanban-run-head {
+.alice-kanban-run-head {
   display: flex;
   align-items: center;
   gap: 0.6rem;
   font-size: 0.7rem;
 }
-.lydia-kanban-run-outcome {
+.alice-kanban-run-outcome {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-weight: 600;
   letter-spacing: 0.05em;
   color: var(--color-foreground);
 }
-.lydia-kanban-run-profile {
+.alice-kanban-run-profile {
   color: var(--color-muted-foreground);
 }
-.lydia-kanban-run-elapsed {
+.alice-kanban-run-elapsed {
   font-variant-numeric: tabular-nums;
   color: var(--color-muted-foreground);
 }
-.lydia-kanban-run-ago {
+.alice-kanban-run-ago {
   margin-left: auto;
   color: var(--color-muted-foreground);
 }
-.lydia-kanban-run-summary {
+.alice-kanban-run-summary {
   font-size: 0.82rem;
   line-height: 1.5;
   padding: 0.2rem 0 0;
   color: var(--color-foreground);
 }
-.lydia-kanban-run-error {
+.alice-kanban-run-error {
   font-size: 0.7rem;
   color: var(--color-destructive, #d14a4a);
   padding: 0.15rem 0 0;
@@ -946,37 +946,37 @@
  * Uses a native <details>/<summary> pair so collapse is browser-handled
  * (zero JS); large blobs default collapsed via the open=false attribute.
  * See issue #19548. */
-.lydia-kanban-run-meta-block {
+.alice-kanban-run-meta-block {
   margin-top: 0.4rem;
   padding: 0.25rem 0.5rem;
   border-left: 2px solid var(--color-border);
   background: transparent;
 }
-.lydia-kanban-run-meta-block > summary.lydia-kanban-run-meta-label {
+.alice-kanban-run-meta-block > summary.alice-kanban-run-meta-label {
   cursor: pointer;
   list-style: none;
 }
-.lydia-kanban-run-meta-block > summary.lydia-kanban-run-meta-label::-webkit-details-marker {
+.alice-kanban-run-meta-block > summary.alice-kanban-run-meta-label::-webkit-details-marker {
   display: none;
 }
-.lydia-kanban-run-meta-block > summary.lydia-kanban-run-meta-label::before {
+.alice-kanban-run-meta-block > summary.alice-kanban-run-meta-label::before {
   content: "▶ ";
   display: inline-block;
   font-size: 0.6rem;
   margin-right: 0.25rem;
   transition: transform 120ms ease;
 }
-.lydia-kanban-run-meta-block[open] > summary.lydia-kanban-run-meta-label::before {
+.alice-kanban-run-meta-block[open] > summary.alice-kanban-run-meta-label::before {
   transform: rotate(90deg);
 }
-.lydia-kanban-run-meta-label {
+.alice-kanban-run-meta-label {
   font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--color-muted-foreground);
   padding-bottom: 0.15rem;
 }
-.lydia-kanban-run-meta {
+.alice-kanban-run-meta {
   display: block;
   max-height: 8.5rem;
   overflow: auto;
@@ -993,26 +993,26 @@
 /* -------------------------------------------------------------------------
    Multi-project: board switcher + create-board dialog
    ------------------------------------------------------------------------- */
-.lydia-kanban-boardswitcher {
+.alice-kanban-boardswitcher {
   border: 1px solid var(--color-border, rgba(120, 120, 140, 0.25));
   border-radius: 0.5rem;
   padding: 0.6rem 0.85rem;
   background: var(--color-card-subtle, rgba(255, 255, 255, 0.02));
 }
-.lydia-kanban-boardswitcher-inner {
+.alice-kanban-boardswitcher-inner {
   display: flex;
   align-items: flex-end;
   gap: 0.75rem;
   flex-wrap: wrap;
 }
-.lydia-kanban-boardswitcher-compact {
+.alice-kanban-boardswitcher-compact {
   display: flex;
   justify-content: flex-end;
   padding: 0 0.25rem;
   gap: 0.5rem;
   align-items: center;
 }
-.lydia-kanban-docs-link {
+.alice-kanban-docs-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1029,14 +1029,14 @@
   cursor: help;
   transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
-.lydia-kanban-docs-link:hover,
-.lydia-kanban-docs-link:focus-visible {
+.alice-kanban-docs-link:hover,
+.alice-kanban-docs-link:focus-visible {
   color: var(--color-foreground, #e7e7ee);
   background: var(--color-card, rgba(255, 255, 255, 0.08));
   border-color: var(--color-border, rgba(160, 160, 190, 0.45));
   outline: none;
 }
-.lydia-kanban-dialog-backdrop {
+.alice-kanban-dialog-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(8, 10, 16, 0.55);
@@ -1046,7 +1046,7 @@
   align-items: center;
   justify-content: center;
 }
-.lydia-kanban-dialog {
+.alice-kanban-dialog {
   background: var(--color-card, #121421);
   color: var(--color-foreground);
   border: 1px solid var(--color-border, rgba(120, 120, 140, 0.25));
@@ -1058,12 +1058,12 @@
   overflow: auto;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
 }
-.lydia-kanban-dialog-title {
+.alice-kanban-dialog-title {
   font-size: 1rem;
   font-weight: 600;
   margin-bottom: 0.25rem;
 }
-.lydia-kanban-dialog-actions {
+.alice-kanban-dialog-actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
@@ -1075,7 +1075,7 @@
 /* strip, recovery popover. Orange/red palette but muted so the board     */
 /* doesn't scream on every render.                                        */
 /* ---------------------------------------------------------------------- */
-.lydia-kanban-warning-badge {
+.alice-kanban-warning-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1086,24 +1086,24 @@
 }
 
 /* Attention strip — collapsed state is a thin bar. */
-.lydia-kanban-attention {
+.alice-kanban-attention {
   border: 1px solid rgba(255, 158, 59, 0.35);
   background: rgba(255, 158, 59, 0.06);
   border-radius: 0.5rem;
   overflow: hidden;
 }
-.lydia-kanban-attention-bar {
+.alice-kanban-attention-bar {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0.75rem;
   font-size: 0.8125rem;
 }
-.lydia-kanban-attention-icon { color: #ff9e3b; font-size: 1rem; }
-.lydia-kanban-attention-text { flex: 1; }
-.lydia-kanban-attention-toggle,
-.lydia-kanban-attention-dismiss,
-.lydia-kanban-attention-row-btn {
+.alice-kanban-attention-icon { color: #ff9e3b; font-size: 1rem; }
+.alice-kanban-attention-text { flex: 1; }
+.alice-kanban-attention-toggle,
+.alice-kanban-attention-dismiss,
+.alice-kanban-attention-row-btn {
   background: transparent;
   border: 1px solid rgba(120, 120, 140, 0.3);
   border-radius: 0.3rem;
@@ -1112,63 +1112,63 @@
   color: inherit;
   cursor: pointer;
 }
-.lydia-kanban-attention-toggle:hover,
-.lydia-kanban-attention-dismiss:hover,
-.lydia-kanban-attention-row-btn:hover {
+.alice-kanban-attention-toggle:hover,
+.alice-kanban-attention-dismiss:hover,
+.alice-kanban-attention-row-btn:hover {
   background: rgba(255, 158, 59, 0.12);
 }
-.lydia-kanban-attention-list {
+.alice-kanban-attention-list {
   border-top: 1px solid rgba(255, 158, 59, 0.2);
   padding: 0.25rem 0;
 }
-.lydia-kanban-attention-row {
+.alice-kanban-attention-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.3rem 0.75rem;
   font-size: 0.8125rem;
 }
-.lydia-kanban-attention-row:hover {
+.alice-kanban-attention-row:hover {
   background: rgba(255, 158, 59, 0.08);
 }
-.lydia-kanban-attention-row-id {
+.alice-kanban-attention-row-id {
   font-family: ui-monospace, SFMono-Regular, monospace;
   font-size: 0.75rem;
   color: var(--color-muted-foreground, #888);
   min-width: 7rem;
 }
-.lydia-kanban-attention-row-title {
+.alice-kanban-attention-row-title {
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.lydia-kanban-attention-row-meta {
+.alice-kanban-attention-row-meta {
   font-size: 0.75rem;
   color: var(--color-muted-foreground, #888);
 }
 
 /* Events tab — callout style for hallucination events. */
-.lydia-kanban-event--hallucination {
+.alice-kanban-event--hallucination {
   border-left: 3px solid #ff6b6b;
   background: rgba(255, 107, 107, 0.08);
   padding: 0.5rem 0.65rem;
   border-radius: 0.35rem;
   margin: 0.25rem 0;
 }
-.lydia-kanban-event-header,
-.lydia-kanban-event-header-plain {
+.alice-kanban-event-header,
+.alice-kanban-event-header-plain {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
-.lydia-kanban-event-warning-icon { color: #ff6b6b; font-size: 1rem; }
-.lydia-kanban-event-warning-label {
+.alice-kanban-event-warning-icon { color: #ff6b6b; font-size: 1rem; }
+.alice-kanban-event-warning-label {
   color: #ff6b6b;
   font-weight: 600;
   font-size: 0.8125rem;
 }
-.lydia-kanban-event-phantom-row {
+.alice-kanban-event-phantom-row {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -1176,11 +1176,11 @@
   margin-top: 0.3rem;
   padding-left: 1.35rem;
 }
-.lydia-kanban-event-phantom-label {
+.alice-kanban-event-phantom-label {
   font-size: 0.75rem;
   color: var(--color-muted-foreground, #999);
 }
-.lydia-kanban-event-phantom-chip {
+.alice-kanban-event-phantom-chip {
   font-family: ui-monospace, SFMono-Regular, monospace;
   font-size: 0.75rem;
   padding: 0.1rem 0.4rem;
@@ -1190,14 +1190,14 @@
 }
 
 /* Recovery section header — amber accent when the task has warnings. */
-.lydia-kanban-section-head-warning { color: #ff9e3b; }
-.lydia-kanban-section-head-row {
+.alice-kanban-section-head-warning { color: #ff9e3b; }
+.alice-kanban-section-head-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
 }
-.lydia-kanban-section-toggle {
+.alice-kanban-section-toggle {
   background: transparent;
   border: 1px solid rgba(120, 120, 140, 0.3);
   border-radius: 0.3rem;
@@ -1208,7 +1208,7 @@
 }
 
 /* Recovery popover body. */
-.lydia-kanban-recovery {
+.alice-kanban-recovery {
   border: 1px solid rgba(120, 120, 140, 0.25);
   background: rgba(255, 158, 59, 0.04);
   border-radius: 0.5rem;
@@ -1217,26 +1217,26 @@
   flex-direction: column;
   gap: 0.75rem;
 }
-.lydia-kanban-recovery-title {
+.alice-kanban-recovery-title {
   font-weight: 600;
   font-size: 0.8125rem;
 }
-.lydia-kanban-recovery-hint {
+.alice-kanban-recovery-hint {
   font-size: 0.75rem;
   color: var(--color-muted-foreground, #888);
   line-height: 1.35;
 }
-.lydia-kanban-recovery-section {
+.alice-kanban-recovery-section {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
 }
-.lydia-kanban-recovery-label {
+.alice-kanban-recovery-label {
   font-size: 0.75rem;
   color: var(--color-muted-foreground, #888);
 }
-.lydia-kanban-recovery-input,
-.lydia-kanban-recovery-select {
+.alice-kanban-recovery-input,
+.alice-kanban-recovery-select {
   padding: 0.25rem 0.4rem;
   font-size: 0.8125rem;
   background: rgba(0, 0, 0, 0.15);
@@ -1245,23 +1245,23 @@
   color: inherit;
   outline: none;
 }
-.lydia-kanban-recovery-action-row {
+.alice-kanban-recovery-action-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
-.lydia-kanban-recovery-action-label {
+.alice-kanban-recovery-action-label {
   font-size: 0.8125rem;
   font-weight: 600;
   min-width: 8rem;
 }
-.lydia-kanban-recovery-action-desc {
+.alice-kanban-recovery-action-desc {
   flex: 1;
   font-size: 0.75rem;
   color: var(--color-muted-foreground, #888);
 }
-.lydia-kanban-recovery-btn {
+.alice-kanban-recovery-btn {
   padding: 0.25rem 0.7rem;
   font-size: 0.75rem;
   background: rgba(255, 158, 59, 0.15);
@@ -1270,32 +1270,32 @@
   color: inherit;
   cursor: pointer;
 }
-.lydia-kanban-recovery-btn:hover:not(:disabled) {
+.alice-kanban-recovery-btn:hover:not(:disabled) {
   background: rgba(255, 158, 59, 0.25);
 }
-.lydia-kanban-recovery-btn:disabled {
+.alice-kanban-recovery-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
-.lydia-kanban-recovery-reassign-row {
+.alice-kanban-recovery-reassign-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
-.lydia-kanban-recovery-checkbox {
+.alice-kanban-recovery-checkbox {
   font-size: 0.75rem;
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
 }
-.lydia-kanban-recovery-cmd-row {
+.alice-kanban-recovery-cmd-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
-.lydia-kanban-recovery-cmd {
+.alice-kanban-recovery-cmd {
   font-family: ui-monospace, SFMono-Regular, monospace;
   font-size: 0.75rem;
   padding: 0.2rem 0.5rem;
@@ -1307,17 +1307,17 @@
   overflow-x: auto;
   white-space: nowrap;
 }
-.lydia-kanban-recovery-msg {
+.alice-kanban-recovery-msg {
   font-size: 0.75rem;
   padding: 0.35rem 0.5rem;
   border-radius: 0.3rem;
 }
-.lydia-kanban-recovery-msg--ok {
+.alice-kanban-recovery-msg--ok {
   background: rgba(120, 200, 120, 0.12);
   color: #6bc46b;
   border: 1px solid rgba(120, 200, 120, 0.3);
 }
-.lydia-kanban-recovery-msg--err {
+.alice-kanban-recovery-msg--err {
   background: rgba(255, 107, 107, 0.12);
   color: #ff8b8b;
   border: 1px solid rgba(255, 107, 107, 0.3);
@@ -1330,54 +1330,54 @@
 
 /* Severity token variables so every diagnostic-coloured surface uses the */
 /* same palette. */
-.lydia-kanban-diag,
-.lydia-kanban-attention,
-.lydia-kanban-warning-badge,
-.lydia-kanban-attention-row {
-  --lydia-diag-warning: #ff9e3b;
-  --lydia-diag-error:   #ff6b3d;
-  --lydia-diag-critical: #ff4d4d;
+.alice-kanban-diag,
+.alice-kanban-attention,
+.alice-kanban-warning-badge,
+.alice-kanban-attention-row {
+  --alice-diag-warning: #ff9e3b;
+  --alice-diag-error:   #ff6b3d;
+  --alice-diag-critical: #ff4d4d;
 }
 
 /* Warning-badge severity variants (overrides the base colour). */
-.lydia-kanban-warning-badge--warning { color: var(--lydia-diag-warning); }
-.lydia-kanban-warning-badge--error   { color: var(--lydia-diag-error); font-weight: 700; }
-.lydia-kanban-warning-badge--critical { color: var(--lydia-diag-critical); font-weight: 700; }
+.alice-kanban-warning-badge--warning { color: var(--alice-diag-warning); }
+.alice-kanban-warning-badge--error   { color: var(--alice-diag-error); font-weight: 700; }
+.alice-kanban-warning-badge--critical { color: var(--alice-diag-critical); font-weight: 700; }
 
 /* Attention-strip severity variants. */
-.lydia-kanban-attention--warning {
+.alice-kanban-attention--warning {
   border-color: rgba(255, 158, 59, 0.35);
   background: rgba(255, 158, 59, 0.06);
 }
-.lydia-kanban-attention--error {
+.alice-kanban-attention--error {
   border-color: rgba(255, 107, 61, 0.45);
   background: rgba(255, 107, 61, 0.08);
 }
-.lydia-kanban-attention--critical {
+.alice-kanban-attention--critical {
   border-color: rgba(255, 77, 77, 0.55);
   background: rgba(255, 77, 77, 0.10);
 }
-.lydia-kanban-attention--error .lydia-kanban-attention-icon { color: var(--lydia-diag-error); }
-.lydia-kanban-attention--critical .lydia-kanban-attention-icon { color: var(--lydia-diag-critical); }
+.alice-kanban-attention--error .alice-kanban-attention-icon { color: var(--alice-diag-error); }
+.alice-kanban-attention--critical .alice-kanban-attention-icon { color: var(--alice-diag-critical); }
 
 /* Per-row severity marker in the expanded attention list. */
-.lydia-kanban-attention-row-sev {
+.alice-kanban-attention-row-sev {
   display: inline-block;
   min-width: 1.5rem;
   font-weight: 600;
 }
-.lydia-kanban-attention-row--warning .lydia-kanban-attention-row-sev { color: var(--lydia-diag-warning); }
-.lydia-kanban-attention-row--error    .lydia-kanban-attention-row-sev { color: var(--lydia-diag-error); font-weight: 700; }
-.lydia-kanban-attention-row--critical .lydia-kanban-attention-row-sev { color: var(--lydia-diag-critical); font-weight: 700; }
+.alice-kanban-attention-row--warning .alice-kanban-attention-row-sev { color: var(--alice-diag-warning); }
+.alice-kanban-attention-row--error    .alice-kanban-attention-row-sev { color: var(--alice-diag-error); font-weight: 700; }
+.alice-kanban-attention-row--critical .alice-kanban-attention-row-sev { color: var(--alice-diag-critical); font-weight: 700; }
 
 /* Individual diagnostic card inside the drawer's Diagnostics section. */
-.lydia-kanban-diag-list {
+.alice-kanban-diag-list {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
 }
-.lydia-kanban-diag {
-  border-left: 3px solid var(--lydia-diag-warning);
+.alice-kanban-diag {
+  border-left: 3px solid var(--alice-diag-warning);
   background: rgba(255, 158, 59, 0.05);
   border-radius: 0.35rem;
   padding: 0.6rem 0.75rem;
@@ -1385,70 +1385,70 @@
   flex-direction: column;
   gap: 0.4rem;
 }
-.lydia-kanban-diag--error {
-  border-left-color: var(--lydia-diag-error);
+.alice-kanban-diag--error {
+  border-left-color: var(--alice-diag-error);
   background: rgba(255, 107, 61, 0.06);
 }
-.lydia-kanban-diag--critical {
-  border-left-color: var(--lydia-diag-critical);
+.alice-kanban-diag--critical {
+  border-left-color: var(--alice-diag-critical);
   background: rgba(255, 77, 77, 0.07);
 }
-.lydia-kanban-diag-header {
+.alice-kanban-diag-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
-.lydia-kanban-diag-sev {
+.alice-kanban-diag-sev {
   font-weight: 700;
   min-width: 1.5rem;
 }
-.lydia-kanban-diag--warning .lydia-kanban-diag-sev { color: var(--lydia-diag-warning); }
-.lydia-kanban-diag--error    .lydia-kanban-diag-sev { color: var(--lydia-diag-error); }
-.lydia-kanban-diag--critical .lydia-kanban-diag-sev { color: var(--lydia-diag-critical); }
-.lydia-kanban-diag-title {
+.alice-kanban-diag--warning .alice-kanban-diag-sev { color: var(--alice-diag-warning); }
+.alice-kanban-diag--error    .alice-kanban-diag-sev { color: var(--alice-diag-error); }
+.alice-kanban-diag--critical .alice-kanban-diag-sev { color: var(--alice-diag-critical); }
+.alice-kanban-diag-title {
   font-weight: 600;
   font-size: 0.875rem;
 }
-.lydia-kanban-diag-detail {
+.alice-kanban-diag-detail {
   font-size: 0.8125rem;
   color: var(--color-foreground, #ccc);
   line-height: 1.4;
 }
-.lydia-kanban-diag-data {
+.alice-kanban-diag-data {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
   font-size: 0.75rem;
 }
-.lydia-kanban-diag-data-row {
+.alice-kanban-diag-data-row {
   display: flex;
   align-items: center;
   gap: 0.35rem;
   flex-wrap: wrap;
 }
-.lydia-kanban-diag-data-key {
+.alice-kanban-diag-data-key {
   color: var(--color-muted-foreground, #888);
   font-weight: 500;
 }
-.lydia-kanban-diag-data-val {
+.alice-kanban-diag-data-val {
   font-family: ui-monospace, SFMono-Regular, monospace;
 }
-.lydia-kanban-diag-reassign-row {
+.alice-kanban-diag-reassign-row {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   font-size: 0.75rem;
 }
-.lydia-kanban-diag-reassign-label {
+.alice-kanban-diag-reassign-label {
   color: var(--color-muted-foreground, #888);
 }
-.lydia-kanban-diag-actions {
+.alice-kanban-diag-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
   margin-top: 0.1rem;
 }
-.lydia-kanban-diag-action-btn {
+.alice-kanban-diag-action-btn {
   padding: 0.25rem 0.6rem;
   font-size: 0.75rem;
   background: rgba(0, 0, 0, 0.2);
@@ -1458,48 +1458,48 @@
   cursor: pointer;
   text-decoration: none;
 }
-.lydia-kanban-diag-action-btn:hover:not(:disabled) {
+.alice-kanban-diag-action-btn:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.3);
 }
-.lydia-kanban-diag-action-btn:disabled {
+.alice-kanban-diag-action-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
-.lydia-kanban-diag-action-btn--suggested {
+.alice-kanban-diag-action-btn--suggested {
   background: rgba(255, 158, 59, 0.15);
   border-color: rgba(255, 158, 59, 0.4);
   font-weight: 600;
 }
-.lydia-kanban-diag-action-btn--suggested:hover:not(:disabled) {
+.alice-kanban-diag-action-btn--suggested:hover:not(:disabled) {
   background: rgba(255, 158, 59, 0.25);
 }
-.lydia-kanban-diag-action-btn--unknown {
+.alice-kanban-diag-action-btn--unknown {
   opacity: 0.6;
   cursor: default;
 }
-.lydia-kanban-diag-msg {
+.alice-kanban-diag-msg {
   font-size: 0.75rem;
   padding: 0.35rem 0.5rem;
   border-radius: 0.3rem;
 }
-.lydia-kanban-diag-msg--ok {
+.alice-kanban-diag-msg--ok {
   background: rgba(120, 200, 120, 0.12);
   color: #6bc46b;
   border: 1px solid rgba(120, 200, 120, 0.3);
 }
-.lydia-kanban-diag-msg--err {
+.alice-kanban-diag-msg--err {
   background: rgba(255, 107, 61, 0.12);
   color: #ff8b6b;
   border: 1px solid rgba(255, 107, 61, 0.3);
 }
 /* ---- Partial failure highlight --------------------------------------- */
-.lydia-kanban-card--failed :where(.lydia-kanban-card-content) {
+.alice-kanban-card--failed :where(.alice-kanban-card-content) {
   box-shadow: 0 0 0 2px var(--color-destructive, #d14a4a) inset,
               0 0 8px color-mix(in srgb, var(--color-destructive, #d14a4a) 30%, transparent);
 }
 
 /* ---- Larger checkbox hit target -------------------------------------- */
-.lydia-kanban-card-check-wrap {
+.alice-kanban-card-check-wrap {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1508,7 +1508,7 @@
   margin: -0.3rem;
   cursor: pointer;
 }
-.lydia-kanban-card-check {
+.alice-kanban-card-check {
   width: 0.95rem;
   height: 0.95rem;
   margin: 0;
@@ -1517,7 +1517,7 @@
 }
 
 /* ---- Column select-all checkbox -------------------------------------- */
-.lydia-kanban-col-check {
+.alice-kanban-col-check {
   width: 0.9rem;
   height: 0.9rem;
   margin: 0 0.15rem 0 0;
@@ -1526,14 +1526,14 @@
 }
 
 /* ---- Bulk action bar extras ------------------------------------------ */
-.lydia-kanban-bulk-priority {
+.alice-kanban-bulk-priority {
   display: flex;
   align-items: center;
   gap: 0.25rem;
   padding-left: 0.5rem;
   border-left: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
 }
-.lydia-kanban-bulk-reclaim-first {
+.alice-kanban-bulk-reclaim-first {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -1543,7 +1543,7 @@
 
 /* ---- Trash drop zone ------------------------------------------------- */
 
-.lydia-kanban-trash {
+.alice-kanban-trash {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1562,22 +1562,22 @@
   pointer-events: none;
 }
 
-.lydia-kanban-trash--active {
+.alice-kanban-trash--active {
   opacity: 1;
   pointer-events: auto;
 }
 
-.lydia-kanban-trash--drop {
+.alice-kanban-trash--drop {
   border-color: var(--color-destructive, #d14a4a);
   background: color-mix(in srgb, var(--color-destructive, #d14a4a) 8%, var(--color-card));
   color: var(--color-destructive, #d14a4a);
 }
 
-.lydia-kanban-trash-icon {
+.alice-kanban-trash-icon {
   font-size: 1.25rem;
   line-height: 1;
 }
 
-.lydia-kanban-trash-label {
+.alice-kanban-trash-label {
   font-weight: 500;
 }

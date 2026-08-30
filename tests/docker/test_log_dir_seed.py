@@ -13,7 +13,7 @@ from __future__ import annotations
 from tests.docker.conftest import docker_exec_sh, start_container
 
 
-def test_logs_gateways_seeded_and_lydia_owned(
+def test_logs_gateways_seeded_and_alice_owned(
     built_image: str, container_name: str,
 ) -> None:
     """logs/ and logs/gateways/ must exist and be owned by alice after boot."""

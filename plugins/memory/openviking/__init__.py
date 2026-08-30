@@ -71,7 +71,7 @@ _TIMEOUT = 30.0
 _SESSION_DRAIN_TIMEOUT = 10.0
 _DEFERRED_COMMIT_TIMEOUT = (_TIMEOUT * 2) + 5.0
 _REMOTE_RESOURCE_PREFIXES = ("http://", "https://", "git@", "ssh://", "git://")
-_SYNC_TRACE_ENV = "LYDIA_OPENVIKING_SYNC_TRACE"
+_SYNC_TRACE_ENV = "ALICE_OPENVIKING_SYNC_TRACE"
 _DEFAULT_RECALL_LIMIT = 6
 _DEFAULT_RECALL_SCORE_THRESHOLD = 0.15
 _DEFAULT_RECALL_MAX_INJECTED_CHARS = 4000
@@ -845,7 +845,7 @@ def _is_local_openviking_url(value: str) -> bool:
     return scheme == "http" and (parsed.hostname or "").lower() in _LOCAL_OPENVIKING_HOSTS
 
 
-def _load_lydia_openviking_config() -> dict:
+def _load_alice_openviking_config() -> dict:
     try:
         from alice_cli.config import load_config
 
@@ -1569,7 +1569,7 @@ def _link_ovcli_profile(
         os.environ.pop(key, None)
 
 
-def _save_lydia_only_config(
+def _save_alice_only_config(
     *,
     config: dict,
     provider_config: dict,
@@ -1754,7 +1754,7 @@ def _run_create_profile_setup(
         _print_openviking_ready("Created and linked OpenViking profile.", ovcli_path)
         return True
 
-    _save_lydia_only_config(
+    _save_alice_only_config(
         config=config,
         provider_config=provider_config,
         env_path=env_path,
@@ -1826,7 +1826,7 @@ class OpenVikingMemoryProvider(MemoryProvider):
         """Check if OpenViking endpoint is configured. No network calls."""
         if os.environ.get("OPENVIKING_ENDPOINT"):
             return True
-        provider_config = _load_lydia_openviking_config()
+        provider_config = _load_alice_openviking_config()
         if not provider_config.get("use_ovcli_config"):
             return False
         try:
@@ -1953,13 +1953,13 @@ class OpenVikingMemoryProvider(MemoryProvider):
                 display[key] = "(set)"
         return display
 
-    def post_setup(self, lydia_home: str, config: dict) -> None:
+    def post_setup(self, alice_home: str, config: dict) -> None:
         """Custom setup that can reuse OpenViking's shared CLI config."""
         from alice_cli.config import save_config
         from alice_cli.memory_setup import _CANCELLED, _curses_select, _print_cancelled_setup, _prompt
 
-        lydia_home_path = Path(lydia_home)
-        env_path = lydia_home_path / ".env"
+        alice_home_path = Path(alice_home)
+        env_path = alice_home_path / ".env"
         if not isinstance(config.get("memory"), dict):
             config["memory"] = {}
         provider_config = config["memory"].get("openviking", {})
@@ -2124,7 +2124,7 @@ class OpenVikingMemoryProvider(MemoryProvider):
         )
 
     def initialize(self, session_id: str, **kwargs) -> None:
-        settings = _resolve_connection_settings(_load_lydia_openviking_config())
+        settings = _resolve_connection_settings(_load_alice_openviking_config())
         self._endpoint = settings["endpoint"]
         self._api_key = settings["api_key"]
         self._account = settings["account"]

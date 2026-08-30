@@ -997,10 +997,10 @@ class TeamsAdapter(BasePlatformAdapter):
 
         action = ctx.activity.value.action
         data = action.data or {}
-        lydia_action = data.get("lydia_action", "")
+        alice_action = data.get("alice_action", "")
         session_key = data.get("session_key", "")
 
-        if not lydia_action or not session_key:
+        if not alice_action or not session_key:
             return InvokeResponse(
                 status=200,
                 body=AdaptiveCardActionMessageResponse(value="Unknown action."),
@@ -1042,7 +1042,7 @@ class TeamsAdapter(BasePlatformAdapter):
             "approve_always": "always",
             "deny": "deny",
         }
-        choice = choice_map.get(lydia_action)
+        choice = choice_map.get(alice_action)
         if not choice:
             return InvokeResponse(
                 status=200,
@@ -1115,24 +1115,24 @@ class TeamsAdapter(BasePlatformAdapter):
             .with_actions([
                 ExecuteAction(
                     title="Allow Once",
-                    verb="lydia_approve",
-                    data={**btn_data_base, "lydia_action": "approve_once"},
+                    verb="alice_approve",
+                    data={**btn_data_base, "alice_action": "approve_once"},
                     style="positive",
                 ),
                 ExecuteAction(
                     title="Allow Session",
-                    verb="lydia_approve",
-                    data={**btn_data_base, "lydia_action": "approve_session"},
+                    verb="alice_approve",
+                    data={**btn_data_base, "alice_action": "approve_session"},
                 ),
                 ExecuteAction(
                     title="Always Allow",
-                    verb="lydia_approve",
-                    data={**btn_data_base, "lydia_action": "approve_always"},
+                    verb="alice_approve",
+                    data={**btn_data_base, "alice_action": "approve_always"},
                 ),
                 ExecuteAction(
                     title="Deny",
-                    verb="lydia_approve",
-                    data={**btn_data_base, "lydia_action": "deny"},
+                    verb="alice_approve",
+                    data={**btn_data_base, "alice_action": "deny"},
                     style="destructive",
                 ),
             ])

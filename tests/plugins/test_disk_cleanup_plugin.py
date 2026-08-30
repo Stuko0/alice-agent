@@ -28,10 +28,10 @@ def _isolate_env(tmp_path, monkeypatch):
     but we want the plugin to work with a predictable subpath. We reset
     ALICE_HOME here for clarity.
     """
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
-    yield lydia_home
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
+    yield alice_home
 
 
 def _load_lib():
@@ -52,20 +52,20 @@ def _load_plugin_init():
     plugin_dir = repo_root / "plugins" / "disk-cleanup"
     # Use the PluginManager's module naming convention so relative imports work.
     spec = importlib.util.spec_from_file_location(
-        "lydia_plugins.disk_cleanup",
+        "alice_plugins.disk_cleanup",
         plugin_dir / "__init__.py",
         submodule_search_locations=[str(plugin_dir)],
     )
     # Ensure parent namespace package exists for the relative `. import disk_cleanup`
     import types
-    if "lydia_plugins" not in sys.modules:
-        ns = types.ModuleType("lydia_plugins")
+    if "alice_plugins" not in sys.modules:
+        ns = types.ModuleType("alice_plugins")
         ns.__path__ = []
-        sys.modules["lydia_plugins"] = ns
+        sys.modules["alice_plugins"] = ns
     mod = importlib.util.module_from_spec(spec)
-    mod.__package__ = "lydia_plugins.disk_cleanup"
+    mod.__package__ = "alice_plugins.disk_cleanup"
     mod.__path__ = [str(plugin_dir)]
-    sys.modules["lydia_plugins.disk_cleanup"] = mod
+    sys.modules["alice_plugins.disk_cleanup"] = mod
     spec.loader.exec_module(mod)
     return mod
 
@@ -75,18 +75,18 @@ def _load_plugin_init():
 # ---------------------------------------------------------------------------
 
 class TestIsSafePath:
-    def test_accepts_path_under_lydia_home(self, _isolate_env):
+    def test_accepts_path_under_alice_home(self, _isolate_env):
         dg = _load_lib()
         p = _isolate_env / "subdir" / "file.txt"
         p.parent.mkdir()
         p.write_text("x")
         assert dg.is_safe_path(p) is True
 
-    def test_rejects_outside_lydia_home(self, _isolate_env):
+    def test_rejects_outside_alice_home(self, _isolate_env):
         dg = _load_lib()
         assert dg.is_safe_path(Path("/etc/passwd")) is False
 
-    def test_accepts_tmp_lydia_prefix(self, _isolate_env, tmp_path):
+    def test_accepts_tmp_alice_prefix(self, _isolate_env, tmp_path):
         dg = _load_lib()
         assert dg.is_safe_path(Path("/tmp/alice-abc/x.log")) is True
 
@@ -554,10 +554,10 @@ class TestSlashCommand:
 # ---------------------------------------------------------------------------
 
 class TestBundledDiscovery:
-    def _write_enabled_config(self, lydia_home, names):
+    def _write_enabled_config(self, alice_home, names):
         """Write plugins.enabled allow-list to config.yaml."""
         import yaml
-        cfg_path = lydia_home / "config.yaml"
+        cfg_path = alice_home / "config.yaml"
         cfg_path.write_text(yaml.safe_dump({"plugins": {"enabled": list(names)}}))
 
     def test_disk_cleanup_discovered_but_not_loaded_by_default(self, _isolate_env):

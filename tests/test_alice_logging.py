@@ -58,10 +58,10 @@ def _reset_logging_state():
 
 
 @pytest.fixture
-def lydia_home(tmp_path, monkeypatch):
+def alice_home(tmp_path, monkeypatch):
     """Provide an isolated ALICE_HOME for logging tests.
 
-    Uses the same tmp_path as the autouse _isolate_lydia_home from conftest,
+    Uses the same tmp_path as the autouse _isolate_alice_home from conftest,
     reading it back from the env var to avoid double-mkdir conflicts.
     """
     home = Path(os.environ["ALICE_HOME"])
@@ -71,13 +71,13 @@ def lydia_home(tmp_path, monkeypatch):
 class TestSetupLogging:
     """setup_logging() creates agent.log + errors.log with RotatingFileHandler."""
 
-    def test_creates_log_directory(self, lydia_home):
-        log_dir = alice_logging.setup_logging(lydia_home=lydia_home)
-        assert log_dir == lydia_home / "logs"
+    def test_creates_log_directory(self, alice_home):
+        log_dir = alice_logging.setup_logging(alice_home=alice_home)
+        assert log_dir == alice_home / "logs"
         assert log_dir.is_dir()
 
-    def test_creates_agent_log_handler(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home)
+    def test_creates_agent_log_handler(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home)
         root = logging.getLogger()
 
         agent_handlers = [
@@ -88,8 +88,8 @@ class TestSetupLogging:
         assert len(agent_handlers) == 1
         assert agent_handlers[0].level == logging.INFO
 
-    def test_creates_errors_log_handler(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home)
+    def test_creates_errors_log_handler(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home)
         root = logging.getLogger()
 
         error_handlers = [
@@ -100,9 +100,9 @@ class TestSetupLogging:
         assert len(error_handlers) == 1
         assert error_handlers[0].level == logging.WARNING
 
-    def test_idempotent_no_duplicate_handlers(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home)
-        alice_logging.setup_logging(lydia_home=lydia_home)  # second call — should be no-op
+    def test_idempotent_no_duplicate_handlers(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home)
+        alice_logging.setup_logging(alice_home=alice_home)  # second call — should be no-op
 
         root = logging.getLogger()
         agent_handlers = [
@@ -112,11 +112,11 @@ class TestSetupLogging:
         ]
         assert len(agent_handlers) == 1
 
-    def test_force_reinitializes(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home)
+    def test_force_reinitializes(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home)
         # Force still won't add duplicate handlers because _add_rotating_handler
         # checks by resolved path.
-        alice_logging.setup_logging(lydia_home=lydia_home, force=True)
+        alice_logging.setup_logging(alice_home=alice_home, force=True)
 
         root = logging.getLogger()
         agent_handlers = [
@@ -126,8 +126,8 @@ class TestSetupLogging:
         ]
         assert len(agent_handlers) == 1
 
-    def test_custom_log_level(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home, log_level="DEBUG")
+    def test_custom_log_level(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home, log_level="DEBUG")
 
         root = logging.getLogger()
         agent_handlers = [
@@ -137,9 +137,9 @@ class TestSetupLogging:
         ]
         assert agent_handlers[0].level == logging.DEBUG
 
-    def test_custom_max_size_and_backup(self, lydia_home):
+    def test_custom_max_size_and_backup(self, alice_home):
         alice_logging.setup_logging(
-            lydia_home=lydia_home, max_size_mb=10, backup_count=5
+            alice_home=alice_home, max_size_mb=10, backup_count=5
         )
 
         root = logging.getLogger()
@@ -151,15 +151,15 @@ class TestSetupLogging:
         assert agent_handlers[0].maxBytes == 10 * 1024 * 1024
         assert agent_handlers[0].backupCount == 5
 
-    def test_suppresses_noisy_loggers(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home)
+    def test_suppresses_noisy_loggers(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home)
 
         assert logging.getLogger("openai").level >= logging.WARNING
         assert logging.getLogger("httpx").level >= logging.WARNING
         assert logging.getLogger("httpcore").level >= logging.WARNING
 
-    def test_writes_to_agent_log(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home)
+    def test_writes_to_agent_log(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home)
 
         test_logger = logging.getLogger("test_alice_logging.write_test")
         test_logger.info("test message for agent.log")
@@ -168,13 +168,13 @@ class TestSetupLogging:
         for h in logging.getLogger().handlers:
             h.flush()
 
-        agent_log = lydia_home / "logs" / "agent.log"
+        agent_log = alice_home / "logs" / "agent.log"
         assert agent_log.exists()
         content = agent_log.read_text()
         assert "test message for agent.log" in content
 
-    def test_warnings_appear_in_both_logs(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home)
+    def test_warnings_appear_in_both_logs(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home)
 
         test_logger = logging.getLogger("test_alice_logging.warning_test")
         test_logger.warning("this is a warning")
@@ -182,13 +182,13 @@ class TestSetupLogging:
         for h in logging.getLogger().handlers:
             h.flush()
 
-        agent_log = lydia_home / "logs" / "agent.log"
-        errors_log = lydia_home / "logs" / "errors.log"
+        agent_log = alice_home / "logs" / "agent.log"
+        errors_log = alice_home / "logs" / "errors.log"
         assert "this is a warning" in agent_log.read_text()
         assert "this is a warning" in errors_log.read_text()
 
-    def test_info_not_in_errors_log(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home)
+    def test_info_not_in_errors_log(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home)
 
         test_logger = logging.getLogger("test_alice_logging.info_test")
         test_logger.info("info only message")
@@ -196,17 +196,17 @@ class TestSetupLogging:
         for h in logging.getLogger().handlers:
             h.flush()
 
-        errors_log = lydia_home / "logs" / "errors.log"
+        errors_log = alice_home / "logs" / "errors.log"
         if errors_log.exists():
             assert "info only message" not in errors_log.read_text()
 
-    def test_reads_config_yaml(self, lydia_home):
+    def test_reads_config_yaml(self, alice_home):
         """setup_logging reads logging.level from config.yaml."""
         import yaml
         config = {"logging": {"level": "DEBUG", "max_size_mb": 2, "backup_count": 1}}
-        (lydia_home / "config.yaml").write_text(yaml.dump(config))
+        (alice_home / "config.yaml").write_text(yaml.dump(config))
 
-        alice_logging.setup_logging(lydia_home=lydia_home)
+        alice_logging.setup_logging(alice_home=alice_home)
 
         root = logging.getLogger()
         agent_handlers = [
@@ -218,13 +218,13 @@ class TestSetupLogging:
         assert agent_handlers[0].maxBytes == 2 * 1024 * 1024
         assert agent_handlers[0].backupCount == 1
 
-    def test_explicit_params_override_config(self, lydia_home):
+    def test_explicit_params_override_config(self, alice_home):
         """Explicit function params take precedence over config.yaml."""
         import yaml
         config = {"logging": {"level": "DEBUG"}}
-        (lydia_home / "config.yaml").write_text(yaml.dump(config))
+        (alice_home / "config.yaml").write_text(yaml.dump(config))
 
-        alice_logging.setup_logging(lydia_home=lydia_home, log_level="WARNING")
+        alice_logging.setup_logging(alice_home=alice_home, log_level="WARNING")
 
         root = logging.getLogger()
         agent_handlers = [
@@ -234,12 +234,12 @@ class TestSetupLogging:
         ]
         assert agent_handlers[0].level == logging.WARNING
 
-    def test_record_factory_installed(self, lydia_home):
+    def test_record_factory_installed(self, alice_home):
         """The custom record factory injects session_tag on all records."""
-        alice_logging.setup_logging(lydia_home=lydia_home)
+        alice_logging.setup_logging(alice_home=alice_home)
         factory = logging.getLogRecordFactory()
-        assert getattr(factory, "_lydia_session_injector", False), (
-            "Record factory should have _lydia_session_injector marker"
+        assert getattr(factory, "_alice_session_injector", False), (
+            "Record factory should have _alice_session_injector marker"
         )
         # Verify session_tag exists on a fresh record
         record = factory("test", logging.INFO, "", 0, "msg", (), None)
@@ -249,8 +249,8 @@ class TestSetupLogging:
 class TestGatewayMode:
     """setup_logging(mode='gateway') creates a filtered gateway.log."""
 
-    def test_gateway_log_created(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="gateway")
+    def test_gateway_log_created(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home, mode="gateway")
         root = logging.getLogger()
 
         gw_handlers = [
@@ -260,8 +260,8 @@ class TestGatewayMode:
         ]
         assert len(gw_handlers) == 1
 
-    def test_gateway_log_not_created_in_cli_mode(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="cli")
+    def test_gateway_log_not_created_in_cli_mode(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home, mode="cli")
         root = logging.getLogger()
 
         gw_handlers = [
@@ -271,10 +271,10 @@ class TestGatewayMode:
         ]
         assert len(gw_handlers) == 0
 
-    def test_gateway_log_created_after_cli_init(self, lydia_home):
+    def test_gateway_log_created_after_cli_init(self, alice_home):
         """Gateway mode attaches gateway.log even after earlier CLI init."""
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="cli")
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="gateway")
+        alice_logging.setup_logging(alice_home=alice_home, mode="cli")
+        alice_logging.setup_logging(alice_home=alice_home, mode="gateway")
 
         root = logging.getLogger()
         gw_handlers = [
@@ -289,15 +289,15 @@ class TestGatewayMode:
         for h in root.handlers:
             h.flush()
 
-        gw_log = lydia_home / "logs" / "gateway.log"
+        gw_log = alice_home / "logs" / "gateway.log"
         assert gw_log.exists()
         assert "gateway connected after cli init" in gw_log.read_text()
 
-    def test_gateway_log_created_after_cli_init_without_duplicate_handlers(self, lydia_home):
+    def test_gateway_log_created_after_cli_init_without_duplicate_handlers(self, alice_home):
         """Repeated gateway setup calls do not attach duplicate gateway handlers."""
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="cli")
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="gateway")
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="gateway")
+        alice_logging.setup_logging(alice_home=alice_home, mode="cli")
+        alice_logging.setup_logging(alice_home=alice_home, mode="gateway")
+        alice_logging.setup_logging(alice_home=alice_home, mode="gateway")
 
         root = logging.getLogger()
         gw_handlers = [
@@ -307,9 +307,9 @@ class TestGatewayMode:
         ]
         assert len(gw_handlers) == 1
 
-    def test_gateway_log_receives_gateway_records(self, lydia_home):
+    def test_gateway_log_receives_gateway_records(self, alice_home):
         """gateway.log captures records from gateway.* loggers."""
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="gateway")
+        alice_logging.setup_logging(alice_home=alice_home, mode="gateway")
 
         gw_logger = logging.getLogger("plugins.platforms.telegram.adapter")
         gw_logger.info("telegram connected")
@@ -317,13 +317,13 @@ class TestGatewayMode:
         for h in logging.getLogger().handlers:
             h.flush()
 
-        gw_log = lydia_home / "logs" / "gateway.log"
+        gw_log = alice_home / "logs" / "gateway.log"
         assert gw_log.exists()
         assert "telegram connected" in gw_log.read_text()
 
-    def test_gateway_log_rejects_non_gateway_records(self, lydia_home):
+    def test_gateway_log_rejects_non_gateway_records(self, alice_home):
         """gateway.log does NOT capture records from tools.*, agent.*, etc."""
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="gateway")
+        alice_logging.setup_logging(alice_home=alice_home, mode="gateway")
 
         tool_logger = logging.getLogger("tools.terminal_tool")
         tool_logger.info("running command")
@@ -334,15 +334,15 @@ class TestGatewayMode:
         for h in logging.getLogger().handlers:
             h.flush()
 
-        gw_log = lydia_home / "logs" / "gateway.log"
+        gw_log = alice_home / "logs" / "gateway.log"
         if gw_log.exists():
             content = gw_log.read_text()
             assert "running command" not in content
             assert "compressing context" not in content
 
-    def test_agent_log_still_receives_all(self, lydia_home):
+    def test_agent_log_still_receives_all(self, alice_home):
         """agent.log (catch-all) still receives gateway AND tool records."""
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="gateway")
+        alice_logging.setup_logging(alice_home=alice_home, mode="gateway")
 
         gw_logger = logging.getLogger("gateway.run")
         file_logger = logging.getLogger("tools.file_tools")
@@ -359,7 +359,7 @@ class TestGatewayMode:
         for h in logging.getLogger().handlers:
             h.flush()
 
-        agent_log = lydia_home / "logs" / "agent.log"
+        agent_log = alice_home / "logs" / "agent.log"
         content = agent_log.read_text()
         assert "gateway msg" in content
         assert "file msg" in content
@@ -368,8 +368,8 @@ class TestGatewayMode:
 class TestGuiMode:
     """setup_logging(mode='gui') creates a filtered gui.log."""
 
-    def test_gui_log_created(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="gui")
+    def test_gui_log_created(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home, mode="gui")
         root = logging.getLogger()
 
         gui_handlers = [
@@ -379,9 +379,9 @@ class TestGuiMode:
         ]
         assert len(gui_handlers) == 1
 
-    def test_gui_log_created_after_cli_init(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="cli")
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="gui")
+    def test_gui_log_created_after_cli_init(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home, mode="cli")
+        alice_logging.setup_logging(alice_home=alice_home, mode="gui")
 
         root = logging.getLogger()
         gui_handlers = [
@@ -391,8 +391,8 @@ class TestGuiMode:
         ]
         assert len(gui_handlers) == 1
 
-    def test_gui_log_receives_only_gui_components(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="gui")
+    def test_gui_log_receives_only_gui_components(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home, mode="gui")
 
         logging.getLogger("alice_cli.web_server").info("dashboard online")
         logging.getLogger("tui_gateway.ws").info("ws connected")
@@ -401,7 +401,7 @@ class TestGuiMode:
         for h in logging.getLogger().handlers:
             h.flush()
 
-        gui_log = lydia_home / "logs" / "gui.log"
+        gui_log = alice_home / "logs" / "gui.log"
         assert gui_log.exists()
         content = gui_log.read_text()
         assert "dashboard online" in content
@@ -412,9 +412,9 @@ class TestGuiMode:
 class TestSessionContext:
     """set_session_context / clear_session_context + _SessionFilter."""
 
-    def test_session_tag_in_log_output(self, lydia_home):
+    def test_session_tag_in_log_output(self, alice_home):
         """When session context is set, log lines include [session_id]."""
-        alice_logging.setup_logging(lydia_home=lydia_home)
+        alice_logging.setup_logging(alice_home=alice_home)
         alice_logging.set_session_context("abc123")
 
         test_logger = logging.getLogger("test.session_tag")
@@ -423,14 +423,14 @@ class TestSessionContext:
         for h in logging.getLogger().handlers:
             h.flush()
 
-        agent_log = lydia_home / "logs" / "agent.log"
+        agent_log = alice_home / "logs" / "agent.log"
         content = agent_log.read_text()
         assert "[abc123]" in content
         assert "tagged message" in content
 
-    def test_no_session_tag_without_context(self, lydia_home):
+    def test_no_session_tag_without_context(self, alice_home):
         """Without session context, log lines have no session tag."""
-        alice_logging.setup_logging(lydia_home=lydia_home)
+        alice_logging.setup_logging(alice_home=alice_home)
         alice_logging.clear_session_context()
 
         test_logger = logging.getLogger("test.no_session")
@@ -439,7 +439,7 @@ class TestSessionContext:
         for h in logging.getLogger().handlers:
             h.flush()
 
-        agent_log = lydia_home / "logs" / "agent.log"
+        agent_log = alice_home / "logs" / "agent.log"
         content = agent_log.read_text()
         assert "untagged message" in content
         # Should not have any [xxx] session tag
@@ -448,9 +448,9 @@ class TestSessionContext:
             if "untagged message" in line:
                 assert not re.search(r"\[.+?\]", line.split("INFO")[1].split("test.no_session")[0])
 
-    def test_clear_session_context(self, lydia_home):
+    def test_clear_session_context(self, alice_home):
         """After clearing, session tag disappears."""
-        alice_logging.setup_logging(lydia_home=lydia_home)
+        alice_logging.setup_logging(alice_home=alice_home)
         alice_logging.set_session_context("xyz789")
         alice_logging.clear_session_context()
 
@@ -460,13 +460,13 @@ class TestSessionContext:
         for h in logging.getLogger().handlers:
             h.flush()
 
-        agent_log = lydia_home / "logs" / "agent.log"
+        agent_log = alice_home / "logs" / "agent.log"
         content = agent_log.read_text()
         assert "[xyz789]" not in content
 
-    def test_session_context_thread_isolated(self, lydia_home):
+    def test_session_context_thread_isolated(self, alice_home):
         """Session context is per-thread — one thread's context doesn't leak."""
-        alice_logging.setup_logging(lydia_home=lydia_home)
+        alice_logging.setup_logging(alice_home=alice_home)
 
         results = {}
 
@@ -489,7 +489,7 @@ class TestSessionContext:
         tb.start()
         tb.join()
 
-        agent_log = lydia_home / "logs" / "agent.log"
+        agent_log = alice_home / "logs" / "agent.log"
         content = agent_log.read_text()
 
         # Each thread's message should have its own session tag
@@ -597,7 +597,7 @@ class TestComponentPrefixes:
 
     def test_gateway_prefix(self):
         assert "gateway" in alice_logging.COMPONENT_PREFIXES
-        # The gateway component captures core gateway logs, the lydia_plugins
+        # The gateway component captures core gateway logs, the alice_plugins
         # facility, and plugins.platforms (messaging-platform adapters that
         # migrated out of gateway/platforms/ into bundled plugins, #41112).
         # Assert the required members as an invariant rather than an exact
@@ -605,7 +605,7 @@ class TestComponentPrefixes:
         # break this test.
         gateway_prefixes = alice_logging.COMPONENT_PREFIXES["gateway"]
         assert "gateway" in gateway_prefixes
-        assert "lydia_plugins" in gateway_prefixes
+        assert "alice_plugins" in gateway_prefixes
         assert "plugins.platforms" in gateway_prefixes
 
     def test_agent_prefix(self):
@@ -634,8 +634,8 @@ class TestComponentPrefixes:
 class TestSetupVerboseLogging:
     """setup_verbose_logging() adds a DEBUG-level console handler."""
 
-    def test_adds_stream_handler(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home)
+    def test_adds_stream_handler(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home)
         alice_logging.setup_verbose_logging()
 
         root = logging.getLogger()
@@ -643,13 +643,13 @@ class TestSetupVerboseLogging:
             h for h in root.handlers
             if isinstance(h, logging.StreamHandler)
             and not isinstance(h, RotatingFileHandler)
-            and getattr(h, "_lydia_verbose", False)
+            and getattr(h, "_alice_verbose", False)
         ]
         assert len(verbose_handlers) == 1
         assert verbose_handlers[0].level == logging.DEBUG
 
-    def test_idempotent(self, lydia_home):
-        alice_logging.setup_logging(lydia_home=lydia_home)
+    def test_idempotent(self, alice_home):
+        alice_logging.setup_logging(alice_home=alice_home)
         alice_logging.setup_verbose_logging()
         alice_logging.setup_verbose_logging()  # second call
 
@@ -658,7 +658,7 @@ class TestSetupVerboseLogging:
             h for h in root.handlers
             if isinstance(h, logging.StreamHandler)
             and not isinstance(h, RotatingFileHandler)
-            and getattr(h, "_lydia_verbose", False)
+            and getattr(h, "_alice_verbose", False)
         ]
         assert len(verbose_handlers) == 1
 
@@ -900,26 +900,26 @@ class TestWindowsConcurrentLogLockTimeout:
 class TestReadLoggingConfig:
     """_read_logging_config() reads from config.yaml."""
 
-    def test_returns_none_when_no_config(self, lydia_home):
+    def test_returns_none_when_no_config(self, alice_home):
         level, max_size, backup = alice_logging._read_logging_config()
         assert level is None
         assert max_size is None
         assert backup is None
 
-    def test_reads_logging_section(self, lydia_home):
+    def test_reads_logging_section(self, alice_home):
         import yaml
         config = {"logging": {"level": "DEBUG", "max_size_mb": 10, "backup_count": 5}}
-        (lydia_home / "config.yaml").write_text(yaml.dump(config))
+        (alice_home / "config.yaml").write_text(yaml.dump(config))
 
         level, max_size, backup = alice_logging._read_logging_config()
         assert level == "DEBUG"
         assert max_size == 10
         assert backup == 5
 
-    def test_handles_missing_logging_section(self, lydia_home):
+    def test_handles_missing_logging_section(self, alice_home):
         import yaml
         config = {"model": "test"}
-        (lydia_home / "config.yaml").write_text(yaml.dump(config))
+        (alice_home / "config.yaml").write_text(yaml.dump(config))
 
         level, max_size, backup = alice_logging._read_logging_config()
         assert level is None
@@ -1054,7 +1054,7 @@ class TestExternalRotationRecovery:
             handler.close()
 
     def test_gateway_log_attached_after_external_rotation_then_re_setup(
-        self, lydia_home,
+        self, alice_home,
     ):
         """End-to-end Allen-reproduction: gateway.log gets externally rotated,
         ``setup_logging(mode='gateway')`` is re-called, the handler keeps
@@ -1064,9 +1064,9 @@ class TestExternalRotationRecovery:
         records leaking to agent.log) when something external rotates the
         file between setup_logging() calls.
         """
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="gateway")
-        gw_path = lydia_home / "logs" / "gateway.log"
-        rotated = lydia_home / "logs" / "gateway.log.1"
+        alice_logging.setup_logging(alice_home=alice_home, mode="gateway")
+        gw_path = alice_home / "logs" / "gateway.log"
+        rotated = alice_home / "logs" / "gateway.log.1"
 
         logging.getLogger("gateway.run").info("line BEFORE rotation")
         for h in logging.getLogger().handlers:
@@ -1081,7 +1081,7 @@ class TestExternalRotationRecovery:
         # Caller (or some restart path) re-enters setup_logging.  This used
         # to silently no-op due to the per-path dedup check, leaving the
         # stale fd in place.
-        alice_logging.setup_logging(lydia_home=lydia_home, mode="gateway")
+        alice_logging.setup_logging(alice_home=alice_home, mode="gateway")
 
         logging.getLogger("gateway.run").info("line AFTER rotation")
         for h in logging.getLogger().handlers:

@@ -123,7 +123,7 @@ Config is read from the first file that exists:
 | 2 | `~/.alice/honcho.json` | Default profile (shared host blocks) |
 | 3 | `~/.honcho/config.json` | Global (cross-app interop) |
 
-Host key is derived from the active Alice profile: `alice` (default) or `lydia_<profile>`.
+Host key is derived from the active Alice profile: `alice` (default) or `alice_<profile>`.
 
 For every key, resolution order is: **host block > root > env var > default**.
 
@@ -243,7 +243,7 @@ Multiple Alice profiles can share one workspace while maintaining separate AI id
       "recallMode": "hybrid",
       "sessionStrategy": "per-directory"
     },
-    "lydia_coder": {
+    "alice_coder": {
       "aiPeer": "coder",
       "recallMode": "tools",
       "sessionStrategy": "per-repo"
@@ -254,7 +254,7 @@ Multiple Alice profiles can share one workspace while maintaining separate AI id
 
 Both profiles see the same user (`yourname`) in the same shared environment (`alice`), but each AI peer builds its own observations, conclusions, and behavior patterns. The coder's memory stays code-oriented; the main agent's stays broad.
 
-Host key is derived from the active Alice profile: `alice` (default) or `lydia_<profile>` (e.g. `alice -p coder` -> host key `lydia_coder`). Older `alice.<profile>` host blocks are still read for compatibility and are migrated when the CLI writes profile-scoped Honcho config.
+Host key is derived from the active Alice profile: `alice` (default) or `alice_<profile>` (e.g. `alice -p coder` -> host key `alice_coder`). Older `alice.<profile>` host blocks are still read for compatibility and are migrated when the CLI writes profile-scoped Honcho config.
 
 ### Dialectic & Reasoning
 
@@ -320,7 +320,7 @@ Presets:
 | `HONCHO_API_KEY` | `apiKey` |
 | `HONCHO_BASE_URL` | `baseUrl` |
 | `HONCHO_ENVIRONMENT` | `environment` |
-| `LYDIA_HONCHO_HOST` | Host key override |
+| `ALICE_HONCHO_HOST` | Host key override |
 | `HONCHO_OAUTH_DASHBOARD` | OAuth authorize origin (default: cloud dashboard; local-dev `localhost:3000`) |
 | `HONCHO_OAUTH_AUTHORIZE_URL` | Full authorize URL (overrides the dashboard origin) |
 | `HONCHO_OAUTH_TOKEN_URL` | Token endpoint (default: cloud API; local-dev `localhost:8000`) |
@@ -369,7 +369,7 @@ Presets:
       "dialecticMaxChars": 600,
       "saveMessages": true
     },
-    "lydia_coder": {
+    "alice_coder": {
       "enabled": true,
       "aiPeer": "coder",
       "sessionStrategy": "per-repo",

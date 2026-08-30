@@ -105,7 +105,7 @@ CLI 界面中使用的文字字符串。
 |----|------|------|--------|
 | `tool_prefix` | 字符串 | CLI 中工具输出行的前缀字符 | `┊` |
 | `tool_emojis` | 字典 | 各工具的 emoji 覆盖，用于 spinner 和进度显示（`{tool_name: emoji}`） | `{}` |
-| `banner_logo` | 字符串 | Rich 标记 ASCII 艺术 logo（替换默认的 LYDIA_AGENT 横幅） | `""` |
+| `banner_logo` | 字符串 | Rich 标记 ASCII 艺术 logo（替换默认的 ALICE_AGENT 横幅） | `""` |
 | `banner_hero` | 字符串 | Rich 标记英雄艺术图（替换默认的双蛇杖图案） | `""` |
 
 ## 自定义皮肤

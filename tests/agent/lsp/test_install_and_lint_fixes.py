@@ -88,7 +88,7 @@ def test_install_npm_works_without_extras(tmp_path, monkeypatch):
     assert "pyright" in cmd
     # Should not blow up when extra_pkgs is omitted/None
     install_targets = [c for c in cmd if not c.startswith("-") and c not in {
-        "install", "--prefix", str(install_mod.lydia_lsp_bin_dir().parent),
+        "install", "--prefix", str(install_mod.alice_lsp_bin_dir().parent),
         "/usr/bin/npm",
     }]
     assert install_targets == ["pyright"]
@@ -100,7 +100,7 @@ def test_existing_binary_finds_windows_wrapper_in_staging(tmp_path, monkeypatch)
 
     from agent.lsp import install as install_mod
 
-    wrapper = install_mod.lydia_lsp_bin_dir() / "pyright-langserver.cmd"
+    wrapper = install_mod.alice_lsp_bin_dir() / "pyright-langserver.cmd"
     wrapper.write_text("@echo off\n")
     wrapper.chmod(0o755)
 
@@ -118,7 +118,7 @@ def test_install_pip_finds_windows_scripts_launcher(tmp_path, monkeypatch):
     from agent.lsp import install as install_mod
 
     def fake_run(cmd, **kwargs):
-        scripts_dir = install_mod.lydia_lsp_bin_dir().parent / "python-packages" / "Scripts"
+        scripts_dir = install_mod.alice_lsp_bin_dir().parent / "python-packages" / "Scripts"
         scripts_dir.mkdir(parents=True, exist_ok=True)
         launcher = scripts_dir / "fake-language-server.exe"
         launcher.write_text("launcher\n")
@@ -132,7 +132,7 @@ def test_install_pip_finds_windows_scripts_launcher(tmp_path, monkeypatch):
 
     assert resolved is not None
     assert resolved.endswith("fake-language-server.exe")
-    assert (install_mod.lydia_lsp_bin_dir() / "fake-language-server.exe").exists()
+    assert (install_mod.alice_lsp_bin_dir() / "fake-language-server.exe").exists()
 
 
 # ---------------------------------------------------------------------------

@@ -102,7 +102,7 @@ def _provider_for_mode(tmp_path, monkeypatch, mode: str):
     )
 
     provider = HindsightMemoryProvider()
-    provider.initialize(session_id="test-session", lydia_home=str(tmp_path), platform="cli")
+    provider.initialize(session_id="test-session", alice_home=str(tmp_path), platform="cli")
     return provider
 
 
@@ -171,7 +171,7 @@ def provider(tmp_path, monkeypatch):
     )
 
     p = HindsightMemoryProvider()
-    p.initialize(session_id="test-session", lydia_home=str(tmp_path), platform="cli")
+    p.initialize(session_id="test-session", alice_home=str(tmp_path), platform="cli")
     p._client = _make_mock_client()
     return p
 
@@ -198,7 +198,7 @@ def provider_with_config(tmp_path, monkeypatch):
         )
 
         p = HindsightMemoryProvider()
-        p.initialize(session_id="test-session", lydia_home=str(tmp_path), platform="cli")
+        p.initialize(session_id="test-session", alice_home=str(tmp_path), platform="cli")
         p._client = _make_mock_client()
         return p
     return _make
@@ -446,11 +446,11 @@ class TestConfig:
 
 class TestPostSetup:
     def test_setup_cancel_at_mode_picker_writes_nothing(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice-home"
+        alice_home = tmp_path / "alice-home"
         user_home = tmp_path / "user-home"
         user_home.mkdir()
         monkeypatch.setenv("HOME", str(user_home))
-        monkeypatch.setattr("plugins.memory.hindsight.get_alice_home", lambda: lydia_home)
+        monkeypatch.setattr("plugins.memory.hindsight.get_alice_home", lambda: alice_home)
 
         save_config = MagicMock()
         which = MagicMock(return_value="/usr/bin/uv")
@@ -463,21 +463,21 @@ class TestPostSetup:
         monkeypatch.setattr("alice_cli.config.save_config", save_config)
 
         provider = HindsightMemoryProvider()
-        provider.post_setup(str(lydia_home), {"memory": {"provider": "builtin"}})
+        provider.post_setup(str(alice_home), {"memory": {"provider": "builtin"}})
 
         save_config.assert_not_called()
         which.assert_not_called()
         run.assert_not_called()
-        assert not (lydia_home / ".env").exists()
-        assert not (lydia_home / "hindsight" / "config.json").exists()
+        assert not (alice_home / ".env").exists()
+        assert not (alice_home / "hindsight" / "config.json").exists()
         assert not (user_home / ".hindsight" / "profiles" / "alice.env").exists()
 
     def test_local_embedded_setup_cancel_at_llm_picker_writes_nothing(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice-home"
+        alice_home = tmp_path / "alice-home"
         user_home = tmp_path / "user-home"
         user_home.mkdir()
         monkeypatch.setenv("HOME", str(user_home))
-        monkeypatch.setattr("plugins.memory.hindsight.get_alice_home", lambda: lydia_home)
+        monkeypatch.setattr("plugins.memory.hindsight.get_alice_home", lambda: alice_home)
 
         selections = iter([1, _CANCELLED])  # local_embedded, then cancel LLM picker
         save_config = MagicMock()
@@ -491,17 +491,17 @@ class TestPostSetup:
         monkeypatch.setattr("alice_cli.config.save_config", save_config)
 
         provider = HindsightMemoryProvider()
-        provider.post_setup(str(lydia_home), {"memory": {"provider": "builtin"}})
+        provider.post_setup(str(alice_home), {"memory": {"provider": "builtin"}})
 
         save_config.assert_not_called()
         which.assert_not_called()
         run.assert_not_called()
-        assert not (lydia_home / ".env").exists()
-        assert not (lydia_home / "hindsight" / "config.json").exists()
+        assert not (alice_home / ".env").exists()
+        assert not (alice_home / "hindsight" / "config.json").exists()
         assert not (user_home / ".hindsight" / "profiles" / "alice.env").exists()
 
     def test_local_embedded_setup_materializes_profile_env(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice-home"
+        alice_home = tmp_path / "alice-home"
         user_home = tmp_path / "user-home"
         user_home.mkdir()
         monkeypatch.setenv("HOME", str(user_home))
@@ -516,10 +516,10 @@ class TestPostSetup:
         monkeypatch.setattr("alice_cli.config.save_config", lambda cfg: saved_configs.append(cfg.copy()))
 
         provider = HindsightMemoryProvider()
-        provider.post_setup(str(lydia_home), {"memory": {}})
+        provider.post_setup(str(alice_home), {"memory": {}})
 
         assert saved_configs[-1]["memory"]["provider"] == "hindsight"
-        env_text = (lydia_home / ".env").read_text()
+        env_text = (alice_home / ".env").read_text()
         assert "HINDSIGHT_LLM_API_KEY=sk-local-test\n" in env_text
         assert "HINDSIGHT_TIMEOUT=120\n" in env_text
         assert "HINDSIGHT_IDLE_TIMEOUT=300\n" in env_text
@@ -535,7 +535,7 @@ class TestPostSetup:
         )
 
     def test_local_embedded_setup_respects_existing_profile_name(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice-home"
+        alice_home = tmp_path / "alice-home"
         user_home = tmp_path / "user-home"
         user_home.mkdir()
         monkeypatch.setenv("HOME", str(user_home))
@@ -549,16 +549,16 @@ class TestPostSetup:
         monkeypatch.setattr("alice_cli.config.save_config", lambda cfg: None)
 
         provider = HindsightMemoryProvider()
-        provider.save_config({"profile": "coder"}, str(lydia_home))
-        provider.post_setup(str(lydia_home), {"memory": {}})
+        provider.save_config({"profile": "coder"}, str(alice_home))
+        provider.post_setup(str(alice_home), {"memory": {}})
 
         coder_env = user_home / ".hindsight" / "profiles" / "coder.env"
-        lydia_env = user_home / ".hindsight" / "profiles" / "alice.env"
+        alice_env = user_home / ".hindsight" / "profiles" / "alice.env"
         assert coder_env.exists()
-        assert not lydia_env.exists()
+        assert not alice_env.exists()
 
     def test_local_embedded_setup_preserves_existing_key_when_input_left_blank(self, tmp_path, monkeypatch):
-        lydia_home = tmp_path / "alice-home"
+        alice_home = tmp_path / "alice-home"
         user_home = tmp_path / "user-home"
         user_home.mkdir()
         monkeypatch.setenv("HOME", str(user_home))
@@ -571,12 +571,12 @@ class TestPostSetup:
         monkeypatch.setattr("getpass.getpass", lambda prompt="": "")
         monkeypatch.setattr("alice_cli.config.save_config", lambda cfg: None)
 
-        env_path = lydia_home / ".env"
+        env_path = alice_home / ".env"
         env_path.parent.mkdir(parents=True, exist_ok=True)
         env_path.write_text("HINDSIGHT_LLM_API_KEY=existing-key\n")
 
         provider = HindsightMemoryProvider()
-        provider.post_setup(str(lydia_home), {"memory": {}})
+        provider.post_setup(str(alice_home), {"memory": {}})
 
         profile_env = user_home / ".hindsight" / "profiles" / "alice.env"
         assert profile_env.exists()
@@ -585,11 +585,11 @@ class TestPostSetup:
 
     def test_local_embedded_setup_blank_inputs_preserve_existing_config(self, tmp_path, monkeypatch):
         """Pressing Enter through setup should keep existing Hindsight values."""
-        lydia_home = tmp_path / "alice-home"
+        alice_home = tmp_path / "alice-home"
         user_home = tmp_path / "user-home"
         user_home.mkdir()
         monkeypatch.setenv("HOME", str(user_home))
-        monkeypatch.setattr("plugins.memory.hindsight.get_alice_home", lambda: lydia_home)
+        monkeypatch.setattr("plugins.memory.hindsight.get_alice_home", lambda: alice_home)
 
         existing_config = {
             "mode": "local_embedded",
@@ -605,7 +605,7 @@ class TestPostSetup:
             "timeout": 120,
         }
         provider = HindsightMemoryProvider()
-        provider.save_config(existing_config, str(lydia_home))
+        provider.save_config(existing_config, str(alice_home))
 
         # Simulate pressing Enter at the mode and LLM-provider pickers, which
         # should select their current values, and pressing Enter at text prompts.
@@ -617,9 +617,9 @@ class TestPostSetup:
         monkeypatch.setattr("alice_cli.config.save_config", lambda cfg: None)
 
         provider = HindsightMemoryProvider()
-        provider.post_setup(str(lydia_home), {"memory": {}})
+        provider.post_setup(str(alice_home), {"memory": {}})
 
-        saved = json.loads((lydia_home / "hindsight" / "config.json").read_text())
+        saved = json.loads((alice_home / "hindsight" / "config.json").read_text())
         assert saved["mode"] == "local_embedded"
         assert saved["llm_provider"] == "openai_compatible"
         assert saved["llm_base_url"] == "http://192.168.1.161:8060/v1"
@@ -1057,14 +1057,14 @@ class TestSyncTurn:
         monkeypatch.setattr("plugins.memory.hindsight.get_alice_home", lambda: tmp_path)
 
         p1 = HindsightMemoryProvider()
-        p1.initialize(session_id="resumed-session", lydia_home=str(tmp_path), platform="cli")
+        p1.initialize(session_id="resumed-session", alice_home=str(tmp_path), platform="cli")
 
         # Sleep just enough that the microsecond timestamp differs
         import time
         time.sleep(0.001)
 
         p2 = HindsightMemoryProvider()
-        p2.initialize(session_id="resumed-session", lydia_home=str(tmp_path), platform="cli")
+        p2.initialize(session_id="resumed-session", alice_home=str(tmp_path), platform="cli")
 
         # Same session, but each process gets its own document_id
         assert p1._document_id != p2._document_id
@@ -1089,7 +1089,7 @@ class TestSyncTurn:
         p = HindsightMemoryProvider()
         p.initialize(
             session_id="child-session",
-            lydia_home=str(tmp_path),
+            alice_home=str(tmp_path),
             platform="cli",
             parent_session_id="parent-session",
         )
@@ -1581,7 +1581,7 @@ class TestBankIdTemplate:
         p = HindsightMemoryProvider()
         p.initialize(
             session_id="s1",
-            lydia_home=str(tmp_path),
+            alice_home=str(tmp_path),
             platform="cli",
             agent_identity="coder",
             agent_workspace="alice",
@@ -1604,7 +1604,7 @@ class TestBankIdTemplate:
         p = HindsightMemoryProvider()
         p.initialize(
             session_id="s1",
-            lydia_home=str(tmp_path),
+            alice_home=str(tmp_path),
             platform="cli",
             agent_identity="coder",
         )
@@ -1625,7 +1625,7 @@ class TestBankIdTemplate:
 
         p = HindsightMemoryProvider()
         # No agent_identity passed — template renders to "alice-" which collapses to "alice"
-        p.initialize(session_id="s1", lydia_home=str(tmp_path), platform="cli")
+        p.initialize(session_id="s1", alice_home=str(tmp_path), platform="cli")
         assert p._bank_id == "alice"
 
 
@@ -1718,7 +1718,7 @@ class TestAvailability:
         )
 
         p = HindsightMemoryProvider()
-        p.initialize(session_id="test-session", lydia_home=str(tmp_path), platform="cli")
+        p.initialize(session_id="test-session", alice_home=str(tmp_path), platform="cli")
         assert p._mode == "disabled"
 
 

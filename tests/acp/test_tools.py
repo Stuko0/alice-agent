@@ -25,13 +25,13 @@ from acp.schema import (
 # ---------------------------------------------------------------------------
 
 
-COMMON_LYDIA_TOOLS = ["read_file", "search_files", "terminal", "patch", "write_file", "process"]
+COMMON_ALICE_TOOLS = ["read_file", "search_files", "terminal", "patch", "write_file", "process"]
 
 
 class TestToolKindMap:
-    def test_all_lydia_tools_have_kind(self):
+    def test_all_alice_tools_have_kind(self):
         """Every common alice tool should appear in TOOL_KIND_MAP."""
-        for tool in COMMON_LYDIA_TOOLS:
+        for tool in COMMON_ALICE_TOOLS:
             assert tool in TOOL_KIND_MAP, f"{tool} missing from TOOL_KIND_MAP"
 
     def test_tool_kind_read_file(self):

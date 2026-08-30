@@ -10,12 +10,12 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Ensure sibling modules (_lydia_home) are importable when run standalone.
+# Ensure sibling modules (_alice_home) are importable when run standalone.
 _SCRIPTS_DIR = str(Path(__file__).resolve().parent)
 if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 
-from _lydia_home import get_alice_home
+from _alice_home import get_alice_home
 
 
 def get_token_path() -> Path:

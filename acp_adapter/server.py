@@ -447,7 +447,7 @@ def _content_blocks_to_openai_user_content(
     return parts
 
 
-class LydiaACPAgent(acp.Agent):
+class AliceACPAgent(acp.Agent):
     """ACP Agent implementation wrapping Alice AIAgent."""
 
     _SLASH_COMMANDS = {

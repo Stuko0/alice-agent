@@ -59,9 +59,9 @@ docker run -d \
 Port 8642 exposes the gateway's [OpenAI-compatible API server](./features/api-server.md) and health endpoint. It's optional if you only use chat platforms (Telegram, Discord, etc.), but required if you want the dashboard or external tools to reach the gateway.
 
 :::tip Gateway runs supervised
-Inside the official Docker image, `gateway run` is **automatically supervised by s6-overlay**: if the gateway process crashes it's restarted within a couple of seconds without losing the container, and the dashboard (when `LYDIA_DASHBOARD=1` is set) is supervised alongside it. The `gateway run` CMD process itself is a `sleep infinity` heartbeat that keeps the container alive while s6 manages the actual gateway process — so `docker stop` still shuts everything down cleanly, but `docker logs` shows the supervised gateway's output.
+Inside the official Docker image, `gateway run` is **automatically supervised by s6-overlay**: if the gateway process crashes it's restarted within a couple of seconds without losing the container, and the dashboard (when `ALICE_DASHBOARD=1` is set) is supervised alongside it. The `gateway run` CMD process itself is a `sleep infinity` heartbeat that keeps the container alive while s6 manages the actual gateway process — so `docker stop` still shuts everything down cleanly, but `docker logs` shows the supervised gateway's output.
 
-You'll see a one-line breadcrumb in `docker logs` confirming the upgrade. To opt out — and get the historical "gateway is the container's main process, container exit = gateway exit" semantics — pass `--no-supervise` or set `LYDIA_GATEWAY_NO_SUPERVISE=1`. The opt-out is useful for CI smoke tests that want the container to exit with the gateway's status code; for production deployments the supervised default is strictly better.
+You'll see a one-line breadcrumb in `docker logs` confirming the upgrade. To opt out — and get the historical "gateway is the container's main process, container exit = gateway exit" semantics — pass `--no-supervise` or set `ALICE_GATEWAY_NO_SUPERVISE=1`. The opt-out is useful for CI smoke tests that want the container to exit with the gateway's status code; for production deployments the supervised default is strictly better.
 
 This behavior applies to the s6-based image only. Earlier (tini-based) images still run `gateway run` as the foreground main process.
 :::
@@ -101,7 +101,7 @@ Opening any port on an internet facing machine is a security risk. You should no
 
 ## Running the dashboard
 
-The built-in web dashboard runs as a supervised s6-rc service alongside the gateway in the same container. Set `LYDIA_DASHBOARD=1` to bring it up:
+The built-in web dashboard runs as a supervised s6-rc service alongside the gateway in the same container. Set `ALICE_DASHBOARD=1` to bring it up:
 
 ```sh
 docker run -d \
@@ -110,7 +110,7 @@ docker run -d \
   -v ~/.alice:/opt/data \
   -p 8642:8642 \
   -p 9119:9119 \
-  -e LYDIA_DASHBOARD=1 \
+  -e ALICE_DASHBOARD=1 \
   nousresearch/alice-agent gateway run
 ```
 
@@ -118,12 +118,12 @@ The dashboard is supervised by s6 — if it crashes, `s6-supervise` restarts it 
 
 | Environment variable | Description | Default |
 |---------------------|-------------|---------|
-| `LYDIA_DASHBOARD` | Set to `1` (or `true` / `yes`) to enable the supervised dashboard service | *(unset — service is registered but stays down)* |
-| `LYDIA_DASHBOARD_HOST` | Bind address for the dashboard HTTP server | `0.0.0.0` |
-| `LYDIA_DASHBOARD_PORT` | Port for the dashboard HTTP server | `9119` |
-| `LYDIA_DASHBOARD_INSECURE` | **Deprecated / no-op.** Formerly bypassed the auth gate; as of the June 2026 hardening it no longer disables authentication. A non-loopback bind always requires an auth provider | *(ignored — configure a provider instead)* |
+| `ALICE_DASHBOARD` | Set to `1` (or `true` / `yes`) to enable the supervised dashboard service | *(unset — service is registered but stays down)* |
+| `ALICE_DASHBOARD_HOST` | Bind address for the dashboard HTTP server | `0.0.0.0` |
+| `ALICE_DASHBOARD_PORT` | Port for the dashboard HTTP server | `9119` |
+| `ALICE_DASHBOARD_INSECURE` | **Deprecated / no-op.** Formerly bypassed the auth gate; as of the June 2026 hardening it no longer disables authentication. A non-loopback bind always requires an auth provider | *(ignored — configure a provider instead)* |
 
-The dashboard inside the container defaults to binding `0.0.0.0` — without it, the published `-p 9119:9119` port would not be reachable from the host. To restrict the bind to container loopback (for sidecar / reverse-proxy setups), set `LYDIA_DASHBOARD_HOST=127.0.0.1`.
+The dashboard inside the container defaults to binding `0.0.0.0` — without it, the published `-p 9119:9119` port would not be reachable from the host. To restrict the bind to container loopback (for sidecar / reverse-proxy setups), set `ALICE_DASHBOARD_HOST=127.0.0.1`.
 
 The dashboard's auth gate engages automatically when both of the following are true:
 
@@ -132,16 +132,16 @@ The dashboard's auth gate engages automatically when both of the following are t
 
 There are three bundled ways to satisfy the second condition:
 
-- **Username/password** — the simplest for a self-hosted / on-prem / homelab container on a trusted network or behind a VPN: set `LYDIA_DASHBOARD_BASIC_AUTH_USERNAME` + `LYDIA_DASHBOARD_BASIC_AUTH_PASSWORD` (and `LYDIA_DASHBOARD_BASIC_AUTH_SECRET` for restart-stable sessions). Not suitable for direct public-internet exposure.
-- **OAuth (Nous Portal)** — for hosted/public deploys: the `dashboard_auth/nous` provider activates whenever `LYDIA_DASHBOARD_OAUTH_CLIENT_ID` is set.
-- **Self-hosted OIDC** — to authenticate against your own identity provider via standard OpenID Connect: the `dashboard_auth/self_hosted` provider activates when `LYDIA_DASHBOARD_OIDC_ISSUER` + `LYDIA_DASHBOARD_OIDC_CLIENT_ID` are set.
+- **Username/password** — the simplest for a self-hosted / on-prem / homelab container on a trusted network or behind a VPN: set `ALICE_DASHBOARD_BASIC_AUTH_USERNAME` + `ALICE_DASHBOARD_BASIC_AUTH_PASSWORD` (and `ALICE_DASHBOARD_BASIC_AUTH_SECRET` for restart-stable sessions). Not suitable for direct public-internet exposure.
+- **OAuth (Nous Portal)** — for hosted/public deploys: the `dashboard_auth/nous` provider activates whenever `ALICE_DASHBOARD_OAUTH_CLIENT_ID` is set.
+- **Self-hosted OIDC** — to authenticate against your own identity provider via standard OpenID Connect: the `dashboard_auth/self_hosted` provider activates when `ALICE_DASHBOARD_OIDC_ISSUER` + `ALICE_DASHBOARD_OIDC_CLIENT_ID` are set.
 
 Whichever you choose, the gate redirects callers to a login page before they can reach any protected route. See [Web Dashboard → Authentication](features/web-dashboard.md#authentication-gated-mode) for all three providers.
 
-If no provider is registered and the bind is non-loopback, the dashboard **fails closed at startup** with a specific error pointing at the missing env var. There is no longer an escape hatch that serves the dashboard unauthenticated on a public bind: `LYDIA_DASHBOARD_INSECURE=1` is now a deprecated no-op (it logs a warning and is ignored). Configure a provider, or bind `LYDIA_DASHBOARD_HOST=127.0.0.1` and reach the dashboard over an SSH tunnel / Tailscale instead.
+If no provider is registered and the bind is non-loopback, the dashboard **fails closed at startup** with a specific error pointing at the missing env var. There is no longer an escape hatch that serves the dashboard unauthenticated on a public bind: `ALICE_DASHBOARD_INSECURE=1` is now a deprecated no-op (it logs a warning and is ignored). Configure a provider, or bind `ALICE_DASHBOARD_HOST=127.0.0.1` and reach the dashboard over an SSH tunnel / Tailscale instead.
 
 :::warning Why `--insecure` was removed
-An unauthenticated public dashboard was the entry point for the June 2026 MCP-config persistence campaign: internet scanners reached exposed dashboards (and OpenAI API servers) and drove the agent into planting an SSH-key backdoor. The auth gate is now mandatory on every non-loopback bind. For a trusted-LAN / homelab box, the bundled username/password provider (`LYDIA_DASHBOARD_BASIC_AUTH_USERNAME` + `_PASSWORD`) is the zero-infra way to satisfy it.
+An unauthenticated public dashboard was the entry point for the June 2026 MCP-config persistence campaign: internet scanners reached exposed dashboards (and OpenAI API servers) and drove the agent into planting an SSH-key backdoor. The auth gate is now mandatory on every non-loopback bind. For a trusted-LAN / homelab box, the bundled username/password provider (`ALICE_DASHBOARD_BASIC_AUTH_USERNAME` + `_PASSWORD`) is the zero-infra way to satisfy it.
 :::
 
 Running the dashboard as a separate container **is** supported when that container shares the host PID and network namespace (e.g. `network_mode: host`, as the repo's own `docker-compose.yml` does — see its `dashboard` service). Its gateway-liveness detection requires a shared PID namespace with the gateway process, so the limitation only applies to dashboards run in isolated bridge-network containers without a shared PID namespace.
@@ -188,7 +188,7 @@ All mutable Alice state belongs under `/opt/data`: config, `.env`, profiles, ski
 
 On hosted/published images, agent self-improvement is scoped to skills, memory, plugins, and config under `/opt/data`. The installed core source under `/opt/alice` is immutable; core changes are made via PRs to the repo and shipped by updating the image, not by live-editing the running install.
 
-If an operator needs to repair or inspect files outside `/opt/data`, use a root shell intentionally. The `alice` shim normally drops `docker exec alice alice ...` back to the runtime user; set `LYDIA_DOCKER_EXEC_AS_ROOT=1` for a one-off root invocation when you explicitly need root semantics.
+If an operator needs to repair or inspect files outside `/opt/data`, use a root shell intentionally. The `alice` shim normally drops `docker exec alice alice ...` back to the runtime user; set `ALICE_DOCKER_EXEC_AS_ROOT=1` for a one-off root invocation when you explicitly need root semantics.
 
 Skill CLIs that store credentials under `~` must be initialized against the subprocess HOME, not just the data-volume root. For example, the [xurl skill](./skills/bundled/social-media/social-media-xurl.md) stores OAuth state in `~/.xurl`; in the official Docker layout, Alice tool calls read that as `/opt/data/home/.xurl`, so run manual xurl auth with `HOME=/opt/data/home` and verify with `HOME=/opt/data/home xurl auth status`.
 
@@ -231,7 +231,7 @@ Under the hood, `alice gateway start/stop/restart` inside the container is inter
 
 Two different surfaces reach a profile's gateway from outside, and they behave differently — don't conflate them:
 
-**Alice Desktop (and the web dashboard).** The Desktop app's **Remote Gateway** connection talks to a `alice dashboard` backend (default **port 9119**, enabled by `LYDIA_DASHBOARD=1`) — *not* the OpenAI API server. One dashboard backend serves **every** co-located profile: the app's profile switcher sends the target profile with each request and the backend opens that profile's `ALICE_HOME` on disk. So you do **not** need a second port — or a second connection — per profile for Desktop; one `:9119` connection covers them all through the switcher.
+**Alice Desktop (and the web dashboard).** The Desktop app's **Remote Gateway** connection talks to a `alice dashboard` backend (default **port 9119**, enabled by `ALICE_DASHBOARD=1`) — *not* the OpenAI API server. One dashboard backend serves **every** co-located profile: the app's profile switcher sends the target profile with each request and the backend opens that profile's `ALICE_HOME` on disk. So you do **not** need a second port — or a second connection — per profile for Desktop; one `:9119` connection covers them all through the switcher.
 
 **OpenAI-compatible API clients (Open WebUI, LobeChat, `/v1/...`).** These talk to each profile's **API server**, which binds **port 8642 for every profile** (resolved from `API_SERVER_PORT` / `platforms.api_server.extra.port` — there is no auto-allocation and no `config.yaml`/`gateway.port` key). If you want a client to reach a *specific* second profile, give that profile a distinct `API_SERVER_PORT` in **its own** `.env`, otherwise its gateway tries to bind 8642 too and conflicts with the default profile:
 
@@ -308,7 +308,7 @@ The s6 container has four distinct log surfaces, and "why isn't my gateway showi
 | Source | Where it lands | How to read it |
 |---|---|---|
 | **Per-profile gateway** (`alice gateway run` and per-profile gateways under s6) | Tee'd to two places: `docker logs <container>` (real time, no extra prefix) **and** `${ALICE_HOME}/logs/gateways/<profile>/current` (rotated, ISO-8601 timestamped, 10 archives × 1 MB each) | `docker logs -f alice` or `tail -F ~/.alice/logs/gateways/default/current` on the host |
-| **Dashboard** (when `LYDIA_DASHBOARD=1`) | `docker logs <container>` (no prefix) | `docker logs -f alice` — interleaved with gateway lines |
+| **Dashboard** (when `ALICE_DASHBOARD=1`) | `docker logs <container>` (no prefix) | `docker logs -f alice` — interleaved with gateway lines |
 | **Boot reconciler** (records which profile gateways were restored on each container start) | `${ALICE_HOME}/logs/container-boot.log` (append-only audit log) | `tail -F ~/.alice/logs/container-boot.log` |
 | **Generic Alice logs** (`agent.log`, `errors.log`) | `${ALICE_HOME}/logs/` (profile-aware) | `docker exec alice alice logs --follow [--level WARNING] [--session <id>]` |
 
@@ -348,11 +348,11 @@ services:
     command: gateway run
     ports:
       - "8642:8642"   # gateway API
-      - "9119:9119"   # dashboard (only reached when LYDIA_DASHBOARD=1)
+      - "9119:9119"   # dashboard (only reached when ALICE_DASHBOARD=1)
     volumes:
       - ~/.alice:/opt/data
     environment:
-      - LYDIA_DASHBOARD=1
+      - ALICE_DASHBOARD=1
       # Uncomment to forward specific env vars instead of using .env file:
       # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       # - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -419,22 +419,22 @@ services:
     command: gateway run
     volumes:
       - ~/.alice:/opt/data
-      - /run/user/${LYDIA_UID}/pulse:/run/user/${LYDIA_UID}/pulse
+      - /run/user/${ALICE_UID}/pulse:/run/user/${ALICE_UID}/pulse
       - ~/.config/pulse/cookie:/tmp/pulse-cookie:ro
       - ./asound.conf:/etc/asound.conf:ro
     environment:
-      - LYDIA_UID=${LYDIA_UID}
-      - LYDIA_GID=${LYDIA_GID}
-      - XDG_RUNTIME_DIR=/run/user/${LYDIA_UID}
-      - PULSE_SERVER=unix:/run/user/${LYDIA_UID}/pulse/native
+      - ALICE_UID=${ALICE_UID}
+      - ALICE_GID=${ALICE_GID}
+      - XDG_RUNTIME_DIR=/run/user/${ALICE_UID}
+      - PULSE_SERVER=unix:/run/user/${ALICE_UID}/pulse/native
       - PULSE_COOKIE=/tmp/pulse-cookie
 ```
 
 Start it with your host UID/GID so the container process can access the per-user audio socket:
 
 ```sh
-export LYDIA_UID="$(id -u)"
-export LYDIA_GID="$(id -g)"
+export ALICE_UID="$(id -u)"
+export ALICE_GID="$(id -g)"
 docker compose up -d --build
 ```
 
@@ -483,7 +483,7 @@ The official image is based on `debian:13.4` and includes:
 The image treats `/opt/alice` as an immutable install tree at runtime. Optional Python extras, Node workspaces, and TUI assets that must be available inside Docker need to be baked during the image build; runtime lazy installs are disabled so supervised gateways and `docker exec alice …` commands do not try to write dependency artifacts back into the read-only source tree.
 
 The container's `ENTRYPOINT` is s6-overlay's `/init`. On boot it:
-1. Runs `/etc/cont-init.d/01-alice-setup` (= `docker/stage2-hook.sh`) as root: optional UID/GID remap, fixes volume ownership, seeds `.env` / `config.yaml` / `SOUL.md` on first boot, runs non-interactive config-schema migrations unless `LYDIA_SKIP_CONFIG_MIGRATION=1`, syncs bundled skills.
+1. Runs `/etc/cont-init.d/01-alice-setup` (= `docker/stage2-hook.sh`) as root: optional UID/GID remap, fixes volume ownership, seeds `.env` / `config.yaml` / `SOUL.md` on first boot, runs non-interactive config-schema migrations unless `ALICE_SKIP_CONFIG_MIGRATION=1`, syncs bundled skills.
 2. Runs `/etc/cont-init.d/02-reconcile-profiles` (= `alice_cli.container_boot`): walks `$ALICE_HOME/profiles/<name>/`, recreates the per-profile gateway s6 service slot under `/run/service/gateway-<profile>/`, and auto-starts only those whose last recorded state was `running` (see [Per-profile gateway supervision](#per-profile-gateway-supervision)).
 3. Starts the static `main-alice` and `dashboard` s6-rc services.
 4. Exec's the container's CMD as the main program (`/opt/alice/docker/main-wrapper.sh`), which routes the arguments the user passed to `docker run`:
@@ -497,7 +497,7 @@ The container ENTRYPOINT is now `/init` (s6-overlay), not `/usr/bin/tini`. All f
 :::
 
 :::warning Privilege model
-Do not override the image entrypoint unless you keep `/init` (or, equivalently, the legacy `docker/entrypoint.sh` shim that forwards to the stage2 hook) in the command chain. s6-overlay's `/init` runs as root so it can chown the volume on first boot, then drops to the `alice` user via `s6-setuidgid` for every supervised service AND for the main program. Starting `alice gateway run` as root inside the official image is refused by default because it can leave root-owned files in `/opt/data` and break later dashboard or gateway starts. Set `LYDIA_ALLOW_ROOT_GATEWAY=1` only when you intentionally accept that risk.
+Do not override the image entrypoint unless you keep `/init` (or, equivalently, the legacy `docker/entrypoint.sh` shim that forwards to the stage2 hook) in the command chain. s6-overlay's `/init` runs as root so it can chown the volume on first boot, then drops to the `alice` user via `s6-setuidgid` for every supervised service AND for the main program. Starting `alice gateway run` as root inside the official image is refused by default because it can leave root-owned files in `/opt/data` and break later dashboard or gateway starts. Set `ALICE_ALLOW_ROOT_GATEWAY=1` only when you intentionally accept that risk.
 :::
 
 ### `docker exec` automatically drops to the `alice` user
@@ -507,7 +507,7 @@ Do not override the image entrypoint unless you keep `/init` (or, equivalently, 
 If you specifically need a `docker exec` that retains root semantics (diagnostic sessions, inspecting root-only state, files outside `/opt/data` that root happens to own), opt out per invocation:
 
 ```sh
-docker exec -e LYDIA_DOCKER_EXEC_AS_ROOT=1 alice <cmd>
+docker exec -e ALICE_DOCKER_EXEC_AS_ROOT=1 alice <cmd>
 ```
 
 The shim accepts `1` / `true` / `yes` (case-insensitive). Anything else — including typos like `=0` — falls through to the drop, so silent opt-outs aren't possible. If `s6-setuidgid` isn't available (custom builds that stripped s6-overlay), the shim refuses to run as root and exits 126 instead, surfacing the broken privilege model loudly rather than regressing to the historical footgun where `docker exec alice login` would write `auth.json` as `root:root` and break the supervised gateway's auth on every chat platform message.
@@ -519,7 +519,7 @@ Each profile created with `alice profile create <name>` automatically gets an s6
 **Supervision benefits over the pre-s6 image:**
 
 - Gateway crashes are auto-restarted by `s6-supervise` after a ~1s backoff.
-- Dashboard, when enabled with `LYDIA_DASHBOARD=1`, is supervised on the same supervision tree and gets the same auto-restart treatment.
+- Dashboard, when enabled with `ALICE_DASHBOARD=1`, is supervised on the same supervision tree and gets the same auto-restart treatment.
 - `docker restart`, image upgrades (`docker compose up -d --force-recreate`), and unexpected exits preserve running gateways: the cont-init reconciler reads `$ALICE_HOME/profiles/<name>/gateway_state.json` and brings the slot back up if the last recorded state was `running`. Only an explicit `alice gateway stop` records `stopped` and keeps the gateway down across the restart; the container/s6 SIGTERM sent on a restart or upgrade is treated as "still running" and auto-starts.
 - Per-profile gateway logs persist under `$ALICE_HOME/logs/gateways/<profile>/current` (rotated by `s6-log`), and the reconciler's actions are appended to `$ALICE_HOME/logs/container-boot.log` per boot. See [Where the logs go](#where-the-logs-go) for the full routing map.
 
@@ -550,7 +550,7 @@ docker compose pull
 docker compose up -d
 ```
 
-Set `LYDIA_SKIP_CONFIG_MIGRATION=1` only if you need to inspect or migrate the
+Set `ALICE_SKIP_CONFIG_MIGRATION=1` only if you need to inspect or migrate the
 persisted config manually before letting the new image rewrite it.
 
 ## Skills and credential files
@@ -637,7 +637,7 @@ From inside the Alice container, the sidecar is reachable at `http://my-tool:<po
 
 ### Broadly useful tools — open an issue or pull request
 
-If a tool is likely to be useful to most Alice Agent users, consider contributing it upstream rather than carrying it in a private derived image. Open an issue or pull request on the [alice-agent repository](https://github.com/NousResearch/alice-agent) describing the tool and its use case. Tools that get bundled into the official image benefit every user and avoid the maintenance overhead of a downstream fork.
+If a tool is likely to be useful to most Alice Agent users, consider contributing it upstream rather than carrying it in a private derived image. Open an issue or pull request on the [alice-agent repository](https://github.com/Stuko0/alice-agent) describing the tool and its use case. Tools that get bundled into the official image benefit every user and avoid the maintenance overhead of a downstream fork.
 
 ## Connecting to local inference servers (vLLM, Ollama, etc.)
 
@@ -782,13 +782,13 @@ Check logs: `docker logs alice`. Common causes:
 
 ### "Permission denied" errors
 
-The container's stage2 hook drops privileges to the non-root `alice` user (UID 10000) via `s6-setuidgid` inside each supervised service. If your host `~/.alice/` is owned by a different UID, set `LYDIA_UID`/`LYDIA_GID` — or their `PUID`/`PGID` aliases, for parity with LinuxServer.io and NAS images — to match your host user, or ensure the data directory is writable:
+The container's stage2 hook drops privileges to the non-root `alice` user (UID 10000) via `s6-setuidgid` inside each supervised service. If your host `~/.alice/` is owned by a different UID, set `ALICE_UID`/`ALICE_GID` — or their `PUID`/`PGID` aliases, for parity with LinuxServer.io and NAS images — to match your host user, or ensure the data directory is writable:
 
 ```sh
 chmod -R 755 ~/.alice
 ```
 
-On a NAS (UGOS, Synology, unRAID) the data directory is typically a **bind mount** owned by a host UID the container cannot `chown`. Set `PUID`/`PGID` (or `LYDIA_UID`/`LYDIA_GID`) to that host user so the runtime runs as the owner of the mount rather than UID 10000:
+On a NAS (UGOS, Synology, unRAID) the data directory is typically a **bind mount** owned by a host UID the container cannot `chown`. Set `PUID`/`PGID` (or `ALICE_UID`/`ALICE_GID`) to that host user so the runtime runs as the owner of the mount rather than UID 10000:
 
 ```sh
 docker run -d \

@@ -148,11 +148,11 @@ def test_reraises_when_imported_token_lacks_refresh_token(monkeypatch):
 
 def test_self_heals_missing_singleton_access_token_from_codex_cli(tmp_path, monkeypatch):
     """Exact cron failure path: Alice auth has refresh_token but missing access_token."""
-    lydia_home = tmp_path / "alice"
+    alice_home = tmp_path / "alice"
     codex_home = tmp_path / "codex"
-    lydia_home.mkdir()
+    alice_home.mkdir()
     codex_home.mkdir()
-    (lydia_home / "auth.json").write_text(json.dumps({
+    (alice_home / "auth.json").write_text(json.dumps({
         "version": 1,
         "providers": {
             "openai-codex": {
@@ -168,14 +168,14 @@ def test_self_heals_missing_singleton_access_token_from_codex_cli(tmp_path, monk
             "refresh_token": "fresh-refresh",
         },
     }))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
 
     resolved = resolve_codex_runtime_credentials()
 
     assert resolved["api_key"] == "fresh-access"
     assert resolved["source"] == "alice-auth-store"
-    stored = json.loads((lydia_home / "auth.json").read_text())
+    stored = json.loads((alice_home / "auth.json").read_text())
     tokens = stored["providers"]["openai-codex"]["tokens"]
     assert tokens["access_token"] == "fresh-access"
     assert tokens["refresh_token"] == "fresh-refresh"
@@ -183,11 +183,11 @@ def test_self_heals_missing_singleton_access_token_from_codex_cli(tmp_path, monk
 
 def test_missing_singleton_access_token_reraises_when_codex_cli_half_token(tmp_path, monkeypatch):
     """Missing access_token must not be masked by a malformed Codex CLI import."""
-    lydia_home = tmp_path / "alice"
+    alice_home = tmp_path / "alice"
     codex_home = tmp_path / "codex"
-    lydia_home.mkdir()
+    alice_home.mkdir()
     codex_home.mkdir()
-    (lydia_home / "auth.json").write_text(json.dumps({
+    (alice_home / "auth.json").write_text(json.dumps({
         "version": 1,
         "providers": {
             "openai-codex": {
@@ -199,7 +199,7 @@ def test_missing_singleton_access_token_reraises_when_codex_cli_half_token(tmp_p
     (codex_home / "auth.json").write_text(json.dumps({
         "tokens": {"access_token": "fresh-only"},
     }))
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
 
     with pytest.raises(AuthError) as ei:

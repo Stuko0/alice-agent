@@ -68,7 +68,7 @@ def test_install_psutil_android_compat_uses_patched_tree(tmp_path):
     archive = tmp_path / "psutil.tar.gz"
     _build_psutil_archive(archive, malicious_symlink=False)
 
-    from alice_cli import main as lydia_main
+    from alice_cli import main as alice_main
 
     captured: dict[str, object] = {}
 
@@ -86,14 +86,14 @@ def test_install_psutil_android_compat_uses_patched_tree(tmp_path):
         )
 
     with patch("urllib.request.urlretrieve", side_effect=fake_urlretrieve), \
-         patch.object(lydia_main, "_run_install_with_heartbeat", side_effect=fake_run_install):
-        lydia_main._install_psutil_android_compat(
+         patch.object(alice_main, "_run_install_with_heartbeat", side_effect=fake_run_install):
+        alice_main._install_psutil_android_compat(
             ["uv", "pip"],
-            env={"LYDIA_TEST": "1"},
+            env={"ALICE_TEST": "1"},
         )
 
     assert captured["cmd"][:4] == ["uv", "pip", "install", "--no-build-isolation"]
-    assert captured["env"] == {"LYDIA_TEST": "1"}
+    assert captured["env"] == {"ALICE_TEST": "1"}
     assert REPLACEMENT in str(captured["common_py"])
 
 

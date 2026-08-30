@@ -11,8 +11,8 @@ from alice_cli.prompt_size import (
 )
 
 
-def _seed_memory(lydia_home, memory_text="", user_text=""):
-    mem_dir = lydia_home / "memories"
+def _seed_memory(alice_home, memory_text="", user_text=""):
+    mem_dir = alice_home / "memories"
     mem_dir.mkdir(parents=True, exist_ok=True)
     if memory_text:
         (mem_dir / "MEMORY.md").write_text(memory_text, encoding="utf-8")
@@ -20,8 +20,8 @@ def _seed_memory(lydia_home, memory_text="", user_text=""):
         (mem_dir / "USER.md").write_text(user_text, encoding="utf-8")
 
 
-def _seed_skill(lydia_home, name, description):
-    skill_dir = lydia_home / "skills" / "demo" / name
+def _seed_skill(alice_home, name, description):
+    skill_dir = alice_home / "skills" / "demo" / name
     skill_dir.mkdir(parents=True, exist_ok=True)
     (skill_dir / "SKILL.md").write_text(
         f"---\nname: {name}\ndescription: {description}\n---\n# {name}\nbody\n",
@@ -31,11 +31,11 @@ def _seed_skill(lydia_home, name, description):
 
 @pytest.fixture
 def isolated_home(tmp_path, monkeypatch):
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
     monkeypatch.chdir(tmp_path)  # avoid picking up the repo's AGENTS.md
-    return lydia_home
+    return alice_home
 
 
 def test_breakdown_keys_and_shape(isolated_home):

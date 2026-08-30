@@ -69,7 +69,7 @@ alice
 Test with a simple command:
 
 ```
-Run: gh pr list --repo NousResearch/alice-agent --state open --limit 3
+Run: gh pr list --repo Stuko0/alice-agent --state open --limit 3
 ```
 
 You should see a list of open PRs. If this works, you're ready.
@@ -84,7 +84,7 @@ Still in the chat, ask Alice to review a real PR:
 Review this pull request. Read the diff, check for bugs, security issues,
 and code quality. Be specific about line numbers and quote problematic code.
 
-Run: gh pr diff 3888 --repo NousResearch/alice-agent
+Run: gh pr diff 3888 --repo Stuko0/alice-agent
 ```
 
 Alice will:

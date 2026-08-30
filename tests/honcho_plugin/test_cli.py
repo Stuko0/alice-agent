@@ -331,7 +331,7 @@ class TestCloneHonchoForProfile:
         honcho_cli, written = self._setup_clone_env(monkeypatch, tmp_path, cfg)
         ok = honcho_cli.clone_honcho_for_profile("coder")
         assert ok is True
-        new_block = written["cfg"]["hosts"]["lydia_coder"]
+        new_block = written["cfg"]["hosts"]["alice_coder"]
         assert new_block["userPeerAliases"] == {"7654321": "eri", "discord-491827364": "eri"}
 
     def test_runtime_peer_prefix_carries_into_cloned_profile(self, monkeypatch, tmp_path):
@@ -347,7 +347,7 @@ class TestCloneHonchoForProfile:
         honcho_cli, written = self._setup_clone_env(monkeypatch, tmp_path, cfg)
         ok = honcho_cli.clone_honcho_for_profile("coder")
         assert ok is True
-        new_block = written["cfg"]["hosts"]["lydia_coder"]
+        new_block = written["cfg"]["hosts"]["alice_coder"]
         assert new_block["runtimePeerPrefix"] == "telegram_"
 
     def test_legacy_pin_peer_name_migrates_to_canonical_on_clone(self, monkeypatch, tmp_path):
@@ -363,7 +363,7 @@ class TestCloneHonchoForProfile:
         honcho_cli, written = self._setup_clone_env(monkeypatch, tmp_path, cfg)
         ok = honcho_cli.clone_honcho_for_profile("coder")
         assert ok is True
-        new_block = written["cfg"]["hosts"]["lydia_coder"]
+        new_block = written["cfg"]["hosts"]["alice_coder"]
         assert new_block["pinUserPeer"] is True
         assert "pinPeerName" not in new_block
 
@@ -375,7 +375,7 @@ class TestCloneHonchoForProfile:
         honcho_cli, written = self._setup_clone_env(monkeypatch, tmp_path, cfg)
         ok = honcho_cli.clone_honcho_for_profile("coder")
         assert ok is True
-        new_block = written["cfg"]["hosts"]["lydia_coder"]
+        new_block = written["cfg"]["hosts"]["alice_coder"]
         assert "userPeerAliases" not in new_block
         assert "runtimePeerPrefix" not in new_block
         assert "pinUserPeer" not in new_block
@@ -391,7 +391,7 @@ class TestSetupWizardDeploymentShape:
     Choice [2] (me + others, pooled) aliases the operator's own runtime IDs.
 
     These tests mock gateway detection and script the interactive _prompt
-    calls, asserting the resulting lydia_host block so the tree's routing
+    calls, asserting the resulting alice_host block so the tree's routing
     semantics stay locked even as adjacent prompts are added.
     """
 
@@ -765,7 +765,7 @@ class TestCloneCarriesPinUserPeer:
 
         ok = honcho_cli.clone_honcho_for_profile("partner")
         assert ok is True
-        new_block = written["cfg"]["hosts"]["lydia_partner"]
+        new_block = written["cfg"]["hosts"]["alice_partner"]
         assert new_block["pinUserPeer"] is True
 
 

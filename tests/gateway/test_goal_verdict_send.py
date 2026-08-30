@@ -21,7 +21,7 @@ from gateway.session import SessionEntry, SessionSource, build_session_key
 
 
 @pytest.fixture()
-def lydia_home(tmp_path, monkeypatch):
+def alice_home(tmp_path, monkeypatch):
     home = tmp_path / ".alice"
     home.mkdir()
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -97,7 +97,7 @@ def _make_runner_with_adapter(session_id: str = None):
 
 
 @pytest.mark.asyncio
-async def test_goal_verdict_done_sent_via_adapter_send(lydia_home):
+async def test_goal_verdict_done_sent_via_adapter_send(alice_home):
     """When the judge says done, the '✓ Goal achieved' message must reach
     the user through the adapter's ``send()`` method."""
     runner, adapter, session_entry, src = _make_runner_with_adapter()
@@ -124,7 +124,7 @@ async def test_goal_verdict_done_sent_via_adapter_send(lydia_home):
 
 
 @pytest.mark.asyncio
-async def test_goal_verdict_continue_enqueues_continuation(lydia_home):
+async def test_goal_verdict_continue_enqueues_continuation(alice_home):
     """When the judge says continue, both the 'continuing' status and the
     continuation-prompt event must be delivered. The continuation prompt is
     routed through the adapter's pending-messages FIFO so the goal loop
@@ -152,7 +152,7 @@ async def test_goal_verdict_continue_enqueues_continuation(lydia_home):
 
 
 @pytest.mark.asyncio
-async def test_goal_verdict_budget_exhausted_sends_pause(lydia_home):
+async def test_goal_verdict_budget_exhausted_sends_pause(alice_home):
     """When the budget is exhausted, a '⏸ Goal paused' message must be sent
     and no further continuation enqueued."""
     runner, adapter, session_entry, src = _make_runner_with_adapter()
@@ -181,7 +181,7 @@ async def test_goal_verdict_budget_exhausted_sends_pause(lydia_home):
 
 
 @pytest.mark.asyncio
-async def test_goal_verdict_skipped_when_no_active_goal(lydia_home):
+async def test_goal_verdict_skipped_when_no_active_goal(alice_home):
     """No goal set → the hook is a no-op. Nothing is sent, nothing enqueued."""
     runner, adapter, session_entry, src = _make_runner_with_adapter()
 
@@ -197,7 +197,7 @@ async def test_goal_verdict_skipped_when_no_active_goal(lydia_home):
 
 
 @pytest.mark.asyncio
-async def test_goal_verdict_survives_adapter_without_send(lydia_home):
+async def test_goal_verdict_survives_adapter_without_send(alice_home):
     """Bad adapter (no ``send`` attribute) must not crash the judge hook."""
     runner, _adapter, session_entry, src = _make_runner_with_adapter()
 

@@ -11,7 +11,7 @@
  *
  * Background
  * ----------
- * After `lydia update` + `lydia desktop --build-only`, the freshly-rebuilt
+ * After `alice update` + `alice desktop --build-only`, the freshly-rebuilt
  * GUI lives under `apps/desktop/release/<plat>-unpacked`. We can only honestly
  * relaunch into the new GUI when the *running* binary is that rebuilt one —
  * i.e. its execPath is under the rebuilt `release/<plat>-unpacked` dir.
@@ -186,14 +186,14 @@ function collectRelaunchArgs(argv) {
 }
 
 // Env keys whose values define the relaunched instance's context (which
-// backend/profile/root it talks to). Anything LYDIA_DESKTOP_* is preserved
+// backend/profile/root it talks to). Anything ALICE_DESKTOP_* is preserved
 // plus ALICE_HOME. We snapshot the values, not the live env, so the new
 // instance comes up pointed at the same place this one was.
 // ELECTRON_DISABLE_SANDBOX is preserved for the same reason --no-sandbox is kept
 // in the replayed args: if a relaunch is only safe because the user opted out of
 // the SUID sandbox, the relaunched instance must inherit that opt-out too.
 const PRESERVED_ENV_KEYS = ['ALICE_HOME', 'ELECTRON_DISABLE_SANDBOX']
-const PRESERVED_ENV_PREFIXES = ['LYDIA_DESKTOP_']
+const PRESERVED_ENV_PREFIXES = ['ALICE_DESKTOP_']
 
 function collectRelaunchEnv(env) {
   const out = {}

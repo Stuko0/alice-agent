@@ -406,7 +406,7 @@ Every distribution has a `distribution.yaml` at the root of its repository:
 name: telemetry
 version: 0.1.0
 description: "Compliance monitoring harness"
-lydia_requires: ">=0.12.0"
+alice_requires: ">=0.12.0"
 author: "Your Name"
 license: "MIT"
 env_requires:
@@ -424,7 +424,7 @@ distribution_owned:   # optional; defaults to SOUL.md, config.yaml,
   - cron/
 ```
 
-`lydia_requires` supports `>=`, `<=`, `==`, `!=`, `>`, `<`, or a bare
+`alice_requires` supports `>=`, `<=`, `==`, `!=`, `>`, `<`, or a bare
 version (treated as `>=`). Install fails with a clear error if the current
 Alice version doesn't satisfy the spec.
 

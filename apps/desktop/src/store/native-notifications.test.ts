@@ -12,8 +12,8 @@ import {
 import { $approvalRequest, setApprovalRequest } from './prompts'
 import { $activeSessionId, setActiveSessionId } from './session'
 
-const desktopWindow = window as unknown as { lydiaDesktop?: Window['lydiaDesktop'] }
-const initialLydiaDesktop = desktopWindow.lydiaDesktop
+const desktopWindow = window as unknown as { aliceDesktop?: Window['aliceDesktop'] }
+const initialAliceDesktop = desktopWindow.aliceDesktop
 
 const notify = vi.fn().mockResolvedValue(true)
 
@@ -34,7 +34,7 @@ function freshSession(): string {
 
 beforeEach(() => {
   notify.mockClear()
-  desktopWindow.lydiaDesktop = { notify } as unknown as Window['lydiaDesktop']
+  desktopWindow.aliceDesktop = { notify } as unknown as Window['aliceDesktop']
   setNativeNotifyEnabled(true)
 
   for (const kind of NATIVE_NOTIFICATION_KINDS) {
@@ -46,10 +46,10 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  if (initialLydiaDesktop) {
-    desktopWindow.lydiaDesktop = initialLydiaDesktop
+  if (initialAliceDesktop) {
+    desktopWindow.aliceDesktop = initialAliceDesktop
   } else {
-    delete desktopWindow.lydiaDesktop
+    delete desktopWindow.aliceDesktop
   }
 })
 

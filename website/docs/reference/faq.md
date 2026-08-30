@@ -17,7 +17,7 @@ Quick answers and fixes for the most common questions and issues.
 Alice Agent works with any OpenAI-compatible API. Supported providers include:
 
 - **[OpenRouter](https://openrouter.ai/)** — access hundreds of models through one API key (recommended for flexibility)
-- **[Nous Portal](/integrations/nous-portal)** — Nous Research's subscription gateway — 300+ models plus web/image/TTS/browser through one OAuth login (recommended for newcomers)
+- **[Nous Portal](/integrations/nous-portal)** — Stuko's subscription gateway — 300+ models plus web/image/TTS/browser through one OAuth login (recommended for newcomers)
 - **OpenAI** — GPT-5.4, GPT-5-codex, GPT-4.1, GPT-4o, etc.
 - **Anthropic** — Claude models (direct API, OAuth via `alice auth add anthropic`, OpenRouter, or any compatible proxy)
 - **Google** — Gemini models (direct API via `gemini` provider, OpenRouter, or compatible proxy)
@@ -84,7 +84,7 @@ If you set a custom `num_ctx` in Ollama (e.g., `ollama run --num_ctx 64000`), ma
 :::
 
 :::tip Timeouts with local models
-Alice auto-detects local endpoints and relaxes streaming timeouts (read timeout raised from 120s to 1800s, stale stream detection disabled). If you still hit timeouts on very large contexts, set `LYDIA_STREAM_READ_TIMEOUT=1800` in your `.env`. See the [Local LLM guide](../guides/local-llm-on-mac.md#timeouts) for details.
+Alice auto-detects local endpoints and relaxes streaming timeouts (read timeout raised from 120s to 1800s, stale stream detection disabled). If you still hit timeouts on very large contexts, set `ALICE_STREAM_READ_TIMEOUT=1800` in your `.env`. See the [Local LLM guide](../guides/local-llm-on-mac.md#timeouts) for details.
 :::
 
 ### How much does it cost?
@@ -206,7 +206,7 @@ source ~/.bashrc
 # If you previously installed with sudo, clean up:
 sudo rm /usr/local/bin/alice
 # Then re-run the standard installer
-curl -fsSL https://alice-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://alice-agent.stuko.dev/install.sh | bash
 ```
 
 ---
@@ -269,7 +269,7 @@ Make sure the key matches the provider. An OpenAI key won't work with OpenRouter
 alice model
 
 # Set a valid model
-alice config set LYDIA_MODEL anthropic/claude-opus-4.7
+alice config set ALICE_MODEL anthropic/claude-opus-4.7
 
 # Or specify per-session
 alice chat --model openrouter/meta-llama/llama-3.1-70b-instruct
@@ -732,7 +732,7 @@ Skills with very long descriptions are truncated to 40 characters in the Telegra
 
 1. Install Alice Agent on the new machine:
    ```bash
-   curl -fsSL https://alice-agent.nousresearch.com/install.sh | bash
+   curl -fsSL https://alice-agent.stuko.dev/install.sh | bash
    ```
 
 2. On the **source machine**, create a full backup:
@@ -836,6 +836,6 @@ If using OpenRouter, make sure your API key has credits. A 400 from OpenRouter o
 
 If your issue isn't covered here:
 
-1. **Search existing issues:** [GitHub Issues](https://github.com/NousResearch/alice-agent/issues)
-2. **Ask the community:** [Nous Research Discord](https://discord.gg/nousresearch)
+1. **Search existing issues:** [GitHub Issues](https://github.com/Stuko0/alice-agent/issues)
+2. **Ask the community:** [Stuko Discord](https://discord.gg/nousresearch)
 3. **File a bug report:** Include your OS, Python version (`python3 --version`), Alice version (`alice --version`), and the full error message

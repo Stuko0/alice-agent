@@ -54,7 +54,7 @@ class TestMarkerContract:
         # idempotent: clearing again is a no-op, returns False
         assert dc.clear_drain_request() is False
 
-    def test_path_respects_lydia_home(self, home):
+    def test_path_respects_alice_home(self, home):
         assert dc.drain_request_path() == home / ".drain_request.json"
 
     def test_corrupt_marker_reads_as_present_contentless(self, home):

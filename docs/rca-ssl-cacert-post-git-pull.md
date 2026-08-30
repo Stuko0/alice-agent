@@ -11,7 +11,7 @@ A partial `alice update`, interrupted venv repair, or stale CA-bundle environmen
 
 Alice uses OpenAI/httpx and requests-based clients for provider calls, model metadata, gateway delivery, and web tools. Those clients inherit CA bundle settings from:
 
-- `LYDIA_CA_BUNDLE`
+- `ALICE_CA_BUNDLE`
 - `SSL_CERT_FILE`
 - `REQUESTS_CA_BUNDLE`
 - `CURL_CA_BUNDLE`
@@ -51,4 +51,4 @@ For a custom/corporate CA setup, fix the env var so it points at a real PEM bund
 
 ## Environment escape hatch
 
-Set `LYDIA_SKIP_SSL_GUARD=1` to bypass the preflight check. This is intended only for sandboxed or managed-trust environments where the Python CA path looks unusual but downstream clients are known to work.
+Set `ALICE_SKIP_SSL_GUARD=1` to bypass the preflight check. This is intended only for sandboxed or managed-trust environments where the Python CA path looks unusual but downstream clients are known to work.

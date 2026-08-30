@@ -246,15 +246,15 @@ class TestTelegramYamlConfigLoading:
     """Tests for reply_to_mode loaded from config.yaml telegram section."""
 
     def _write_config(self, tmp_path, content: str):
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / "config.yaml").write_text(content, encoding="utf-8")
-        return lydia_home
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / "config.yaml").write_text(content, encoding="utf-8")
+        return alice_home
 
     def test_top_level_reply_to_mode_off(self, tmp_path, monkeypatch):
         """YAML 1.1 parses bare 'off' as boolean False — must map back to 'off'."""
-        lydia_home = self._write_config(tmp_path, "telegram:\n  reply_to_mode: off\n")
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = self._write_config(tmp_path, "telegram:\n  reply_to_mode: off\n")
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.delenv("TELEGRAM_REPLY_TO_MODE", raising=False)
 
         load_gateway_config()
@@ -262,8 +262,8 @@ class TestTelegramYamlConfigLoading:
         assert os.environ.get("TELEGRAM_REPLY_TO_MODE") == "off"
 
     def test_top_level_reply_to_mode_all(self, tmp_path, monkeypatch):
-        lydia_home = self._write_config(tmp_path, "telegram:\n  reply_to_mode: all\n")
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = self._write_config(tmp_path, "telegram:\n  reply_to_mode: all\n")
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.delenv("TELEGRAM_REPLY_TO_MODE", raising=False)
 
         load_gateway_config()
@@ -272,10 +272,10 @@ class TestTelegramYamlConfigLoading:
 
     def test_extra_reply_to_mode_off(self, tmp_path, monkeypatch):
         """telegram.extra.reply_to_mode is also honoured."""
-        lydia_home = self._write_config(
+        alice_home = self._write_config(
             tmp_path, "telegram:\n  extra:\n    reply_to_mode: \"off\"\n"
         )
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.delenv("TELEGRAM_REPLY_TO_MODE", raising=False)
 
         load_gateway_config()
@@ -284,8 +284,8 @@ class TestTelegramYamlConfigLoading:
 
     def test_env_var_takes_precedence_over_yaml(self, tmp_path, monkeypatch):
         """Existing TELEGRAM_REPLY_TO_MODE env var is not overwritten by YAML."""
-        lydia_home = self._write_config(tmp_path, "telegram:\n  reply_to_mode: all\n")
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = self._write_config(tmp_path, "telegram:\n  reply_to_mode: all\n")
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setenv("TELEGRAM_REPLY_TO_MODE", "first")
 
         load_gateway_config()
@@ -294,11 +294,11 @@ class TestTelegramYamlConfigLoading:
 
     def test_top_level_takes_precedence_over_extra(self, tmp_path, monkeypatch):
         """telegram.reply_to_mode wins over telegram.extra.reply_to_mode."""
-        lydia_home = self._write_config(
+        alice_home = self._write_config(
             tmp_path,
             "telegram:\n  reply_to_mode: all\n  extra:\n    reply_to_mode: \"off\"\n",
         )
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.delenv("TELEGRAM_REPLY_TO_MODE", raising=False)
 
         load_gateway_config()
@@ -309,7 +309,7 @@ class TestTelegramYamlConfigLoading:
 class TestDMTopicFallbackReplyToMode:
     """Tests for reply_to_mode enforcement on DM topic fallback paths.
 
-    Regression tests for https://10.1.200.116:3000/arquant-admin/NewLydia/issues/23994:
+    Regression tests for https://10.1.200.116:3000/arquant-admin/NewAlice/issues/23994:
     reply_to_mode 'off' was ignored when sending via Alice-created DM topic
     lanes (telegram_dm_topic_reply_fallback metadata), causing quote bubbles
     despite the user setting reply_to_mode: 'off'.

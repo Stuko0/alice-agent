@@ -85,7 +85,7 @@ python3 SKILL_DIR/scripts/fetch_icij_offshore.py --entity "EXAMPLE CORP" \
 ```
 
 First call downloads the ~70 MB ZIP under `~/.cache/alice-osint/icij/`
-(or `$LYDIA_OSINT_CACHE/icij/`). Subsequent calls reuse the cache for 30 days.
+(or `$ALICE_OSINT_CACHE/icij/`). Subsequent calls reuse the cache for 30 days.
 
 ## 8. Legal & Licensing
 

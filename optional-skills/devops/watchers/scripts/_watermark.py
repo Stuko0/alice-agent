@@ -33,8 +33,8 @@ def _state_dir() -> Path:
     if override:
         return Path(override)
     # Default: $ALICE_HOME/watcher-state/, falling back to ~/.alice/watcher-state/.
-    lydia_home = os.environ.get("ALICE_HOME") or str(Path.home() / ".alice")
-    return Path(lydia_home) / "watcher-state"
+    alice_home = os.environ.get("ALICE_HOME") or str(Path.home() / ".alice")
+    return Path(alice_home) / "watcher-state"
 
 
 class Watermark:

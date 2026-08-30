@@ -72,12 +72,12 @@ def _isolated_config(tmp_path, monkeypatch):
     and deterministic (no real provider creds / network)."""
     import gateway.run as gateway_run
 
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    (lydia_home / "config.yaml").write_text("model:\n  default: gpt-x\n  provider: openrouter\nproviders: {}\n", encoding="utf-8")
-    monkeypatch.setattr(gateway_run, "_lydia_home", lydia_home)
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    (alice_home / "config.yaml").write_text("model:\n  default: gpt-x\n  provider: openrouter\nproviders: {}\n", encoding="utf-8")
+    monkeypatch.setattr(gateway_run, "_alice_home", alice_home)
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
-    return lydia_home
+    return alice_home
 
 
 # --------------------------------------------------------------------------- #

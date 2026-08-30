@@ -32,13 +32,13 @@ def clear_verify_env(monkeypatch):
     """Clear every env signal verify_on_stop_enabled consults.
 
     Tests then set only the variable they exercise, mirroring how the CLI/TUI
-    set LYDIA_SESSION_SOURCE and the gateway sets LYDIA_SESSION_PLATFORM.
+    set ALICE_SESSION_SOURCE and the gateway sets ALICE_SESSION_PLATFORM.
     """
     for var in (
-        "LYDIA_VERIFY_ON_STOP",
-        "LYDIA_PLATFORM",
-        "LYDIA_SESSION_PLATFORM",
-        "LYDIA_SESSION_SOURCE",
+        "ALICE_VERIFY_ON_STOP",
+        "ALICE_PLATFORM",
+        "ALICE_SESSION_PLATFORM",
+        "ALICE_SESSION_SOURCE",
     ):
         monkeypatch.delenv(var, raising=False)
     return monkeypatch
@@ -52,7 +52,7 @@ def test_verify_on_stop_default_is_auto(clear_verify_env):
 
 def test_verify_on_stop_default_auto_off_on_messaging(clear_verify_env):
     # The "auto" default resolves OFF on a conversational messaging surface.
-    clear_verify_env.setenv("LYDIA_SESSION_PLATFORM", "telegram")
+    clear_verify_env.setenv("ALICE_SESSION_PLATFORM", "telegram")
     assert verify_on_stop_enabled({"agent": {}}) is False
 
 
@@ -64,19 +64,19 @@ def test_verify_on_stop_auto_sentinel_resolves_to_surface_default(clear_verify_e
     # The legacy "auto" sentinel is still honored when set explicitly: it falls
     # through to the surface-aware default (ON interactive, OFF messaging).
     assert verify_on_stop_enabled({"agent": {"verify_on_stop": "auto"}}) is True
-    clear_verify_env.setenv("LYDIA_SESSION_PLATFORM", "telegram")
+    clear_verify_env.setenv("ALICE_SESSION_PLATFORM", "telegram")
     assert verify_on_stop_enabled({"agent": {"verify_on_stop": "auto"}}) is False
 
 
 def test_verify_on_stop_env_can_disable(clear_verify_env):
-    clear_verify_env.setenv("LYDIA_VERIFY_ON_STOP", "0")
+    clear_verify_env.setenv("ALICE_VERIFY_ON_STOP", "0")
     assert verify_on_stop_enabled({"agent": {"verify_on_stop": True}}) is False
 
 
 def test_verify_on_stop_env_can_enable(clear_verify_env):
     # Env "1" forces ON regardless of surface (here a messaging platform).
-    clear_verify_env.setenv("LYDIA_VERIFY_ON_STOP", "1")
-    clear_verify_env.setenv("LYDIA_SESSION_PLATFORM", "telegram")
+    clear_verify_env.setenv("ALICE_VERIFY_ON_STOP", "1")
+    clear_verify_env.setenv("ALICE_SESSION_PLATFORM", "telegram")
     assert verify_on_stop_enabled({"agent": {}}) is True
 
 
@@ -90,7 +90,7 @@ def test_verify_on_stop_config_can_disable(clear_verify_env):
 
 def test_verify_on_stop_auto_off_on_gateway_messaging_platform(clear_verify_env):
     # With explicit "auto", a real Telegram turn resolves OFF.
-    clear_verify_env.setenv("LYDIA_SESSION_PLATFORM", "telegram")
+    clear_verify_env.setenv("ALICE_SESSION_PLATFORM", "telegram")
     assert verify_on_stop_enabled({"agent": {"verify_on_stop": "auto"}}) is False
 
 
@@ -99,50 +99,50 @@ def test_verify_on_stop_auto_off_on_gateway_messaging_platform(clear_verify_env)
     ["discord", "whatsapp_cloud", "signal", "slack", "matrix", "email", "sms"],
 )
 def test_verify_on_stop_auto_off_for_each_messaging_platform(clear_verify_env, platform):
-    clear_verify_env.setenv("LYDIA_SESSION_PLATFORM", platform)
+    clear_verify_env.setenv("ALICE_SESSION_PLATFORM", platform)
     assert verify_on_stop_enabled({"agent": {"verify_on_stop": "auto"}}) is False
 
 
 def test_verify_on_stop_auto_messaging_platform_is_case_insensitive(clear_verify_env):
-    clear_verify_env.setenv("LYDIA_SESSION_PLATFORM", "  Telegram  ")
+    clear_verify_env.setenv("ALICE_SESSION_PLATFORM", "  Telegram  ")
     assert verify_on_stop_enabled({"agent": {"verify_on_stop": "auto"}}) is False
 
 
-def test_verify_on_stop_auto_uses_lydia_platform_override(clear_verify_env):
-    # LYDIA_PLATFORM mirrors the sibling platform resolution and also flags a
+def test_verify_on_stop_auto_uses_alice_platform_override(clear_verify_env):
+    # ALICE_PLATFORM mirrors the sibling platform resolution and also flags a
     # messaging surface under the "auto" sentinel.
-    clear_verify_env.setenv("LYDIA_PLATFORM", "discord")
+    clear_verify_env.setenv("ALICE_PLATFORM", "discord")
     assert verify_on_stop_enabled({"agent": {"verify_on_stop": "auto"}}) is False
 
 
 @pytest.mark.parametrize("source", ["cli", "tui", "desktop", "codex", "local"])
 def test_verify_on_stop_auto_on_for_interactive_surfaces(clear_verify_env, source):
     # Under "auto", CLI/TUI/desktop coding surfaces resolve ON.
-    clear_verify_env.setenv("LYDIA_SESSION_SOURCE", source)
+    clear_verify_env.setenv("ALICE_SESSION_SOURCE", source)
     assert verify_on_stop_enabled({"agent": {"verify_on_stop": "auto"}}) is True
 
 
 @pytest.mark.parametrize("platform", ["api_server", "webhook", "msgraph_webhook"])
 def test_verify_on_stop_auto_on_for_programmatic_surfaces(clear_verify_env, platform):
-    clear_verify_env.setenv("LYDIA_SESSION_PLATFORM", platform)
+    clear_verify_env.setenv("ALICE_SESSION_PLATFORM", platform)
     assert verify_on_stop_enabled({"agent": {"verify_on_stop": "auto"}}) is True
 
 
 def test_default_auto_on_for_interactive_surface(clear_verify_env):
     # The default is surface-aware "auto": an interactive coding surface
     # resolves ON without any explicit opt-in.
-    clear_verify_env.setenv("LYDIA_SESSION_SOURCE", "cli")
+    clear_verify_env.setenv("ALICE_SESSION_SOURCE", "cli")
     assert verify_on_stop_enabled({"agent": {}}) is True
 
 
 def test_env_forces_verify_on_stop_on_for_messaging(clear_verify_env):
-    clear_verify_env.setenv("LYDIA_SESSION_PLATFORM", "telegram")
-    clear_verify_env.setenv("LYDIA_VERIFY_ON_STOP", "1")
+    clear_verify_env.setenv("ALICE_SESSION_PLATFORM", "telegram")
+    clear_verify_env.setenv("ALICE_VERIFY_ON_STOP", "1")
     assert verify_on_stop_enabled({"agent": {}}) is True
 
 
 def test_config_forces_verify_on_stop_on_for_messaging(clear_verify_env):
-    clear_verify_env.setenv("LYDIA_SESSION_PLATFORM", "telegram")
+    clear_verify_env.setenv("ALICE_SESSION_PLATFORM", "telegram")
     assert verify_on_stop_enabled({"agent": {"verify_on_stop": True}}) is True
 
 
@@ -159,11 +159,11 @@ def test_verify_on_stop_default_path_through_load_config(tmp_path, clear_verify_
     assert merged["agent"]["verify_on_stop"] == "auto"
 
     # Interactive surface resolves ON through the real loader.
-    clear_verify_env.setenv("LYDIA_SESSION_SOURCE", "cli")
+    clear_verify_env.setenv("ALICE_SESSION_SOURCE", "cli")
     assert verify_on_stop_enabled() is True
 
     # A messaging platform resolves OFF.
-    clear_verify_env.setenv("LYDIA_SESSION_PLATFORM", "telegram")
+    clear_verify_env.setenv("ALICE_SESSION_PLATFORM", "telegram")
     assert verify_on_stop_enabled() is False
 
 

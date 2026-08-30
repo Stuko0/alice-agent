@@ -8,8 +8,8 @@ OK="${GREEN}✔${NC}"; FAIL="${RED}✘${NC}"; WARN="${YELLOW}⚠${NC}"
 
 TWOZERO_URL="https://www.404zero.com/pisang/twozero.tox"
 TOX_PATH="$HOME/Downloads/twozero.tox"
-LYDIA_HOME_DIR="${LYDIA_HOME:-$HOME/.alice}"
-LYDIA_CFG="${LYDIA_HOME_DIR}/config.yaml"
+ALICE_HOME_DIR="${ALICE_HOME:-$HOME/.alice}"
+ALICE_CFG="${ALICE_HOME_DIR}/config.yaml"
 MCP_PORT=40404
 MCP_ENDPOINT="http://localhost:${MCP_PORT}/mcp"
 
@@ -44,17 +44,17 @@ else
 fi
 
 # ── 3. Ensure Alice config has twozero_td MCP entry ──
-if [[ ! -f "$LYDIA_CFG" ]]; then
-    echo -e " ${FAIL} Alice config not found at ${LYDIA_CFG}"
-    manual_steps+=("Create ${LYDIA_CFG} with twozero_td MCP server entry")
-elif grep -q 'twozero_td' "$LYDIA_CFG" 2>/dev/null; then
+if [[ ! -f "$ALICE_CFG" ]]; then
+    echo -e " ${FAIL} Alice config not found at ${ALICE_CFG}"
+    manual_steps+=("Create ${ALICE_CFG} with twozero_td MCP server entry")
+elif grep -q 'twozero_td' "$ALICE_CFG" 2>/dev/null; then
     echo -e " ${OK} twozero_td MCP entry exists in Alice config"
 else
     echo -e " ${WARN} Adding twozero_td MCP entry to Alice config..."
     python3 -c "
 import yaml, sys, copy
 
-cfg_path = '$LYDIA_CFG'
+cfg_path = '$ALICE_CFG'
 with open(cfg_path, 'r') as f:
     cfg = yaml.safe_load(f) or {}
 
@@ -71,7 +71,7 @@ if 'twozero_td' not in cfg['mcp_servers']:
         yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
 " 2>/dev/null && echo -e " ${OK} twozero_td MCP entry added to config" \
               || { echo -e " ${FAIL} Could not update config (is PyYAML installed?)"; \
-                   manual_steps+=("Add twozero_td MCP entry to ${LYDIA_CFG} manually"); }
+                   manual_steps+=("Add twozero_td MCP entry to ${ALICE_CFG} manually"); }
     manual_steps+=("Restart Alice session to pick up config change")
 fi
 

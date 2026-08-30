@@ -6,7 +6,7 @@ free models, Ollama Cloud, custom OpenAI-compatible endpoints) truncated long
 generations with `finish_reason="length"`.
 
 Precedence verified here:
-    LYDIA_MAX_TOKENS env  >  model.max_tokens  >  per-provider
+    ALICE_MAX_TOKENS env  >  model.max_tokens  >  per-provider
     max_output_tokens  >  None
 """
 
@@ -27,10 +27,10 @@ def isolated_home(tmp_path, monkeypatch):
     files in the same worker (which breaks their import-time mocks), we snapshot
     the affected modules and restore them on teardown.
     """
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
-    monkeypatch.delenv("LYDIA_MAX_TOKENS", raising=False)
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
+    monkeypatch.delenv("ALICE_MAX_TOKENS", raising=False)
 
     _saved = {
         k: v
@@ -39,7 +39,7 @@ def isolated_home(tmp_path, monkeypatch):
     }
 
     def write_cfg(body: str) -> None:
-        (lydia_home / "config.yaml").write_text(textwrap.dedent(body))
+        (alice_home / "config.yaml").write_text(textwrap.dedent(body))
 
     def fresh_gateway():
         for mod in list(sys.modules.keys()):
@@ -118,9 +118,9 @@ def test_global_max_tokens_beats_per_provider(isolated_home):
 
 
 def test_env_override_beats_everything(isolated_home, monkeypatch):
-    """LYDIA_MAX_TOKENS is the internal override mechanism (highest priority)."""
+    """ALICE_MAX_TOKENS is the internal override mechanism (highest priority)."""
     write_cfg, fresh_gateway = isolated_home
-    monkeypatch.setenv("LYDIA_MAX_TOKENS", "2048")
+    monkeypatch.setenv("ALICE_MAX_TOKENS", "2048")
     write_cfg(
         """
         model:

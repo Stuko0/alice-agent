@@ -16,8 +16,8 @@ const getAuxiliaryModels = vi.fn()
 const setModelAssignment = vi.fn()
 const getRecommendedDefaultModel = vi.fn()
 const setEnvVar = vi.fn()
-const getLydiaConfigRecord = vi.fn()
-const saveLydiaConfig = vi.fn()
+const getAliceConfigRecord = vi.fn()
+const saveAliceConfig = vi.fn()
 const startManualProviderOAuth = vi.fn()
 
 vi.mock('@/alice', () => ({
@@ -27,8 +27,8 @@ vi.mock('@/alice', () => ({
   setModelAssignment: (body: unknown) => setModelAssignment(body),
   getRecommendedDefaultModel: (slug: string) => getRecommendedDefaultModel(slug),
   setEnvVar: (key: string, value: string) => setEnvVar(key, value),
-  getLydiaConfigRecord: () => getLydiaConfigRecord(),
-  saveLydiaConfig: (config: unknown) => saveLydiaConfig(config)
+  getAliceConfigRecord: () => getAliceConfigRecord(),
+  saveAliceConfig: (config: unknown) => saveAliceConfig(config)
 }))
 
 vi.mock('@/store/onboarding', () => ({
@@ -64,8 +64,8 @@ beforeEach(() => {
   setModelAssignment.mockResolvedValue({ provider: 'nous', model: 'alice-4', gateway_tools: [] })
   getRecommendedDefaultModel.mockResolvedValue({ provider: 'deepseek', model: 'deepseek-chat', free_tier: null })
   setEnvVar.mockResolvedValue({ ok: true })
-  getLydiaConfigRecord.mockResolvedValue({ agent: { reasoning_effort: 'medium', service_tier: 'normal' } })
-  saveLydiaConfig.mockResolvedValue({ ok: true })
+  getAliceConfigRecord.mockResolvedValue({ agent: { reasoning_effort: 'medium', service_tier: 'normal' } })
+  saveAliceConfig.mockResolvedValue({ ok: true })
 })
 
 afterEach(() => {
@@ -121,13 +121,13 @@ describe('ModelSettings', () => {
 
   it('writes the profile default speed (service_tier) when the fast switch is toggled', async () => {
     await renderModelSettings()
-    await waitFor(() => expect(getLydiaConfigRecord).toHaveBeenCalled())
+    await waitFor(() => expect(getAliceConfigRecord).toHaveBeenCalled())
 
     const fastSwitch = await screen.findByRole('switch')
     fireEvent.click(fastSwitch)
 
     await waitFor(() =>
-      expect(saveLydiaConfig).toHaveBeenCalledWith(
+      expect(saveAliceConfig).toHaveBeenCalledWith(
         expect.objectContaining({ agent: expect.objectContaining({ service_tier: 'fast' }) })
       )
     )
@@ -147,7 +147,7 @@ describe('ModelSettings', () => {
     })
 
     await renderModelSettings()
-    await waitFor(() => expect(getLydiaConfigRecord).toHaveBeenCalled())
+    await waitFor(() => expect(getAliceConfigRecord).toHaveBeenCalled())
 
     expect(screen.queryByRole('switch')).toBeNull()
   })

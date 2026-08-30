@@ -17,8 +17,8 @@ services:
     volumes:
       - ${USERPROFILE}/.alice:/opt/data
     environment:
-      - LYDIA_UID=10000
-      - LYDIA_GID=10000
+      - ALICE_UID=10000
+      - ALICE_GID=10000
     command: ["gateway", "run"]
 
   dashboard:
@@ -30,9 +30,9 @@ services:
     volumes:
       - ${USERPROFILE}/.alice:/opt/data
     environment:
-      - LYDIA_UID=10000
-      - LYDIA_GID=10000
-      - LYDIA_DASHBOARD_HOST=0.0.0.0
+      - ALICE_UID=10000
+      - ALICE_GID=10000
+      - ALICE_DASHBOARD_HOST=0.0.0.0
     ports:
       - "127.0.0.1:9119:9119"
     command: ["dashboard", "--host", "0.0.0.0", "--port", "9119", "--no-open", "--insecure"]

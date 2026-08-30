@@ -121,7 +121,7 @@ Generation uses the active [image-generation provider](/user-guide/features/imag
 
 - Resolution order prefers Nous Portal → OpenAI → OpenRouter.
 - If no reference-capable backend is configured, generation surfaces an actionable error pointing you to `alice native` → Image Generation. (Installing/adopting existing gallery pets needs no image backend.)
-- Override the backend with the `LYDIA_PET_IMAGE_PROVIDER` env var (e.g. `LYDIA_PET_IMAGE_PROVIDER=openrouter`).
+- Override the backend with the `ALICE_PET_IMAGE_PROVIDER` env var (e.g. `ALICE_PET_IMAGE_PROVIDER=openrouter`).
 
 ## Desktop app
 

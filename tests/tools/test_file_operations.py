@@ -77,15 +77,15 @@ class TestIsWriteDenied:
     def test_oauth_mcp_tokens_and_pairing_denied(self, path):
         """PKCE creds, mcp-tokens, and pairing entries must be write-denied."""
         from alice_constants import get_alice_home
-        lydia_home = get_alice_home()
-        full_path = str(lydia_home / path)
+        alice_home = get_alice_home()
+        full_path = str(alice_home / path)
         assert _is_write_denied(full_path) is True
 
     @pytest.mark.parametrize(
         "path",
         ["auth.json", "config.yaml", "webhook_subscriptions.json"],
     )
-    def test_lydia_control_files_requested_writable(self, path):
+    def test_alice_control_files_requested_writable(self, path):
         from alice_constants import get_alice_home
 
         assert _is_write_denied(str(get_alice_home() / path)) is False
@@ -99,8 +99,8 @@ class TestIsWriteDenied:
     def test_oauth_traversal_denied(self, path):
         """Path traversal attempts to protected OAuth files must be blocked."""
         from alice_constants import get_alice_home
-        lydia_home = get_alice_home()
-        full_path = str(lydia_home / path)
+        alice_home = get_alice_home()
+        full_path = str(alice_home / path)
         assert _is_write_denied(full_path) is True
 
     @pytest.mark.parametrize(
@@ -527,10 +527,10 @@ class TestShellFileOpsHelpers:
 
     def test_read_file_strips_leaked_terminal_fence_markers(self, mock_env):
         leaked = (
-            "'\x07__LYDIA_FENCE_a9f7b3__\x1b]0;cat "
+            "'\x07__ALICE_FENCE_a9f7b3__\x1b]0;cat "
             "'/tmp/test/a.py' 2> /dev/null\x07\n"
             "print('ok')\n"
-            "__LYDIA_FENCE_a9f7b3__\x07'\n"
+            "__ALICE_FENCE_a9f7b3__\x07'\n"
         )
 
         def side_effect(command, **kwargs):
@@ -549,16 +549,16 @@ class TestShellFileOpsHelpers:
         result = ops.read_file("/tmp/test/a.py")
 
         assert result.error is None
-        assert "LYDIA_FENCE" not in result.content
+        assert "ALICE_FENCE" not in result.content
         assert "\x1b]" not in result.content
         assert "\x07" not in result.content
         assert "1|print('ok')" in result.content
 
     def test_read_file_raw_strips_leaked_terminal_fence_markers(self, mock_env):
         leaked = (
-            "__LYDIA_FENCE_a9f7b3__\x07'\n"
+            "__ALICE_FENCE_a9f7b3__\x07'\n"
             "alpha\n"
-            "\x1b]0;cat '/tmp/test/a.txt'\x07__LYDIA_FENCE_a9f7b3__\n"
+            "\x1b]0;cat '/tmp/test/a.txt'\x07__ALICE_FENCE_a9f7b3__\n"
         )
 
         def side_effect(command, **kwargs):

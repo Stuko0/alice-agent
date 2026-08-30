@@ -107,8 +107,8 @@ class TestIsBotMentioned:
         assert not self.adapter._is_bot_mentioned("")
 
     def test_partial_localpart_no_match(self):
-        # "lydiabot" should not match word-boundary check for "alice"
-        assert not self.adapter._is_bot_mentioned("lydiabot is here")
+        # "alicebot" should not match word-boundary check for "alice"
+        assert not self.adapter._is_bot_mentioned("alicebot is here")
 
     # m.mentions.user_ids — MSC3952 / Matrix v1.7 authoritative mentions
     # Ported from openclaw/openclaw#64796

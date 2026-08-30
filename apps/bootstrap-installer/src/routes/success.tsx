@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { type CSSProperties } from 'react'
 import { HackeryButton } from '../components/hackery-button'
-import { launchLydiaDesktop } from '../store'
+import { launchAliceDesktop } from '../store'
 import { AlertCircle } from 'lucide-react'
 
 /*
@@ -12,7 +12,7 @@ import { AlertCircle } from 'lucide-react'
  * Launching the desktop can fail (e.g. Stage-Desktop was skipped and
  * Alice.exe doesn't exist). We catch the Tauri error and surface it
  * inline rather than silently doing nothing — the previous version
- * had `onClick={() => void launchLydiaDesktop()}` which swallowed
+ * had `onClick={() => void launchAliceDesktop()}` which swallowed
  * the rejection and left the user staring at an unresponsive button.
  */
 export default function Success() {
@@ -23,7 +23,7 @@ export default function Success() {
     setError(null)
     setLaunching(true)
     try {
-      await launchLydiaDesktop()
+      await launchAliceDesktop()
       // On success the installer exits — control never returns here.
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)

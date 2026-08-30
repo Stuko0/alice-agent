@@ -379,8 +379,8 @@ class TestTeamsInteractiveSetup:
         from alice_cli.cli_output (not alice_cli.config) and persist
         credentials to .env without crashing.
         """
-        lydia_home = tmp_path / "alice"
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / "alice"
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
         import alice_cli.cli_output as cli_output_mod
 
@@ -393,7 +393,7 @@ class TestTeamsInteractiveSetup:
 
         _teams_mod.interactive_setup()
 
-        env_text = (lydia_home / ".env").read_text(encoding="utf-8")
+        env_text = (alice_home / ".env").read_text(encoding="utf-8")
         assert "TEAMS_CLIENT_ID=client-id" in env_text
         assert "TEAMS_TENANT_ID=tenant-id" in env_text
 

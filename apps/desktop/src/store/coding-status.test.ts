@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { LydiaRepoStatus } from '@/global'
+import type { AliceRepoStatus } from '@/global'
 
 import { $repoStatus, refreshRepoStatus } from './coding-status'
 import { $currentCwd } from './session'
 
-const sampleStatus: LydiaRepoStatus = {
+const sampleStatus: AliceRepoStatus = {
   branch: 'feature/login',
   defaultBranch: 'main',
   detached: false,
@@ -21,19 +21,19 @@ const sampleStatus: LydiaRepoStatus = {
   files: []
 }
 
-function stubProbe(impl: (cwd: string) => Promise<LydiaRepoStatus | null>) {
-  ;(window as unknown as { lydiaDesktop?: unknown }).lydiaDesktop = { git: { repoStatus: impl } }
+function stubProbe(impl: (cwd: string) => Promise<AliceRepoStatus | null>) {
+  ;(window as unknown as { aliceDesktop?: unknown }).aliceDesktop = { git: { repoStatus: impl } }
 }
 
 describe('refreshRepoStatus', () => {
   beforeEach(() => {
     $repoStatus.set(null)
     $currentCwd.set('')
-    delete (window as unknown as { lydiaDesktop?: unknown }).lydiaDesktop
+    delete (window as unknown as { aliceDesktop?: unknown }).aliceDesktop
   })
 
   afterEach(() => {
-    delete (window as unknown as { lydiaDesktop?: unknown }).lydiaDesktop
+    delete (window as unknown as { aliceDesktop?: unknown }).aliceDesktop
   })
 
   it('populates $repoStatus from the probe for an explicit cwd', async () => {

@@ -3,7 +3,7 @@
 Build the real image and verify the actual runtime behavior:
 
   1. PUID/PGID env vars remap the alice user UID/GID at boot
-  2. LYDIA_UID/LYDIA_GID take precedence over PUID/PGID aliases
+  2. ALICE_UID/ALICE_GID take precedence over PUID/PGID aliases
   3. NAS-style low UIDs (99:100) are accepted and remapped
   4. Invalid UIDs are rejected
   5. The remapped user can write to the data volume
@@ -13,7 +13,7 @@ from __future__ import annotations
 from tests.docker.conftest import docker_exec_sh, start_container
 
 
-def test_puid_pgid_remaps_lydia_user(
+def test_puid_pgid_remaps_alice_user(
     built_image: str, container_name: str,
 ) -> None:
     """PUID=1000 PGID=1000 must remap the alice user to UID 1000."""
@@ -38,20 +38,20 @@ def test_puid_pgid_remaps_lydia_user(
     )
 
 
-def test_lydia_uid_gid_take_precedence_over_aliases(
+def test_alice_uid_gid_take_precedence_over_aliases(
     built_image: str, container_name: str,
 ) -> None:
-    """LYDIA_UID/LYDIA_GID must win over PUID/PGID when both are set."""
-    start_container(built_image, container_name, "LYDIA_UID=2000", "LYDIA_GID=2001", "PUID=1000", "PGID=1000")
+    """ALICE_UID/ALICE_GID must win over PUID/PGID when both are set."""
+    start_container(built_image, container_name, "ALICE_UID=2000", "ALICE_GID=2001", "PUID=1000", "PGID=1000")
 
     r = docker_exec_sh(container_name, "id -u alice", timeout=10)
     assert r.stdout.strip() == "2000", (
-        f"expected alice UID 2000 (LYDIA_UID wins), got: {r.stdout.strip()}"
+        f"expected alice UID 2000 (ALICE_UID wins), got: {r.stdout.strip()}"
     )
 
     r = docker_exec_sh(container_name, "id -g alice", timeout=10)
     assert r.stdout.strip() == "2001", (
-        f"expected alice GID 2001 (LYDIA_GID wins), got: {r.stdout.strip()}"
+        f"expected alice GID 2001 (ALICE_GID wins), got: {r.stdout.strip()}"
     )
 
 

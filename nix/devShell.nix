@@ -11,7 +11,7 @@
     { pkgs, self', ... }:
     let
       packages = builtins.attrValues self'.packages;
-      lydiaNpmLib = self'.packages.default.passthru.lydiaNpmLib;
+      aliceNpmLib = self'.packages.default.passthru.aliceNpmLib;
 
       # Collect all packageJsonPath values from npm workspace packages.
       npmPackageJsonPaths = builtins.filter (p: p != null) (
@@ -34,7 +34,7 @@
         shellHook = ''
           echo "Alice Agent dev shell"
           ${combinedNonNpm}
-          ${lydiaNpmLib.mkNpmDevShellHook npmPackageJsonPaths}
+          ${aliceNpmLib.mkNpmDevShellHook npmPackageJsonPaths}
           echo "Ready. Run 'alice' to start."
         '';
       };

@@ -333,7 +333,7 @@ class OpenRouterCompatImageProvider(ImageGenProvider):
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             # OpenRouter attribution headers (harmless against Nous Portal).
-            "HTTP-Referer": "https://github.com/NousResearch/alice-agent",
+            "HTTP-Referer": "https://github.com/Stuko0/alice-agent",
             "X-Title": "Alice Agent",
         }
         last_error: Optional[Dict[str, Any]] = None

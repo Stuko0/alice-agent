@@ -41,17 +41,17 @@ import pytest
 @pytest.fixture
 def isolated_home(monkeypatch):
     """Temp ALICE_HOME with config + clean credential env vars."""
-    test_home = tempfile.mkdtemp(prefix="lydia_test_31179_")
-    lydia_home = os.path.join(test_home, ".alice")
-    os.makedirs(lydia_home)
-    monkeypatch.setenv("ALICE_HOME", lydia_home)
+    test_home = tempfile.mkdtemp(prefix="alice_test_31179_")
+    alice_home = os.path.join(test_home, ".alice")
+    os.makedirs(alice_home)
+    monkeypatch.setenv("ALICE_HOME", alice_home)
 
     # Strip all credential-shaped env vars so each scenario starts hermetic.
     for k in list(os.environ.keys()):
         if k.endswith("_API_KEY") or k.endswith("_TOKEN"):
             monkeypatch.delenv(k, raising=False)
 
-    yield lydia_home
+    yield alice_home
     shutil.rmtree(test_home, ignore_errors=True)
 
 

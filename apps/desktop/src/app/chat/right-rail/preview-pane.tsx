@@ -93,7 +93,7 @@ function PreviewLoadError({
             href={error.url}
             onClick={event => {
               event.preventDefault()
-              void window.lydiaDesktop?.openExternal(error.url)
+              void window.aliceDesktop?.openExternal(error.url)
             }}
           >
             {compactUrl(error.url)}
@@ -408,8 +408,8 @@ export function PreviewPane({
     if (
       target.kind !== 'file' ||
       isDesktopFsRemoteMode() ||
-      !window.lydiaDesktop?.watchPreviewFile ||
-      !window.lydiaDesktop?.onPreviewFileChanged
+      !window.aliceDesktop?.watchPreviewFile ||
+      !window.aliceDesktop?.onPreviewFileChanged
     ) {
       return
     }
@@ -442,7 +442,7 @@ export function PreviewPane({
       reloadPreview()
     }
 
-    const unsubscribe = window.lydiaDesktop.onPreviewFileChanged(payload => {
+    const unsubscribe = window.aliceDesktop.onPreviewFileChanged(payload => {
       if (!active || payload.id !== watchId) {
         return
       }
@@ -460,11 +460,11 @@ export function PreviewPane({
       }, FILE_RELOAD_DEBOUNCE_MS)
     })
 
-    void window.lydiaDesktop
+    void window.aliceDesktop
       .watchPreviewFile(target.url)
       .then(watch => {
         if (!active) {
-          void window.lydiaDesktop?.stopPreviewFileWatch?.(watch.id)
+          void window.aliceDesktop?.stopPreviewFileWatch?.(watch.id)
 
           return
         }
@@ -487,7 +487,7 @@ export function PreviewPane({
       }
 
       if (watchId) {
-        void window.lydiaDesktop?.stopPreviewFileWatch?.(watchId)
+        void window.aliceDesktop?.stopPreviewFileWatch?.(watchId)
       }
     }
   }, [appendConsoleEntry, copy, reloadPreview, target.kind, target.url])

@@ -61,7 +61,7 @@ openrouter (2 credentials):
   #2  backup-key           api_key manual
 
 anthropic (3 credentials):
-  #1  lydia_pkce          oauth   lydia_pkce ←
+  #1  alice_pkce          oauth   alice_pkce ←
   #2  claude_code          oauth   claude_code
   #3  ANTHROPIC_API_KEY    api_key env:ANTHROPIC_API_KEY
 ```

@@ -8,9 +8,10 @@ import { HUD_HEADING, HUD_ITEM, HUD_POSITION, HUD_SURFACE, HUD_TEXT } from '@/ap
 import { setTerminalTakeover } from '@/app/right-sidebar/store'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { KbdCombo } from '@/components/ui/kbd'
-import { getLydiaConfigRecord, listAllProfileSessions } from '@/alice'
+import { getAliceConfigRecord, listAllProfileSessions } from '@/alice'
 import { useI18n } from '@/i18n'
 import { sessionTitle } from '@/lib/chat-runtime'
+import { desktopSupports } from '@/lib/desktop-capabilities'
 import {
   Activity,
   Archive,
@@ -234,7 +235,7 @@ export function CommandPalette() {
   // the palette is open. react-query handles caching/dedup/staleness.
   const configQuery = useQuery({
     queryKey: ['command-palette', 'config'],
-    queryFn: getLydiaConfigRecord,
+    queryFn: getAliceConfigRecord,
     enabled: open
   })
 
@@ -580,17 +581,23 @@ export function CommandPalette() {
         placeholder: t.settings.appearance.themeDesc,
         groups: [
           // Pinned at the top: drills into the Marketplace browser.
-          {
-            items: [
-              {
-                icon: Download,
-                id: 'theme-install',
-                keywords: ['install', 'marketplace', 'vscode', 'vs code', 'download', 'new', 'color'],
-                label: t.commandCenter.installTheme.title,
-                to: 'install-theme'
-              }
-            ]
-          },
+          // Wails shell: no marketplace install support — the item is hidden
+          // and only the built-in/imported families list below remains.
+          ...(desktopSupports('vscodeThemes')
+            ? [
+                {
+                  items: [
+                    {
+                      icon: Download,
+                      id: 'theme-install',
+                      keywords: ['install', 'marketplace', 'vscode', 'vs code', 'download', 'new', 'color'],
+                      label: t.commandCenter.installTheme.title,
+                      to: 'install-theme'
+                    }
+                  ]
+                }
+              ]
+            : []),
           // Built-ins and imported families list under the mode(s) they support;
           // picking sets skin + mode at once. A multi-variant import (GitHub,
           // Solarized) appears in both groups and switches variants with the mode.

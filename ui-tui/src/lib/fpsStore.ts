@@ -2,7 +2,7 @@
 // frame (React commit + drain-only frames) — the right notion for
 // user-perceived motion.
 //
-// Zero-cost when LYDIA_TUI_FPS is unset: trackFrame is undefined so the
+// Zero-cost when ALICE_TUI_FPS is unset: trackFrame is undefined so the
 // onFrame callback short-circuits at the optional chain.
 
 import { atom } from 'nanostores'

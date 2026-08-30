@@ -122,7 +122,7 @@ const config: Config = {
         docs: {
           routeBasePath: '/',  // Docs at the root of /docs/
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://10.1.200.116:3000/arquant-admin/NewLydia/edit/main/website/',
+          editUrl: 'https://10.1.200.116:3000/arquant-admin/NewAlice/edit/main/website/',
         },
         blog: false,
         theme: {
@@ -177,7 +177,7 @@ const config: Config = {
           position: 'right',
         },
         {
-          href: 'https://10.1.200.116:3000/arquant-admin/NewLydia',
+          href: 'https://10.1.200.116:3000/arquant-admin/NewAlice',
           label: 'GitHub',
           position: 'right',
         },
@@ -204,7 +204,7 @@ const config: Config = {
           title: 'Community',
           items: [
             { label: 'Discord', href: 'https://discord.gg/Stuko' },
-            { label: 'GitHub Issues', href: 'https://10.1.200.116:3000/arquant-admin/NewLydia/issues' },
+            { label: 'GitHub Issues', href: 'https://10.1.200.116:3000/arquant-admin/NewAlice/issues' },
             { label: 'Skills Hub', href: 'https://agentskills.io' },
           ],
         },
@@ -212,7 +212,7 @@ const config: Config = {
           title: 'More',
           items: [
             { label: 'Desktop Download', href: 'https://alice-agent.stuko.dev/' },
-            { label: 'GitHub', href: 'https://10.1.200.116:3000/arquant-admin/NewLydia' },
+            { label: 'GitHub', href: 'https://10.1.200.116:3000/arquant-admin/NewAlice' },
             { label: 'Stuko', href: 'https://stuko.dev' },
           ],
         },

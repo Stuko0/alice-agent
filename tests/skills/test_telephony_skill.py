@@ -198,8 +198,8 @@ def test_vapi_import_twilio_number_saves_phone_number_id(tmp_path: Path):
 
 def test_diagnose_includes_decision_tree_and_saved_state(tmp_path: Path, monkeypatch):
     mod = load_module()
-    lydia_home = tmp_path / ".alice"
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    alice_home = tmp_path / ".alice"
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
     mod._save_state(
         {
             "version": 1,
@@ -211,10 +211,10 @@ def test_diagnose_includes_decision_tree_and_saved_state(tmp_path: Path, monkeyp
                 "phone_number_id": "vapi-abc",
             },
         },
-        lydia_home / "telephony_state.json",
+        alice_home / "telephony_state.json",
     )
-    (lydia_home / ".env").parent.mkdir(parents=True, exist_ok=True)
-    (lydia_home / ".env").write_text(
+    (alice_home / ".env").parent.mkdir(parents=True, exist_ok=True)
+    (alice_home / ".env").write_text(
         "TWILIO_ACCOUNT_SID=AC123\nTWILIO_AUTH_TOKEN=token\nBLAND_API_KEY=bland\n",
         encoding="utf-8",
     )

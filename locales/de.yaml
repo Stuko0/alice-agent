@@ -314,7 +314,7 @@ Future messages in this room will use that transcript until `/reset` or another 
   update:
     platform_not_messaging:  "✗ /update ist nur auf Messaging-Plattformen verfügbar. Führen Sie `alice update` im Terminal aus."
     not_git_repo:            "✗ Kein Git-Repository — Update nicht möglich."
-    lydia_cmd_not_found:    "✗ Der Befehl `alice` konnte nicht gefunden werden. Alice läuft, aber der Update-Befehl konnte das ausführbare Programm weder im PATH noch über den aktuellen Python-Interpreter finden. Versuchen Sie, `alice update` manuell im Terminal auszuführen."
+    alice_cmd_not_found:    "✗ Der Befehl `alice` konnte nicht gefunden werden. Alice läuft, aber der Update-Befehl konnte das ausführbare Programm weder im PATH noch über den aktuellen Python-Interpreter finden. Versuchen Sie, `alice update` manuell im Terminal auszuführen."
     start_failed:            "✗ Update konnte nicht gestartet werden: {error}"
     starting:                "🌹 Alice-Update wird gestartet… Ich streame den Fortschritt hier."
 

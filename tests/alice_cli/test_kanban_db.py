@@ -70,7 +70,7 @@ def test_connect_honors_kanban_busy_timeout_env(kanban_home, monkeypatch):
     setup.  The timeout must be queryable via PRAGMA so CLI, gateway, and tool
     connections behave the same way.
     """
-    monkeypatch.setenv("LYDIA_KANBAN_BUSY_TIMEOUT_MS", "123456")
+    monkeypatch.setenv("ALICE_KANBAN_BUSY_TIMEOUT_MS", "123456")
 
     with kb.connect() as conn:
         row = conn.execute("PRAGMA busy_timeout").fetchone()
@@ -111,8 +111,8 @@ def test_connect_rejects_tls_record_in_sqlite_header(tmp_path, monkeypatch):
     home = tmp_path / ".alice"
     home.mkdir()
     monkeypatch.setenv("ALICE_HOME", str(home))
-    monkeypatch.delenv("LYDIA_KANBAN_DB", raising=False)
-    monkeypatch.delenv("LYDIA_KANBAN_HOME", raising=False)
+    monkeypatch.delenv("ALICE_KANBAN_DB", raising=False)
+    monkeypatch.delenv("ALICE_KANBAN_HOME", raising=False)
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
     corrupt = home / "kanban.db"
@@ -378,7 +378,7 @@ def test_claim_once_wins_second_loses(kanban_home):
 
 
 def test_claim_uses_env_default_ttl(kanban_home, monkeypatch):
-    monkeypatch.setenv("LYDIA_KANBAN_CLAIM_TTL_SECONDS", "3600")
+    monkeypatch.setenv("ALICE_KANBAN_CLAIM_TTL_SECONDS", "3600")
     with kb.connect() as conn:
         t = kb.create_task(conn, title="x", assignee="a")
         kb.claim_task(conn, t, claimer="host:1")
@@ -501,7 +501,7 @@ def test_stale_claim_with_live_pid_uses_env_ttl_override(
 ):
     import alice_cli.kanban_db as _kb
 
-    monkeypatch.setenv("LYDIA_KANBAN_CLAIM_TTL_SECONDS", "3600")
+    monkeypatch.setenv("ALICE_KANBAN_CLAIM_TTL_SECONDS", "3600")
 
     with kb.connect() as conn:
         t = kb.create_task(conn, title="x", assignee="a")
@@ -795,7 +795,7 @@ def test_detect_crashed_workers_skips_freshly_claimed_tasks(
     import alice_cli.kanban_db as _kb
 
     monkeypatch.setattr(_kb, "_pid_alive", lambda _pid: False)
-    monkeypatch.delenv("LYDIA_KANBAN_CRASH_GRACE_SECONDS", raising=False)
+    monkeypatch.delenv("ALICE_KANBAN_CRASH_GRACE_SECONDS", raising=False)
 
     now = 1_000_000.0
     monkeypatch.setattr(_kb.time, "time", lambda: now)
@@ -823,11 +823,11 @@ def test_detect_crashed_workers_skips_freshly_claimed_tasks(
 def test_detect_crashed_workers_grace_period_env_override(
     kanban_home, monkeypatch,
 ):
-    """LYDIA_KANBAN_CRASH_GRACE_SECONDS env var adjusts the window."""
+    """ALICE_KANBAN_CRASH_GRACE_SECONDS env var adjusts the window."""
     import alice_cli.kanban_db as _kb
 
     monkeypatch.setattr(_kb, "_pid_alive", lambda _pid: False)
-    monkeypatch.setenv("LYDIA_KANBAN_CRASH_GRACE_SECONDS", "5")
+    monkeypatch.setenv("ALICE_KANBAN_CRASH_GRACE_SECONDS", "5")
 
     now = 2_000_000.0
 
@@ -855,7 +855,7 @@ def test_resolve_crash_grace_seconds_handles_bad_env(monkeypatch):
     import alice_cli.kanban_db as _kb
 
     for bad_val in ("notanumber", "-5", ""):
-        monkeypatch.setenv("LYDIA_KANBAN_CRASH_GRACE_SECONDS", bad_val)
+        monkeypatch.setenv("ALICE_KANBAN_CRASH_GRACE_SECONDS", bad_val)
         result = _kb._resolve_crash_grace_seconds()
         assert result == _kb.DEFAULT_CRASH_GRACE_SECONDS, (
             f"expected default for {bad_val!r}, got {result}"
@@ -899,7 +899,7 @@ def test_rate_limit_exit_requeues_without_counting_failure(
     import alice_cli.kanban_db as _kb
 
     monkeypatch.setattr(_kb, "_pid_alive", lambda _pid: False)
-    monkeypatch.setenv("LYDIA_KANBAN_CRASH_GRACE_SECONDS", "0")
+    monkeypatch.setenv("ALICE_KANBAN_CRASH_GRACE_SECONDS", "0")
 
     with kb.connect() as conn:
         host = _kb._claimer_id().split(":", 1)[0]
@@ -989,7 +989,7 @@ def test_respawn_guard_defers_rate_limited_within_cooldown(
     fall into ``blocker_auth`` (which would defer forever)."""
     import alice_cli.kanban_db as _kb
 
-    monkeypatch.setenv("LYDIA_KANBAN_RATE_LIMIT_COOLDOWN_SECONDS", "300")
+    monkeypatch.setenv("ALICE_KANBAN_RATE_LIMIT_COOLDOWN_SECONDS", "300")
     now = 5_000_000
 
     with kb.connect() as conn:
@@ -1027,7 +1027,7 @@ def test_respawn_guard_rate_limit_cooldown_zero_allows_immediately(
     and the stamped rate-limit text does not re-trap it via blocker_auth."""
     import alice_cli.kanban_db as _kb
 
-    monkeypatch.setenv("LYDIA_KANBAN_RATE_LIMIT_COOLDOWN_SECONDS", "0")
+    monkeypatch.setenv("ALICE_KANBAN_RATE_LIMIT_COOLDOWN_SECONDS", "0")
     now = 6_000_000
 
     with kb.connect() as conn:
@@ -1055,7 +1055,7 @@ def test_resolve_rate_limit_cooldown_handles_bad_env(monkeypatch):
 
     for bad_val in ("notanumber", "-5", ""):
         monkeypatch.setenv(
-            "LYDIA_KANBAN_RATE_LIMIT_COOLDOWN_SECONDS", bad_val
+            "ALICE_KANBAN_RATE_LIMIT_COOLDOWN_SECONDS", bad_val
         )
         assert (
             _kb._resolve_rate_limit_cooldown_seconds()
@@ -1126,7 +1126,7 @@ def test_heartbeat_extends_claim(kanban_home):
 
 
 def test_heartbeat_uses_env_default_ttl(kanban_home, monkeypatch):
-    monkeypatch.setenv("LYDIA_KANBAN_CLAIM_TTL_SECONDS", "3600")
+    monkeypatch.setenv("ALICE_KANBAN_CLAIM_TTL_SECONDS", "3600")
     with kb.connect() as conn:
         t = kb.create_task(conn, title="x", assignee="a")
         claimer = "host:hb"
@@ -2078,7 +2078,7 @@ def test_dispatch_respawn_guard_emits_event_for_skipped_task(
 # Workspace resolution
 # ---------------------------------------------------------------------------
 
-def test_scratch_workspace_created_under_lydia_home(kanban_home):
+def test_scratch_workspace_created_under_alice_home(kanban_home):
     with kb.connect() as conn:
         t = kb.create_task(conn, title="x")
         task = kb.get_task(conn, t)
@@ -2371,7 +2371,7 @@ def test_cleanup_workspace_refuses_path_outside_scratch_root(kanban_home, tmp_pa
 
 
 def test_cleanup_workspace_honors_workspaces_root_env_override(tmp_path, monkeypatch):
-    """``LYDIA_KANBAN_WORKSPACES_ROOT`` extends the managed-scratch set.
+    """``ALICE_KANBAN_WORKSPACES_ROOT`` extends the managed-scratch set.
 
     Worker subprocesses run with this env var injected by the dispatcher. The
     cleanup containment check must treat paths under it as managed even when
@@ -2383,7 +2383,7 @@ def test_cleanup_workspace_honors_workspaces_root_env_override(tmp_path, monkeyp
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     workspaces_override = tmp_path / "ext-workspaces"
     workspaces_override.mkdir()
-    monkeypatch.setenv("LYDIA_KANBAN_WORKSPACES_ROOT", str(workspaces_override))
+    monkeypatch.setenv("ALICE_KANBAN_WORKSPACES_ROOT", str(workspaces_override))
     kb.init_db()
 
     with kb.connect() as conn:
@@ -2689,12 +2689,12 @@ class TestSharedBoardPaths:
     """`kanban_home`/`kanban_db_path`/`workspaces_root`/`worker_log_path`
     must anchor at the **shared root**, not the active profile's ALICE_HOME."""
 
-    def _set_home(self, monkeypatch, tmp_path, lydia_home):
+    def _set_home(self, monkeypatch, tmp_path, alice_home):
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
-        monkeypatch.delenv("LYDIA_KANBAN_HOME", raising=False)
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
+        monkeypatch.delenv("ALICE_KANBAN_HOME", raising=False)
 
-    def test_default_install_anchors_at_home_dot_lydia(
+    def test_default_install_anchors_at_home_dot_alice(
         self, tmp_path, monkeypatch
     ):
         # Standard install: ALICE_HOME == ~/.alice, no profile active.
@@ -2764,11 +2764,11 @@ class TestSharedBoardPaths:
         assert dispatcher_ws == worker_ws
         assert dispatcher_log == worker_log
 
-    def test_docker_custom_lydia_home_uses_env_path_directly(
+    def test_docker_custom_alice_home_uses_env_path_directly(
         self, tmp_path, monkeypatch
     ):
         # Docker / custom deployment: ALICE_HOME points outside ~/.alice.
-        # `get_default_lydia_root()` returns env_home directly when it
+        # `get_default_alice_root()` returns env_home directly when it
         # is not a `<root>/profiles/<name>` shape and not under
         # `Path.home() / ".alice"`.
         custom_root = tmp_path / "opt" / "alice"
@@ -2782,7 +2782,7 @@ class TestSharedBoardPaths:
         self, tmp_path, monkeypatch
     ):
         # Docker profile shape: ALICE_HOME=/opt/alice/profiles/coder;
-        # `get_default_lydia_root()` walks up to /opt/alice because
+        # `get_default_alice_root()` walks up to /opt/alice because
         # the immediate parent dir is named "profiles".
         custom_root = tmp_path / "opt" / "alice"
         profile = custom_root / "profiles" / "coder"
@@ -2792,10 +2792,10 @@ class TestSharedBoardPaths:
         assert kb.kanban_home() == custom_root
         assert kb.kanban_db_path() == custom_root / "kanban.db"
 
-    def test_explicit_override_via_lydia_kanban_home(
+    def test_explicit_override_via_alice_kanban_home(
         self, tmp_path, monkeypatch
     ):
-        # Explicit override: LYDIA_KANBAN_HOME beats every other
+        # Explicit override: ALICE_KANBAN_HOME beats every other
         # resolution rule.
         default_home = tmp_path / ".alice"
         profile_home = default_home / "profiles" / "any"
@@ -2805,7 +2805,7 @@ class TestSharedBoardPaths:
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.setenv("ALICE_HOME", str(profile_home))
-        monkeypatch.setenv("LYDIA_KANBAN_HOME", str(override))
+        monkeypatch.setenv("ALICE_KANBAN_HOME", str(override))
 
         assert kb.kanban_home() == override
         assert kb.kanban_db_path() == override / "kanban.db"
@@ -2817,7 +2817,7 @@ class TestSharedBoardPaths:
         default_home.mkdir()
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.setenv("ALICE_HOME", str(default_home))
-        monkeypatch.setenv("LYDIA_KANBAN_HOME", "   ")
+        monkeypatch.setenv("ALICE_KANBAN_HOME", "   ")
 
         assert kb.kanban_home() == default_home
 
@@ -2845,11 +2845,11 @@ class TestSharedBoardPaths:
         assert task is not None
         assert task.title == "cross-profile"
 
-    def test_lydia_kanban_db_pin_beats_kanban_home(
+    def test_alice_kanban_db_pin_beats_kanban_home(
         self, tmp_path, monkeypatch
     ):
-        # LYDIA_KANBAN_DB pins the file path directly and beats both
-        # LYDIA_KANBAN_HOME and the `get_default_lydia_root()` path.
+        # ALICE_KANBAN_DB pins the file path directly and beats both
+        # ALICE_KANBAN_HOME and the `get_default_alice_root()` path.
         # This is the env the dispatcher injects into workers.
         default_home = tmp_path / ".alice"
         default_home.mkdir()
@@ -2860,18 +2860,18 @@ class TestSharedBoardPaths:
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.setenv("ALICE_HOME", str(default_home))
-        monkeypatch.setenv("LYDIA_KANBAN_HOME", str(umbrella))
-        monkeypatch.setenv("LYDIA_KANBAN_DB", str(pinned_db))
+        monkeypatch.setenv("ALICE_KANBAN_HOME", str(umbrella))
+        monkeypatch.setenv("ALICE_KANBAN_DB", str(pinned_db))
 
         assert kb.kanban_db_path() == pinned_db
-        # workspaces_root still follows LYDIA_KANBAN_HOME -- the pins
+        # workspaces_root still follows ALICE_KANBAN_HOME -- the pins
         # are independent.
         assert kb.workspaces_root() == umbrella / "kanban" / "workspaces"
 
-    def test_lydia_kanban_workspaces_root_pin_beats_kanban_home(
+    def test_alice_kanban_workspaces_root_pin_beats_kanban_home(
         self, tmp_path, monkeypatch
     ):
-        # LYDIA_KANBAN_WORKSPACES_ROOT pins the workspaces root directly.
+        # ALICE_KANBAN_WORKSPACES_ROOT pins the workspaces root directly.
         default_home = tmp_path / ".alice"
         default_home.mkdir()
         umbrella = tmp_path / "umbrella"
@@ -2881,24 +2881,24 @@ class TestSharedBoardPaths:
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.setenv("ALICE_HOME", str(default_home))
-        monkeypatch.setenv("LYDIA_KANBAN_HOME", str(umbrella))
-        monkeypatch.setenv("LYDIA_KANBAN_WORKSPACES_ROOT", str(pinned_ws))
+        monkeypatch.setenv("ALICE_KANBAN_HOME", str(umbrella))
+        monkeypatch.setenv("ALICE_KANBAN_WORKSPACES_ROOT", str(pinned_ws))
 
         assert kb.workspaces_root() == pinned_ws
-        # kanban_db_path still follows LYDIA_KANBAN_HOME.
+        # kanban_db_path still follows ALICE_KANBAN_HOME.
         assert kb.kanban_db_path() == umbrella / "kanban.db"
 
     def test_empty_per_path_overrides_fall_through(
         self, tmp_path, monkeypatch
     ):
         # Empty/whitespace pins are treated as unset, same as
-        # LYDIA_KANBAN_HOME.
+        # ALICE_KANBAN_HOME.
         default_home = tmp_path / ".alice"
         default_home.mkdir()
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.setenv("ALICE_HOME", str(default_home))
-        monkeypatch.setenv("LYDIA_KANBAN_DB", "   ")
-        monkeypatch.setenv("LYDIA_KANBAN_WORKSPACES_ROOT", "")
+        monkeypatch.setenv("ALICE_KANBAN_DB", "   ")
+        monkeypatch.setenv("ALICE_KANBAN_WORKSPACES_ROOT", "")
 
         assert kb.kanban_db_path() == default_home / "kanban.db"
         assert kb.workspaces_root() == default_home / "kanban" / "workspaces"
@@ -2906,8 +2906,8 @@ class TestSharedBoardPaths:
     def test_dispatcher_spawn_injects_kanban_db_and_workspaces_root(
         self, tmp_path, monkeypatch
     ):
-        # The dispatcher's `_default_spawn` must inject LYDIA_KANBAN_DB
-        # and LYDIA_KANBAN_WORKSPACES_ROOT into the worker env so the
+        # The dispatcher's `_default_spawn` must inject ALICE_KANBAN_DB
+        # and ALICE_KANBAN_WORKSPACES_ROOT into the worker env so the
         # worker converges on the dispatcher's paths even when the
         # `-p <profile>` flag rewrites ALICE_HOME.
         default_home = tmp_path / ".alice"
@@ -2945,12 +2945,12 @@ class TestSharedBoardPaths:
         kb._default_spawn(task, str(tmp_path / "ws"))
 
         env = captured["env"]
-        assert env["LYDIA_KANBAN_DB"] == str(default_home / "kanban.db")
-        assert env["LYDIA_KANBAN_WORKSPACES_ROOT"] == str(
+        assert env["ALICE_KANBAN_DB"] == str(default_home / "kanban.db")
+        assert env["ALICE_KANBAN_WORKSPACES_ROOT"] == str(
             default_home / "kanban" / "workspaces"
         )
-        assert env["LYDIA_KANBAN_TASK"] == "t_dispatch_env"
-        assert env["LYDIA_KANBAN_BRANCH"] == "wt/t_dispatch_env"
+        assert env["ALICE_KANBAN_TASK"] == "t_dispatch_env"
+        assert env["ALICE_KANBAN_BRANCH"] == "wt/t_dispatch_env"
 
 
 # ---------------------------------------------------------------------------
@@ -3238,7 +3238,7 @@ def test_migrate_add_optional_columns_tolerates_concurrent_migration(kanban_home
 
 
 # ---------------------------------------------------------------------------
-# Dispatcher spawn invocation — _resolve_lydia_argv()
+# Dispatcher spawn invocation — _resolve_alice_argv()
 #
 # Workers spawned by the dispatcher must use a `alice` invocation that does
 # not depend on PATH being set up correctly. cron jobs, systemd User= services,
@@ -3250,29 +3250,29 @@ def test_migrate_add_optional_columns_tolerates_concurrent_migration(kanban_home
 # ---------------------------------------------------------------------------
 
 
-def test_resolve_lydia_argv_prefers_path_shim(monkeypatch):
+def test_resolve_alice_argv_prefers_path_shim(monkeypatch):
     """When `alice` is on PATH, use the shim — preserves familiar ps output."""
     import shutil
     import alice_cli.kanban_db as kb
 
-    monkeypatch.delenv("LYDIA_BIN", raising=False)
+    monkeypatch.delenv("ALICE_BIN", raising=False)
     monkeypatch.setattr(shutil, "which", lambda name: "/usr/local/bin/alice")
-    argv = kb._resolve_lydia_argv()
+    argv = kb._resolve_alice_argv()
     assert argv == ["/usr/local/bin/alice"]
 
 
-def test_resolve_lydia_argv_absolutizes_relative_exe_shim(monkeypatch, tmp_path):
+def test_resolve_alice_argv_absolutizes_relative_exe_shim(monkeypatch, tmp_path):
     """A relative executable override must not remain workspace-cwd-dependent."""
     import alice_cli.kanban_db as kb
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("LYDIA_BIN", ".\\alice.exe")
+    monkeypatch.setenv("ALICE_BIN", ".\\alice.exe")
     monkeypatch.setattr(kb, "_IS_WINDOWS", True)
 
-    assert kb._resolve_lydia_argv() == [os.path.abspath(".\\alice.exe")]
+    assert kb._resolve_alice_argv() == [os.path.abspath(".\\alice.exe")]
 
 
-def test_resolve_lydia_argv_avoids_implicit_windows_batch_shim(monkeypatch, tmp_path):
+def test_resolve_alice_argv_avoids_implicit_windows_batch_shim(monkeypatch, tmp_path):
     """Implicit .cmd/.bat shims use the module fallback, not batch argv[0]."""
     import sys
     import alice_cli.kanban_db as kb
@@ -3280,63 +3280,63 @@ def test_resolve_lydia_argv_avoids_implicit_windows_batch_shim(monkeypatch, tmp_
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     (bin_dir / "alice.CMD").write_text("@echo off\n", encoding="utf-8")
-    monkeypatch.delenv("LYDIA_BIN", raising=False)
+    monkeypatch.delenv("ALICE_BIN", raising=False)
     monkeypatch.setenv("PATH", str(bin_dir))
     monkeypatch.setenv("PATHEXT", ".CMD")
     monkeypatch.setattr(kb, "_IS_WINDOWS", True)
 
-    assert kb._resolve_lydia_argv() == [sys.executable, "-m", "alice_cli.main"]
+    assert kb._resolve_alice_argv() == [sys.executable, "-m", "alice_cli.main"]
 
 
-def test_resolve_lydia_argv_honors_lydia_bin_path_override(monkeypatch, tmp_path):
-    """An explicit path-like LYDIA_BIN lets service managers pin the executable."""
+def test_resolve_alice_argv_honors_alice_bin_path_override(monkeypatch, tmp_path):
+    """An explicit path-like ALICE_BIN lets service managers pin the executable."""
     import shutil
     import alice_cli.kanban_db as kb
 
     shim = tmp_path / "bin" / "alice"
     shim.parent.mkdir()
     shim.write_text("#!/bin/sh\n", encoding="utf-8")
-    monkeypatch.setenv("LYDIA_BIN", str(shim))
+    monkeypatch.setenv("ALICE_BIN", str(shim))
     monkeypatch.setattr(shutil, "which", lambda name: None)
 
-    assert kb._resolve_lydia_argv() == [str(shim)]
+    assert kb._resolve_alice_argv() == [str(shim)]
 
 
-def test_resolve_lydia_argv_lydia_bin_bare_name_uses_path(monkeypatch, tmp_path):
-    """Bare LYDIA_BIN values keep PATH semantics instead of cwd shadowing."""
+def test_resolve_alice_argv_alice_bin_bare_name_uses_path(monkeypatch, tmp_path):
+    """Bare ALICE_BIN values keep PATH semantics instead of cwd shadowing."""
     import stat
     import alice_cli.kanban_db as kb
 
-    cwd_lydia = tmp_path / "alice"
-    cwd_lydia.write_text("wrong\n", encoding="utf-8")
-    cwd_lydia.chmod(cwd_lydia.stat().st_mode | stat.S_IXUSR)
-    path_lydia = tmp_path / "bin" / "alice"
-    path_lydia.parent.mkdir()
-    path_lydia.write_text("right\n", encoding="utf-8")
-    path_lydia.chmod(path_lydia.stat().st_mode | stat.S_IXUSR)
+    cwd_alice = tmp_path / "alice"
+    cwd_alice.write_text("wrong\n", encoding="utf-8")
+    cwd_alice.chmod(cwd_alice.stat().st_mode | stat.S_IXUSR)
+    path_alice = tmp_path / "bin" / "alice"
+    path_alice.parent.mkdir()
+    path_alice.write_text("right\n", encoding="utf-8")
+    path_alice.chmod(path_alice.stat().st_mode | stat.S_IXUSR)
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("PATH", str(path_lydia.parent))
-    monkeypatch.setenv("LYDIA_BIN", "alice")
+    monkeypatch.setenv("PATH", str(path_alice.parent))
+    monkeypatch.setenv("ALICE_BIN", "alice")
 
-    assert kb._resolve_lydia_argv() == [str(path_lydia)]
+    assert kb._resolve_alice_argv() == [str(path_alice)]
 
 
-def test_resolve_lydia_argv_lydia_bin_bare_name_ignores_cwd(monkeypatch, tmp_path):
-    """Bare LYDIA_BIN does not accept current-directory shadow executables."""
+def test_resolve_alice_argv_alice_bin_bare_name_ignores_cwd(monkeypatch, tmp_path):
+    """Bare ALICE_BIN does not accept current-directory shadow executables."""
     import sys
     import alice_cli.kanban_db as kb
 
     (tmp_path / "alice.exe").write_text("wrong\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("PATH", "")
-    monkeypatch.setenv("LYDIA_BIN", "alice")
+    monkeypatch.setenv("ALICE_BIN", "alice")
     monkeypatch.setattr(kb, "_IS_WINDOWS", True)
 
-    assert kb._resolve_lydia_argv() == [sys.executable, "-m", "alice_cli.main"]
+    assert kb._resolve_alice_argv() == [sys.executable, "-m", "alice_cli.main"]
 
 
-def test_resolve_lydia_argv_lydia_bin_bare_cmd_uses_module_fallback(monkeypatch, tmp_path):
-    """A PATH-resolved LYDIA_BIN batch shim is not used as worker argv[0]."""
+def test_resolve_alice_argv_alice_bin_bare_cmd_uses_module_fallback(monkeypatch, tmp_path):
+    """A PATH-resolved ALICE_BIN batch shim is not used as worker argv[0]."""
     import sys
     import alice_cli.kanban_db as kb
 
@@ -3345,24 +3345,24 @@ def test_resolve_lydia_argv_lydia_bin_bare_cmd_uses_module_fallback(monkeypatch,
     (bin_dir / "alice.CMD").write_text("@echo off\n", encoding="utf-8")
     monkeypatch.setenv("PATH", str(bin_dir))
     monkeypatch.setenv("PATHEXT", ".CMD")
-    monkeypatch.setenv("LYDIA_BIN", "alice")
+    monkeypatch.setenv("ALICE_BIN", "alice")
     monkeypatch.setattr(kb, "_IS_WINDOWS", True)
 
-    assert kb._resolve_lydia_argv() == [sys.executable, "-m", "alice_cli.main"]
+    assert kb._resolve_alice_argv() == [sys.executable, "-m", "alice_cli.main"]
 
 
-def test_resolve_lydia_argv_lydia_bin_unresolved_bare_name_falls_back(monkeypatch):
-    """Unresolved LYDIA_BIN command names do not delegate cwd search to Popen."""
+def test_resolve_alice_argv_alice_bin_unresolved_bare_name_falls_back(monkeypatch):
+    """Unresolved ALICE_BIN command names do not delegate cwd search to Popen."""
     import sys
     import alice_cli.kanban_db as kb
 
     monkeypatch.setenv("PATH", "")
-    monkeypatch.setenv("LYDIA_BIN", "alice")
+    monkeypatch.setenv("ALICE_BIN", "alice")
 
-    assert kb._resolve_lydia_argv() == [sys.executable, "-m", "alice_cli.main"]
+    assert kb._resolve_alice_argv() == [sys.executable, "-m", "alice_cli.main"]
 
 
-def test_resolve_lydia_argv_falls_back_to_module_form_when_no_path_shim(monkeypatch):
+def test_resolve_alice_argv_falls_back_to_module_form_when_no_path_shim(monkeypatch):
     """When the shim is not on PATH, fall back to `python -m alice_cli.main`.
 
     Pins the correct module name (NOT `alice` — there is no top-level
@@ -3374,13 +3374,13 @@ def test_resolve_lydia_argv_falls_back_to_module_form_when_no_path_shim(monkeypa
     import sys
     import alice_cli.kanban_db as kb
 
-    monkeypatch.delenv("LYDIA_BIN", raising=False)
+    monkeypatch.delenv("ALICE_BIN", raising=False)
     monkeypatch.setattr(shutil, "which", lambda name: None)
-    argv = kb._resolve_lydia_argv()
+    argv = kb._resolve_alice_argv()
     assert argv == [sys.executable, "-m", "alice_cli.main"]
 
 
-def test_resolve_lydia_argv_module_actually_runs():
+def test_resolve_alice_argv_module_actually_runs():
     """The fallback module name must be importable + runnable.
 
     A unit test that pins the literal string is necessary but not
@@ -3395,9 +3395,9 @@ def test_resolve_lydia_argv_module_actually_runs():
     import unittest.mock as mock
 
     with mock.patch.dict(os.environ, {}, clear=False):
-        os.environ.pop("LYDIA_BIN", None)
+        os.environ.pop("ALICE_BIN", None)
         with mock.patch.object(shutil, "which", return_value=None):
-            argv = kb._resolve_lydia_argv()
+            argv = kb._resolve_alice_argv()
     r = subprocess.run(argv + ["--version"], capture_output=True, text=True, timeout=30)
     assert r.returncode == 0, (
         f"`{' '.join(argv)} --version` failed (rc={r.returncode}); "

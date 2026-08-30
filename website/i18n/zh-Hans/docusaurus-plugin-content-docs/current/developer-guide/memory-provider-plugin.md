@@ -43,7 +43,7 @@ class MyMemoryProvider(MemoryProvider):
         """在 agent 启动时调用一次。
 
         kwargs 始终包含：
-          lydia_home (str): 当前活跃的 ALICE_HOME 路径。用于存储数据。
+          alice_home (str): 当前活跃的 ALICE_HOME 路径。用于存储数据。
         """
         self._api_key = os.environ.get("MY_API_KEY", "")
         self._session_id = session_id
@@ -68,7 +68,7 @@ class MyMemoryProvider(MemoryProvider):
 | 方法 | 用途 | 是否必须实现？ |
 |--------|---------|-----------------|
 | `get_config_schema()` | 为 `alice memory setup` 声明配置字段 | **是** |
-| `save_config(values, lydia_home)` | 将非敏感配置写入原生位置 | **是**（除非仅使用环境变量） |
+| `save_config(values, alice_home)` | 将非敏感配置写入原生位置 | **是**（除非仅使用环境变量） |
 
 ### 可选 Hook
 
@@ -121,11 +121,11 @@ def get_config_schema(self):
 ## 保存配置
 
 ```python
-def save_config(self, values: dict, lydia_home: str) -> None:
+def save_config(self, values: dict, alice_home: str) -> None:
     """将非敏感配置写入原生位置。"""
     import json
     from pathlib import Path
-    config_path = Path(lydia_home) / "my-provider.json"
+    config_path = Path(alice_home) / "my-provider.json"
     config_path.write_text(json.dumps(values, indent=2))
 ```
 
@@ -169,7 +169,7 @@ def sync_turn(self, user_content, assistant_content):
 
 ## Profile 隔离
 
-所有存储路径**必须**使用 `initialize()` 中的 `lydia_home` kwarg，而不是硬编码的 `~/.alice`：
+所有存储路径**必须**使用 `initialize()` 中的 `alice_home` kwarg，而不是硬编码的 `~/.alice`：
 
 ```python
 # 正确 — 按 profile 隔离

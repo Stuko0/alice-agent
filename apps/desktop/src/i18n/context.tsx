@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 
-import { getLydiaConfigRecord, type LydiaConfigRecord, saveLydiaConfig } from '@/alice'
+import { getAliceConfigRecord, type AliceConfigRecord, saveAliceConfig } from '@/alice'
 
 import { TRANSLATIONS } from './catalog'
 import { DEFAULT_LOCALE, localeConfigValue, normalizeLocale } from './languages'
@@ -10,24 +10,24 @@ import type { Locale, Translations } from './types'
 export { LOCALE_META } from './languages'
 
 export interface I18nConfigClient {
-  getConfig: () => Promise<LydiaConfigRecord>
-  saveConfig: (config: LydiaConfigRecord) => Promise<{ ok: boolean }>
+  getConfig: () => Promise<AliceConfigRecord>
+  saveConfig: (config: AliceConfigRecord) => Promise<{ ok: boolean }>
 }
 
 const defaultConfigClient: I18nConfigClient = {
   getConfig: () => {
-    if (typeof window === 'undefined' || !window.lydiaDesktop?.api) {
+    if (typeof window === 'undefined' || !window.aliceDesktop?.api) {
       return Promise.resolve({})
     }
 
-    return getLydiaConfigRecord()
+    return getAliceConfigRecord()
   },
   saveConfig: config => {
-    if (typeof window === 'undefined' || !window.lydiaDesktop?.api) {
+    if (typeof window === 'undefined' || !window.aliceDesktop?.api) {
       return Promise.resolve({ ok: true })
     }
 
-    return saveLydiaConfig(config)
+    return saveAliceConfig(config)
   }
 }
 
@@ -35,11 +35,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-export function getConfigDisplayLanguage(config: LydiaConfigRecord): unknown {
+export function getConfigDisplayLanguage(config: AliceConfigRecord): unknown {
   return isRecord(config.display) ? config.display.language : undefined
 }
 
-export function withConfigDisplayLanguage(config: LydiaConfigRecord, locale: Locale): LydiaConfigRecord {
+export function withConfigDisplayLanguage(config: AliceConfigRecord, locale: Locale): AliceConfigRecord {
   const display = isRecord(config.display) ? config.display : {}
 
   return {

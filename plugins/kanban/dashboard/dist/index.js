@@ -1,18 +1,18 @@
 /**
- * Lydia Kanban — Dashboard Plugin
+ * Alice Kanban — Dashboard Plugin
  *
  * Board view for the multi-agent collaboration board backed by
- * ~/.lydia/kanban.db. Calls the plugin's backend at /api/plugins/kanban/
+ * ~/.alice/kanban.db. Calls the plugin's backend at /api/plugins/kanban/
  * and tails task_events over a WebSocket for live updates.
  *
- * Plain IIFE, no build step. Uses window.__LYDIA_PLUGIN_SDK__ for React +
+ * Plain IIFE, no build step. Uses window.__ALICE_PLUGIN_SDK__ for React +
  * shadcn primitives; HTML5 drag-and-drop for card movement on desktop and
  * a pointer-based fallback for touch.
  */
 (function () {
   "use strict";
 
-  const SDK = window.__LYDIA_PLUGIN_SDK__;
+  const SDK = window.__ALICE_PLUGIN_SDK__;
   if (!SDK) return;
 
   const { React } = SDK;
@@ -152,13 +152,13 @@
   }
 
   const COLUMN_DOT = {
-    triage: "lydia-kanban-dot-triage",
-    todo: "lydia-kanban-dot-todo",
-    ready: "lydia-kanban-dot-ready",
-    running: "lydia-kanban-dot-running",
-    blocked: "lydia-kanban-dot-blocked",
-    done: "lydia-kanban-dot-done",
-    archived: "lydia-kanban-dot-archived",
+    triage: "alice-kanban-dot-triage",
+    todo: "alice-kanban-dot-todo",
+    ready: "alice-kanban-dot-ready",
+    running: "alice-kanban-dot-running",
+    blocked: "alice-kanban-dot-blocked",
+    done: "alice-kanban-dot-done",
+    archived: "alice-kanban-dot-archived",
   };
 
   function isDiagnosticEvent(kind) {
@@ -193,19 +193,19 @@
   }
 
   const API = "/api/plugins/kanban";
-  const MIME_TASK = "text/x-lydia-task";
+  const MIME_TASK = "text/x-alice-task";
 
   // Docs link — surfaced as a `?` icon next to the board switcher and as
   // `title=` hints on unlabelled controls. Kept in one place so rebrands or
   // path changes are a single edit.
-  const DOCS_URL = "https://lydia-agent.nousresearch.com/docs/user-guide/features/kanban";
-  const DOCS_TUTORIAL_URL = "https://lydia-agent.nousresearch.com/docs/user-guide/features/kanban-tutorial";
+  const DOCS_URL = "https://alice-agent.stuko.dev/docs/user-guide/features/kanban";
+  const DOCS_TUTORIAL_URL = "https://alice-agent.stuko.dev/docs/user-guide/features/kanban-tutorial";
 
   // localStorage key for the user's selected board. Independent of the
   // CLI's on-disk ``<root>/kanban/current`` pointer so browser users
   // can inspect any board without shifting the CLI's active board out
   // from under a terminal they left open.
-  const LS_BOARD_KEY = "lydia.kanban.selectedBoard";
+  const LS_BOARD_KEY = "alice.kanban.selectedBoard";
 
   function readSelectedBoard() {
     try {
@@ -330,7 +330,7 @@
     let html = out.join("\n");
     // Re-insert fenced code blocks.
     html = html.replace(/\u0000CODE(\d+)\u0000/g, (_m, i) =>
-      `<pre class="lydia-kanban-md-code"><code>${escapeHtml(blocks[Number(i)])}</code></pre>`,
+      `<pre class="alice-kanban-md-code"><code>${escapeHtml(blocks[Number(i)])}</code></pre>`,
     );
     return html;
   }
@@ -360,8 +360,8 @@
       if (!/^(https?:\/\/|mailto:)/i.test(href)) return "";
       return ` href="${escapeAttribute(href)}" target="_blank" rel="noopener noreferrer"`;
     }
-    if (tag === "pre" && /\sclass=(["'])lydia-kanban-md-code\1/i.test(attrs)) {
-      return ' class="lydia-kanban-md-code"';
+    if (tag === "pre" && /\sclass=(["'])alice-kanban-md-code\1/i.test(attrs)) {
+      return ' class="alice-kanban-md-code"';
     }
     return "";
   }
@@ -380,10 +380,10 @@
   function MarkdownBlock(props) {
     const enabled = props.enabled !== false;
     if (!enabled) {
-      return h("pre", { className: "lydia-kanban-pre" }, props.source || "");
+      return h("pre", { className: "alice-kanban-pre" }, props.source || "");
     }
     return h("div", {
-      className: "lydia-kanban-md",
+      className: "alice-kanban-md",
       dangerouslySetInnerHTML: { __html: sanitizeMarkdownHtml(renderMarkdown(props.source || "")) },
     });
   }
@@ -394,7 +394,7 @@
   // HTML5 DnD is desktop-only. On touch devices we attach a pointerdown
   // handler that simulates a drag proxy and fires a custom event on the
   // column under the finger when released. Columns listen for both the
-  // standard `drop` event and our `lydia-kanban:drop` event.
+  // standard `drop` event and our `alice-kanban:drop` event.
   // -------------------------------------------------------------------------
 
   function attachTouchDrag(el, taskId) {
@@ -403,7 +403,7 @@
       if (e.pointerType !== "touch") return;
       e.preventDefault();
       const proxy = el.cloneNode(true);
-      proxy.classList.add("lydia-kanban-touch-proxy");
+      proxy.classList.add("alice-kanban-touch-proxy");
       document.body.appendChild(proxy);
       let lastTarget = null;
 
@@ -417,8 +417,8 @@
         const trash = under && under.closest && under.closest("[data-kanban-trash]");
         const target = col || trash;
         if (target !== lastTarget) {
-          if (lastTarget) lastTarget.classList.remove("lydia-kanban-column--drop");
-          if (target) target.classList.add("lydia-kanban-column--drop");
+          if (lastTarget) lastTarget.classList.remove("alice-kanban-column--drop");
+          if (target) target.classList.add("alice-kanban-column--drop");
           lastTarget = target;
         }
       }
@@ -427,16 +427,16 @@
         document.removeEventListener("pointerup", up);
         document.removeEventListener("pointercancel", up);
         if (lastTarget) {
-          lastTarget.classList.remove("lydia-kanban-column--drop");
+          lastTarget.classList.remove("alice-kanban-column--drop");
           const status = lastTarget.getAttribute("data-kanban-column");
           const isTrash = lastTarget.hasAttribute("data-kanban-trash");
           if (isTrash) {
-            lastTarget.dispatchEvent(new CustomEvent("lydia-kanban:delete", {
+            lastTarget.dispatchEvent(new CustomEvent("alice-kanban:delete", {
               detail: { taskId },
               bubbles: true,
             }));
           } else if (status) {
-            lastTarget.dispatchEvent(new CustomEvent("lydia-kanban:drop", {
+            lastTarget.dispatchEvent(new CustomEvent("alice-kanban:drop", {
               detail: { taskId, status },
               bubbles: true,
             }));
@@ -632,7 +632,7 @@
         if (wsClosedRef.current) return;
         // Build the WS URL via the host SDK so the correct auth param is used
         // in BOTH modes: single-use ?ticket= in gated OAuth mode, ?token= in
-        // loopback. Reading window.__LYDIA_SESSION_TOKEN__ directly (the old
+        // loopback. Reading window.__ALICE_SESSION_TOKEN__ directly (the old
         // path) sends an empty token and is rejected in gated mode. buildWsUrl
         // also applies the dashboard base-path prefix for reverse-proxied
         // deployments, which the old inline URL did not. It's async (gated
@@ -1028,7 +1028,7 @@
     const renderMd = !config || config.render_markdown !== false;
 
     return h(ErrorBoundary, null,
-      h("div", { className: "lydia-kanban flex flex-col gap-4" },
+      h("div", { className: "alice-kanban flex flex-col gap-4" },
         h(BoardSwitcher, {
           board: board,
           boardList: boardList,
@@ -1155,55 +1155,55 @@
     }
     return h("div", {
       className: cn(
-        "lydia-kanban-attention",
-        "lydia-kanban-attention--" + topSev,
+        "alice-kanban-attention",
+        "alice-kanban-attention--" + topSev,
       ),
     },
-      h("div", { className: "lydia-kanban-attention-bar" },
-        h("span", { className: "lydia-kanban-attention-icon" },
+      h("div", { className: "alice-kanban-attention-bar" },
+        h("span", { className: "alice-kanban-attention-icon" },
           topSev === "critical" ? "!!!" : topSev === "error" ? "!!" : "⚠"),
-        h("span", { className: "lydia-kanban-attention-text" },
+        h("span", { className: "alice-kanban-attention-text" },
           diagTasks.length === 1
             ? tx(t, "taskNeedsAttention", "1 task needs attention")
             : tx(t, "tasksNeedAttention", "{n} tasks need attention",
                 { n: diagTasks.length }),
         ),
         h("button", {
-          className: "lydia-kanban-attention-toggle",
+          className: "alice-kanban-attention-toggle",
           onClick: function () { setExpanded(function (x) { return !x; }); },
           type: "button",
         }, expanded ? tx(t, "hide", "Hide") : tx(t, "show", "Show")),
         h("button", {
-          className: "lydia-kanban-attention-dismiss",
+          className: "alice-kanban-attention-dismiss",
           onClick: function () { setDismissed(true); },
           title: "Hide until next page reload",
           type: "button",
         }, "\u2715"),
       ),
       expanded
-        ? h("div", { className: "lydia-kanban-attention-list" },
+        ? h("div", { className: "alice-kanban-attention-list" },
             diagTasks.map(function (task) {
               const sev = (task.warnings && task.warnings.highest_severity) || "warning";
               const kinds = task.warnings && task.warnings.kinds ? Object.keys(task.warnings.kinds) : [];
               return h("div", {
                 key: task.id,
                 className: cn(
-                  "lydia-kanban-attention-row",
-                  "lydia-kanban-attention-row--" + sev,
+                  "alice-kanban-attention-row",
+                  "alice-kanban-attention-row--" + sev,
                 ),
               },
-                h("span", { className: "lydia-kanban-attention-row-sev" },
+                h("span", { className: "alice-kanban-attention-row-sev" },
                   sev === "critical" ? "!!!" : sev === "error" ? "!!" : "⚠"),
-                h("span", { className: "lydia-kanban-attention-row-id" }, task.id),
-                h("span", { className: "lydia-kanban-attention-row-title" },
+                h("span", { className: "alice-kanban-attention-row-id" }, task.id),
+                h("span", { className: "alice-kanban-attention-row-title" },
                   task.title || tx(t, "untitled", "(untitled)")),
-                h("span", { className: "lydia-kanban-attention-row-meta" },
+                h("span", { className: "alice-kanban-attention-row-meta" },
                   task.assignee ? "@" + task.assignee : tx(t, "unassigned", "unassigned"),
                   " \u00b7 ",
                   kinds.length > 0 ? kinds.join(", ") : tx(t, "diagnostic", "diagnostic"),
                 ),
                 h("button", {
-                  className: "lydia-kanban-attention-row-btn",
+                  className: "alice-kanban-attention-row-btn",
                   onClick: function () { props.onOpen(task.id); },
                   type: "button",
                 }, tx(t, "open", "Open")),
@@ -1237,8 +1237,8 @@
     const { action, onExec, busy, extra } = props;
     const label = (action.suggested ? "\u2606 " : "") + action.label;
     const cls = cn(
-      "lydia-kanban-diag-action-btn",
-      action.suggested ? "lydia-kanban-diag-action-btn--suggested" : "",
+      "alice-kanban-diag-action-btn",
+      action.suggested ? "alice-kanban-diag-action-btn--suggested" : "",
     );
     if (action.kind === "reclaim" || action.kind === "reassign" ||
         action.kind === "unblock") {
@@ -1274,7 +1274,7 @@
       }, label);
     }
     // Unknown kind — render informational, non-interactive.
-    return h("span", { className: cls + " lydia-kanban-diag-action-btn--unknown" },
+    return h("span", { className: cls + " alice-kanban-diag-action-btn--unknown" },
       label);
   }
 
@@ -1309,7 +1309,7 @@
       if (action.kind === "comment") {
         // Scroll the comment input into view; the drawer already has one
         // at the bottom. Focus it so the operator can start typing.
-        const ta = document.querySelector(".lydia-kanban-drawer-comment-row input, .lydia-kanban-drawer-comment-row textarea");
+        const ta = document.querySelector(".alice-kanban-drawer-comment-row input, .alice-kanban-drawer-comment-row textarea");
         if (ta) {
           ta.scrollIntoView({ behavior: "smooth", block: "nearest" });
           ta.focus();
@@ -1383,36 +1383,36 @@
       return a.kind === "reassign";
     });
 
-    const sevClass = "lydia-kanban-diag--" + (diag.severity || "warning");
-    return h("div", { className: cn("lydia-kanban-diag", sevClass) },
-      h("div", { className: "lydia-kanban-diag-header" },
-        h("span", { className: "lydia-kanban-diag-sev" },
+    const sevClass = "alice-kanban-diag--" + (diag.severity || "warning");
+    return h("div", { className: cn("alice-kanban-diag", sevClass) },
+      h("div", { className: "alice-kanban-diag-header" },
+        h("span", { className: "alice-kanban-diag-sev" },
           diag.severity === "critical" ? "!!!" :
           diag.severity === "error" ? "!!" : "\u26a0"),
-        h("span", { className: "lydia-kanban-diag-title" },
+        h("span", { className: "alice-kanban-diag-title" },
           diag.title),
       ),
-      h("div", { className: "lydia-kanban-diag-detail" },
+      h("div", { className: "alice-kanban-diag-detail" },
         diag.detail),
       diag.data && Object.keys(diag.data).length > 0
-        ? h("div", { className: "lydia-kanban-diag-data" },
+        ? h("div", { className: "alice-kanban-diag-data" },
             Object.keys(diag.data).map(function (k) {
               const v = diag.data[k];
               if (Array.isArray(v) && v.length > 0 && typeof v[0] === "string" &&
                   v[0].indexOf("t_") === 0) {
                 // Task-id list — render as chips.
-                return h("div", { key: k, className: "lydia-kanban-diag-data-row" },
-                  h("span", { className: "lydia-kanban-diag-data-key" }, k + ":"),
+                return h("div", { key: k, className: "alice-kanban-diag-data-row" },
+                  h("span", { className: "alice-kanban-diag-data-key" }, k + ":"),
                   v.map(function (x) {
                     return h("code", {
-                      key: x, className: "lydia-kanban-event-phantom-chip",
+                      key: x, className: "alice-kanban-event-phantom-chip",
                     }, x);
                   }),
                 );
               }
-              return h("div", { key: k, className: "lydia-kanban-diag-data-row" },
-                h("span", { className: "lydia-kanban-diag-data-key" }, k + ":"),
-                h("span", { className: "lydia-kanban-diag-data-val" },
+              return h("div", { key: k, className: "alice-kanban-diag-data-row" },
+                h("span", { className: "alice-kanban-diag-data-key" }, k + ":"),
+                h("span", { className: "alice-kanban-diag-data-val" },
                   Array.isArray(v) ? v.join(", ") : String(v)),
               );
             }),
@@ -1421,11 +1421,11 @@
       // Inline reassign picker — only shown when the diagnostic offers
       // a reassign action. Profile list comes from the board payload.
       reassignAction
-        ? h("div", { className: "lydia-kanban-diag-reassign-row" },
-            h("span", { className: "lydia-kanban-diag-reassign-label" },
+        ? h("div", { className: "alice-kanban-diag-reassign-row" },
+            h("span", { className: "alice-kanban-diag-reassign-label" },
               tx(t, "reassignTo", "Reassign to:")),
             h("select", {
-              className: "lydia-kanban-recovery-select",
+              className: "alice-kanban-recovery-select",
               value: reassignProfile,
               onChange: function (e) { setReassignProfile(e.target.value); },
             },
@@ -1436,7 +1436,7 @@
             ),
           )
         : null,
-      h("div", { className: "lydia-kanban-diag-actions" },
+      h("div", { className: "alice-kanban-diag-actions" },
         (diag.actions || []).map(function (a, i) {
           return h(DiagnosticActionButton, {
             key: a.kind + i,
@@ -1453,8 +1453,8 @@
       msg
         ? h("div", {
             className: cn(
-              "lydia-kanban-diag-msg",
-              msg.ok ? "lydia-kanban-diag-msg--ok" : "lydia-kanban-diag-msg--err",
+              "alice-kanban-diag-msg",
+              msg.ok ? "alice-kanban-diag-msg--ok" : "alice-kanban-diag-msg--err",
             ),
           }, msg.text)
         : null,
@@ -1474,22 +1474,22 @@
       // an empty "Recovery" header — keeps clean tasks visually clean.
       return null;
     }
-    return h("div", { className: "lydia-kanban-section" },
-      h("div", { className: "lydia-kanban-section-head-row" },
-        h("span", { className: "lydia-kanban-section-head" },
+    return h("div", { className: "alice-kanban-section" },
+      h("div", { className: "alice-kanban-section-head-row" },
+        h("span", { className: "alice-kanban-section-head" },
           hasOpenDiags
-            ? h("span", { className: "lydia-kanban-section-head-warning" },
+            ? h("span", { className: "alice-kanban-section-head-warning" },
                 `\u26a0 ${tx(t, "diagnostics", "Diagnostics")} (${diags.length})`)
             : tx(t, "diagnostics", "Diagnostics"),
         ),
         h("button", {
-          className: "lydia-kanban-section-toggle",
+          className: "alice-kanban-section-toggle",
           onClick: function () { setOpen(function (x) { return !x; }); },
           type: "button",
         }, open ? tx(t, "hide", "Hide") : tx(t, "show", "Show")),
       ),
       open
-        ? h("div", { className: "lydia-kanban-diag-list" },
+        ? h("div", { className: "alice-kanban-diag-list" },
             diags.map(function (d, i) {
               return h(DiagnosticCard, {
                 key: props.task.id + ":" + d.kind + i,
@@ -1517,9 +1517,9 @@
       href: DOCS_URL,
       target: "_blank",
       rel: "noopener noreferrer",
-      className: "lydia-kanban-docs-link",
-      title: "Open Lydia Kanban docs in a new tab",
-      "aria-label": "Lydia Kanban documentation",
+      className: "alice-kanban-docs-link",
+      title: "Open Alice Kanban docs in a new tab",
+      "aria-label": "Alice Kanban documentation",
     }, "?");
   }
 
@@ -1621,7 +1621,7 @@
     // Mode pill — always visible (collapsed or expanded). One click flips
     // between Auto and Manual. Auto = dispatcher decomposes new triage tasks
     // every tick. Manual = pre-PR behavior, the user clicks ⚗ Decompose on
-    // each triage card (or runs `lydia kanban decompose <id>`) and tasks
+    // each triage card (or runs `alice kanban decompose <id>`) and tasks
     // stay in triage until then.
     const autoOn = !!(settings && settings.auto_decompose);
     const modePillTitle = settings === null
@@ -1677,7 +1677,7 @@
           h(Button, { onClick: loadAll, size: "sm" }, "Reload"),
         ),
         msg ? h("div", {
-          className: msg.ok ? "lydia-kanban-msg-ok" : "lydia-kanban-msg-err",
+          className: msg.ok ? "alice-kanban-msg-ok" : "alice-kanban-msg-err",
         }, msg.text) : null,
 
         settings ? h("div", { className: "grid gap-3 sm:grid-cols-3" },
@@ -1821,7 +1821,7 @@
     const shouldShow = hasMultipleBoards || totalAcrossAllBoards > 0;
     if (!shouldShow) {
       return h("div", {
-        className: "lydia-kanban-boardswitcher-compact",
+        className: "alice-kanban-boardswitcher-compact",
         title: tx(t, "boardSwitcherHint", "Boards let you separate unrelated streams of work"),
       },
         h(Button, {
@@ -1833,8 +1833,8 @@
       );
     }
 
-    return h("div", { className: "lydia-kanban-boardswitcher" },
-      h("div", { className: "lydia-kanban-boardswitcher-inner" },
+    return h("div", { className: "alice-kanban-boardswitcher" },
+      h("div", { className: "alice-kanban-boardswitcher-inner" },
         h("div", { className: "flex flex-col gap-0.5" },
           h("div", { className: "text-[11px] tracking-wider text-muted-foreground" },
             tx(t, "board", "Board")),
@@ -1919,14 +1919,14 @@
     }
 
     return h("div", {
-      className: "lydia-kanban-dialog-backdrop",
+      className: "alice-kanban-dialog-backdrop",
       onClick: function (e) { if (e.target === e.currentTarget) props.onCancel(); },
     },
       h("form", {
-        className: "lydia-kanban-dialog",
+        className: "alice-kanban-dialog",
         onSubmit: onSubmit,
       },
-        h("div", { className: "lydia-kanban-dialog-title" },
+        h("div", { className: "alice-kanban-dialog-title" },
           tx(t, "newBoardTitle", "New board")),
         h("div", { className: "text-xs text-muted-foreground mb-2" },
           tx(t, "newBoardDescription",
@@ -1986,7 +1986,7 @@
           ),
         ),
         err ? h("div", { className: "text-xs text-destructive mt-2" }, err) : null,
-        h("div", { className: "lydia-kanban-dialog-actions" },
+        h("div", { className: "alice-kanban-dialog-actions" },
           h(Button, {
             type: "button",
             onClick: props.onCancel,
@@ -2036,7 +2036,7 @@
         ),
       ),
       h("div", { className: "flex flex-col gap-1",
-                 title: "Filter by assigned Lydia profile. Profiles are the named agent identities that claim and work on tasks." },
+                 title: "Filter by assigned Alice profile. Profiles are the named agent identities that claim and work on tasks." },
         h(Label, { className: "text-xs text-muted-foreground" }, tx(t, "assignee", "Assignee")),
         h(Select, Object.assign({
           value: props.assigneeFilter,
@@ -2097,8 +2097,8 @@
     const [assignee, setAssignee] = useState("");
     const [reclaimFirst, setReclaimFirst] = useState(false);
     const [priority, setPriority] = useState("");
-    return h("div", { className: "lydia-kanban-bulk" },
-      h("span", { className: "lydia-kanban-bulk-count" },
+    return h("div", { className: "alice-kanban-bulk" },
+      h("span", { className: "alice-kanban-bulk-count" },
         `${props.count} ${tx(t, "selected", "selected")}`),
       h(Button, {
         onClick: function () { props.onApply({ status: "todo" }); },
@@ -2146,7 +2146,7 @@
         variant: "destructive",
         title: "Permanently delete selected tasks. This cannot be undone.",
       }, tx(t, "delete", "Delete")),
-      h("div", { className: "lydia-kanban-bulk-priority",
+      h("div", { className: "alice-kanban-bulk-priority",
                  title: "Set priority on selected tasks. Higher = claimed first." },
         h(Input, {
           type: "number",
@@ -2165,8 +2165,8 @@
           size: "sm",
         }, tx(t, "setPriority", "Set priority")),
       ),
-      h("div", { className: "lydia-kanban-bulk-reassign",
-                 title: "Reassign selected tasks to a different Lydia profile. Pick a profile (or unassign) and click Apply." },
+      h("div", { className: "alice-kanban-bulk-reassign",
+                 title: "Reassign selected tasks to a different Alice profile. Pick a profile (or unassign) and click Apply." },
         h(Select, Object.assign({
           value: assignee,
           className: "h-7 text-xs",
@@ -2188,7 +2188,7 @@
           title: "Apply the selected assignee to all selected tasks.",
         }, tx(t, "apply", "Apply")),
       ),
-      h("label", { className: "lydia-kanban-bulk-reclaim-first", title: "Reclaim any active claims before reassigning" },
+      h("label", { className: "alice-kanban-bulk-reclaim-first", title: "Reclaim any active claims before reassigning" },
         h(Checkbox, {
           checked: reclaimFirst,
           onCheckedChange: function (checked) { setReclaimFirst(checked === true); },
@@ -2225,8 +2225,8 @@
         const taskId = e.detail && e.detail.taskId;
         if (taskId && props.onDelete) props.onDelete(taskId);
       }
-      el.addEventListener("lydia-kanban:delete", onTouchDelete);
-      return function () { el.removeEventListener("lydia-kanban:delete", onTouchDelete); };
+      el.addEventListener("alice-kanban:delete", onTouchDelete);
+      return function () { el.removeEventListener("alice-kanban:delete", onTouchDelete); };
     }, [props.onDelete]);
 
     const handleDragOver = function (e) {
@@ -2254,16 +2254,16 @@
       ref: zoneRef,
       "data-kanban-trash": "true",
       className: cn(
-        "lydia-kanban-trash",
-        dragOver ? "lydia-kanban-trash--drop" : "",
-        props.draggingTaskId ? "lydia-kanban-trash--active" : "",
+        "alice-kanban-trash",
+        dragOver ? "alice-kanban-trash--drop" : "",
+        props.draggingTaskId ? "alice-kanban-trash--active" : "",
       ),
       onDragOver: handleDragOver,
       onDragLeave: handleDragLeave,
       onDrop: handleDrop,
     },
-      h("span", { className: "lydia-kanban-trash-icon" }, "🗑️"),
-      h("span", { className: "lydia-kanban-trash-label" },
+      h("span", { className: "alice-kanban-trash-icon" }, "🗑️"),
+      h("span", { className: "alice-kanban-trash-label" },
         tx(t, "trash.dropHint", FALLBACK_TRASH.dropHint)),
     );
   }
@@ -2274,7 +2274,7 @@
 
   function BoardColumns(props) {
     const handleDragStart = useCallback(function (e) {
-      const card = e.target.closest && e.target.closest(".lydia-kanban-card");
+      const card = e.target.closest && e.target.closest(".alice-kanban-card");
       if (!card) return;
       const taskId = card.getAttribute("data-task-id");
       if (taskId && props.onDragStart) props.onDragStart(taskId);
@@ -2282,7 +2282,7 @@
     const handleDragEnd = useCallback(function () {
       if (props.onDragEnd) props.onDragEnd();
     }, [props.onDragEnd]);
-    return h("div", { className: "lydia-kanban-columns", onDragStart: handleDragStart, onDragEnd: handleDragEnd },
+    return h("div", { className: "alice-kanban-columns", onDragStart: handleDragStart, onDragEnd: handleDragEnd },
       props.board.columns.map(function (col) {
         return h(Column, {
           key: col.name,
@@ -2329,8 +2329,8 @@
           }
         }
       }
-      el.addEventListener("lydia-kanban:drop", onTouchDrop);
-      return function () { el.removeEventListener("lydia-kanban:drop", onTouchDrop); };
+      el.addEventListener("alice-kanban:drop", onTouchDrop);
+      return function () { el.removeEventListener("alice-kanban:drop", onTouchDrop); };
     }, [props.column.name, props.onMove, props.selectedIds, props.onMoveSelected]);
 
     const handleDragOver = function (e) {
@@ -2370,17 +2370,17 @@
       ref: colRef,
       "data-kanban-column": props.column.name,
       className: cn(
-        "lydia-kanban-column",
-        dragOver ? "lydia-kanban-column--drop" : "",
+        "alice-kanban-column",
+        dragOver ? "alice-kanban-column--drop" : "",
       ),
       onDragOver: handleDragOver,
       onDragLeave: handleDragLeave,
       onDrop: handleDrop,
     },
-      h("div", { className: "lydia-kanban-column-header",
+      h("div", { className: "alice-kanban-column-header",
                  title: colHelp || "" },
         h(Checkbox, {
-          className: "lydia-kanban-col-check",
+          className: "alice-kanban-col-check",
           title: "Select all tasks in this column",
           "aria-label": `Select all tasks in ${colLabel || props.column.name}`,
           checked: props.column.tasks.length > 0 && props.column.tasks.every(function (t) { return props.selectedIds.has(t.id); }),
@@ -2389,20 +2389,20 @@
           },
           onClick: function (e) { e.stopPropagation(); },
         }),
-        h("span", { className: cn("lydia-kanban-dot", COLUMN_DOT[props.column.name]) }),
-        h("span", { className: "lydia-kanban-column-label" },
+        h("span", { className: cn("alice-kanban-dot", COLUMN_DOT[props.column.name]) }),
+        h("span", { className: "alice-kanban-column-label" },
           colLabel || props.column.name),
-        h("span", { className: "lydia-kanban-column-count",
+        h("span", { className: "alice-kanban-column-count",
                     title: `${props.column.tasks.length} task${props.column.tasks.length === 1 ? "" : "s"} in this column` },
           props.column.tasks.length),
         h("button", {
           type: "button",
-          className: "lydia-kanban-column-add",
+          className: "alice-kanban-column-add",
           title: tx(t, "createTask", "Create task in this column"),
           onClick: function () { setShowCreate(function (v) { return !v; }); },
         }, showCreate ? "×" : "+"),
       ),
-      h("div", { className: "lydia-kanban-column-sub" },
+      h("div", { className: "alice-kanban-column-sub" },
         colHelp || ""),
       showCreate ? h(InlineCreate, {
         columnName: props.column.name,
@@ -2412,15 +2412,15 @@
         },
         onCancel: function () { setShowCreate(false); },
       }) : null,
-      h("div", { className: "lydia-kanban-column-body" },
+      h("div", { className: "alice-kanban-column-body" },
         props.column.tasks.length === 0
-          ? h("div", { className: "lydia-kanban-empty" }, tx(t, "noTasks", "— no tasks —"))
+          ? h("div", { className: "alice-kanban-empty" }, tx(t, "noTasks", "— no tasks —"))
           : lanes
             ? lanes.map(function (lane) {
-                return h("div", { key: lane.assignee, className: "lydia-kanban-lane" },
-                  h("div", { className: "lydia-kanban-lane-head" },
-                    h("span", { className: "lydia-kanban-lane-name" }, lane.assignee),
-                    h("span", { className: "lydia-kanban-lane-count" }, lane.tasks.length),
+                return h("div", { key: lane.assignee, className: "alice-kanban-lane" },
+                  h("div", { className: "alice-kanban-lane-head" },
+                    h("span", { className: "alice-kanban-lane-name" }, lane.assignee),
+                    h("span", { className: "alice-kanban-lane-count" }, lane.tasks.length),
                   ),
                   lane.tasks.map(function (tk) {
                     return h(TaskCard, {
@@ -2472,8 +2472,8 @@
       : task.age.created_age_seconds;
     const tier = STALENESS[task.status];
     if (!tier || age == null) return "";
-    if (age >= tier.red)   return "lydia-kanban-card--stale-red";
-    if (age >= tier.amber) return "lydia-kanban-card--stale-amber";
+    if (age >= tier.red)   return "alice-kanban-card--stale-red";
+    if (age >= tier.amber) return "alice-kanban-card--stale-amber";
     return "";
   }
 
@@ -2489,10 +2489,10 @@
     const handleDragStart = function (e) {
       e.dataTransfer.setData(MIME_TASK, t.id);
       e.dataTransfer.effectAllowed = "move";
-      const selectedCards = document.querySelectorAll(".lydia-kanban-card--selected");
+      const selectedCards = document.querySelectorAll(".alice-kanban-card--selected");
       if (selectedCards.length > 1 && props.selected) {
         const ghost = document.createElement("div");
-        ghost.className = "lydia-kanban-drag-ghost";
+        ghost.className = "alice-kanban-drag-ghost";
         ghost.textContent = selectedCards.length + " cards";
         document.body.appendChild(ghost);
         e.dataTransfer.setDragImage(ghost, 0, 0);
@@ -2536,10 +2536,10 @@
       ref: cardRef,
       "data-task-id": t.id,
       className: cn(
-        "lydia-kanban-card",
-        props.selected ? "lydia-kanban-card--selected" : "",
-        props.failed ? "lydia-kanban-card--failed" : "",
-        props.draggingSource ? "lydia-kanban-card--dragging-source" : "",
+        "alice-kanban-card",
+        props.selected ? "alice-kanban-card--selected" : "",
+        props.failed ? "alice-kanban-card--failed" : "",
+        props.draggingSource ? "alice-kanban-card--dragging-source" : "",
         stalenessClass(t),
       ),
       draggable: true,
@@ -2551,28 +2551,28 @@
       onKeyDown: handleKeyDown,
     },
       h(Card, null,
-        h(CardContent, { className: "lydia-kanban-card-content" },
-          h("div", { className: "lydia-kanban-card-row" },
+        h(CardContent, { className: "alice-kanban-card-content" },
+          h("div", { className: "alice-kanban-card-row" },
             h("label", {
-              className: "lydia-kanban-card-check-wrap",
+              className: "alice-kanban-card-check-wrap",
               title: tx(i18n, "selectForBulk", "Select for bulk actions"),
               onClick: function (e) { e.stopPropagation(); },
             },
               h(Checkbox, {
-                className: "lydia-kanban-card-check",
+                className: "alice-kanban-card-check",
                 checked: props.selected,
                 onCheckedChange: handleCheckedChange,
                 onClick: function (e) { e.stopPropagation(); },
                 "aria-label": `Select task ${t.id}`,
               }),
             ),
-            h("span", { className: "lydia-kanban-card-id",
-                        title: `Task id: ${t.id}. Use this id with kanban_show, /kanban show, or lydia kanban show.` }, t.id),
+            h("span", { className: "alice-kanban-card-id",
+                        title: `Task id: ${t.id}. Use this id with kanban_show, /kanban show, or alice kanban show.` }, t.id),
             t.warnings && t.warnings.count > 0
               ? h("span", {
                   className: cn(
-                    "lydia-kanban-warning-badge",
-                    "lydia-kanban-warning-badge--" + (t.warnings.highest_severity || "warning"),
+                    "alice-kanban-warning-badge",
+                    "alice-kanban-warning-badge--" + (t.warnings.highest_severity || "warning"),
                   ),
                   title: (
                     `${t.warnings.count} active diagnostic` +
@@ -2584,18 +2584,18 @@
                    t.warnings.highest_severity === "error" ? "!!" : "⚠")
               : null,
             t.priority > 0
-              ? h(Badge, { className: "lydia-kanban-priority",
+              ? h(Badge, { className: "alice-kanban-priority",
                            title: `Priority ${t.priority}. Higher-priority tasks are claimed first by the dispatcher.` }, `P${t.priority}`)
               : null,
             t.tenant
-              ? h(Badge, { variant: "outline", className: "lydia-kanban-tag",
+              ? h(Badge, { variant: "outline", className: "alice-kanban-tag",
                            title: `Tenant: ${t.tenant}. Free-form tag for grouping tasks (customer, project, team).` }, t.tenant)
               : null,
             progress
               ? h("span", {
                   className: cn(
-                    "lydia-kanban-progress",
-                    progress.done === progress.total ? "lydia-kanban-progress--full" : "",
+                    "alice-kanban-progress",
+                    progress.done === progress.total ? "alice-kanban-progress--full" : "",
                   ),
                   title: `${progress.done} of ${progress.total} child tasks done`,
                 }, `${progress.done}/${progress.total}`)
@@ -2603,32 +2603,32 @@
             needsAssignee
               ? h(Badge, {
                   variant: "outline",
-                  className: "lydia-kanban-needs-assignee",
+                  className: "alice-kanban-needs-assignee",
                   title: tx(i18n, "needsAssigneeHint", "Dependencies are satisfied, but the dispatcher skips this task until you assign a profile."),
                 }, tx(i18n, "needsAssignee", "Needs assignee"))
               : null,
           ),
-          h("div", { className: "lydia-kanban-card-title" },
+          h("div", { className: "alice-kanban-card-title" },
             t.title || tx(i18n, "untitled", "(untitled)")),
-          h("div", { className: "lydia-kanban-card-row lydia-kanban-card-meta" },
+          h("div", { className: "alice-kanban-card-row alice-kanban-card-meta" },
             t.assignee
-              ? h("span", { className: "lydia-kanban-assignee",
-                            title: `Assigned to Lydia profile @${t.assignee}` }, "@", t.assignee)
-              : h("span", { className: "lydia-kanban-unassigned",
+              ? h("span", { className: "alice-kanban-assignee",
+                            title: `Assigned to Alice profile @${t.assignee}` }, "@", t.assignee)
+              : h("span", { className: "alice-kanban-unassigned",
                             title: needsAssignee
                               ? tx(i18n, "needsAssigneeHint", "Dependencies are satisfied, but the dispatcher skips this task until you assign a profile.")
                               : "No profile assigned." },
                   tx(i18n, "unassigned", "unassigned")),
             t.comment_count > 0
-              ? h("span", { className: "lydia-kanban-count",
+              ? h("span", { className: "alice-kanban-count",
                             title: `${t.comment_count} comment${t.comment_count === 1 ? "" : "s"} on this task` }, "💬 ", t.comment_count)
               : null,
             t.link_counts && (t.link_counts.parents + t.link_counts.children) > 0
-              ? h("span", { className: "lydia-kanban-count",
+              ? h("span", { className: "alice-kanban-count",
                             title: `${t.link_counts.parents} parent${t.link_counts.parents === 1 ? "" : "s"}, ${t.link_counts.children} child${t.link_counts.children === 1 ? "" : "ren"}. Children stay blocked until their parent is done.` },
                   "↔ ", t.link_counts.parents + t.link_counts.children)
               : null,
-            h("span", { className: "lydia-kanban-ago",
+            h("span", { className: "alice-kanban-ago",
                         title: t.created_at ? `Created ${t.created_at}` : "" },
               timeAgo ? timeAgo(t.created_at) : ""),
           ),
@@ -2706,7 +2706,7 @@
       : tx(t, "workspacePathOptional",
           "workspace path (optional, derived from assignee if blank)");
 
-    return h("div", { className: "lydia-kanban-inline-create" },
+    return h("div", { className: "alice-kanban-inline-create" },
       h("textarea", {
         value: title,
         onChange: function (e) { setTitle(e.target.value); },
@@ -2730,8 +2730,8 @@
             : tx(t, "assigneePlaceholder", "assignee"),
           className: "h-7 text-xs flex-1",
           title: props.columnName === "triage"
-            ? "Lydia profile that will spec this task (default: the dispatcher's configured specifier). Leave blank to let the dispatcher pick."
-            : "Lydia profile to assign. Leave blank and the dispatcher will pick from available profiles when the task is Ready.",
+            ? "Alice profile that will spec this task (default: the dispatcher's configured specifier). Leave blank to let the dispatcher pick."
+            : "Alice profile to assign. Leave blank and the dispatcher will pick from available profiles when the task is Ready.",
           style: { textTransform: "none" },
           autoCapitalize: "none",
           autoCorrect: "off",
@@ -3051,17 +3051,17 @@
         });
     };
 
-    return h("div", { className: "lydia-kanban-drawer-shade", onClick: props.onClose },
+    return h("div", { className: "alice-kanban-drawer-shade", onClick: props.onClose },
       h("div", {
-        className: "lydia-kanban-drawer",
+        className: "alice-kanban-drawer",
         onClick: function (e) { e.stopPropagation(); },
       },
-        h("div", { className: "lydia-kanban-drawer-head" },
+        h("div", { className: "alice-kanban-drawer-head" },
           h("span", { className: "text-xs text-muted-foreground" }, props.taskId),
           h("button", {
             type: "button",
             onClick: props.onClose,
-            className: "lydia-kanban-drawer-close",
+            className: "alice-kanban-drawer-close",
             title: tx(t, "close", "Close (Esc)"),
           }, "×"),
         ),
@@ -3090,7 +3090,7 @@
           uploadBusy: uploadBusy,
           uploadErr: uploadErr,
         }) : null,
-        data ? h("div", { className: "lydia-kanban-drawer-comment-row" },
+        data ? h("div", { className: "alice-kanban-drawer-comment-row" },
           h(Input, {
             value: newComment,
             onChange: function (e) { setNewComment(e.target.value); },
@@ -3159,8 +3159,8 @@
         })
         .catch(function (e) { setDlErr(String(e.message || e)); });
     }
-    return h("div", { className: "lydia-kanban-section" },
-      h("div", { className: "lydia-kanban-section-head" },
+    return h("div", { className: "alice-kanban-section" },
+      h("div", { className: "alice-kanban-section-head" },
         `${tx(i18n, "attachments", "Attachments")} (${atts.length})`),
       h("input", {
         ref: fileRef,
@@ -3196,7 +3196,7 @@
             },
               h("button", {
                 type: "button",
-                className: "lydia-kanban-attachment-link truncate",
+                className: "alice-kanban-attachment-link truncate",
                 title: a.filename,
                 onClick: function () { downloadAttachment(a); },
               }, a.filename),
@@ -3204,7 +3204,7 @@
                 _fmtBytes(a.size)),
               h("button", {
                 type: "button",
-                className: "lydia-kanban-drawer-close",
+                className: "alice-kanban-drawer-close",
                 title: tx(i18n, "removeAttachment", "Remove attachment"),
                 onClick: function () {
                   if (window.confirm(tx(i18n, "confirmRemoveAttachment",
@@ -3226,9 +3226,9 @@
     const attachments = props.data.attachments || [];
     const links = props.data.links || { parents: [], children: [] };
 
-    return h("div", { className: "lydia-kanban-drawer-body" },
-      h("div", { className: "lydia-kanban-drawer-title" },
-        h("span", { className: cn("lydia-kanban-dot", COLUMN_DOT[t.status]) }),
+    return h("div", { className: "alice-kanban-drawer-body" },
+      h("div", { className: "alice-kanban-drawer-title" },
+        h("span", { className: cn("alice-kanban-dot", COLUMN_DOT[t.status]) }),
         props.editing
           ? h(TitleEditor, {
               initial: t.title || "",
@@ -3238,12 +3238,12 @@
               onCancel: function () { props.setEditing(false); },
             })
           : h("span", {
-              className: "lydia-kanban-drawer-title-text",
+              className: "alice-kanban-drawer-title-text",
               title: tx(i18n, "clickToEdit", "Click to edit"),
               onClick: function () { props.setEditing(true); },
             }, t.title || tx(i18n, "untitled", "(untitled)")),
       ),
-      h("div", { className: "lydia-kanban-drawer-meta" },
+      h("div", { className: "alice-kanban-drawer-meta" },
         h(MetaRow, { label: tx(i18n, "status", "Status"), value: t.status }),
         h(AssigneeEditor, { task: t, onPatch: props.onPatch }),
         h(PriorityEditor, { task: t, onPatch: props.onPatch }),
@@ -3295,8 +3295,8 @@
         onAddChild: props.onAddChild,
         onRemoveChild: props.onRemoveChild,
       }),
-      t.result ? h("div", { className: "lydia-kanban-section" },
-        h("div", { className: "lydia-kanban-section-head" }, tx(i18n, "result", "Result")),
+      t.result ? h("div", { className: "alice-kanban-section" },
+        h("div", { className: "alice-kanban-section-head" }, tx(i18n, "result", "Result")),
         h(MarkdownBlock, { source: t.result, enabled: props.renderMarkdown }),
       ) : null,
       h(AttachmentsSection, {
@@ -3308,25 +3308,25 @@
         uploadErr: props.uploadErr,
         i18n: i18n,
       }),
-      h("div", { className: "lydia-kanban-section" },
-        h("div", { className: "lydia-kanban-section-head" },
+      h("div", { className: "alice-kanban-section" },
+        h("div", { className: "alice-kanban-section-head" },
           `${tx(i18n, "comments", "Comments")} (${comments.length})`),
         comments.length === 0
           ? h("div", { className: "text-xs text-muted-foreground" },
               tx(i18n, "noComments", "— no comments —"))
           : comments.map(function (c) {
-              return h("div", { key: c.id, className: "lydia-kanban-comment" },
-                h("div", { className: "lydia-kanban-comment-head" },
-                  h("span", { className: "lydia-kanban-comment-author" }, c.author || "anon"),
-                  h("span", { className: "lydia-kanban-comment-ago" },
+              return h("div", { key: c.id, className: "alice-kanban-comment" },
+                h("div", { className: "alice-kanban-comment-head" },
+                  h("span", { className: "alice-kanban-comment-author" }, c.author || "anon"),
+                  h("span", { className: "alice-kanban-comment-ago" },
                     timeAgo ? timeAgo(c.created_at) : ""),
                 ),
                 h(MarkdownBlock, { source: c.body, enabled: props.renderMarkdown }),
               );
             }),
       ),
-      h("div", { className: "lydia-kanban-section" },
-        h("div", { className: "lydia-kanban-section-head" },
+      h("div", { className: "alice-kanban-section" },
+        h("div", { className: "alice-kanban-section-head" },
           `${tx(i18n, "events", "Events")} (${events.length})`),
         events.slice().reverse().slice(0, 20).map(function (e) {
           const isDiag = isDiagnosticEvent(e.kind);
@@ -3334,37 +3334,37 @@
           return h("div", {
             key: e.id,
             className: cn(
-              "lydia-kanban-event",
-              isDiag ? "lydia-kanban-event--hallucination" : "",
+              "alice-kanban-event",
+              isDiag ? "alice-kanban-event--hallucination" : "",
             ),
           },
             isDiag
-              ? h("div", { className: "lydia-kanban-event-header" },
-                  h("span", { className: "lydia-kanban-event-warning-icon" }, "⚠"),
-                  h("span", { className: "lydia-kanban-event-warning-label" },
+              ? h("div", { className: "alice-kanban-event-header" },
+                  h("span", { className: "alice-kanban-event-warning-icon" }, "⚠"),
+                  h("span", { className: "alice-kanban-event-warning-label" },
                     getDiagnosticEventLabel(i18n, e.kind) || e.kind),
-                  h("span", { className: "lydia-kanban-event-ago" },
+                  h("span", { className: "alice-kanban-event-ago" },
                     timeAgo ? timeAgo(e.created_at) : ""),
                 )
-              : h("div", { className: "lydia-kanban-event-header-plain" },
-                  h("span", { className: "lydia-kanban-event-kind" }, e.kind),
-                  h("span", { className: "lydia-kanban-event-ago" },
+              : h("div", { className: "alice-kanban-event-header-plain" },
+                  h("span", { className: "alice-kanban-event-kind" }, e.kind),
+                  h("span", { className: "alice-kanban-event-ago" },
                     timeAgo ? timeAgo(e.created_at) : ""),
                 ),
             isDiag && phantoms.length > 0
-              ? h("div", { className: "lydia-kanban-event-phantom-row" },
-                  h("span", { className: "lydia-kanban-event-phantom-label" },
+              ? h("div", { className: "alice-kanban-event-phantom-row" },
+                  h("span", { className: "alice-kanban-event-phantom-label" },
                     tx(i18n, "phantomIds", "Phantom ids:")),
                   phantoms.map(function (pid) {
                     return h("code", {
                       key: pid,
-                      className: "lydia-kanban-event-phantom-chip",
+                      className: "alice-kanban-event-phantom-chip",
                     }, pid);
                   }),
                 )
               : null,
             e.payload && !isDiag
-              ? h("code", { className: "lydia-kanban-event-payload" },
+              ? h("code", { className: "alice-kanban-event-payload" },
                   JSON.stringify(e.payload))
               : null,
           );
@@ -3395,49 +3395,49 @@
       return `${(secs / 3600).toFixed(1)}h`;
     };
 
-    return h("div", { className: "lydia-kanban-section" },
-      h("div", { className: "lydia-kanban-section-head-row" },
-        h("span", { className: "lydia-kanban-section-head" },
+    return h("div", { className: "alice-kanban-section" },
+      h("div", { className: "alice-kanban-section-head-row" },
+        h("span", { className: "alice-kanban-section-head" },
           `${tx(t, "runHistory", "Run history")} (${runs.length})`),
         !showAll
           ? h("button", {
               type: "button",
               onClick: function () { setExpanded(true); },
-              className: "lydia-kanban-edit-link",
+              className: "alice-kanban-edit-link",
               title: tx(t, "showAllAttempts", "Show all attempts"),
             }, `+${runs.length - 3} earlier`)
           : null,
       ),
       visible.map(function (r) {
         const outcomeClass = r.ended_at
-          ? `lydia-kanban-run--${r.outcome || r.status || "ended"}`
-          : "lydia-kanban-run--active";
-        return h("div", { key: r.id, className: cn("lydia-kanban-run", outcomeClass) },
-          h("div", { className: "lydia-kanban-run-head" },
-            h("span", { className: "lydia-kanban-run-outcome" },
+          ? `alice-kanban-run--${r.outcome || r.status || "ended"}`
+          : "alice-kanban-run--active";
+        return h("div", { key: r.id, className: cn("alice-kanban-run", outcomeClass) },
+          h("div", { className: "alice-kanban-run-head" },
+            h("span", { className: "alice-kanban-run-outcome" },
               r.ended_at ? (r.outcome || r.status || tx(t, "ended", "ended")) : tx(t, "active", "active")),
-            h("span", { className: "lydia-kanban-run-profile" },
+            h("span", { className: "alice-kanban-run-profile" },
               r.profile ? `@${r.profile}` : tx(t, "noProfile", "(no profile)")),
-            h("span", { className: "lydia-kanban-run-elapsed" }, fmtElapsed(r)),
-            h("span", { className: "lydia-kanban-run-ago" },
+            h("span", { className: "alice-kanban-run-elapsed" }, fmtElapsed(r)),
+            h("span", { className: "alice-kanban-run-ago" },
               timeAgo ? timeAgo(r.started_at) : ""),
           ),
           r.summary
-            ? h("div", { className: "lydia-kanban-run-summary" }, r.summary)
+            ? h("div", { className: "alice-kanban-run-summary" }, r.summary)
             : null,
           r.error
-            ? h("div", { className: "lydia-kanban-run-error" }, r.error)
+            ? h("div", { className: "alice-kanban-run-error" }, r.error)
             : null,
           (r.metadata && Object.keys(r.metadata).length > 0)
             ? (function () {
                 var json = JSON.stringify(r.metadata, null, 2);
                 var collapsed = json.length > 300;
                 return h("details", {
-                    className: "lydia-kanban-run-meta-block",
+                    className: "alice-kanban-run-meta-block",
                     open: !collapsed,
                   },
-                  h("summary", { className: "lydia-kanban-run-meta-label" }, "Metadata"),
-                  h("code", { className: "lydia-kanban-run-meta" }, json),
+                  h("summary", { className: "alice-kanban-run-meta-label" }, "Metadata"),
+                  h("code", { className: "alice-kanban-run-meta" }, json),
                 );
               })()
             : null,
@@ -3473,18 +3473,18 @@
         tx(t, "noWorkerLog",
           "— no worker log yet (task hasn't spawned or log was rotated away) —"));
     } else {
-      body = h("pre", { className: "lydia-kanban-pre lydia-kanban-log" },
+      body = h("pre", { className: "alice-kanban-pre alice-kanban-log" },
         data.content || "(empty)");
     }
 
-    return h("div", { className: "lydia-kanban-section" },
-      h("div", { className: "lydia-kanban-section-head-row" },
-        h("span", { className: "lydia-kanban-section-head" },
+    return h("div", { className: "alice-kanban-section" },
+      h("div", { className: "alice-kanban-section-head-row" },
+        h("span", { className: "alice-kanban-section-head" },
           tx(t, "workerLog", "Worker log") + (data && data.size_bytes ? ` (${data.size_bytes} B)` : "")),
         h("button", {
           type: "button",
           onClick: load,
-          className: "lydia-kanban-edit-link",
+          className: "alice-kanban-edit-link",
           title: "Refresh log",
         }, "refresh"),
       ),
@@ -3499,9 +3499,9 @@
   }
 
   function MetaRow(props) {
-    return h("div", { className: "lydia-kanban-meta-row" },
-      h("span", { className: "lydia-kanban-meta-label" }, props.label),
-      h("span", { className: "lydia-kanban-meta-value" }, props.value),
+    return h("div", { className: "alice-kanban-meta-row" },
+      h("span", { className: "alice-kanban-meta-label" }, props.label),
+      h("span", { className: "alice-kanban-meta-value" }, props.value),
     );
   }
 
@@ -3513,7 +3513,7 @@
       if (!trimmed) return;
       props.onSave(trimmed);
     };
-    return h("div", { className: "lydia-kanban-edit-row" },
+    return h("div", { className: "alice-kanban-edit-row" },
       h(Input, {
         value: v, autoFocus: true,
         onChange: function (e) { setV(e.target.value); },
@@ -3538,10 +3538,10 @@
     const [v, setV] = useState(props.task.assignee || "");
     useEffect(function () { setV(props.task.assignee || ""); }, [props.task.assignee]);
     if (!editing) {
-      return h("div", { className: "lydia-kanban-meta-row" },
-        h("span", { className: "lydia-kanban-meta-label" }, tx(t, "assignee", "Assignee")),
+      return h("div", { className: "alice-kanban-meta-row" },
+        h("span", { className: "alice-kanban-meta-label" }, tx(t, "assignee", "Assignee")),
         h("span", {
-          className: "lydia-kanban-meta-value lydia-kanban-editable",
+          className: "alice-kanban-meta-value alice-kanban-editable",
           onClick: function () { setEditing(true); },
           title: tx(t, "clickToEditAssignee", "Click to edit assignee"),
         }, props.task.assignee || tx(t, "unassigned", "unassigned")),
@@ -3550,8 +3550,8 @@
     const save = function () {
       props.onPatch({ assignee: v.trim() || "" }).then(function () { setEditing(false); });
     };
-    return h("div", { className: "lydia-kanban-meta-row" },
-      h("span", { className: "lydia-kanban-meta-label" }, tx(t, "assignee", "Assignee")),
+    return h("div", { className: "alice-kanban-meta-row" },
+      h("span", { className: "alice-kanban-meta-label" }, tx(t, "assignee", "Assignee")),
       h(Input, {
         value: v, autoFocus: true,
         onChange: function (e) { setV(e.target.value); },
@@ -3575,10 +3575,10 @@
     const [v, setV] = useState(String(props.task.priority || 0));
     useEffect(function () { setV(String(props.task.priority || 0)); }, [props.task.priority]);
     if (!editing) {
-      return h("div", { className: "lydia-kanban-meta-row" },
-        h("span", { className: "lydia-kanban-meta-label" }, tx(t, "priority", "Priority")),
+      return h("div", { className: "alice-kanban-meta-row" },
+        h("span", { className: "alice-kanban-meta-label" }, tx(t, "priority", "Priority")),
         h("span", {
-          className: "lydia-kanban-meta-value lydia-kanban-editable",
+          className: "alice-kanban-meta-value alice-kanban-editable",
           onClick: function () { setEditing(true); },
           title: tx(t, "clickToEdit", "Click to edit"),
         }, String(props.task.priority)),
@@ -3587,8 +3587,8 @@
     const save = function () {
       props.onPatch({ priority: Number(v) || 0 }).then(function () { setEditing(false); });
     };
-    return h("div", { className: "lydia-kanban-meta-row" },
-      h("span", { className: "lydia-kanban-meta-label" }, tx(t, "priority", "Priority")),
+    return h("div", { className: "alice-kanban-meta-row" },
+      h("span", { className: "alice-kanban-meta-label" }, tx(t, "priority", "Priority")),
       h(Input, {
         type: "number", value: v, autoFocus: true,
         onChange: function (e) { setV(e.target.value); },
@@ -3609,9 +3609,9 @@
     const save = function () {
       props.onPatch({ body: v }).then(function () { setEditing(false); });
     };
-    return h("div", { className: "lydia-kanban-section" },
-      h("div", { className: "lydia-kanban-section-head-row" },
-        h("span", { className: "lydia-kanban-section-head" }, tx(t, "description", "Description")),
+    return h("div", { className: "alice-kanban-section" },
+      h("div", { className: "alice-kanban-section-head-row" },
+        h("span", { className: "alice-kanban-section-head" }, tx(t, "description", "Description")),
         editing
           ? h("div", { className: "flex gap-1" },
               h(Button, { onClick: save,
@@ -3624,13 +3624,13 @@
           : h("button", {
               type: "button",
               onClick: function () { setEditing(true); },
-              className: "lydia-kanban-edit-link",
+              className: "alice-kanban-edit-link",
               title: "Edit description",
             }, tx(t, "edit", "edit")),
       ),
       editing
         ? h("textarea", {
-            className: "lydia-kanban-textarea",
+            className: "alice-kanban-textarea",
             value: v,
             rows: 8,
             onChange: function (e) { setV(e.target.value); },
@@ -3656,19 +3656,19 @@
     const parentExclude = new Set([task.id, ...(links.parents || [])]);
     const childExclude  = new Set([task.id, ...(links.children || [])]);
 
-    return h("div", { className: "lydia-kanban-section" },
-      h("div", { className: "lydia-kanban-section-head" }, tx(t, "dependencies", "Dependencies")),
-      h("div", { className: "lydia-kanban-deps-row" },
-        h("span", { className: "lydia-kanban-deps-label" }, tx(t, "parents", "Parents:")),
-        h("div", { className: "lydia-kanban-deps-chips" },
+    return h("div", { className: "alice-kanban-section" },
+      h("div", { className: "alice-kanban-section-head" }, tx(t, "dependencies", "Dependencies")),
+      h("div", { className: "alice-kanban-deps-row" },
+        h("span", { className: "alice-kanban-deps-label" }, tx(t, "parents", "Parents:")),
+        h("div", { className: "alice-kanban-deps-chips" },
           (links.parents || []).length === 0
-            ? h("span", { className: "lydia-kanban-deps-empty" }, tx(t, "none", "none"))
+            ? h("span", { className: "alice-kanban-deps-empty" }, tx(t, "none", "none"))
             : (links.parents || []).map(function (id) {
-                return h("span", { key: id, className: "lydia-kanban-dep-chip" },
+                return h("span", { key: id, className: "alice-kanban-dep-chip" },
                   id,
                   h("button", {
                     type: "button",
-                    className: "lydia-kanban-dep-chip-x",
+                    className: "alice-kanban-dep-chip-x",
                     onClick: function () { props.onRemoveParent(id); },
                     title: tx(t, "removeDependency", "Remove dependency"),
                   }, "×"),
@@ -3676,7 +3676,7 @@
               }),
         ),
       ),
-      h("div", { className: "lydia-kanban-deps-row" },
+      h("div", { className: "alice-kanban-deps-row" },
         h(Select, Object.assign({
           value: newParent,
           className: "h-7 text-xs flex-1",
@@ -3696,17 +3696,17 @@
           size: "sm",
         }, "+ parent"),
       ),
-      h("div", { className: "lydia-kanban-deps-row" },
-        h("span", { className: "lydia-kanban-deps-label" }, tx(t, "children", "Children:")),
-        h("div", { className: "lydia-kanban-deps-chips" },
+      h("div", { className: "alice-kanban-deps-row" },
+        h("span", { className: "alice-kanban-deps-label" }, tx(t, "children", "Children:")),
+        h("div", { className: "alice-kanban-deps-chips" },
           (links.children || []).length === 0
-            ? h("span", { className: "lydia-kanban-deps-empty" }, tx(t, "none", "none"))
+            ? h("span", { className: "alice-kanban-deps-empty" }, tx(t, "none", "none"))
             : (links.children || []).map(function (id) {
-                return h("span", { key: id, className: "lydia-kanban-dep-chip" },
+                return h("span", { key: id, className: "alice-kanban-dep-chip" },
                   id,
                   h("button", {
                     type: "button",
-                    className: "lydia-kanban-dep-chip-x",
+                    className: "alice-kanban-dep-chip-x",
                     onClick: function () { props.onRemoveChild(id); },
                     title: tx(t, "removeDependency", "Remove dependency"),
                   }, "×"),
@@ -3714,7 +3714,7 @@
               }),
         ),
       ),
-      h("div", { className: "lydia-kanban-deps-row" },
+      h("div", { className: "alice-kanban-deps-row" },
         h(Select, Object.assign({
           value: newChild,
           className: "h-7 text-xs flex-1",
@@ -3836,7 +3836,7 @@
       : null;
 
     return h("div", null,
-      h("div", { className: "lydia-kanban-actions" },
+      h("div", { className: "alice-kanban-actions" },
         specifyButton,
         decomposeButton,
         b("→ triage",  { status: "triage" },   task.status !== "triage"),
@@ -3857,13 +3857,13 @@
       ),
       specifyMsg ? h("div", {
         className: specifyMsg.ok
-          ? "lydia-kanban-msg-ok"
-          : "lydia-kanban-msg-err",
+          ? "alice-kanban-msg-ok"
+          : "alice-kanban-msg-err",
       }, specifyMsg.text) : null,
       decomposeMsg ? h("div", {
         className: decomposeMsg.ok
-          ? "lydia-kanban-msg-ok"
-          : "lydia-kanban-msg-err",
+          ? "alice-kanban-msg-ok"
+          : "alice-kanban-msg-err",
       }, decomposeMsg.text) : null,
     );
   }
@@ -3879,10 +3879,10 @@
     const channels = props.homeChannels || [];
     if (channels.length === 0) return null;
     const busy = props.homeBusy || {};
-    return h("div", { className: "lydia-kanban-section" },
-      h("div", { className: "lydia-kanban-section-head" },
+    return h("div", { className: "alice-kanban-section" },
+      h("div", { className: "alice-kanban-section-head" },
         tx(t, "notifyHomeChannels", "Notify home channels")),
-      h("div", { className: "lydia-kanban-home-subs" },
+      h("div", { className: "alice-kanban-home-subs" },
         channels.map(function (hc) {
           const isBusy = !!busy[hc.platform];
           const label = hc.subscribed ? "✓ " + hc.platform : hc.platform;
@@ -3899,8 +3899,8 @@
               if (props.onToggle) props.onToggle(hc.platform, hc.subscribed);
             },
             className: hc.subscribed
-              ? "lydia-kanban-home-sub lydia-kanban-home-sub--on"
-              : "lydia-kanban-home-sub",
+              ? "alice-kanban-home-sub alice-kanban-home-sub--on"
+              : "alice-kanban-home-sub",
           }, label);
         })
       )
@@ -3911,7 +3911,7 @@
   // Register
   // -------------------------------------------------------------------------
 
-  if (window.__LYDIA_PLUGINS__ && typeof window.__LYDIA_PLUGINS__.register === "function") {
-    window.__LYDIA_PLUGINS__.register("kanban", KanbanPage);
+  if (window.__ALICE_PLUGINS__ && typeof window.__ALICE_PLUGINS__.register === "function") {
+    window.__ALICE_PLUGINS__.register("kanban", KanbanPage);
   }
 })();

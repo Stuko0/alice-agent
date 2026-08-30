@@ -24,7 +24,7 @@ from alice_state import SessionDB
 
 
 @pytest.fixture()
-def lydia_home(tmp_path, monkeypatch):
+def alice_home(tmp_path, monkeypatch):
     home = tmp_path / ".alice"
     home.mkdir()
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -33,7 +33,7 @@ def lydia_home(tmp_path, monkeypatch):
 
 
 @pytest.fixture()
-def server(lydia_home):
+def server(alice_home):
     with patch.dict(
         "sys.modules",
         {
@@ -51,8 +51,8 @@ def server(lydia_home):
 
 
 @pytest.fixture()
-def db(lydia_home):
-    return SessionDB(db_path=lydia_home / "state.db")
+def db(alice_home):
+    return SessionDB(db_path=alice_home / "state.db")
 
 
 @pytest.fixture()

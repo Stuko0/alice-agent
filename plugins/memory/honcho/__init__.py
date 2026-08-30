@@ -262,12 +262,12 @@ class HonchoMemoryProvider(MemoryProvider):
         except Exception:
             return False
 
-    def save_config(self, values, lydia_home):
+    def save_config(self, values, alice_home):
         """Write config to $ALICE_HOME/honcho.json (Honcho SDK native format)."""
         import json
         import os
         from pathlib import Path
-        config_path = Path(lydia_home) / "honcho.json"
+        config_path = Path(alice_home) / "honcho.json"
         existing = {}
         if config_path.exists():
             try:
@@ -284,7 +284,7 @@ class HonchoMemoryProvider(MemoryProvider):
             {"key": "baseUrl", "description": "Honcho base URL (for self-hosted)"},
         ]
 
-    def post_setup(self, lydia_home: str, config: dict) -> None:
+    def post_setup(self, alice_home: str, config: dict) -> None:
         """Run the full Honcho setup wizard after provider selection."""
         import types
         from plugins.memory.honcho.cli import cmd_setup

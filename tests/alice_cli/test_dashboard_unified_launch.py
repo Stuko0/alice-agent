@@ -84,8 +84,8 @@ class TestUnifiedDashboardRouting:
         # ALICE_HOME.  For a standard install (ALICE_HOME unset) that root is
         # the platform-native default (~/.alice), NOT dropped — see the Docker
         # test below for why we resolve explicitly instead of popping.
-        from alice_constants import get_default_lydia_root
-        assert env.get("ALICE_HOME") == str(get_default_lydia_root())
+        from alice_constants import get_default_alice_root
+        assert env.get("ALICE_HOME") == str(get_default_alice_root())
 
     def test_reexec_pins_docker_machine_root(self, main_mod, monkeypatch):
         """In the Docker layout (ALICE_HOME=/opt/data, profiles under
@@ -116,17 +116,17 @@ class TestUnifiedDashboardRouting:
 
         assert len(execs) == 1
         _exe, _argv, env = execs[0]
-        # get_default_lydia_root() strips the trailing profiles/<name>, so the
+        # get_default_alice_root() strips the trailing profiles/<name>, so the
         # child binds /opt/data — where the real default/oracle/saga profiles
         # and the .install_method stamp actually live.
         assert env.get("ALICE_HOME") == "/opt/data"
 
     def test_desktop_profile_backend_skips_machine_dashboard_reroute(self, main_mod, monkeypatch):
-        """A desktop-spawned named-profile backend (LYDIA_DESKTOP=1) must NOT
+        """A desktop-spawned named-profile backend (ALICE_DESKTOP=1) must NOT
         reroute into the machine dashboard. The reroute re-execs as the default
         profile and exits, so the desktop never sees a ready backend → boot
         loop. The guard keeps desktop pool backends per-profile."""
-        monkeypatch.setenv("LYDIA_DESKTOP", "1")
+        monkeypatch.setenv("ALICE_DESKTOP", "1")
         monkeypatch.setattr(
             "alice_cli.profiles.get_active_profile_name", lambda: "worker_x"
         )
@@ -198,7 +198,7 @@ class TestUnifiedDashboardRouting:
         monkeypatch.setattr(
             "alice_cli.profiles.get_active_profile_name", lambda: "default"
         )
-        monkeypatch.delenv("LYDIA_WEB_DIST", raising=False)
+        monkeypatch.delenv("ALICE_WEB_DIST", raising=False)
         monkeypatch.setattr(main_mod, "_sync_bundled_skills_quietly", lambda: None)
         monkeypatch.setattr(main_mod, "_build_web_ui", lambda *_a, **_k: True)
         monkeypatch.setitem(sys.modules, "fastapi", types.SimpleNamespace())

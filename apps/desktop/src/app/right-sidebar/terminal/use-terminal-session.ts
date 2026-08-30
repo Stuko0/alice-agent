@@ -63,7 +63,7 @@ function previewSelectionLabel(): string {
   return source.split(/[\\/]/).filter(Boolean).pop() || target?.label?.trim() || ''
 }
 
-const LYDIA_PATHS_MIME = 'application/x-alice-paths'
+const ALICE_PATHS_MIME = 'application/x-alice-paths'
 
 function readEscapeSequence(data: string, index: number) {
   if (data.charCodeAt(index) !== 0x1b || index + 1 >= data.length) {
@@ -222,7 +222,7 @@ function withSurface(theme: ReturnType<typeof terminalTheme>) {
 }
 
 function transferHasDropCandidates(t: DataTransfer): boolean {
-  if (t.types?.includes(LYDIA_PATHS_MIME)) {
+  if (t.types?.includes(ALICE_PATHS_MIME)) {
     return true
   }
 
@@ -255,7 +255,7 @@ function collectDroppedPaths(t: DataTransfer): string[] {
   }
 
   try {
-    const raw = t.getData(LYDIA_PATHS_MIME)
+    const raw = t.getData(ALICE_PATHS_MIME)
 
     if (raw) {
       for (const entry of JSON.parse(raw) as { path?: unknown }[]) {
@@ -266,7 +266,7 @@ function collectDroppedPaths(t: DataTransfer): string[] {
     // Malformed in-app drag payload — fall through to OS files.
   }
 
-  const getPath = window.lydiaDesktop?.getPathForFile
+  const getPath = window.aliceDesktop?.getPathForFile
 
   const addFile = (file: File | null) => {
     if (!file || !getPath) {
@@ -408,7 +408,7 @@ export function useTerminalSession({
 
   useEffect(() => {
     const host = hostRef.current
-    const terminalApi = window.lydiaDesktop?.terminal
+    const terminalApi = window.aliceDesktop?.terminal
 
     if (!host || !terminalApi) {
       setStatus('closed')
@@ -846,7 +846,7 @@ export function useTerminalSession({
         return
       }
 
-      void window.lydiaDesktop?.terminal?.write(sessionId, `${command}\r`)
+      void window.aliceDesktop?.terminal?.write(sessionId, `${command}\r`)
       $terminalInjection.set(null)
       termRef.current?.focus()
     })

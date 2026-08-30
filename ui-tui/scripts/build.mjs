@@ -35,10 +35,10 @@ await build({
   outfile: out,
   jsx: 'automatic',
   jsxImportSource: 'react',
-  // Skip the prebuilt @lydia/ink bundle — esbuild's __esm helper doesn't
+  // Skip the prebuilt @alice/ink bundle — esbuild's __esm helper doesn't
   // await nested async init, which breaks lazy-initialized exports like
   // `render`. Bundling from source sidesteps that.
-  alias: { '@lydia/ink': resolve(root, 'packages/lydia-ink/src/entry-exports.ts') },
+  alias: { '@alice/ink': resolve(root, 'packages/alice-ink/src/entry-exports.ts') },
   plugins: [stubDevtools],
   // Some transitive deps use CommonJS `require(...)` at runtime. ESM bundles
   // don't get a `require` binding automatically, so we inject one.
@@ -50,7 +50,7 @@ await build({
 
 // esbuild preserves the shebang from src/entry.tsx into the bundle, but Nix's
 // patchShebangs phase mangles `/usr/bin/env -S node --foo --bar` (it strips
-// the `node` token, leaving a broken interpreter). The lydia_cli launcher
+// the `node` token, leaving a broken interpreter). The alice_cli launcher
 // always invokes this file as `node dist/entry.js` anyway, so the shebang is
 // redundant — strip it.
 const body = readFileSync(out, 'utf8')

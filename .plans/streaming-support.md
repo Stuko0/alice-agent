@@ -62,7 +62,7 @@ streaming:
 ### Environment variables
 
 ```
-LYDIA_STREAMING_ENABLED=true    # Master switch via env
+ALICE_STREAMING_ENABLED=true    # Master switch via env
 ```
 
 ### How the flag is read
@@ -266,7 +266,7 @@ try:
 except Exception:
     pass
 # Env var override
-if os.getenv("LYDIA_STREAMING_ENABLED", "").lower() in ("true", "1", "yes"):
+if os.getenv("ALICE_STREAMING_ENABLED", "").lower() in ("true", "1", "yes"):
     _streaming_enabled = True
 ```
 
@@ -701,5 +701,5 @@ streaming:
 
 ```bash
 # Environment variable override
-LYDIA_STREAMING_ENABLED=true
+ALICE_STREAMING_ENABLED=true
 ```

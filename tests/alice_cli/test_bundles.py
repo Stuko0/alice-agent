@@ -13,7 +13,7 @@ from alice_cli.bundles import (
 @pytest.fixture
 def bundles_env(tmp_path, monkeypatch):
     bundles_dir = tmp_path / "skill-bundles"
-    monkeypatch.setenv("LYDIA_BUNDLES_DIR", str(bundles_dir))
+    monkeypatch.setenv("ALICE_BUNDLES_DIR", str(bundles_dir))
     # Reset module-level cache between tests.
     import agent.skill_bundles as mod
     mod._bundles_cache = {}

@@ -19,7 +19,7 @@ from types import SimpleNamespace
 
 
 def _run_apply_profile_override(
-    tmp_path, monkeypatch, *, lydia_home: str | None, active_profile: str | None,
+    tmp_path, monkeypatch, *, alice_home: str | None, active_profile: str | None,
     argv: list[str] | None = None,
 ):
     """Run _apply_profile_override in isolation.
@@ -27,18 +27,18 @@ def _run_apply_profile_override(
     Returns the value of os.environ["ALICE_HOME"] after the call,
     or None if unset.
     """
-    lydia_root = tmp_path / ".alice"
-    lydia_root.mkdir(parents=True, exist_ok=True)
+    alice_root = tmp_path / ".alice"
+    alice_root.mkdir(parents=True, exist_ok=True)
 
     if active_profile is not None:
-        (lydia_root / "active_profile").write_text(active_profile)
+        (alice_root / "active_profile").write_text(active_profile)
 
     if active_profile and active_profile != "default":
-        (lydia_root / "profiles" / active_profile).mkdir(parents=True, exist_ok=True)
+        (alice_root / "profiles" / active_profile).mkdir(parents=True, exist_ok=True)
 
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    if lydia_home is not None:
-        monkeypatch.setenv("ALICE_HOME", lydia_home)
+    if alice_home is not None:
+        monkeypatch.setenv("ALICE_HOME", alice_home)
     else:
         monkeypatch.delenv("ALICE_HOME", raising=False)
 
@@ -50,7 +50,7 @@ def _run_apply_profile_override(
     return os.environ.get("ALICE_HOME")
 
 
-class TestApplyProfileOverrideLydiaHomeGuard:
+class TestApplyProfileOverrideAliceHomeGuard:
     """Regression guard for issue #22502.
 
     Verifies that ALICE_HOME pointing to the alice root does NOT suppress
@@ -58,7 +58,7 @@ class TestApplyProfileOverrideLydiaHomeGuard:
     profile directory IS trusted as-is.
     """
 
-    def test_lydia_home_at_root_with_active_profile_is_redirected(
+    def test_alice_home_at_root_with_active_profile_is_redirected(
         self, tmp_path, monkeypatch
     ):
         """ALICE_HOME=/root/.alice + active_profile=coder must redirect
@@ -68,13 +68,13 @@ class TestApplyProfileOverrideLydiaHomeGuard:
         and the user switches to a profile via `alice profile use`.
         Before the fix, the guard returned early and active_profile was ignored.
         """
-        lydia_root = tmp_path / ".alice"
-        lydia_root.mkdir(parents=True, exist_ok=True)
+        alice_root = tmp_path / ".alice"
+        alice_root.mkdir(parents=True, exist_ok=True)
 
         result = _run_apply_profile_override(
             tmp_path,
             monkeypatch,
-            lydia_home=str(lydia_root),
+            alice_home=str(alice_root),
             active_profile="coder",
         )
 
@@ -86,7 +86,7 @@ class TestApplyProfileOverrideLydiaHomeGuard:
             f"Expected ALICE_HOME to end with 'coder', got: {result!r}"
         )
 
-    def test_lydia_home_already_profile_dir_is_trusted(self, tmp_path, monkeypatch):
+    def test_alice_home_already_profile_dir_is_trusted(self, tmp_path, monkeypatch):
         """ALICE_HOME=.../profiles/coder must not be overridden even when
         active_profile says something different.
 
@@ -94,11 +94,11 @@ class TestApplyProfileOverrideLydiaHomeGuard:
         with ALICE_HOME already set to a specific profile must stay in that
         profile.
         """
-        lydia_root = tmp_path / ".alice"
-        profile_dir = lydia_root / "profiles" / "coder"
+        alice_root = tmp_path / ".alice"
+        profile_dir = alice_root / "profiles" / "coder"
         profile_dir.mkdir(parents=True, exist_ok=True)
 
-        (lydia_root / "active_profile").write_text("other")
+        (alice_root / "active_profile").write_text("other")
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.setenv("ALICE_HOME", str(profile_dir))
@@ -111,14 +111,14 @@ class TestApplyProfileOverrideLydiaHomeGuard:
             "ALICE_HOME must remain unchanged when already pointing to a profile dir"
         )
 
-    def test_lydia_home_unset_reads_active_profile(self, tmp_path, monkeypatch):
+    def test_alice_home_unset_reads_active_profile(self, tmp_path, monkeypatch):
         """Classic case: ALICE_HOME unset + active_profile=coder must set
         ALICE_HOME to the profile directory (existing behaviour must not regress).
         """
         result = _run_apply_profile_override(
             tmp_path,
             monkeypatch,
-            lydia_home=None,
+            alice_home=None,
             active_profile="coder",
         )
 
@@ -149,15 +149,15 @@ class TestApplyProfileOverrideLydiaHomeGuard:
         assert os.environ.get("ALICE_HOME") == str(profile_dir)
         assert sys.argv == ["alice", "gateway", "install", "--system"]
 
-    def test_lydia_home_unset_default_profile_no_redirect(self, tmp_path, monkeypatch):
+    def test_alice_home_unset_default_profile_no_redirect(self, tmp_path, monkeypatch):
         """active_profile=default must not redirect ALICE_HOME."""
-        lydia_root = tmp_path / ".alice"
-        lydia_root.mkdir(parents=True, exist_ok=True)
+        alice_root = tmp_path / ".alice"
+        alice_root.mkdir(parents=True, exist_ok=True)
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.delenv("ALICE_HOME", raising=False)
         monkeypatch.setattr(sys, "argv", ["alice", "gateway", "start"])
-        (lydia_root / "active_profile").write_text("default")
+        (alice_root / "active_profile").write_text("default")
 
         from alice_cli.main import _apply_profile_override
         _apply_profile_override()
@@ -172,8 +172,8 @@ class TestApplyProfileOverrideLydiaHomeGuard:
         profile pre-parser must not interpret the Docker profile as a Alice
         profile.
         """
-        lydia_root = tmp_path / ".alice"
-        lydia_root.mkdir(parents=True, exist_ok=True)
+        alice_root = tmp_path / ".alice"
+        alice_root.mkdir(parents=True, exist_ok=True)
         argv = [
             "alice",
             "mcp",
@@ -204,7 +204,7 @@ class TestApplyProfileOverrideLydiaHomeGuard:
         result = _run_apply_profile_override(
             tmp_path,
             monkeypatch,
-            lydia_home=None,
+            alice_home=None,
             active_profile="coder",
             argv=["alice", "chat", "-p", "coder", "-q", "hello"],
         )
@@ -218,7 +218,7 @@ class TestApplyProfileOverrideLydiaHomeGuard:
         result = _run_apply_profile_override(
             tmp_path,
             monkeypatch,
-            lydia_home=None,
+            alice_home=None,
             active_profile="coder",
             argv=["alice", "-m", "gpt-5", "--profile", "coder", "chat"],
         )
@@ -232,7 +232,7 @@ class TestApplyProfileOverrideLydiaHomeGuard:
         result = _run_apply_profile_override(
             tmp_path,
             monkeypatch,
-            lydia_home=None,
+            alice_home=None,
             active_profile="coder",
             argv=["alice", "--continue", "--profile", "coder"],
         )
@@ -247,7 +247,7 @@ class TestSupervisedChildIgnoresStickyProfile:
 
     Inside the Docker s6 image the ``gateway-default`` service slot runs a
     bare ``alice gateway run`` (no ``-p``) to mean "the root ALICE_HOME
-    profile". The run-script exports ``LYDIA_S6_SUPERVISED_CHILD=1``.
+    profile". The run-script exports ``ALICE_S6_SUPERVISED_CHILD=1``.
     Without a guard, ``_apply_profile_override`` would read the sticky
     ``active_profile`` file (set by e.g. the dashboard profile switcher) and
     redirect the reserved default gateway into that profile — producing a
@@ -257,7 +257,7 @@ class TestSupervisedChildIgnoresStickyProfile:
     def test_supervised_child_does_not_follow_active_profile(
         self, tmp_path, monkeypatch
     ):
-        """LYDIA_S6_SUPERVISED_CHILD + active_profile=briefer must NOT redirect.
+        """ALICE_S6_SUPERVISED_CHILD + active_profile=briefer must NOT redirect.
 
         Reproduces the Docker/profile scoping bug: the supervised default
         gateway is launched as bare ``alice gateway run`` with
@@ -265,22 +265,22 @@ class TestSupervisedChildIgnoresStickyProfile:
         ``profiles``), and a sticky ``active_profile`` of another profile.
         The reserved default slot must stay on the root profile.
         """
-        lydia_root = tmp_path / ".alice"
-        lydia_root.mkdir(parents=True, exist_ok=True)
-        (lydia_root / "active_profile").write_text("briefer")
-        (lydia_root / "profiles" / "briefer").mkdir(parents=True, exist_ok=True)
+        alice_root = tmp_path / ".alice"
+        alice_root.mkdir(parents=True, exist_ok=True)
+        (alice_root / "active_profile").write_text("briefer")
+        (alice_root / "profiles" / "briefer").mkdir(parents=True, exist_ok=True)
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         # Container root ALICE_HOME: parent dir is NOT "profiles", so the
         # #22502 guard does not short-circuit — step 2 (active_profile) runs.
-        monkeypatch.setenv("ALICE_HOME", str(lydia_root))
-        monkeypatch.setenv("LYDIA_S6_SUPERVISED_CHILD", "1")
+        monkeypatch.setenv("ALICE_HOME", str(alice_root))
+        monkeypatch.setenv("ALICE_S6_SUPERVISED_CHILD", "1")
         monkeypatch.setattr(sys, "argv", ["alice", "gateway", "run"])
 
         from alice_cli.main import _apply_profile_override
         _apply_profile_override()
 
-        assert os.environ.get("ALICE_HOME") == str(lydia_root), (
+        assert os.environ.get("ALICE_HOME") == str(alice_root), (
             "Supervised default gateway must stay on the root profile, not be "
             f"hijacked by active_profile; got {os.environ.get('ALICE_HOME')!r}"
         )
@@ -293,7 +293,7 @@ class TestSupervisedChildIgnoresStickyProfile:
         result = _run_apply_profile_override(
             tmp_path,
             monkeypatch,
-            lydia_home=None,
+            alice_home=None,
             active_profile="briefer",
             argv=["alice", "gateway", "run"],
         )
@@ -305,15 +305,15 @@ class TestSupervisedChildIgnoresStickyProfile:
         """A supervised named-profile slot passes ``-p <name>`` explicitly;
         that must still resolve (the sentinel guard only skips the sticky
         active_profile fallback, never an explicit flag)."""
-        lydia_root = tmp_path / ".alice"
-        lydia_root.mkdir(parents=True, exist_ok=True)
-        (lydia_root / "active_profile").write_text("briefer")
-        (lydia_root / "profiles" / "briefer").mkdir(parents=True, exist_ok=True)
-        (lydia_root / "profiles" / "coder").mkdir(parents=True, exist_ok=True)
+        alice_root = tmp_path / ".alice"
+        alice_root.mkdir(parents=True, exist_ok=True)
+        (alice_root / "active_profile").write_text("briefer")
+        (alice_root / "profiles" / "briefer").mkdir(parents=True, exist_ok=True)
+        (alice_root / "profiles" / "coder").mkdir(parents=True, exist_ok=True)
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.delenv("ALICE_HOME", raising=False)
-        monkeypatch.setenv("LYDIA_S6_SUPERVISED_CHILD", "1")
+        monkeypatch.setenv("ALICE_S6_SUPERVISED_CHILD", "1")
         monkeypatch.setattr(sys, "argv", ["alice", "-p", "coder", "gateway", "run"])
 
         from alice_cli.main import _apply_profile_override

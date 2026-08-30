@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/context-menu'
 import { DiffCount } from '@/components/ui/diff-count'
 import { Tip } from '@/components/ui/tooltip'
-import type { LydiaReviewFile } from '@/global'
+import type { AliceReviewFile } from '@/global'
 import { useI18n } from '@/i18n'
 import { isDesktopFsRemoteMode } from '@/lib/desktop-fs'
 import { normalizeOrLocalPreviewTarget } from '@/lib/local-preview'
@@ -392,7 +392,7 @@ function ReviewFileContextMenu({
   children: ReactNode
   cwd: null | string
   dragPath: string
-  file: LydiaReviewFile
+  file: AliceReviewFile
   onOpenChanges: () => void
   onOpenFile: () => void
 }) {

@@ -31,12 +31,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Ensure sibling modules (_lydia_home) are importable when run standalone.
+# Ensure sibling modules (_alice_home) are importable when run standalone.
 _SCRIPTS_DIR = str(Path(__file__).resolve().parent)
 if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 
-from _lydia_home import display_alice_home, get_alice_home
+from _alice_home import display_alice_home, get_alice_home
 
 ALICE_HOME = get_alice_home()
 TOKEN_PATH = ALICE_HOME / "google_token.json"

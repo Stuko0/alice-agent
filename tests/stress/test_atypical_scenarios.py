@@ -45,7 +45,7 @@ def scenario(name):
     """
     def wrap(fn):
         def run():
-            home = tempfile.mkdtemp(prefix=f"lydia_atyp_{name}_")
+            home = tempfile.mkdtemp(prefix=f"alice_atyp_{name}_")
             os.environ["ALICE_HOME"] = home
             os.environ["HOME"] = home
             for m in list(sys.modules.keys()):
@@ -440,7 +440,7 @@ def _(home, kb):
             if not resolved_abs.startswith(home_abs) and resolved_abs.startswith("/tmp"):
                 # This is escaping the home dir. Whether that's actually
                 # a problem depends on the threat model. Flag for attention.
-                print(f"  ⚠ workspace resolved OUTSIDE lydia_home: {resolved}")
+                print(f"  ⚠ workspace resolved OUTSIDE alice_home: {resolved}")
                 print(f"    (not necessarily a bug — dir: workspaces are intentionally arbitrary, but worth documenting)")
         except Exception as e:
             print(f"  resolve_workspace rejected: {e}")
@@ -527,7 +527,7 @@ def _(home, kb):
 # FILESYSTEM WEIRDNESS
 # =============================================================================
 
-@scenario("lydia_home_with_spaces")
+@scenario("alice_home_with_spaces")
 def _(home, kb):
     """ALICE_HOME at a path with spaces — should work but catches
     anyone doing string interpolation without quoting."""
@@ -554,11 +554,11 @@ def _(home, kb):
         shutil.rmtree(weird, ignore_errors=True)
 
 
-@scenario("lydia_home_with_unicode")
+@scenario("alice_home_with_unicode")
 def _(home, kb):
     """ALICE_HOME with non-ASCII chars."""
     # Pre-create directly since tempfile doesn't love unicode prefixes
-    weird = f"/tmp/lydia_héllo_émöji_{os.getpid()}"
+    weird = f"/tmp/alice_héllo_émöji_{os.getpid()}"
     os.makedirs(weird, exist_ok=True)
     os.environ["ALICE_HOME"] = weird
     os.environ["HOME"] = weird
@@ -576,12 +576,12 @@ def _(home, kb):
         shutil.rmtree(weird, ignore_errors=True)
 
 
-@scenario("lydia_home_via_symlink")
+@scenario("alice_home_via_symlink")
 def _(home, kb):
     """ALICE_HOME is a symlink to the real dir. _INITIALIZED_PATHS
     uses Path.resolve() — two different symlink names pointing at the
     same dir should NOT double-init."""
-    real = tempfile.mkdtemp(prefix="lydia_real_")
+    real = tempfile.mkdtemp(prefix="alice_real_")
     link1 = real + "_link1"
     link2 = real + "_link2"
     os.symlink(real, link1)
@@ -685,11 +685,11 @@ def _(home, kb):
 # CONCURRENCY CORNERS
 # =============================================================================
 
-def _idempotency_race_worker(lydia_home: str, key: str, result_file: str,
+def _idempotency_race_worker(alice_home: str, key: str, result_file: str,
                              barrier_path: str) -> None:
     """Subprocess body for the idempotency race test."""
-    os.environ["ALICE_HOME"] = lydia_home
-    os.environ["HOME"] = lydia_home
+    os.environ["ALICE_HOME"] = alice_home
+    os.environ["HOME"] = alice_home
     sys.path.insert(0, str(WT))
     from alice_cli import kanban_db as kb
 

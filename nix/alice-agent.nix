@@ -37,25 +37,25 @@
 }:
 let
   nodejs = nodejs_22;
-  mkLydiaVenv =
+  mkAliceVenv =
     extraDependencyGroups:
     callPackage ./python.nix {
       inherit uv2nix pyproject-nix pyproject-build-systems;
       dependency-groups = [ "all" ] ++ extraDependencyGroups;
     };
 
-  lydiaVenv = mkLydiaVenv extraDependencyGroups;
+  aliceVenv = mkAliceVenv extraDependencyGroups;
 
-  lydiaNpmLib = callPackage ./lib.nix {
+  aliceNpmLib = callPackage ./lib.nix {
     inherit npm-lockfile-fix nodejs;
   };
 
-  lydiaTui = callPackage ./tui.nix {
-    inherit lydiaNpmLib;
+  aliceTui = callPackage ./tui.nix {
+    inherit aliceNpmLib;
   };
 
-  lydiaWeb = callPackage ./web.nix {
-    inherit lydiaNpmLib;
+  aliceWeb = callPackage ./web.nix {
+    inherit aliceNpmLib;
   };
 
   bundledSkills = lib.cleanSourceWith {
@@ -65,14 +65,14 @@ let
 
   # Import bundled plugins (memory, context_engine, platforms/*).  Keeping
   # them out of the Python site-packages keeps import semantics identical
-  # to a dev checkout — the loader reads them from LYDIA_BUNDLED_PLUGINS.
+  # to a dev checkout — the loader reads them from ALICE_BUNDLED_PLUGINS.
   bundledPlugins = lib.cleanSourceWith {
     src = ../plugins;
     filter = path: _type: !(lib.hasInfix "/__pycache__/" path);
   };
 
   # i18n locale catalogs (locales/*.yaml). Shipped into the store and pointed
-  # at by LYDIA_BUNDLED_LOCALES so the wrapped binary always resolves human
+  # at by ALICE_BUNDLED_LOCALES so the wrapped binary always resolves human
   # strings instead of raw i18n keys (#23943 / #27632 / #35374).
   #
   # Defense-in-depth, not load-bearing: the wheel already declares locales/ as
@@ -118,7 +118,7 @@ let
 
     # Collect core venv package names
     core = set()
-    venv_sp = pathlib.Path('${lydiaVenv}/${sitePackagesPath}')
+    venv_sp = pathlib.Path('${aliceVenv}/${sitePackagesPath}')
     for di in venv_sp.glob('*.dist-info'):
         meta = di / 'METADATA'
         if meta.exists():
@@ -165,23 +165,23 @@ stdenv.mkDerivation (finalAttrs: {
     cp -r ${bundledSkills} $out/share/alice-agent/skills
     cp -r ${bundledPlugins} $out/share/alice-agent/plugins
     cp -r ${bundledLocales} $out/share/alice-agent/locales
-    cp -r ${lydiaWeb} $out/share/alice-agent/web_dist
+    cp -r ${aliceWeb} $out/share/alice-agent/web_dist
 
     mkdir -p $out/ui-tui
-    cp -r ${lydiaTui}/lib/alice-tui/* $out/ui-tui/
+    cp -r ${aliceTui}/lib/alice-tui/* $out/ui-tui/
 
     ${lib.concatMapStringsSep "\n"
       (name: ''
-        makeWrapper ${lydiaVenv}/bin/${name} $out/bin/${name} \
+        makeWrapper ${aliceVenv}/bin/${name} $out/bin/${name} \
           --suffix PATH : "${runtimePath}" \
-          --set LYDIA_BUNDLED_SKILLS $out/share/alice-agent/skills \
-          --set LYDIA_BUNDLED_PLUGINS $out/share/alice-agent/plugins \
-          --set LYDIA_BUNDLED_LOCALES $out/share/alice-agent/locales \
-          --set LYDIA_WEB_DIST $out/share/alice-agent/web_dist \
-          --set LYDIA_TUI_DIR $out/ui-tui \
-          --set LYDIA_PYTHON ${lydiaVenv}/bin/python3 \
-          --set LYDIA_NODE ${lib.getExe nodejs} \
-          ${lib.optionalString (rev != null) ''--set LYDIA_REVISION ${rev} \''}
+          --set ALICE_BUNDLED_SKILLS $out/share/alice-agent/skills \
+          --set ALICE_BUNDLED_PLUGINS $out/share/alice-agent/plugins \
+          --set ALICE_BUNDLED_LOCALES $out/share/alice-agent/locales \
+          --set ALICE_WEB_DIST $out/share/alice-agent/web_dist \
+          --set ALICE_TUI_DIR $out/ui-tui \
+          --set ALICE_PYTHON ${aliceVenv}/bin/python3 \
+          --set ALICE_NODE ${lib.getExe nodejs} \
+          ${lib.optionalString (rev != null) ''--set ALICE_REVISION ${rev} \''}
           ${lib.optionalString (extraPythonPackages != [ ]) ''--suffix PYTHONPATH : "${pythonPath}"''}
       '')
       [
@@ -193,7 +193,7 @@ stdenv.mkDerivation (finalAttrs: {
 
     ${lib.optionalString (extraPythonPackages != [ ]) ''
       echo "=== Checking for plugin/core package collisions ==="
-      ${lydiaVenv}/bin/python3 -c "${checkPackageCollisions}"
+      ${aliceVenv}/bin/python3 -c "${checkPackageCollisions}"
       echo "=== No collisions ==="
     ''}
 
@@ -202,34 +202,34 @@ stdenv.mkDerivation (finalAttrs: {
 
   passthru = {
     inherit
-      lydiaTui
-      lydiaWeb
-      lydiaNpmLib
-      lydiaVenv
+      aliceTui
+      aliceWeb
+      aliceNpmLib
+      aliceVenv
       ;
 
-    # `lydiaDesktop` references `finalAttrs.finalPackage` (this whole
+    # `aliceDesktop` references `finalAttrs.finalPackage` (this whole
     # derivation, after all overrides are applied) so the desktop wrapper
     # can prepend its `/bin` to PATH.  The desktop's resolver step 4
     # ("existing alice on PATH") then picks up the fully wrapped
     # `alice` binary — venv with all deps, bundled skills/plugins,
     # runtime PATH (ripgrep/git/ffmpeg/etc).  No re-implementation
     # of the agent resolution in the desktop wrapper.
-    lydiaDesktop = callPackage ./desktop.nix {
-      inherit lydiaNpmLib electron;
-      lydiaAgent = finalAttrs.finalPackage;
+    aliceDesktop = callPackage ./desktop.nix {
+      inherit aliceNpmLib electron;
+      aliceAgent = finalAttrs.finalPackage;
     };
 
     devShellHook = ''
-      export LYDIA_PYTHON=${lydiaVenv}/bin/python3
+      export ALICE_PYTHON=${aliceVenv}/bin/python3
     '';
 
-    devDeps = runtimeDeps ++ [ (mkLydiaVenv (extraDependencyGroups ++ [ "dev" ])) ];
+    devDeps = runtimeDeps ++ [ (mkAliceVenv (extraDependencyGroups ++ [ "dev" ])) ];
   };
 
   meta = with lib; {
     description = "AI agent with advanced tool-calling capabilities";
-    homepage = "https://10.1.200.116:3000/arquant-admin/NewLydia";
+    homepage = "https://10.1.200.116:3000/arquant-admin/NewAlice";
     mainProgram = "alice";
     license = licenses.mit;
     platforms = platforms.unix;

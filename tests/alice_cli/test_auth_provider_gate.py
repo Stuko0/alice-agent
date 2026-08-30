@@ -5,16 +5,16 @@ import pytest
 
 
 def _write_config(tmp_path, config: dict) -> None:
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
     import yaml
-    (lydia_home / "config.yaml").write_text(yaml.dump(config))
+    (alice_home / "config.yaml").write_text(yaml.dump(config))
 
 
 def _write_auth_store(tmp_path, payload: dict) -> None:
-    lydia_home = tmp_path / "alice"
-    lydia_home.mkdir(parents=True, exist_ok=True)
-    (lydia_home / "auth.json").write_text(json.dumps(payload, indent=2))
+    alice_home = tmp_path / "alice"
+    alice_home.mkdir(parents=True, exist_ok=True)
+    (alice_home / "auth.json").write_text(json.dumps(payload, indent=2))
 
 
 @pytest.fixture(autouse=True)

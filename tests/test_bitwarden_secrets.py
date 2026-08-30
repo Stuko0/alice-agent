@@ -39,15 +39,15 @@ def _reset_caches():
 
 
 @pytest.fixture
-def lydia_home(tmp_path, monkeypatch):
+def alice_home(tmp_path, monkeypatch):
     """Point Alice at an isolated home directory."""
     home = tmp_path / ".alice"
     home.mkdir()
     monkeypatch.setenv("ALICE_HOME", str(home))
     # Some modules cache get_alice_home; clear if needed.
     import alice_constants
-    if hasattr(alice_constants, "_LYDIA_HOME_CACHE"):
-        alice_constants._LYDIA_HOME_CACHE = None  # type: ignore[attr-defined]
+    if hasattr(alice_constants, "_ALICE_HOME_CACHE"):
+        alice_constants._ALICE_HOME_CACHE = None  # type: ignore[attr-defined]
     return home
 
 
@@ -163,7 +163,7 @@ def test_safe_extract_member_rejects_absolute_path(tmp_path):
             bw._safe_extract_member(zf, "../../../etc/cron.d/evil", dest)
 
 
-def test_install_bws_rejects_malicious_member(lydia_home, monkeypatch):
+def test_install_bws_rejects_malicious_member(alice_home, monkeypatch):
     # Build an archive whose only matching member escapes the temp dir.
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
@@ -186,7 +186,7 @@ def test_install_bws_rejects_malicious_member(lydia_home, monkeypatch):
         bw.install_bws()
 
 
-def test_install_bws_happy_path(lydia_home, monkeypatch):
+def test_install_bws_happy_path(alice_home, monkeypatch):
     fake_binary = b"#!/bin/sh\necho 'bws fake 2.0.0'\n"
     zip_bytes = _make_fake_zip(fake_binary)
     asset_name = bw._platform_asset_name()
@@ -212,7 +212,7 @@ def test_install_bws_happy_path(lydia_home, monkeypatch):
     assert path.stat().st_mode & stat.S_IXUSR
 
 
-def test_install_bws_checksum_mismatch(lydia_home, monkeypatch):
+def test_install_bws_checksum_mismatch(alice_home, monkeypatch):
     zip_bytes = _make_fake_zip(b"contents")
     asset_name = bw._platform_asset_name()
     wrong_checksum = "0" * 64
@@ -230,7 +230,7 @@ def test_install_bws_checksum_mismatch(lydia_home, monkeypatch):
         bw.install_bws()
 
 
-def test_install_bws_missing_checksum_entry(lydia_home, monkeypatch):
+def test_install_bws_missing_checksum_entry(alice_home, monkeypatch):
     zip_bytes = _make_fake_zip(b"x")
 
     def fake_download(url, dest):
@@ -667,7 +667,7 @@ def test_env_loader_calls_bsm_when_enabled(tmp_path, monkeypatch):
 
 
 def test_disk_cache_written_after_first_fetch(monkeypatch, tmp_path):
-    """First fetch hits bws AND writes a 0600 file under lydia_home/cache/."""
+    """First fetch hits bws AND writes a 0600 file under alice_home/cache/."""
     home = tmp_path / ".alice"
     home.mkdir()
     fake_binary = tmp_path / "bws"

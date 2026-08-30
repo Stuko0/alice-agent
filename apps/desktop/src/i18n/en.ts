@@ -66,7 +66,7 @@ export const en: Translations = {
       loadingSettings: 'Loading Alice settings',
       loadingSessions: 'Loading recent sessions',
       startingDesktopConnection: 'Starting desktop connection',
-      startingLydiaDesktop: 'Starting Alice Desktop…'
+      startingAliceDesktop: 'Starting Alice Desktop…'
     },
     errors: {
       backgroundExited: 'Alice background process exited.',
@@ -116,7 +116,7 @@ export const en: Translations = {
     backendOutOfDateTitle: 'Backend out of date',
     backendOutOfDateMessage:
       'Your Alice backend is older than this desktop build and may not work correctly. Update to align them.',
-    updateLydia: 'Update Alice',
+    updateAlice: 'Update Alice',
     updateReadyTitle: 'Update ready',
     updateReadyMessage: count => `${count} new change${count === 1 ? '' : 's'} available.`,
     seeWhatsNew: "See what's new",
@@ -525,7 +525,7 @@ export const en: Translations = {
         `Connection used only when “${profile}” is the active profile. Set it to Local to inherit the default.`,
       envOverrideTitle: 'Environment variables are controlling this desktop session.',
       envOverrideDesc:
-        'Unset LYDIA_DESKTOP_REMOTE_URL and LYDIA_DESKTOP_REMOTE_TOKEN to use the saved setting below.',
+        'Unset ALICE_DESKTOP_REMOTE_URL and ALICE_DESKTOP_REMOTE_TOKEN to use the saved setting below.',
       localTitle: 'Local gateway',
       localDesc: 'Start a private Alice backend on localhost. This is the default and works offline.',
       remoteTitle: 'Remote gateway',
@@ -956,10 +956,10 @@ export const en: Translations = {
     noSessions: 'No sessions yet.',
     gatewayRunning: 'Messaging gateway running',
     gatewayStopped: 'Messaging gateway stopped',
-    lydiaActiveSessions: (version, count) => `Alice ${version} · Active sessions ${count}`,
+    aliceActiveSessions: (version, count) => `Alice ${version} · Active sessions ${count}`,
     restartGateway: 'Restart gateway',
     gatewayRestartFailed: 'Gateway restart failed.',
-    updateLydia: 'Update Alice',
+    updateAlice: 'Update Alice',
     actionRunning: 'running',
     actionDone: 'done',
     actionFailed: 'failed',

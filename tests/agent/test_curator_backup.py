@@ -336,7 +336,7 @@ def _write_cron_jobs(home: Path, jobs: list) -> Path:
 
 
 def _reload_cron_jobs(home: Path):
-    """Reload cron.jobs so its module-level LYDIA_DIR picks up the tmp HOME."""
+    """Reload cron.jobs so its module-level ALICE_DIR picks up the tmp HOME."""
     import alice_constants
     importlib.reload(alice_constants)
     if "cron.jobs" in sys.modules:

@@ -195,7 +195,7 @@ def relaunch(
             # cryptic.  Common causes: ``alice`` not on PATH yet (install
             # hasn't propagated User PATH into this shell) or a stale shim.
             print(
-                f"\nLydia relaunch failed: {exc}\n"
+                f"\nAlice relaunch failed: {exc}\n"
                 f"Command: {' '.join(new_argv)}\n"
                 f"Fix: open a new terminal so PATH picks up, then re-run alice.",
                 file=sys.stderr,

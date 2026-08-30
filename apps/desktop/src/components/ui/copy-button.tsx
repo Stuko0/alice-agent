@@ -19,8 +19,8 @@ export async function writeClipboardText(text: string) {
     return
   }
 
-  if (window.lydiaDesktop?.writeClipboard) {
-    await window.lydiaDesktop.writeClipboard(text)
+  if (window.aliceDesktop?.writeClipboard) {
+    await window.aliceDesktop.writeClipboard(text)
 
     return
   }

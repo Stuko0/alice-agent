@@ -29,8 +29,8 @@ from typing import Dict, Optional, Any
 
 from alice_constants import (
     find_node_executable,
-    get_lydia_dir,
-    with_lydia_node_path,
+    get_alice_dir,
+    with_alice_node_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -286,7 +286,7 @@ def _is_allowed_bridge_path(url: str) -> bool:
     attached verbatim and sent to the model. Resolve the path (following any
     symlinks) and require it to live under one of the real cache roots — this
     covers both the canonical ``cache/<kind>`` layout and the legacy
-    ``<kind>_cache`` layout that ``get_lydia_dir`` may return.
+    ``<kind>_cache`` layout that ``get_alice_dir`` may return.
     """
     try:
         resolved = Path(url).resolve()
@@ -402,7 +402,7 @@ class WhatsAppAdapter(WhatsAppBehaviorMixin, BasePlatformAdapter):
         )
         self._session_path: Path = Path(config.extra.get(
             "session_path",
-            get_lydia_dir("platforms/whatsapp/session", "whatsapp/session")
+            get_alice_dir("platforms/whatsapp/session", "whatsapp/session")
         ))
         self._reply_prefix: Optional[str] = config.extra.get("reply_prefix")
         self._dm_policy = str(config.extra.get("dm_policy") or os.getenv("WHATSAPP_DM_POLICY", "open")).strip().lower()
@@ -548,7 +548,7 @@ class WhatsAppAdapter(WhatsAppBehaviorMixin, BasePlatformAdapter):
                         capture_output=True,
                         text=True,
                         timeout=npm_install_timeout,
-                        env=with_lydia_node_path(),
+                        env=with_alice_node_path(),
                     )
                     if install_result.returncode != 0:
                         print(f"[{self.name}] npm install failed: {install_result.stderr}")
@@ -621,8 +621,8 @@ class WhatsAppAdapter(WhatsAppBehaviorMixin, BasePlatformAdapter):
             # Build bridge subprocess environment.
             # Pass WHATSAPP_REPLY_PREFIX from config.yaml so the Node bridge
             # can use it without the user needing to set a separate env var.
-            # with_lydia_node_path() copies os.environ when called with no arg.
-            bridge_env = with_lydia_node_path()
+            # with_alice_node_path() copies os.environ when called with no arg.
+            bridge_env = with_alice_node_path()
             if self._reply_prefix is not None:
                 bridge_env["WHATSAPP_REPLY_PREFIX"] = self._reply_prefix
             # Pass the profile-aware cache directories so the bridge writes
@@ -634,9 +634,9 @@ class WhatsAppAdapter(WhatsAppBehaviorMixin, BasePlatformAdapter):
                 get_document_cache_dir as _get_doc_dir,
                 get_image_cache_dir as _get_img_dir,
             )
-            bridge_env["LYDIA_IMAGE_CACHE_DIR"] = str(_get_img_dir())
-            bridge_env["LYDIA_AUDIO_CACHE_DIR"] = str(_get_audio_dir())
-            bridge_env["LYDIA_DOCUMENT_CACHE_DIR"] = str(_get_doc_dir())
+            bridge_env["ALICE_IMAGE_CACHE_DIR"] = str(_get_img_dir())
+            bridge_env["ALICE_AUDIO_CACHE_DIR"] = str(_get_audio_dir())
+            bridge_env["ALICE_DOCUMENT_CACHE_DIR"] = str(_get_doc_dir())
 
             self._bridge_process = subprocess.Popen(
                 [

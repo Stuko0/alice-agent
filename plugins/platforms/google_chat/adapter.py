@@ -144,7 +144,7 @@ from gateway.platforms.base import (
 # Pin the logger name to the legacy module path so operator log filters,
 # grep aliases, and the gateway's bundled log views keep matching after
 # the in-tree → plugin migration. ``__name__`` resolves to
-# ``lydia_plugins.platforms__google_chat.adapter`` once the plugin
+# ``alice_plugins.platforms__google_chat.adapter`` once the plugin
 # loader namespaces this module, which would silently break every
 # downstream log-monitor that greps for ``gateway.platforms.google_chat``.
 logger = logging.getLogger("gateway.platforms.google_chat")
@@ -522,12 +522,12 @@ class GoogleChatAdapter(BasePlatformAdapter):
         # made the in-memory version of this heuristic flaky for
         # multi-restart sessions).
         try:
-            from alice_constants import get_alice_home as _get_lydia_home
-            _lydia_home = _get_lydia_home()
+            from alice_constants import get_alice_home as _get_alice_home
+            _alice_home = _get_alice_home()
         except (ModuleNotFoundError, ImportError):
-            _lydia_home = _Path.home() / ".alice"
+            _alice_home = _Path.home() / ".alice"
         self._thread_count_store = _ThreadCountStore(
-            _lydia_home / "google_chat_thread_counts.json"
+            _alice_home / "google_chat_thread_counts.json"
         )
         # In-flight typing-card creates per chat_id. send_typing() reserves
         # an Event here BEFORE starting the API call so concurrent calls

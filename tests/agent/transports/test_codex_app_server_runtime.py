@@ -277,9 +277,9 @@ class TestSpawnEnvIsolation:
         monkeypatch.setattr(subprocess, "Popen", FakePopen)
         monkeypatch.setenv("HOME", "/users/alice")
         monkeypatch.setenv("ALICE_HOME", "/users/alice/.alice/profiles/backend-worker")
-        monkeypatch.setenv("LYDIA_KANBAN_TASK", "t_smoke")
+        monkeypatch.setenv("ALICE_KANBAN_TASK", "t_smoke")
         monkeypatch.setenv(
-            "LYDIA_KANBAN_DB",
+            "ALICE_KANBAN_DB",
             "/users/alice/.alice/kanban/boards/smoke/kanban.db",
         )
 

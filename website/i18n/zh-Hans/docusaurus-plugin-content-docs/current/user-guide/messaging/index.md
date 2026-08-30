@@ -347,7 +347,7 @@ display:
 也可通过环境变量设置：
 
 ```bash
-LYDIA_BACKGROUND_NOTIFICATIONS=result
+ALICE_BACKGROUND_NOTIFICATIONS=result
 ```
 
 ### 使用场景

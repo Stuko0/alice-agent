@@ -54,8 +54,8 @@ export function useImageDownload(src?: string) {
     setSaving(true)
 
     try {
-      if (window.lydiaDesktop?.saveImageFromUrl) {
-        if (await window.lydiaDesktop.saveImageFromUrl(src)) {
+      if (window.aliceDesktop?.saveImageFromUrl) {
+        if (await window.aliceDesktop.saveImageFromUrl(src)) {
           notify({ kind: 'success', title: copy.imageSaved, message: imageFilename(src) })
         }
 

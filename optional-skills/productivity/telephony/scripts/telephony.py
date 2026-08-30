@@ -68,20 +68,20 @@ class OwnedTwilioNumber:
     capabilities: dict[str, Any]
 
 
-def _lydia_home() -> Path:
+def _alice_home() -> Path:
     return Path(os.environ.get("ALICE_HOME", "~/.alice")).expanduser()
 
 
 def _env_path() -> Path:
-    return _lydia_home() / ".env"
+    return _alice_home() / ".env"
 
 
 def _config_path() -> Path:
-    return _lydia_home() / "config.yaml"
+    return _alice_home() / "config.yaml"
 
 
 def _state_path() -> Path:
-    return _lydia_home() / "telephony_state.json"
+    return _alice_home() / "telephony_state.json"
 
 
 def _load_root_config() -> dict[str, Any]:

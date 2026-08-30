@@ -24,12 +24,12 @@ class TestAskpassPath:
         # module-level cache.
         import alice_cli.web_git as wg
 
-        wg._LYDIA_ASKPASS_SCRIPT = None
+        wg._ALICE_ASKPASS_SCRIPT = None
 
     def teardown_method(self):
         import alice_cli.web_git as wg
 
-        wg._LYDIA_ASKPASS_SCRIPT = None
+        wg._ALICE_ASKPASS_SCRIPT = None
 
     def test_askpass_path_is_deterministic(self, tmp_path: Path, monkeypatch):
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
@@ -59,7 +59,7 @@ class TestAskpassPath:
         # Need a fresh materialisation — bypass the cache by patching.
         import alice_cli.web_git as wg
 
-        wg._LYDIA_ASKPASS_SCRIPT = None
+        wg._ALICE_ASKPASS_SCRIPT = None
         path2 = askpass_path()
         assert path == path2
         # Our materialisation guard only re-writes when the file is small
@@ -80,9 +80,9 @@ class TestAskpassBody:
         assert _ASKPASS_BODY.startswith("#!/usr/bin/env python3")
 
     def test_uses_gateway_port_env_var(self):
-        # The renderer-less fallback uses LYDIA_GATEWAY_PORT so the CLI
+        # The renderer-less fallback uses ALICE_GATEWAY_PORT so the CLI
         # can run with a non-default port without breaking askpass.
-        assert "LYDIA_GATEWAY_PORT" in _ASKPASS_BODY
+        assert "ALICE_GATEWAY_PORT" in _ASKPASS_BODY
 
     def test_posts_to_localhost_only(self):
         # Hard-coded 127.0.0.1 — never the hostname, never an IP. The
@@ -160,10 +160,10 @@ class TestAskpassEnv:
         server_thread.start()
 
         try:
-            monkeypatch.setenv("LYDIA_GATEWAY_PORT", str(port))
+            monkeypatch.setenv("ALICE_GATEWAY_PORT", str(port))
             import alice_cli.web_git as wg
 
-            wg._LYDIA_ASKPASS_SCRIPT = None
+            wg._ALICE_ASKPASS_SCRIPT = None
             path = askpass_path()
 
             result = subprocess.run(

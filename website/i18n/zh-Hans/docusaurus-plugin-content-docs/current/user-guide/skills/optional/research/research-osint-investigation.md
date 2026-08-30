@@ -113,7 +113,7 @@ python3 SKILL_DIR/scripts/fetch_ofac_sdn.py --out data/ofac_sdn.csv
 
 # ICIJ 离岸泄露 — 首次使用时下载约 70 MB 批量 CSV，
 # 之后在本地搜索。缓存 30 天，存储于
-# $LYDIA_OSINT_CACHE/icij/（默认：~/.cache/alice-osint/icij/）。
+# $ALICE_OSINT_CACHE/icij/（默认：~/.cache/alice-osint/icij/）。
 python3 SKILL_DIR/scripts/fetch_icij_offshore.py --entity "EXAMPLE CORP" \
     --out data/icij.csv
 ```
@@ -141,7 +141,7 @@ python3 SKILL_DIR/scripts/fetch_wayback.py --url "example.com" \
     --match host --collapse digest --out data/wayback.csv
 
 # Wikipedia + Wikidata — 叙述性传记 + 结构化事实
-# 设置 LYDIA_OSINT_UA=your-app/1.0 (your@email) 以标识自身
+# 设置 ALICE_OSINT_UA=your-app/1.0 (your@email) 以标识自身
 python3 SKILL_DIR/scripts/fetch_wikipedia.py --query "Bill Gates" \
     --out data/wp.csv
 

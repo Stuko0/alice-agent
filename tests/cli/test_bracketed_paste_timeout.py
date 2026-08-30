@@ -53,10 +53,10 @@ def _reset_and_apply_production_patch():
     vt100_mod = importlib.reload(vt100_mod)
     # importlib.reload() preserves module dict entries that the reloaded source
     # does not redefine, so clear Alice' sentinel before re-applying.
-    if hasattr(vt100_mod, "_lydia_bp_timeout_patched"):
-        delattr(vt100_mod, "_lydia_bp_timeout_patched")
+    if hasattr(vt100_mod, "_alice_bp_timeout_patched"):
+        delattr(vt100_mod, "_alice_bp_timeout_patched")
     _load_production_patch_helper()()
-    assert getattr(vt100_mod, "_lydia_bp_timeout_patched", False)
+    assert getattr(vt100_mod, "_alice_bp_timeout_patched", False)
     return vt100_mod
 
 
@@ -84,7 +84,7 @@ class TestBracketedPasteTimeout:
         parser.feed("\x1b[200~some pasted text")
         assert parser._in_bracketed_paste
 
-        parser._lydia_bp_start = time.monotonic() - 3.0
+        parser._alice_bp_start = time.monotonic() - 3.0
         parser.feed("more data")
 
         assert not parser._in_bracketed_paste
@@ -95,7 +95,7 @@ class TestBracketedPasteTimeout:
         parser, callback = self._make_parser()
         content = "line1\nline2\nline3"
         parser.feed(f"\x1b[200~{content}")
-        parser._lydia_bp_start = time.monotonic() - 3.0
+        parser._alice_bp_start = time.monotonic() - 3.0
         parser.feed("")
 
         paste_events = [
@@ -110,7 +110,7 @@ class TestBracketedPasteTimeout:
         """After timeout recovery, normal key processing should resume."""
         parser, callback = self._make_parser()
         parser.feed("\x1b[200~stuck")
-        parser._lydia_bp_start = time.monotonic() - 3.0
+        parser._alice_bp_start = time.monotonic() - 3.0
         parser.feed("")
 
         assert not parser._in_bracketed_paste
@@ -129,7 +129,7 @@ class TestBracketedPasteTimeout:
         """Data arriving after a stuck paste should be processable."""
         parser, callback = self._make_parser()
         parser.feed("\x1b[200~content")
-        parser._lydia_bp_start = time.monotonic() - 5.0
+        parser._alice_bp_start = time.monotonic() - 5.0
         parser.feed("x")
 
         assert not parser._in_bracketed_paste
@@ -150,7 +150,7 @@ class TestBracketedPasteTimeout:
         """Bracketed-paste mode should not timeout within the 2s window."""
         parser, callback = self._make_parser()
         parser.feed("\x1b[200~waiting")
-        parser._lydia_bp_start = time.monotonic() - 0.5
+        parser._alice_bp_start = time.monotonic() - 0.5
         parser.feed("more waiting")
 
         assert parser._in_bracketed_paste

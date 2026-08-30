@@ -50,7 +50,7 @@ YOLO 模式会绕过当前会话中**所有**危险命令审批提示。可通�
 
 1. **CLI 标志**：使用 `alice --yolo` 或 `alice chat --yolo` 启动会话
 2. **斜杠命令**：在会话中输入 `/yolo` 以切换开/关
-3. **环境变量**：设置 `LYDIA_YOLO_MODE=1`
+3. **环境变量**：设置 `ALICE_YOLO_MODE=1`
 
 `/yolo` 命令是一个**切换开关**——每次使用都会翻转模式的开/关状态：
 
@@ -62,7 +62,7 @@ YOLO 模式会绕过当前会话中**所有**危险命令审批提示。可通�
   ⚠ YOLO mode OFF — dangerous commands will require approval.
 ```
 
-YOLO 模式在 CLI 和 gateway 会话中均可使用。在内部，它会设置 `LYDIA_YOLO_MODE` 环境变量，该变量在每次命令执行前都会被检查。
+YOLO 模式在 CLI 和 gateway 会话中均可使用。在内部，它会设置 `ALICE_YOLO_MODE` 环境变量，该变量在每次命令执行前都会被检查。
 
 当 YOLO 激活时，Alice 会显示两个持久的视觉提醒，以确保用户不会忘记审批提示已被绕过：
 
@@ -174,7 +174,7 @@ approvals:
 - 回复 **yes**、**y**、**approve**、**ok** 或 **go** 以批准
 - 回复 **no**、**n**、**deny** 或 **cancel** 以拒绝
 
-运行 gateway 时，`LYDIA_EXEC_ASK=1` 环境变量会自动设置。
+运行 gateway 时，`ALICE_EXEC_ASK=1` 环境变量会自动设置。
 
 ### 永久允许列表
 

@@ -326,7 +326,7 @@ gateway:
   update:
     platform_not_messaging:  "✗ /update is only available from messaging platforms. Run `alice update` from the terminal."
     not_git_repo:            "✗ Not a git repository — cannot update."
-    lydia_cmd_not_found:    "✗ Could not locate the `alice` command. Alice is running, but the update command could not find the executable on PATH or via the current Python interpreter. Try running `alice update` manually in your terminal."
+    alice_cmd_not_found:    "✗ Could not locate the `alice` command. Alice is running, but the update command could not find the executable on PATH or via the current Python interpreter. Try running `alice update` manually in your terminal."
     start_failed:            "✗ Failed to start update: {error}"
     starting:                "🌹 Starting Alice update… I'll stream progress here."
 

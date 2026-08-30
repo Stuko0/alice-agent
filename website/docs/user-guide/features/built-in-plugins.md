@@ -17,7 +17,7 @@ The `PluginManager` scans four sources, in order:
 
 1. **Bundled** — `<repo>/plugins/<name>/` (what this page documents)
 2. **User** — `~/.alice/plugins/<name>/`
-3. **Project** — `./.alice/plugins/<name>/` (requires `LYDIA_ENABLE_PROJECT_PLUGINS=1`)
+3. **Project** — `./.alice/plugins/<name>/` (requires `ALICE_ENABLE_PROJECT_PLUGINS=1`)
 4. **Pip entry points** — `alice_agent.plugins`
 
 On name collision, later sources win — a user plugin named `disk-cleanup` would replace the bundled one.
@@ -164,9 +164,9 @@ alice plugins enable observability/langfuse
 Then put the credentials in `~/.alice/.env`:
 
 ```bash
-LYDIA_LANGFUSE_PUBLIC_KEY=pk-lf-...
-LYDIA_LANGFUSE_SECRET_KEY=sk-lf-...
-LYDIA_LANGFUSE_BASE_URL=https://cloud.langfuse.com   # or your self-hosted URL
+ALICE_LANGFUSE_PUBLIC_KEY=pk-lf-...
+ALICE_LANGFUSE_SECRET_KEY=sk-lf-...
+ALICE_LANGFUSE_BASE_URL=https://cloud.langfuse.com   # or your self-hosted URL
 ```
 
 **How it works:**
@@ -176,7 +176,7 @@ LYDIA_LANGFUSE_BASE_URL=https://cloud.langfuse.com   # or your self-hosted URL
 | `pre_api_request` / `pre_llm_call` | Open (or reuse) a per-turn root span "Alice turn". Start a `generation` child observation for this API call with serialized recent messages as input. |
 | `post_api_request` / `post_llm_call` | Close the generation, attach `usage_details`, `cost_details`, `finish_reason`, assistant output + tool calls. If no tool calls and non-empty content, close the turn. |
 | `pre_tool_call` | Start a `tool` child observation with sanitized `args`. |
-| `post_tool_call` | Close the tool observation with sanitized `result`. `read_file` payloads get summarized (head + tail + omitted-line count) so a huge file read stays under `LYDIA_LANGFUSE_MAX_CHARS`. |
+| `post_tool_call` | Close the tool observation with sanitized `result`. `read_file` payloads get summarized (head + tail + omitted-line count) so a huge file read stays under `ALICE_LANGFUSE_MAX_CHARS`. |
 
 Session grouping keys off the Alice session ID (or task ID for sub-agents) via `langfuse.propagate_attributes`, so everything in a single `alice chat` session lives under one Langfuse session.
 
@@ -191,11 +191,11 @@ alice chat -q "hello"              # check the Langfuse UI for a "Alice turn" tr
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `LYDIA_LANGFUSE_ENV` | — | Environment tag on traces (`production`, `staging`, …) |
-| `LYDIA_LANGFUSE_RELEASE` | — | Release/version tag |
-| `LYDIA_LANGFUSE_SAMPLE_RATE` | `1.0` | Sampling rate passed to the SDK (0.0–1.0) |
-| `LYDIA_LANGFUSE_MAX_CHARS` | `12000` | Per-field truncation for message content / tool args / tool results |
-| `LYDIA_LANGFUSE_DEBUG` | `false` | Verbose plugin logging to `agent.log` |
+| `ALICE_LANGFUSE_ENV` | — | Environment tag on traces (`production`, `staging`, …) |
+| `ALICE_LANGFUSE_RELEASE` | — | Release/version tag |
+| `ALICE_LANGFUSE_SAMPLE_RATE` | `1.0` | Sampling rate passed to the SDK (0.0–1.0) |
+| `ALICE_LANGFUSE_MAX_CHARS` | `12000` | Per-field truncation for message content / tool args / tool results |
+| `ALICE_LANGFUSE_DEBUG` | `false` | Verbose plugin logging to `agent.log` |
 
 Alice-prefixed and standard SDK env vars (`LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL`) are both accepted — Alice-prefixed wins when both are set.
 

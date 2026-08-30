@@ -241,10 +241,10 @@ def test_load_website_blocklist_wraps_shared_file_read_errors(tmp_path, monkeypa
     assert result["rules"] == []  # shared file rules skipped
 
 
-def test_check_website_access_uses_dynamic_lydia_home(monkeypatch, tmp_path):
-    lydia_home = tmp_path / "alice-home"
-    lydia_home.mkdir()
-    (lydia_home / "config.yaml").write_text(
+def test_check_website_access_uses_dynamic_alice_home(monkeypatch, tmp_path):
+    alice_home = tmp_path / "alice-home"
+    alice_home.mkdir()
+    (alice_home / "config.yaml").write_text(
         yaml.safe_dump(
             {
                 "security": {
@@ -259,11 +259,11 @@ def test_check_website_access_uses_dynamic_lydia_home(monkeypatch, tmp_path):
         encoding="utf-8",
     )
 
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     # Invalidate the module-level cache so the new ALICE_HOME is picked up.
     # A prior test may have cached a default policy (enabled=False) under the
-    # old ALICE_HOME set by the autouse _isolate_lydia_home fixture.
+    # old ALICE_HOME set by the autouse _isolate_alice_home fixture.
     from tools.website_policy import invalidate_cache
     invalidate_cache()
 

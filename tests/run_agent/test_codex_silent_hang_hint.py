@@ -31,7 +31,7 @@ def _make_agent(tmp_path: Path, **overrides):
 
 
 @pytest.fixture(autouse=True)
-def _isolate_lydia_home(monkeypatch, tmp_path):
+def _isolate_alice_home(monkeypatch, tmp_path):
     monkeypatch.setenv("ALICE_HOME", str(tmp_path))
     (tmp_path / ".env").write_text("", encoding="utf-8")
 

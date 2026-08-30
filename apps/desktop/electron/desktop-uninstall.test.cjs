@@ -56,12 +56,12 @@ test('mode predicates classify what each mode removes', () => {
 
 test('resolveRemovableAppPath finds the .app bundle on macOS', () => {
   assert.equal(
-    resolveRemovableAppPath('/Applications/Lydia.app/Contents/MacOS/Lydia', 'darwin'),
-    '/Applications/Lydia.app'
+    resolveRemovableAppPath('/Applications/Alice.app/Contents/MacOS/Alice', 'darwin'),
+    '/Applications/Alice.app'
   )
   assert.equal(
-    resolveRemovableAppPath('/Users/x/Applications/Lydia.app/Contents/MacOS/Lydia', 'darwin'),
-    '/Users/x/Applications/Lydia.app'
+    resolveRemovableAppPath('/Users/x/Applications/Alice.app/Contents/MacOS/Alice', 'darwin'),
+    '/Users/x/Applications/Alice.app'
   )
 })
 
@@ -80,30 +80,30 @@ test('resolveRemovableAppPath: dev-run .app resolves (safety is shouldRemoveAppB
 
 test('resolveRemovableAppPath finds the install dir on Windows', () => {
   assert.equal(
-    resolveRemovableAppPath('C:\\Users\\x\\AppData\\Local\\Programs\\Lydia\\Lydia.exe', 'win32'),
-    'C:\\Users\\x\\AppData\\Local\\Programs\\Lydia'
+    resolveRemovableAppPath('C:\\Users\\x\\AppData\\Local\\Programs\\Alice\\Alice.exe', 'win32'),
+    'C:\\Users\\x\\AppData\\Local\\Programs\\Alice'
   )
   assert.equal(
-    resolveRemovableAppPath('C:\\Users\\x\\AppData\\Local\\lydia-desktop\\Lydia.exe', 'win32'),
-    'C:\\Users\\x\\AppData\\Local\\lydia-desktop'
+    resolveRemovableAppPath('C:\\Users\\x\\AppData\\Local\\alice-desktop\\Alice.exe', 'win32'),
+    'C:\\Users\\x\\AppData\\Local\\alice-desktop'
   )
 })
 
 test('resolveRemovableAppPath returns null for an unrecognized Windows dir', () => {
-  assert.equal(resolveRemovableAppPath('C:\\Temp\\foo\\Lydia.exe', 'win32'), null)
+  assert.equal(resolveRemovableAppPath('C:\\Temp\\foo\\Alice.exe', 'win32'), null)
 })
 
 test('resolveRemovableAppPath uses APPIMAGE on Linux when set', () => {
   assert.equal(
-    resolveRemovableAppPath('/tmp/.mount_LydiaXXXX/lydia', 'linux', { APPIMAGE: '/home/x/Apps/Lydia.AppImage' }),
-    '/home/x/Apps/Lydia.AppImage'
+    resolveRemovableAppPath('/tmp/.mount_AliceXXXX/alice', 'linux', { APPIMAGE: '/home/x/Apps/Alice.AppImage' }),
+    '/home/x/Apps/Alice.AppImage'
   )
 })
 
 test('resolveRemovableAppPath finds the unpacked dir on Linux', () => {
-  assert.equal(resolveRemovableAppPath('/opt/lydia/linux-unpacked/lydia', 'linux', {}), '/opt/lydia/linux-unpacked')
+  assert.equal(resolveRemovableAppPath('/opt/alice/linux-unpacked/alice', 'linux', {}), '/opt/alice/linux-unpacked')
   // A system-package install (/usr/bin) → null, left to apt/dnf.
-  assert.equal(resolveRemovableAppPath('/usr/bin/lydia', 'linux', {}), null)
+  assert.equal(resolveRemovableAppPath('/usr/bin/alice', 'linux', {}), null)
 })
 
 test('resolveRemovableAppPath returns null for an empty exe path', () => {
@@ -114,8 +114,8 @@ test('resolveRemovableAppPath returns null for an empty exe path', () => {
 // --- shouldRemoveAppBundle ---
 
 test('shouldRemoveAppBundle requires packaged AND a resolved path', () => {
-  assert.equal(shouldRemoveAppBundle(true, '/Applications/Lydia.app'), true)
-  assert.equal(shouldRemoveAppBundle(false, '/Applications/Lydia.app'), false)
+  assert.equal(shouldRemoveAppBundle(true, '/Applications/Alice.app'), true)
+  assert.equal(shouldRemoveAppBundle(false, '/Applications/Alice.app'), false)
   assert.equal(shouldRemoveAppBundle(true, null), false)
   assert.equal(shouldRemoveAppBundle(false, null), false)
 })
@@ -125,12 +125,12 @@ test('shouldRemoveAppBundle requires packaged AND a resolved path', () => {
 test('buildPosixCleanupScript waits for the PID, runs the uninstall module, removes bundle', () => {
   const script = buildPosixCleanupScript({
     desktopPid: 4321,
-    pythonExe: '/home/x/.lydia/lydia-agent/venv/bin/python',
+    pythonExe: '/home/x/.alice/alice-agent/venv/bin/python',
     pythonPath: null,
-    agentRoot: '/home/x/.lydia/lydia-agent',
+    agentRoot: '/home/x/.alice/alice-agent',
     uninstallArgs: ['-m', 'alice_cli.uninstall', '--mode', 'gui'],
-    appPath: '/opt/lydia/linux-unpacked',
-    lydiaHome: '/home/x/.lydia'
+    appPath: '/opt/alice/linux-unpacked',
+    aliceHome: '/home/x/.alice'
   })
   assert.match(script, /^#!\/bin\/bash/)
   assert.match(script, /pid=4321/)
@@ -138,23 +138,23 @@ test('buildPosixCleanupScript waits for the PID, runs the uninstall module, remo
   // bounded wait (~30s), not unbounded
   assert.match(script, /seq 1 60/)
   assert.match(script, /'-m' 'alice_cli\.uninstall' '--mode' 'gui'/)
-  assert.match(script, /rm -rf '\/opt\/lydia\/linux-unpacked'/)
-  assert.match(script, /export LYDIA_HOME='\/home\/x\/\.lydia'/)
+  assert.match(script, /rm -rf '\/opt\/alice\/linux-unpacked'/)
+  assert.match(script, /export ALICE_HOME='\/home\/x\/\.alice'/)
 })
 
 test('buildPosixCleanupScript exports PYTHONPATH when pythonPath is set (lite/full)', () => {
   const script = buildPosixCleanupScript({
     desktopPid: 1,
     pythonExe: '/usr/bin/python3',
-    pythonPath: '/home/x/.lydia/lydia-agent',
-    agentRoot: '/home/x/.lydia/lydia-agent',
+    pythonPath: '/home/x/.alice/alice-agent',
+    agentRoot: '/home/x/.alice/alice-agent',
     uninstallArgs: ['-m', 'alice_cli.uninstall', '--mode', 'full'],
     appPath: null,
-    lydiaHome: '/home/x/.lydia'
+    aliceHome: '/home/x/.alice'
   })
   // System python + source on PYTHONPATH so import alice_cli works while the
   // venv is torn down.
-  assert.match(script, /export PYTHONPATH='\/home\/x\/\.lydia\/lydia-agent'/)
+  assert.match(script, /export PYTHONPATH='\/home\/x\/\.alice\/alice-agent'/)
   assert.match(script, /'\/usr\/bin\/python3' '-m' 'alice_cli\.uninstall' '--mode' 'full'/)
 })
 
@@ -166,7 +166,7 @@ test('buildPosixCleanupScript omits PYTHONPATH when pythonPath is null (gui)', (
     agentRoot: '/a',
     uninstallArgs: ['-m', 'alice_cli.uninstall', '--mode', 'gui'],
     appPath: null,
-    lydiaHome: '/h'
+    aliceHome: '/h'
   })
   assert.doesNotMatch(script, /export PYTHONPATH/)
 })
@@ -179,7 +179,7 @@ test('buildPosixCleanupScript omits the bundle rm when appPath is null', () => {
     agentRoot: '/a',
     uninstallArgs: ['-m', 'alice_cli.uninstall', '--mode', 'lite'],
     appPath: null,
-    lydiaHome: '/h'
+    aliceHome: '/h'
   })
   assert.doesNotMatch(script, /rm -rf '\//)
   // Still runs the uninstall.
@@ -194,7 +194,7 @@ test('buildPosixCleanupScript single-quote-escapes paths with apostrophes', () =
     agentRoot: '/a',
     uninstallArgs: ['-m', 'alice_cli.uninstall', '--mode', 'gui'],
     appPath: null,
-    lydiaHome: '/h'
+    aliceHome: '/h'
   })
   // The apostrophe is closed-escaped-reopened so the shell sees the literal.
   assert.match(script, /'\/home\/o'\\''brien\/python'/)
@@ -206,16 +206,16 @@ test('buildWindowsCleanupScript waits (bounded) for PID, runs uninstall, rmdir b
   const script = buildWindowsCleanupScript({
     desktopPid: 9988,
     pythonExe: 'C:\\Python313\\python.exe',
-    pythonPath: 'C:\\lydia',
-    agentRoot: 'C:\\lydia',
+    pythonPath: 'C:\\alice',
+    agentRoot: 'C:\\alice',
     uninstallArgs: ['-m', 'alice_cli.uninstall', '--mode', 'full'],
-    appPath: 'C:\\Users\\x\\AppData\\Local\\Programs\\Lydia',
-    lydiaHome: 'C:\\Users\\x\\AppData\\Local\\lydia'
+    appPath: 'C:\\Users\\x\\AppData\\Local\\Programs\\Alice',
+    aliceHome: 'C:\\Users\\x\\AppData\\Local\\alice'
   })
   assert.match(script, /@echo off/)
   assert.match(script, /set "PID=9988"/)
   // PYTHONPATH set so a system python can import alice_cli from source.
-  assert.match(script, /set "PYTHONPATH=C:\\lydia;%PYTHONPATH%"/)
+  assert.match(script, /set "PYTHONPATH=C:\\alice;%PYTHONPATH%"/)
   assert.match(script, /"C:\\Python313\\python.exe" "-m" "alice_cli\.uninstall" "--mode" "full"/)
   // Bounded wait-loop (no infinite loop), whole-token PID match (no substring).
   assert.match(script, /if %waited% geq 60 goto waited_done/)
@@ -223,7 +223,7 @@ test('buildWindowsCleanupScript waits (bounded) for PID, runs uninstall, rmdir b
   assert.doesNotMatch(script, /find "%PID%"/) // the old substring-prone form is gone
   // Removal is a retry loop (Windows releases dir handles lazily).
   assert.match(script, /:rmloop/)
-  assert.match(script, /rmdir \/s \/q "C:\\Users\\x\\AppData\\Local\\Programs\\Lydia" >nul 2>&1/)
+  assert.match(script, /rmdir \/s \/q "C:\\Users\\x\\AppData\\Local\\Programs\\Alice" >nul 2>&1/)
   assert.match(script, /if %tries% geq 10 goto rmdone/)
   assert.match(script, /del "%~f0"/)
 })
@@ -236,7 +236,7 @@ test('buildWindowsCleanupScript omits PYTHONPATH + rmdir when not needed (gui, n
     agentRoot: 'C:\\h',
     uninstallArgs: ['-m', 'alice_cli.uninstall', '--mode', 'gui'],
     appPath: null,
-    lydiaHome: 'C:\\h'
+    aliceHome: 'C:\\h'
   })
   assert.doesNotMatch(script, /rmdir/)
   assert.doesNotMatch(script, /set "PYTHONPATH=/)

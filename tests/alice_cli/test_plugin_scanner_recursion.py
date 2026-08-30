@@ -51,9 +51,9 @@ def _write_plugin(
     return plugin_dir
 
 
-def _enable(lydia_home: Path, name: str) -> None:
-    """Append ``name`` to ``plugins.enabled`` in ``<lydia_home>/config.yaml``."""
-    cfg_path = lydia_home / "config.yaml"
+def _enable(alice_home: Path, name: str) -> None:
+    """Append ``name`` to ``plugins.enabled`` in ``<alice_home>/config.yaml``."""
+    cfg_path = alice_home / "config.yaml"
     cfg: dict = {}
     if cfg_path.exists():
         try:
@@ -75,11 +75,11 @@ class TestCategoryNamespaceRecursion:
         """``<root>/image_gen/openai/plugin.yaml`` is discovered with key
         ``image_gen/openai`` when the ``image_gen`` parent has no manifest."""
         import os
-        lydia_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
-        user_plugins = lydia_home / "plugins"
+        alice_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
+        user_plugins = alice_home / "plugins"
 
         _write_plugin(user_plugins, ["image_gen", "openai"])
-        _enable(lydia_home, "image_gen/openai")
+        _enable(alice_home, "image_gen/openai")
 
         mgr = PluginManager()
         mgr.discover_and_load()
@@ -93,11 +93,11 @@ class TestCategoryNamespaceRecursion:
     def test_flat_plugin_key_matches_name(self, tmp_path, monkeypatch):
         """Flat plugins keep their bare name as the key (back-compat)."""
         import os
-        lydia_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
-        user_plugins = lydia_home / "plugins"
+        alice_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
+        user_plugins = alice_home / "plugins"
 
         _write_plugin(user_plugins, ["my-plugin"])
-        _enable(lydia_home, "my-plugin")
+        _enable(alice_home, "my-plugin")
 
         mgr = PluginManager()
         mgr.discover_and_load()
@@ -112,8 +112,8 @@ class TestCategoryNamespaceRecursion:
         two segments.
         """
         import os
-        lydia_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
-        user_plugins = lydia_home / "plugins"
+        alice_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
+        user_plugins = alice_home / "plugins"
 
         _write_plugin(user_plugins, ["a", "b", "c"])
 
@@ -130,16 +130,16 @@ class TestCategoryNamespaceRecursion:
         """If ``image_gen/plugin.yaml`` exists, ``image_gen`` itself IS the
         plugin and its children are ignored."""
         import os
-        lydia_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
-        user_plugins = lydia_home / "plugins"
+        alice_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
+        user_plugins = alice_home / "plugins"
 
         # parent has a manifest → stop recursing
         _write_plugin(user_plugins, ["image_gen"])
         # child also has a manifest — should NOT be found because we stop
         # at the parent.
         _write_plugin(user_plugins, ["image_gen", "openai"])
-        _enable(lydia_home, "image_gen")
-        _enable(lydia_home, "image_gen/openai")
+        _enable(alice_home, "image_gen")
+        _enable(alice_home, "image_gen/openai")
 
         mgr = PluginManager()
         mgr.discover_and_load()
@@ -159,9 +159,9 @@ class TestCategoryNamespaceRecursion:
 class TestKindField:
     def test_default_kind_is_standalone(self, tmp_path, monkeypatch):
         import os
-        lydia_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
-        _write_plugin(lydia_home / "plugins", ["p1"])
-        _enable(lydia_home, "p1")
+        alice_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
+        _write_plugin(alice_home / "plugins", ["p1"])
+        _enable(alice_home, "p1")
 
         mgr = PluginManager()
         mgr.discover_and_load()
@@ -171,14 +171,14 @@ class TestKindField:
     @pytest.mark.parametrize("kind", ["backend", "exclusive", "standalone"])
     def test_valid_kinds_parsed(self, kind, tmp_path, monkeypatch):
         import os
-        lydia_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
+        alice_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
         _write_plugin(
-            lydia_home / "plugins",
+            alice_home / "plugins",
             ["p1"],
             manifest_extra={"kind": kind},
         )
         # Not all kinds auto-load, but manifest should parse.
-        _enable(lydia_home, "p1")
+        _enable(alice_home, "p1")
 
         mgr = PluginManager()
         mgr.discover_and_load()
@@ -188,13 +188,13 @@ class TestKindField:
 
     def test_unknown_kind_falls_back_to_standalone(self, tmp_path, monkeypatch, caplog):
         import os
-        lydia_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
+        alice_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
         _write_plugin(
-            lydia_home / "plugins",
+            alice_home / "plugins",
             ["p1"],
             manifest_extra={"kind": "bogus"},
         )
-        _enable(lydia_home, "p1")
+        _enable(alice_home, "p1")
 
         with caplog.at_level("WARNING"):
             mgr = PluginManager()
@@ -214,8 +214,8 @@ class TestBackendGate:
         """User-installed ``kind: backend`` plugins still require opt-in —
         they're not trusted by default."""
         import os
-        lydia_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
-        user_plugins = lydia_home / "plugins"
+        alice_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
+        user_plugins = alice_home / "plugins"
 
         _write_plugin(
             user_plugins,
@@ -233,15 +233,15 @@ class TestBackendGate:
 
     def test_user_backend_loads_when_enabled(self, tmp_path, monkeypatch):
         import os
-        lydia_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
-        user_plugins = lydia_home / "plugins"
+        alice_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
+        user_plugins = alice_home / "plugins"
 
         _write_plugin(
             user_plugins,
             ["image_gen", "fancy"],
             manifest_extra={"kind": "backend"},
         )
-        _enable(lydia_home, "image_gen/fancy")
+        _enable(alice_home, "image_gen/fancy")
 
         mgr = PluginManager()
         mgr.discover_and_load()
@@ -252,13 +252,13 @@ class TestBackendGate:
         """``kind: exclusive`` plugins are recorded but not loaded — the
         category's own discovery system handles them (memory today)."""
         import os
-        lydia_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
+        alice_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
         _write_plugin(
-            lydia_home / "plugins",
+            alice_home / "plugins",
             ["some-backend"],
             manifest_extra={"kind": "exclusive"},
         )
-        _enable(lydia_home, "some-backend")
+        _enable(alice_home, "some-backend")
 
         mgr = PluginManager()
         mgr.discover_and_load()
@@ -276,7 +276,7 @@ class TestBundledBackendAutoLoad:
         """The bundled ``plugins/image_gen/openai/`` plugin loads without
         any opt-in — it's ``kind: backend`` and shipped in-repo."""
         import os
-        lydia_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
+        alice_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
 
         mgr = PluginManager()
         mgr.discover_and_load()
@@ -307,9 +307,9 @@ class TestRegisterImageGenProvider:
                 return {"success": True, "image": "test://fake"}
 
         import os
-        lydia_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
+        alice_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
         plugin_dir = _write_plugin(
-            lydia_home / "plugins",
+            alice_home / "plugins",
             ["my-img-plugin"],
             register_body=(
                 "from agent.image_gen_provider import ImageGenProvider\n"
@@ -321,7 +321,7 @@ class TestRegisterImageGenProvider:
                 "    ctx.register_image_gen_provider(P())"
             ),
         )
-        _enable(lydia_home, "my-img-plugin")
+        _enable(alice_home, "my-img-plugin")
 
         mgr = PluginManager()
         mgr.discover_and_load()
@@ -337,13 +337,13 @@ class TestRegisterImageGenProvider:
         image_gen_registry._reset_for_tests()
 
         import os
-        lydia_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
+        alice_home = Path(os.environ["ALICE_HOME"])  # set by hermetic conftest fixture
         _write_plugin(
-            lydia_home / "plugins",
+            alice_home / "plugins",
             ["bad-img-plugin"],
             register_body="ctx.register_image_gen_provider('not a provider')",
         )
-        _enable(lydia_home, "bad-img-plugin")
+        _enable(alice_home, "bad-img-plugin")
 
         with caplog.at_level("WARNING"):
             mgr = PluginManager()

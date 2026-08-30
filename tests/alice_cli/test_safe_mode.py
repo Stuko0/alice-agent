@@ -17,7 +17,7 @@ import os
 import pytest
 
 
-_VARS = ("LYDIA_SAFE_MODE", "LYDIA_IGNORE_USER_CONFIG", "LYDIA_IGNORE_RULES")
+_VARS = ("ALICE_SAFE_MODE", "ALICE_IGNORE_USER_CONFIG", "ALICE_IGNORE_RULES")
 
 
 @pytest.fixture(autouse=True)
@@ -39,20 +39,20 @@ class TestSafeModeEnvWiring:
 
         args = Args()
         if getattr(args, "safe_mode", False):
-            os.environ["LYDIA_SAFE_MODE"] = "1"
-            os.environ["LYDIA_IGNORE_USER_CONFIG"] = "1"
-            os.environ["LYDIA_IGNORE_RULES"] = "1"
+            os.environ["ALICE_SAFE_MODE"] = "1"
+            os.environ["ALICE_IGNORE_USER_CONFIG"] = "1"
+            os.environ["ALICE_IGNORE_RULES"] = "1"
 
-        assert os.environ.get("LYDIA_SAFE_MODE") == "1"
-        assert os.environ.get("LYDIA_IGNORE_USER_CONFIG") == "1"
-        assert os.environ.get("LYDIA_IGNORE_RULES") == "1"
+        assert os.environ.get("ALICE_SAFE_MODE") == "1"
+        assert os.environ.get("ALICE_IGNORE_USER_CONFIG") == "1"
+        assert os.environ.get("ALICE_IGNORE_RULES") == "1"
 
 
 class TestSafeModePluginDiscovery:
-    """Plugin discovery must be a no-op under LYDIA_SAFE_MODE=1."""
+    """Plugin discovery must be a no-op under ALICE_SAFE_MODE=1."""
 
     def test_discovery_skipped(self, monkeypatch):
-        monkeypatch.setenv("LYDIA_SAFE_MODE", "1")
+        monkeypatch.setenv("ALICE_SAFE_MODE", "1")
         from alice_cli.plugins import PluginManager
 
         mgr = PluginManager()
@@ -66,7 +66,7 @@ class TestSafeModePluginDiscovery:
         assert mgr._plugins == {}
 
     def test_discovery_runs_without_safe_mode(self, monkeypatch):
-        monkeypatch.delenv("LYDIA_SAFE_MODE", raising=False)
+        monkeypatch.delenv("ALICE_SAFE_MODE", raising=False)
         from alice_cli.plugins import PluginManager
 
         mgr = PluginManager()
@@ -79,10 +79,10 @@ class TestSafeModePluginDiscovery:
 
 
 class TestSafeModeMCP:
-    """_load_mcp_config must return no servers under LYDIA_SAFE_MODE=1."""
+    """_load_mcp_config must return no servers under ALICE_SAFE_MODE=1."""
 
     def test_mcp_servers_empty(self, monkeypatch):
-        monkeypatch.setenv("LYDIA_SAFE_MODE", "1")
+        monkeypatch.setenv("ALICE_SAFE_MODE", "1")
         from tools.mcp_tool import _load_mcp_config
 
         with pytest.MonkeyPatch.context() as mp:
@@ -93,7 +93,7 @@ class TestSafeModeMCP:
             assert _load_mcp_config() == {}
 
     def test_mcp_servers_load_without_safe_mode(self, monkeypatch):
-        monkeypatch.delenv("LYDIA_SAFE_MODE", raising=False)
+        monkeypatch.delenv("ALICE_SAFE_MODE", raising=False)
         from tools.mcp_tool import _load_mcp_config
 
         with pytest.MonkeyPatch.context() as mp:

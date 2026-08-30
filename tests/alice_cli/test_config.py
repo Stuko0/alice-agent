@@ -11,7 +11,7 @@ from alice_cli.config import (
     DEFAULT_CONFIG,
     check_config_version,
     get_alice_home,
-    ensure_lydia_home,
+    ensure_alice_home,
     get_compatible_custom_providers,
     _explicit_config_paths,
     _normalize_max_turns_config,
@@ -29,7 +29,7 @@ from alice_cli.config import (
 )
 
 
-class TestGetLydiaHome:
+class TestGetAliceHome:
     def test_default_path(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("ALICE_HOME", None)
@@ -42,10 +42,10 @@ class TestGetLydiaHome:
             assert home == Path("/custom/path")
 
 
-class TestEnsureLydiaHome:
+class TestEnsureAliceHome:
     def test_creates_subdirs(self, tmp_path):
         with patch.dict(os.environ, {"ALICE_HOME": str(tmp_path)}):
-            ensure_lydia_home()
+            ensure_alice_home()
             assert (tmp_path / "cron").is_dir()
             assert (tmp_path / "sessions").is_dir()
             assert (tmp_path / "logs").is_dir()
@@ -53,7 +53,7 @@ class TestEnsureLydiaHome:
 
     def test_creates_default_soul_md_if_missing(self, tmp_path):
         with patch.dict(os.environ, {"ALICE_HOME": str(tmp_path)}):
-            ensure_lydia_home()
+            ensure_alice_home()
             soul_path = tmp_path / "SOUL.md"
             assert soul_path.exists()
             assert soul_path.read_text(encoding="utf-8").strip() != ""
@@ -62,7 +62,7 @@ class TestEnsureLydiaHome:
         with patch.dict(os.environ, {"ALICE_HOME": str(tmp_path)}):
             soul_path = tmp_path / "SOUL.md"
             soul_path.write_text("custom soul", encoding="utf-8")
-            ensure_lydia_home()
+            ensure_alice_home()
             assert soul_path.read_text(encoding="utf-8") == "custom soul"
 
     def test_upgrades_legacy_template_soul_md(self, tmp_path):
@@ -74,7 +74,7 @@ class TestEnsureLydiaHome:
         with patch.dict(os.environ, {"ALICE_HOME": str(tmp_path)}):
             soul_path = tmp_path / "SOUL.md"
             soul_path.write_text(_LEGACY_TEMPLATE_SOULS[0] + "\n", encoding="utf-8")
-            ensure_lydia_home()
+            ensure_alice_home()
             assert soul_path.read_text(encoding="utf-8") == DEFAULT_SOUL_MD
 
     def test_preserves_legacy_template_with_user_persona(self, tmp_path):
@@ -86,7 +86,7 @@ class TestEnsureLydiaHome:
         with patch.dict(os.environ, {"ALICE_HOME": str(tmp_path)}):
             soul_path = tmp_path / "SOUL.md"
             soul_path.write_text(mixed, encoding="utf-8")
-            ensure_lydia_home()
+            ensure_alice_home()
             assert soul_path.read_text(encoding="utf-8") == mixed
 
 
@@ -688,16 +688,16 @@ class TestOptionalEnvVarsRegistry:
         assert "TAVILY_API_KEY" in all_vars
 
     def test_max_iterations_not_offered_as_env_var(self):
-        """LYDIA_MAX_ITERATIONS must NOT be in OPTIONAL_ENV_VARS (issue #17534).
+        """ALICE_MAX_ITERATIONS must NOT be in OPTIONAL_ENV_VARS (issue #17534).
 
         Offering it as an editable env var (dashboard, `alice setup`) lets a
         user write it to .env, recreating the stale ghost that shadows
         config.yaml's agent.max_turns. The iteration budget is configured ONLY
-        via config.yaml; LYDIA_MAX_ITERATIONS remains a read-only backward-compat
+        via config.yaml; ALICE_MAX_ITERATIONS remains a read-only backward-compat
         fallback in the gateway/CLI, never a promoted write target.
         """
         from alice_cli.config import OPTIONAL_ENV_VARS
-        assert "LYDIA_MAX_ITERATIONS" not in OPTIONAL_ENV_VARS
+        assert "ALICE_MAX_ITERATIONS" not in OPTIONAL_ENV_VARS
 
 
 class TestMemoryProviderEnvVarsRegistry:
@@ -1184,7 +1184,7 @@ class TestUserMessagePreviewConfig:
 class TestEnvWriteDenylist:
     """``save_env_value`` refuses to persist env-var names that
     influence how subprocesses execute — ``LD_PRELOAD``, ``PYTHONPATH``,
-    ``PATH``, ``EDITOR``, etc. — or any ``LYDIA_*`` runtime flag.
+    ``PATH``, ``EDITOR``, etc. — or any ``ALICE_*`` runtime flag.
 
     The dashboard exposes ``PUT /api/env`` to any authed caller (and
     the session token lives in the SPA's HTML where any future plugin
@@ -1199,9 +1199,9 @@ class TestEnvWriteDenylist:
     """
 
     @pytest.fixture(autouse=True)
-    def _lydia_home(self, tmp_path, monkeypatch):
+    def _alice_home(self, tmp_path, monkeypatch):
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        ensure_lydia_home()
+        ensure_alice_home()
 
     @pytest.mark.parametrize(
         "denied_key",
@@ -1225,9 +1225,9 @@ class TestEnvWriteDenylist:
             "GIT_SSH_COMMAND",
             "GIT_EXEC_PATH",
             "ALICE_HOME",
-            "LYDIA_PROFILE",
-            "LYDIA_CONFIG",
-            "LYDIA_ENV",
+            "ALICE_PROFILE",
+            "ALICE_CONFIG",
+            "ALICE_ENV",
         ],
     )
     def test_denylisted_keys_rejected(self, denied_key):
@@ -1243,16 +1243,16 @@ class TestEnvWriteDenylist:
     @pytest.mark.parametrize(
         "allowed_key",
         [
-            "LYDIA_LANGFUSE_PUBLIC_KEY",
-            "LYDIA_SPOTIFY_CLIENT_ID",
-            "LYDIA_QWEN_BASE_URL",
-            "LYDIA_MAX_ITERATIONS",
+            "ALICE_LANGFUSE_PUBLIC_KEY",
+            "ALICE_SPOTIFY_CLIENT_ID",
+            "ALICE_QWEN_BASE_URL",
+            "ALICE_MAX_ITERATIONS",
         ],
     )
-    def test_lydia_integration_keys_still_writable(self, allowed_key):
-        """``LYDIA_*`` overall is NOT blocked — only the four runtime
+    def test_alice_integration_keys_still_writable(self, allowed_key):
+        """``ALICE_*`` overall is NOT blocked — only the four runtime
         location names (HOME/PROFILE/CONFIG/ENV) are. Integration
-        credentials following the ``LYDIA_*`` convention must keep
+        credentials following the ``ALICE_*`` convention must keep
         working or we'd regress every provider setup wizard that
         currently writes one of these (auth.py, Spotify, Langfuse, …)."""
         save_env_value(allowed_key, "test-value-123")
@@ -1267,7 +1267,7 @@ class TestEnvWriteDenylist:
 
     def test_arbitrary_user_key_still_works(self):
         """Plugin / user-defined env vars (anything outside the
-        denylist and outside ``LYDIA_*``) keep working. The denylist
+        denylist and outside ``ALICE_*``) keep working. The denylist
         is narrow on purpose."""
         save_env_value("MY_PLUGIN_TOKEN", "plugin-secret-123")
         env = load_env()

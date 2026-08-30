@@ -194,12 +194,12 @@ class TestSnapshotEndToEnd:
         env = LocalEnvironment(cwd=str(tmp_path), timeout=15)
         try:
             first = env.execute(
-                'export LYDIA_SESSION_ENV_PROBE="sticky"; '
+                'export ALICE_SESSION_ENV_PROBE="sticky"; '
                 'export PATH="/tmp/alice-session-bin:$PATH"; '
-                'echo "first=$LYDIA_SESSION_ENV_PROBE"'
+                'echo "first=$ALICE_SESSION_ENV_PROBE"'
             )
             second = env.execute(
-                'echo "second=$LYDIA_SESSION_ENV_PROBE"; echo "PATH=$PATH"'
+                'echo "second=$ALICE_SESSION_ENV_PROBE"; echo "PATH=$PATH"'
             )
         finally:
             env.cleanup()
@@ -236,7 +236,7 @@ class TestSnapshotEndToEnd:
     def test_snapshot_picks_up_init_file_exports(self, tmp_path, monkeypatch):
         init_file = tmp_path / "custom-init.sh"
         init_file.write_text(
-            'export LYDIA_SHELL_INIT_PROBE="probe-ok"\n'
+            'export ALICE_SHELL_INIT_PROBE="probe-ok"\n'
             'export PATH="/opt/shell-init-probe/bin:$PATH"\n'
         )
 
@@ -247,7 +247,7 @@ class TestSnapshotEndToEnd:
             env = LocalEnvironment(cwd=str(tmp_path), timeout=15)
             try:
                 result = env.execute(
-                    'echo "PROBE=$LYDIA_SHELL_INIT_PROBE"; echo "PATH=$PATH"'
+                    'echo "PROBE=$ALICE_SHELL_INIT_PROBE"; echo "PATH=$PATH"'
                 )
             finally:
                 env.cleanup()

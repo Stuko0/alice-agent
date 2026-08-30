@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # Alice-specific metadata that models.dev doesn't provide.
 
 @dataclass(frozen=True)
-class LydiaOverlay:
+class AliceOverlay:
     """Alice-specific provider metadata layered on top of models.dev."""
 
     transport: str = "openai_chat"        # openai_chat | anthropic_messages | codex_responses
@@ -43,171 +43,171 @@ class LydiaOverlay:
     base_url_env_var: str = ""            # env var for user-custom base URL
 
 
-ALICE_OVERLAYS: Dict[str, LydiaOverlay] = {
-    "moa": LydiaOverlay(
+ALICE_OVERLAYS: Dict[str, AliceOverlay] = {
+    "moa": AliceOverlay(
         transport="openai_chat",
         auth_type="virtual",
         base_url_override="moa://local",
     ),
-    "openrouter": LydiaOverlay(
+    "openrouter": AliceOverlay(
         transport="openai_chat",
         is_aggregator=True,
         base_url_env_var="OPENROUTER_BASE_URL",
     ),
-    "nous": LydiaOverlay(
+    "nous": AliceOverlay(
         transport="openai_chat",
         auth_type="oauth_device_code",
         base_url_override="https://inference-api.nousresearch.com/v1",
     ),
-    "openai-codex": LydiaOverlay(
+    "openai-codex": AliceOverlay(
         transport="codex_responses",
         auth_type="oauth_external",
         base_url_override="https://chatgpt.com/backend-api/codex",
     ),
-    "openai-api": LydiaOverlay(
+    "openai-api": AliceOverlay(
         transport="codex_responses",
         base_url_override="https://api.openai.com/v1",
         base_url_env_var="OPENAI_BASE_URL",
     ),
-    "xai-oauth": LydiaOverlay(
+    "xai-oauth": AliceOverlay(
         transport="codex_responses",
         auth_type="oauth_external",
         base_url_override="https://api.x.ai/v1",
         base_url_env_var="XAI_BASE_URL",
     ),
-    "qwen-oauth": LydiaOverlay(
+    "qwen-oauth": AliceOverlay(
         transport="openai_chat",
         auth_type="oauth_external",
         base_url_override="https://portal.qwen.ai/v1",
         base_url_env_var="ALICE_QWEN_BASE_URL",
     ),
-    "lmstudio": LydiaOverlay(
+    "lmstudio": AliceOverlay(
         transport="openai_chat",
         auth_type="api_key",
         extra_env_vars=("LM_API_KEY",),
         base_url_override="http://127.0.0.1:1234/v1",
         base_url_env_var="LM_BASE_URL",
     ),
-    "copilot-acp": LydiaOverlay(
+    "copilot-acp": AliceOverlay(
         transport="codex_responses",
         auth_type="external_process",
         base_url_override="acp://copilot",
         base_url_env_var="COPILOT_ACP_BASE_URL",
     ),
-    "github-copilot": LydiaOverlay(
+    "github-copilot": AliceOverlay(
         transport="openai_chat",
         extra_env_vars=("COPILOT_GITHUB_TOKEN", "GH_TOKEN"),
     ),
-    "anthropic": LydiaOverlay(
+    "anthropic": AliceOverlay(
         transport="anthropic_messages",
         extra_env_vars=("ANTHROPIC_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN"),
     ),
-    "zai": LydiaOverlay(
+    "zai": AliceOverlay(
         transport="openai_chat",
         extra_env_vars=("GLM_API_KEY", "ZAI_API_KEY", "Z_AI_API_KEY"),
         base_url_env_var="GLM_BASE_URL",
     ),
-    "kimi-for-coding": LydiaOverlay(
+    "kimi-for-coding": AliceOverlay(
         transport="openai_chat",
         base_url_env_var="KIMI_BASE_URL",
     ),
-    "stepfun": LydiaOverlay(
+    "stepfun": AliceOverlay(
         transport="openai_chat",
         extra_env_vars=("STEPFUN_API_KEY",),
         base_url_override="https://api.stepfun.ai/step_plan/v1",
         base_url_env_var="STEPFUN_BASE_URL",
     ),
-    "minimax": LydiaOverlay(
+    "minimax": AliceOverlay(
         transport="anthropic_messages",
         base_url_env_var="MINIMAX_BASE_URL",
     ),
-    "minimax-oauth": LydiaOverlay(
+    "minimax-oauth": AliceOverlay(
         transport="anthropic_messages",
         auth_type="oauth_external",
         base_url_override="https://api.minimax.io/anthropic",
     ),
-    "minimax-cn": LydiaOverlay(
+    "minimax-cn": AliceOverlay(
         transport="anthropic_messages",
         base_url_env_var="MINIMAX_CN_BASE_URL",
     ),
-    "deepseek": LydiaOverlay(
+    "deepseek": AliceOverlay(
         transport="openai_chat",
         base_url_env_var="DEEPSEEK_BASE_URL",
     ),
-    "alibaba": LydiaOverlay(
+    "alibaba": AliceOverlay(
         transport="openai_chat",
         base_url_env_var="DASHSCOPE_BASE_URL",
     ),
-    "alibaba-coding-plan": LydiaOverlay(
+    "alibaba-coding-plan": AliceOverlay(
         transport="openai_chat",
         base_url_env_var="ALIBABA_CODING_PLAN_BASE_URL",
     ),
-    "opencode": LydiaOverlay(
+    "opencode": AliceOverlay(
         transport="openai_chat",
         is_aggregator=True,
         base_url_env_var="OPENCODE_ZEN_BASE_URL",
     ),
-    "opencode-go": LydiaOverlay(
+    "opencode-go": AliceOverlay(
         transport="openai_chat",
         is_aggregator=True,
         base_url_env_var="OPENCODE_GO_BASE_URL",
     ),
-    "kilo": LydiaOverlay(
+    "kilo": AliceOverlay(
         transport="openai_chat",
         is_aggregator=True,
         base_url_env_var="KILOCODE_BASE_URL",
     ),
-    "huggingface": LydiaOverlay(
+    "huggingface": AliceOverlay(
         transport="openai_chat",
         is_aggregator=True,
         base_url_env_var="HF_BASE_URL",
     ),
-    "novita": LydiaOverlay(
+    "novita": AliceOverlay(
         transport="openai_chat",
         is_aggregator=True,
         base_url_env_var="NOVITA_BASE_URL",
     ),
-    "xai": LydiaOverlay(
+    "xai": AliceOverlay(
         transport="codex_responses",
         base_url_override="https://api.x.ai/v1",
         base_url_env_var="XAI_BASE_URL",
     ),
-    "nvidia": LydiaOverlay(
+    "nvidia": AliceOverlay(
         transport="openai_chat",
         base_url_override="https://integrate.api.nvidia.com/v1",
         base_url_env_var="NVIDIA_BASE_URL",
     ),
-    "xiaomi": LydiaOverlay(
+    "xiaomi": AliceOverlay(
         transport="openai_chat",
         base_url_env_var="XIAOMI_BASE_URL",
     ),
-    "tencent-tokenhub": LydiaOverlay(
+    "tencent-tokenhub": AliceOverlay(
         transport="openai_chat",
         base_url_env_var="TOKENHUB_BASE_URL",
     ),
-    "arcee": LydiaOverlay(
+    "arcee": AliceOverlay(
         transport="openai_chat",
         base_url_override="https://api.arcee.ai/api/v1",
         base_url_env_var="ARCEE_BASE_URL",
     ),
-    "gmi": LydiaOverlay(
+    "gmi": AliceOverlay(
         transport="openai_chat",
         extra_env_vars=("GMI_API_KEY",),
         base_url_override="https://api.gmi-serving.com/v1",
         base_url_env_var="GMI_BASE_URL",
     ),
-    "ollama-cloud": LydiaOverlay(
+    "ollama-cloud": AliceOverlay(
         transport="openai_chat",
         base_url_override="https://ollama.com/v1",
         base_url_env_var="OLLAMA_BASE_URL",
     ),
     # Azure Foundry: supports both OpenAI-style and Anthropic-style endpoints.
     # The transport is determined at runtime from config.yaml model.api_mode.
-    "azure-foundry": LydiaOverlay(
+    "azure-foundry": AliceOverlay(
         transport="openai_chat",  # default; overridden by api_mode in config
         base_url_env_var="AZURE_FOUNDRY_BASE_URL",
     ),
-    "bedrock": LydiaOverlay(
+    "bedrock": AliceOverlay(
         transport="bedrock_converse",
         auth_type="aws_sdk",
     ),

@@ -336,6 +336,6 @@ class TestCacheDirEnvPassthrough:
             get_document_cache_dir,
             get_image_cache_dir,
         )
-        assert env["LYDIA_IMAGE_CACHE_DIR"] == str(get_image_cache_dir())
-        assert env["LYDIA_AUDIO_CACHE_DIR"] == str(get_audio_cache_dir())
-        assert env["LYDIA_DOCUMENT_CACHE_DIR"] == str(get_document_cache_dir())
+        assert env["ALICE_IMAGE_CACHE_DIR"] == str(get_image_cache_dir())
+        assert env["ALICE_AUDIO_CACHE_DIR"] == str(get_audio_cache_dir())
+        assert env["ALICE_DOCUMENT_CACHE_DIR"] == str(get_document_cache_dir())

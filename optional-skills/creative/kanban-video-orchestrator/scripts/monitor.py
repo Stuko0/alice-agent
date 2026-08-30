@@ -26,7 +26,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 
 
-def lydia_available() -> bool:
+def alice_available() -> bool:
     return shutil.which("alice") is not None
 
 
@@ -171,7 +171,7 @@ def main():
                     help="Print one snapshot and exit (no polling loop)")
     args = ap.parse_args()
 
-    if not lydia_available():
+    if not alice_available():
         print("ERROR: 'alice' CLI not found in PATH", file=sys.stderr)
         sys.exit(1)
 

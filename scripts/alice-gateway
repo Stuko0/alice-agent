@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 """
-Lydia Gateway - Standalone messaging platform integration.
+Alice Gateway - Standalone messaging platform integration.
 
 This is the proper entry point for running the gateway as a service.
 NOT tied to the CLI - runs independently.
 
 Usage:
     # Run in foreground (for testing)
-    ./scripts/lydia-gateway
+    ./scripts/alice-gateway
     
     # Install as systemd service
-    ./scripts/lydia-gateway install
+    ./scripts/alice-gateway install
     
     # Manage the service
-    ./scripts/lydia-gateway start
-    ./scripts/lydia-gateway stop
-    ./scripts/lydia-gateway restart
-    ./scripts/lydia-gateway status
+    ./scripts/alice-gateway start
+    ./scripts/alice-gateway stop
+    ./scripts/alice-gateway restart
+    ./scripts/alice-gateway status
     
     # Uninstall
-    ./scripts/lydia-gateway uninstall
+    ./scripts/alice-gateway uninstall
 """
 
 import argparse
@@ -45,8 +45,8 @@ if env_path.exists():
 # Service Configuration
 # =============================================================================
 
-SERVICE_NAME = "lydia-gateway"
-SERVICE_DESCRIPTION = "Lydia Agent Gateway - Messaging Platform Integration"
+SERVICE_NAME = "alice-gateway"
+SERVICE_DESCRIPTION = "Alice Agent Gateway - Messaging Platform Integration"
 
 def get_systemd_unit_path() -> Path:
     """Get the path for the systemd user service file."""
@@ -54,7 +54,7 @@ def get_systemd_unit_path() -> Path:
 
 def get_launchd_plist_path() -> Path:
     """Get the path for the launchd plist file (macOS)."""
-    return Path.home() / "Library" / "LaunchAgents" / f"ai.lydia.gateway.plist"
+    return Path.home() / "Library" / "LaunchAgents" / f"ai.alice.gateway.plist"
 
 def get_python_path() -> str:
     """Get the path to the Python interpreter."""
@@ -173,14 +173,14 @@ def generate_launchd_plist() -> str:
     python_path = get_python_path()
     script_path = get_gateway_script_path()
     working_dir = str(PROJECT_DIR)
-    log_dir = Path.home() / ".lydia" / "logs"
+    log_dir = Path.home() / ".alice" / "logs"
     
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>ai.lydia.gateway</string>
+    <string>ai.alice.gateway</string>
     
     <key>ProgramArguments</key>
     <array>
@@ -222,7 +222,7 @@ def install_launchd():
     plist_path.parent.mkdir(parents=True, exist_ok=True)
     
     # Ensure log directory exists
-    log_dir = Path.home() / ".lydia" / "logs"
+    log_dir = Path.home() / ".alice" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     
     print(f"Installing launchd service to: {plist_path}")
@@ -234,11 +234,11 @@ def install_launchd():
     print(f"✓ Service installed and loaded")
     print(f"")
     print(f"To view logs:")
-    print(f"  tail -f ~/.lydia/logs/gateway.log")
+    print(f"  tail -f ~/.alice/logs/gateway.log")
     print(f"")
     print(f"To manage the service:")
-    print(f"  launchctl start ai.lydia.gateway")
-    print(f"  launchctl stop ai.lydia.gateway")
+    print(f"  launchctl start ai.alice.gateway")
+    print(f"  launchctl stop ai.alice.gateway")
 
 def uninstall_launchd():
     """Uninstall the launchd service (macOS)."""
@@ -256,16 +256,16 @@ def uninstall_launchd():
 
 def launchd_status():
     """Show launchd service status."""
-    subprocess.run(["launchctl", "list", "ai.lydia.gateway"])
+    subprocess.run(["launchctl", "list", "ai.alice.gateway"])
 
 def launchd_start():
     """Start the launchd service."""
-    subprocess.run(["launchctl", "start", "ai.lydia.gateway"], check=True)
+    subprocess.run(["launchctl", "start", "ai.alice.gateway"], check=True)
     print(f"✓ Service started")
 
 def launchd_stop():
     """Stop the launchd service."""
-    subprocess.run(["launchctl", "stop", "ai.lydia.gateway"], check=True)
+    subprocess.run(["launchctl", "stop", "ai.alice.gateway"], check=True)
     print(f"✓ Service stopped")
 
 def launchd_restart():
@@ -295,7 +295,7 @@ def is_windows() -> bool:
 def run_gateway():
     """Run the gateway in foreground."""
     from gateway.run import start_gateway
-    print("Starting Lydia Gateway...")
+    print("Starting Alice Gateway...")
     print("Press Ctrl+C to stop.")
     print()
     asyncio.run(start_gateway())
@@ -307,24 +307,24 @@ def run_gateway():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Lydia Gateway - Messaging Platform Integration",
+        description="Alice Gateway - Messaging Platform Integration",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
     # Run in foreground (for testing)
-    ./scripts/lydia-gateway run
+    ./scripts/alice-gateway run
     
     # Install as system service
-    ./scripts/lydia-gateway install
+    ./scripts/alice-gateway install
     
     # Manage the service
-    ./scripts/lydia-gateway start
-    ./scripts/lydia-gateway stop
-    ./scripts/lydia-gateway restart
-    ./scripts/lydia-gateway status
+    ./scripts/alice-gateway start
+    ./scripts/alice-gateway stop
+    ./scripts/alice-gateway restart
+    ./scripts/alice-gateway status
     
     # Uninstall
-    ./scripts/lydia-gateway uninstall
+    ./scripts/alice-gateway uninstall
 
 Configuration:
     Set environment variables in .env file or system environment:
@@ -332,7 +332,7 @@ Configuration:
     - DISCORD_BOT_TOKEN
     - WHATSAPP_ENABLED
     
-    Or create ~/.lydia/gateway.json for advanced configuration.
+    Or create ~/.alice/gateway.json for advanced configuration.
 """
     )
     
@@ -363,7 +363,7 @@ Configuration:
             install_launchd()
         else:
             print("Service installation not supported on this platform.")
-            print("Please run manually: ./scripts/lydia-gateway run")
+            print("Please run manually: ./scripts/alice-gateway run")
             sys.exit(1)
     
     elif args.command == "uninstall":

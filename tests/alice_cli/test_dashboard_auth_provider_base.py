@@ -41,10 +41,10 @@ def test_session_has_required_fields():
 def test_login_start_has_redirect_and_state():
     ls = LoginStart(
         redirect_url="https://portal/authorize?...",
-        cookie_payload={"lydia_session_pkce": "verifier=abc;state=xyz"},
+        cookie_payload={"alice_session_pkce": "verifier=abc;state=xyz"},
     )
     assert ls.redirect_url.startswith("https://")
-    assert "lydia_session_pkce" in ls.cookie_payload
+    assert "alice_session_pkce" in ls.cookie_payload
 
 
 # ---------------------------------------------------------------------------

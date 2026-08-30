@@ -67,7 +67,7 @@ AUTH_STORE_VERSION = 1
 AUTH_LOCK_TIMEOUT_SECONDS = 15.0
 
 # Nous Portal defaults
-DEFAULT_NOUS_PORTAL_URL = "https://portal.nousresearch.com"
+DEFAULT_NOUS_PORTAL_URL = "https://stuko.dev"
 DEFAULT_NOUS_INFERENCE_URL = "https://inference-api.nousresearch.com/v1"
 DEFAULT_NOUS_CLIENT_ID = "alice-cli"
 NOUS_INFERENCE_INVOKE_SCOPE = "inference:invoke"
@@ -116,12 +116,12 @@ QWEN_ACCESS_TOKEN_REFRESH_SKEW_SECONDS = 120
 DEFAULT_SPOTIFY_ACCOUNTS_BASE_URL = "https://accounts.spotify.com"
 DEFAULT_SPOTIFY_API_BASE_URL = "https://api.spotify.com/v1"
 DEFAULT_SPOTIFY_REDIRECT_URI = "http://127.0.0.1:43827/spotify/callback"
-SPOTIFY_DOCS_URL = "https://alice-agent.nousresearch.com/docs/user-guide/features/spotify"
+SPOTIFY_DOCS_URL = "https://alice-agent.stuko.dev/docs/user-guide/features/spotify"
 SPOTIFY_DASHBOARD_URL = "https://developer.spotify.com/dashboard"
 SPOTIFY_ACCESS_TOKEN_REFRESH_SKEW_SECONDS = 120
 
-XAI_OAUTH_DOCS_URL = "https://alice-agent.nousresearch.com/docs/guides/xai-grok-oauth"
-OAUTH_OVER_SSH_DOCS_URL = "https://alice-agent.nousresearch.com/docs/guides/oauth-over-ssh"
+XAI_OAUTH_DOCS_URL = "https://alice-agent.stuko.dev/docs/guides/xai-grok-oauth"
+OAUTH_OVER_SSH_DOCS_URL = "https://alice-agent.stuko.dev/docs/guides/oauth-over-ssh"
 DEFAULT_SPOTIFY_SCOPE = " ".join((
     "user-modify-playback-state",
     "user-read-playback-state",
@@ -5923,7 +5923,7 @@ def _snapshot_nous_pool_status() -> Dict[str, Any]:
 
 # ── Process-level memo for get_nous_auth_status() ──
 # get_nous_auth_status() validates state by calling resolve_nous_runtime_credentials(),
-# which does a synchronous OAuth refresh POST to portal.nousresearch.com. That can take
+# which does a synchronous OAuth refresh POST to stuko.dev. That can take
 # ~350ms even on the failure path, and read-only UI surfaces (`alice native`, status panels,
 # subscription-feature checks) call it many times per render — `alice native` → "All Platforms"
 # was firing the refresh ~31× during one menu paint, racking up >13s of HTTP and burning
@@ -7030,7 +7030,7 @@ def _xai_oauth_exchange_code_for_tokens(
         raise AuthError(
             "xAI token exchange refused locally: PKCE code_verifier is empty. "
             "This is a bug in Alice — please report at "
-            "https://10.1.200.116:3000/arquant-admin/NewLydia/issues/26990.",
+            "https://10.1.200.116:3000/arquant-admin/NewAlice/issues/26990.",
             provider="xai-oauth",
             code="xai_pkce_verifier_missing",
         )

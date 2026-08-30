@@ -58,9 +58,9 @@ def test_get_adapter_unknown_provider_raises():
 # ---------------------------------------------------------------------------
 
 
-def _write_auth_store(lydia_home: Path, nous_state: Dict[str, Any]) -> Path:
+def _write_auth_store(alice_home: Path, nous_state: Dict[str, Any]) -> Path:
     """Write an auth.json with the given nous state into a hermetic ALICE_HOME."""
-    auth_path = lydia_home / "auth.json"
+    auth_path = alice_home / "auth.json"
     auth_path.write_text(json.dumps({
         "version": 1,
         "providers": {"nous": nous_state},
@@ -120,7 +120,7 @@ def test_nous_adapter_get_credential_uses_runtime_resolver(tmp_path, monkeypatch
         "access_token": "access-tok",
         "refresh_token": "refresh-tok",
         "client_id": "alice-cli",
-        "portal_base_url": "https://portal.nousresearch.com",
+        "portal_base_url": "https://stuko.dev",
         "inference_base_url": "https://inference-api.nousresearch.com/v1",
     })
 
@@ -150,7 +150,7 @@ def test_nous_adapter_retry_credential_force_refreshes_on_jwt_401(tmp_path, monk
         "access_token": "jwt-access",
         "refresh_token": "refresh-tok",
         "client_id": "alice-cli",
-        "portal_base_url": "https://portal.nousresearch.com",
+        "portal_base_url": "https://stuko.dev",
         "inference_base_url": "https://inference-api.nousresearch.com/v1",
         "agent_key": "jwt-access",
     })
@@ -343,7 +343,7 @@ def test_nous_adapter_concurrent_refresh_serialized(tmp_path, monkeypatch):
 
 
 def _write_xai_pool_entry(
-    lydia_home: Path,
+    alice_home: Path,
     *,
     access_token: str = "xai-access-token",
     refresh_token: str = "xai-refresh-token",
@@ -351,7 +351,7 @@ def _write_xai_pool_entry(
     source: str = "manual:xai_pkce",
 ) -> Path:
     """Write an xai-oauth pool entry into a hermetic ALICE_HOME."""
-    auth_path = lydia_home / "auth.json"
+    auth_path = alice_home / "auth.json"
     auth_path.write_text(json.dumps({
         "version": 1,
         "providers": {},

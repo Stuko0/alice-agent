@@ -67,9 +67,9 @@ class TestMultiplexActiveFailClosed:
         assert ss.get_secret("ALICE_HOME") == "/opt/data"
 
     def test_kanban_prefix_is_global(self, monkeypatch):
-        monkeypatch.setenv("LYDIA_KANBAN_DB", "/x/kanban.db")
+        monkeypatch.setenv("ALICE_KANBAN_DB", "/x/kanban.db")
         ss.set_multiplex_active(True)
-        assert ss.get_secret("LYDIA_KANBAN_DB") == "/x/kanban.db"
+        assert ss.get_secret("ALICE_KANBAN_DB") == "/x/kanban.db"
 
 
 class TestScopeIsolation:

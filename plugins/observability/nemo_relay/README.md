@@ -41,7 +41,7 @@ Enable the plugin before setting export options:
 alice plugins enable observability/nemo_relay
 ```
 
-The `LYDIA_NEMO_RELAY_*` environment variables below only configure an
+The `ALICE_NEMO_RELAY_*` environment variables below only configure an
 already-enabled plugin. They do not enable plugin discovery by themselves.
 
 For isolated test homes, enable the plugin in the same `ALICE_HOME` that the
@@ -96,7 +96,7 @@ pip install "nemo-relay==0.3"
 
 ## Export Configuration
 
-The plugin can configure exporters directly from `LYDIA_NEMO_RELAY_*`
+The plugin can configure exporters directly from `ALICE_NEMO_RELAY_*`
 environment variables, or delegate exporter setup to a NeMo Relay
 `plugins.toml` component config.
 
@@ -110,21 +110,21 @@ OpenInference.
 Useful local export settings after the plugin is enabled:
 
 ```bash
-export LYDIA_NEMO_RELAY_ATOF_ENABLED=1
-export LYDIA_NEMO_RELAY_ATOF_OUTPUT_DIRECTORY=.nemo-relay/atof
-export LYDIA_NEMO_RELAY_ATIF_ENABLED=1
-export LYDIA_NEMO_RELAY_ATIF_OUTPUT_DIRECTORY=.nemo-relay/atif
+export ALICE_NEMO_RELAY_ATOF_ENABLED=1
+export ALICE_NEMO_RELAY_ATOF_OUTPUT_DIRECTORY=.nemo-relay/atof
+export ALICE_NEMO_RELAY_ATIF_ENABLED=1
+export ALICE_NEMO_RELAY_ATIF_OUTPUT_DIRECTORY=.nemo-relay/atif
 ```
 
 Optional overrides:
 
-- `LYDIA_NEMO_RELAY_ATOF_FILENAME`
-- `LYDIA_NEMO_RELAY_ATOF_MODE` (`append` or `overwrite`)
-- `LYDIA_NEMO_RELAY_ATIF_FILENAME_TEMPLATE`
-- `LYDIA_NEMO_RELAY_ATIF_AGENT_NAME`
-- `LYDIA_NEMO_RELAY_ATIF_AGENT_VERSION`
-- `LYDIA_NEMO_RELAY_ATIF_MODEL_NAME`
-- `LYDIA_NEMO_RELAY_ATIF_SUBAGENT_EXPORT_MODE` (`embedded` by default; set `all` to also write standalone child files)
+- `ALICE_NEMO_RELAY_ATOF_FILENAME`
+- `ALICE_NEMO_RELAY_ATOF_MODE` (`append` or `overwrite`)
+- `ALICE_NEMO_RELAY_ATIF_FILENAME_TEMPLATE`
+- `ALICE_NEMO_RELAY_ATIF_AGENT_NAME`
+- `ALICE_NEMO_RELAY_ATIF_AGENT_VERSION`
+- `ALICE_NEMO_RELAY_ATIF_MODEL_NAME`
+- `ALICE_NEMO_RELAY_ATIF_SUBAGENT_EXPORT_MODE` (`embedded` by default; set `all` to also write standalone child files)
 
 ### NeMo Relay Component Config
 
@@ -132,7 +132,7 @@ To initialize NeMo Relay from a component config, create a `plugins.toml` file
 and point Alice at it:
 
 ```bash
-export LYDIA_NEMO_RELAY_PLUGINS_TOML=.nemo-relay/plugins.toml
+export ALICE_NEMO_RELAY_PLUGINS_TOML=.nemo-relay/plugins.toml
 ```
 
 Minimal ATOF and ATIF config:
@@ -161,11 +161,11 @@ agent_name = "Alice Agent"
 agent_version = "local"
 ```
 
-When `LYDIA_NEMO_RELAY_PLUGINS_TOML` is set and initializes successfully, NeMo
+When `ALICE_NEMO_RELAY_PLUGINS_TOML` is set and initializes successfully, NeMo
 Relay owns exporter lifecycle through that config. The direct
-`LYDIA_NEMO_RELAY_ATOF_*` fallback setup is skipped. If the same
+`ALICE_NEMO_RELAY_ATOF_*` fallback setup is skipped. If the same
 `plugins.toml` observability config enables `atif`, the direct
-`LYDIA_NEMO_RELAY_ATIF_*` fallback setup is also skipped so Alice does not
+`ALICE_NEMO_RELAY_ATIF_*` fallback setup is also skipped so Alice does not
 double-export trajectories on teardown. If `plugins.toml` initialization fails,
 Alice keeps the direct env-var fallbacks active for that run.
 
@@ -229,16 +229,16 @@ This run starts a parent Alice session, delegates to a child subagent, has the
 child call `terminal`, and writes both ATOF and ATIF.
 
 ```bash
-export LYDIA_NEMO_RELAY_ATOF_ENABLED=1
-export LYDIA_NEMO_RELAY_ATOF_OUTPUT_DIRECTORY=/tmp/alice-nemo-relay-docs/subagent/atof
-export LYDIA_NEMO_RELAY_ATOF_FILENAME=nested-subagent-atof.jsonl
-export LYDIA_NEMO_RELAY_ATOF_MODE=overwrite
-export LYDIA_NEMO_RELAY_ATIF_ENABLED=1
-export LYDIA_NEMO_RELAY_ATIF_OUTPUT_DIRECTORY=/tmp/alice-nemo-relay-docs/subagent/atif
-export LYDIA_NEMO_RELAY_ATIF_FILENAME_TEMPLATE='nested-subagent-atif-{session_id}.json'
-export LYDIA_NEMO_RELAY_ATIF_AGENT_NAME='Alice Agent E2E'
-export LYDIA_NEMO_RELAY_ATIF_AGENT_VERSION=docs-example
-export LYDIA_NEMO_RELAY_ATIF_SUBAGENT_EXPORT_MODE=all
+export ALICE_NEMO_RELAY_ATOF_ENABLED=1
+export ALICE_NEMO_RELAY_ATOF_OUTPUT_DIRECTORY=/tmp/alice-nemo-relay-docs/subagent/atof
+export ALICE_NEMO_RELAY_ATOF_FILENAME=nested-subagent-atof.jsonl
+export ALICE_NEMO_RELAY_ATOF_MODE=overwrite
+export ALICE_NEMO_RELAY_ATIF_ENABLED=1
+export ALICE_NEMO_RELAY_ATIF_OUTPUT_DIRECTORY=/tmp/alice-nemo-relay-docs/subagent/atif
+export ALICE_NEMO_RELAY_ATIF_FILENAME_TEMPLATE='nested-subagent-atif-{session_id}.json'
+export ALICE_NEMO_RELAY_ATIF_AGENT_NAME='Alice Agent E2E'
+export ALICE_NEMO_RELAY_ATIF_AGENT_VERSION=docs-example
+export ALICE_NEMO_RELAY_ATIF_SUBAGENT_EXPORT_MODE=all
 
 alice chat \
   --query 'Use delegate_task exactly once. Ask the child subagent to use the terminal tool exactly once to run printf docs_nested_leaf_function. After the child returns, reply with exactly: parent received nested subagent result.' \
@@ -315,15 +315,15 @@ printf 'docs_parallel_alpha_function\n' > /tmp/alice-nemo-relay-docs/workdir/alp
 printf 'docs_parallel_beta_function\n' > /tmp/alice-nemo-relay-docs/workdir/beta.txt
 cd /tmp/alice-nemo-relay-docs/workdir
 
-export LYDIA_NEMO_RELAY_ATOF_ENABLED=1
-export LYDIA_NEMO_RELAY_ATOF_OUTPUT_DIRECTORY=/tmp/alice-nemo-relay-docs/parallel/atof
-export LYDIA_NEMO_RELAY_ATOF_FILENAME=parallel-tools-atof.jsonl
-export LYDIA_NEMO_RELAY_ATOF_MODE=overwrite
-export LYDIA_NEMO_RELAY_ATIF_ENABLED=1
-export LYDIA_NEMO_RELAY_ATIF_OUTPUT_DIRECTORY=/tmp/alice-nemo-relay-docs/parallel/atif
-export LYDIA_NEMO_RELAY_ATIF_FILENAME_TEMPLATE='parallel-tools-atif-{session_id}.json'
-export LYDIA_NEMO_RELAY_ATIF_AGENT_NAME='Alice Agent E2E'
-export LYDIA_NEMO_RELAY_ATIF_AGENT_VERSION=docs-example
+export ALICE_NEMO_RELAY_ATOF_ENABLED=1
+export ALICE_NEMO_RELAY_ATOF_OUTPUT_DIRECTORY=/tmp/alice-nemo-relay-docs/parallel/atof
+export ALICE_NEMO_RELAY_ATOF_FILENAME=parallel-tools-atof.jsonl
+export ALICE_NEMO_RELAY_ATOF_MODE=overwrite
+export ALICE_NEMO_RELAY_ATIF_ENABLED=1
+export ALICE_NEMO_RELAY_ATIF_OUTPUT_DIRECTORY=/tmp/alice-nemo-relay-docs/parallel/atif
+export ALICE_NEMO_RELAY_ATIF_FILENAME_TEMPLATE='parallel-tools-atif-{session_id}.json'
+export ALICE_NEMO_RELAY_ATIF_AGENT_NAME='Alice Agent E2E'
+export ALICE_NEMO_RELAY_ATIF_AGENT_VERSION=docs-example
 
 alice chat \
   --query 'Use exactly two read_file tool calls in the same assistant message. Read alpha.txt and beta.txt. Do not call terminal. After both tool results are available, reply with exactly: parallel tools complete.' \
@@ -416,7 +416,7 @@ mode = "observe_only"
 Enable it for Alice:
 
 ```bash
-export LYDIA_NEMO_RELAY_PLUGINS_TOML=/tmp/alice-middleware-test/plugins.toml
+export ALICE_NEMO_RELAY_PLUGINS_TOML=/tmp/alice-middleware-test/plugins.toml
 ```
 
 When the adaptive component is enabled and the installed NeMo Relay runtime
@@ -494,7 +494,7 @@ enabled = true
 mode = "observe_only"
 TOML
 
-export LYDIA_NEMO_RELAY_PLUGINS_TOML=/tmp/alice-middleware-test/nemo-relay/plugins.toml
+export ALICE_NEMO_RELAY_PLUGINS_TOML=/tmp/alice-middleware-test/nemo-relay/plugins.toml
 
 alice chat \
   --query 'Use the terminal tool exactly once to run printf middleware_execution_ok. Then reply with exactly the command output.' \

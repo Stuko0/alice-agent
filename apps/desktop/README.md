@@ -1,10 +1,10 @@
 # Alice Desktop ☤
 
 <p align="center">
-  <a href="https://10.1.200.116:3000/arquant-admin/NewLydia/releases"><img src="https://img.shields.io/badge/Download-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-FFD700?style=for-the-badge" alt="Download"></a>
+  <a href="https://10.1.200.116:3000/arquant-admin/NewAlice/releases"><img src="https://img.shields.io/badge/Download-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-FFD700?style=for-the-badge" alt="Download"></a>
   <a href="https://alice-agent.stuko.dev/docs/"><img src="https://img.shields.io/badge/Docs-alice--agent.stuko.dev-FFD700?style=for-the-badge" alt="Documentation"></a>
   <a href="https://discord.gg/Stuko"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="https://10.1.200.116:3000/arquant-admin/NewLydia/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://10.1.200.116:3000/arquant-admin/NewAlice/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
 </p>
 
 **The native desktop app for [Alice Agent](../../README.md) — the self-improving AI agent from [Stuko](https://stuko.dev).** Same agent, same skills, same memory as the CLI and gateway, in a polished native window — chat with streaming tool output, side-by-side previews, a file browser, voice, and settings, no terminal required. Available for **macOS, Windows, and Linux**.
@@ -67,7 +67,7 @@ npm run dev          # Vite renderer + Electron, which boots the Python backend
 Point the app at a specific source checkout, or sandbox it away from your real config:
 
 ```bash
-LYDIA_DESKTOP_LYDIA_ROOT=/path/to/clone npm run dev
+ALICE_DESKTOP_ALICE_ROOT=/path/to/clone npm run dev
 ALICE_HOME=/tmp/throwaway npm run dev
 npm run dev:fake-boot   # exercise the startup overlay with deterministic delays
 ```
@@ -85,7 +85,7 @@ Installers are built and uploaded to GitHub Releases manually. macOS/Windows sig
 
 ### How it works
 
-The packaged app ships the Electron shell and a native React chat surface. On first launch it can install the Alice Agent runtime into `ALICE_HOME` (`~/.alice`, or `%LOCALAPPDATA%\alice` on Windows) — the **same layout a CLI install uses**, so the two are interchangeable. Backend resolution first honours `LYDIA_DESKTOP_LYDIA_ROOT`, then a completed managed install, then a probed `alice` on `PATH` (unless `LYDIA_DESKTOP_IGNORE_EXISTING=1` is set), and finally an explicit `LYDIA_DESKTOP_LYDIA` command override for packagers/troubleshooting. The renderer (React, in `src/`) talks to a headless backend the app launches for you — a `alice serve` process that serves the `tui_gateway` JSON-RPC/WebSocket API — through the framework-agnostic client in [`apps/shared`](../shared/) (the same client the web dashboard consumes), and reuses the agent runtime rather than embedding `alice --tui`. The app is **self-contained**: it runs its own `alice serve` backend and never opens or requires the web dashboard UI. (For backward compatibility, a runtime that predates the `serve` command automatically falls back to a headless `dashboard --no-open` — see `electron/backend-command.cjs` — so mid-upgrade installs never break.) The install, backend-resolution, and self-update logic all live in `electron/main.cjs`.
+The packaged app ships the Electron shell and a native React chat surface. On first launch it can install the Alice Agent runtime into `ALICE_HOME` (`~/.alice`, or `%LOCALAPPDATA%\alice` on Windows) — the **same layout a CLI install uses**, so the two are interchangeable. Backend resolution first honours `ALICE_DESKTOP_ALICE_ROOT`, then a completed managed install, then a probed `alice` on `PATH` (unless `ALICE_DESKTOP_IGNORE_EXISTING=1` is set), and finally an explicit `ALICE_DESKTOP_ALICE` command override for packagers/troubleshooting. The renderer (React, in `src/`) talks to a headless backend the app launches for you — a `alice serve` process that serves the `tui_gateway` JSON-RPC/WebSocket API — through the framework-agnostic client in [`apps/shared`](../shared/) (the same client the web dashboard consumes), and reuses the agent runtime rather than embedding `alice --tui`. The app is **self-contained**: it runs its own `alice serve` backend and never opens or requires the web dashboard UI. (For backward compatibility, a runtime that predates the `serve` command automatically falls back to a headless `dashboard --no-open` — see `electron/backend-command.cjs` — so mid-upgrade installs never break.) The install, backend-resolution, and self-update logic all live in `electron/main.cjs`.
 
 ### Verification
 
@@ -130,7 +130,7 @@ Remove-Item -Recurse -Force "$env:LOCALAPPDATA\alice\alice-agent\venv"
 
 - 💬 [Discord](https://discord.gg/Stuko)
 - 📖 [Documentation](https://alice-agent.stuko.dev/docs/)
-- 🐛 [Issues](https://10.1.200.116:3000/arquant-admin/NewLydia/issues)
+- 🐛 [Issues](https://10.1.200.116:3000/arquant-admin/NewAlice/issues)
 
 ---
 

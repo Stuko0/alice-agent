@@ -1297,14 +1297,14 @@ class LineAdapter(BasePlatformAdapter):
 
         try:
             from alice_constants import get_alice_home
-            lydia_home = Path(get_alice_home()).resolve()
+            alice_home = Path(get_alice_home()).resolve()
         except Exception:
-            lydia_home = Path.home().joinpath(".alice").resolve()
+            alice_home = Path.home().joinpath(".alice").resolve()
 
         allowed_roots = {
             Path(tempfile.gettempdir()).resolve(),
             Path("/tmp").resolve(),  # → /private/tmp on macOS
-            lydia_home,
+            alice_home,
         }
         resolved = path.resolve()
         if not any(_is_relative_to(resolved, r) for r in allowed_roots):

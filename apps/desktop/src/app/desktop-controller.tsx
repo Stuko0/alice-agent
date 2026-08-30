@@ -118,7 +118,7 @@ import { SessionPickerOverlay } from './session-picker-overlay'
 import { SessionSwitcher } from './session-switcher'
 import { useContextSuggestions } from './session/hooks/use-context-suggestions'
 import { useCwdActions } from './session/hooks/use-cwd-actions'
-import { useLydiaConfig } from './session/hooks/use-alice-config'
+import { useAliceConfig } from './session/hooks/use-alice-config'
 import { useMessageStream } from './session/hooks/use-message-stream'
 import { useModelControls } from './session/hooks/use-model-controls'
 import { usePreviewRouting } from './session/hooks/use-preview-routing'
@@ -152,7 +152,7 @@ const SkillsView = lazy(async () => ({ default: (await import('./skills')).Skill
 // backend), so no user action signals the UI. Poll the bounded cron list on
 // this cadence while the app is open + visible so new runs surface promptly
 // instead of waiting for the next user-triggered refreshSessions().
-const CRON_POLL_INTERVAL_MS = 30_000
+const CRON_POLL_INTERVAL_MS = 60_000
 
 export function DesktopController() {
   const queryClient = useQueryClient()
@@ -237,12 +237,12 @@ export function DesktopController() {
   const { connectionRef, gatewayRef, requestGateway } = useGatewayRequest()
 
   useEffect(() => {
-    window.lydiaDesktop?.setPreviewShortcutActive?.(Boolean(chatOpen && (filePreviewTarget || previewTarget)))
+    window.aliceDesktop?.setPreviewShortcutActive?.(Boolean(chatOpen && (filePreviewTarget || previewTarget)))
   }, [chatOpen, filePreviewTarget, previewTarget])
 
   useEffect(() => {
     startUpdatePoller()
-    const unsubscribe = window.lydiaDesktop?.onOpenUpdatesRequested?.(() => openUpdatesWindow())
+    const unsubscribe = window.aliceDesktop?.onOpenUpdatesRequested?.(() => openUpdatesWindow())
 
     return () => {
       unsubscribe?.()
@@ -286,7 +286,7 @@ export function DesktopController() {
   // resumes a non-existent stored session ("session not found") and strands the
   // user. Translate runtime -> stored before navigating.
   useEffect(() => {
-    const unsubscribe = window.lydiaDesktop?.onFocusSession?.(sessionId => {
+    const unsubscribe = window.aliceDesktop?.onFocusSession?.(sessionId => {
       if (sessionId) {
         navigate(sessionRoute(storedSessionIdForNotification(sessionId, runtimeIdByStoredSessionIdRef.current)))
       }
@@ -297,7 +297,7 @@ export function DesktopController() {
 
   // Notification action button (Approve/Reject) — resolve in place, no navigation.
   useEffect(() => {
-    const unsubscribe = window.lydiaDesktop?.onNotificationAction?.(({ actionId, sessionId }) => {
+    const unsubscribe = window.aliceDesktop?.onNotificationAction?.(({ actionId, sessionId }) => {
       void respondToApprovalAction(sessionId ?? null, actionId)
     })
 
@@ -310,7 +310,7 @@ export function DesktopController() {
   // the shared command handler) creates the job. Signal readiness so a link
   // that arrived during boot is flushed exactly once.
   useEffect(() => {
-    const unsubscribe = window.lydiaDesktop?.onDeepLink?.(payload => {
+    const unsubscribe = window.aliceDesktop?.onDeepLink?.(payload => {
       if (!payload || payload.kind !== 'blueprint' || !payload.name) {
         return
       }
@@ -329,7 +329,7 @@ export function DesktopController() {
     })
 
     // Tell the main process the renderer is ready to receive deep links.
-    void window.lydiaDesktop?.signalDeepLinkReady?.()
+    void window.aliceDesktop?.signalDeepLinkReady?.()
 
     return () => unsubscribe?.()
   }, [])
@@ -361,7 +361,7 @@ export function DesktopController() {
       }
     }
 
-    const unsubscribe = window.lydiaDesktop?.onClosePreviewRequested?.(closeActiveRightRailTab)
+    const unsubscribe = window.aliceDesktop?.onClosePreviewRequested?.(closeActiveRightRailTab)
 
     window.addEventListener('keydown', onKeyDown, { capture: true })
 
@@ -434,7 +434,7 @@ export function DesktopController() {
     requestGateway
   })
 
-  const { refreshLydiaConfig, sttEnabled, voiceMaxRecordingSeconds } = useLydiaConfig({
+  const { refreshAliceConfig, sttEnabled, voiceMaxRecordingSeconds } = useAliceConfig({
     activeSessionIdRef,
     refreshProjectBranch
   })
@@ -524,7 +524,7 @@ export function DesktopController() {
     activeSessionIdRef,
     hydrateFromStoredSession,
     queryClient,
-    refreshLydiaConfig,
+    refreshAliceConfig,
     refreshSessions,
     sessionStateByRuntimeIdRef,
     updateSessionState
@@ -822,7 +822,7 @@ export function DesktopController() {
     onGatewayReady: g => {
       gatewayRef.current = g
     },
-    refreshLydiaConfig,
+    refreshAliceConfig,
     refreshSessions
   })
 
@@ -860,9 +860,9 @@ export function DesktopController() {
   useEffect(() => {
     if (gatewayState === 'open' && !activeSessionId && freshDraftReady) {
       void refreshCurrentModel()
-      void refreshLydiaConfig()
+      void refreshAliceConfig()
     }
-  }, [activeSessionId, freshDraftReady, gatewayState, refreshCurrentModel, refreshLydiaConfig])
+  }, [activeSessionId, freshDraftReady, gatewayState, refreshCurrentModel, refreshAliceConfig])
 
   useRouteResume({
     activeSessionId,
@@ -937,7 +937,7 @@ export function DesktopController() {
         <DesktopOnboardingOverlay
           enabled={gatewayState === 'open'}
           onCompleted={() => {
-            void refreshLydiaConfig()
+            void refreshAliceConfig()
             void refreshCurrentModel()
             void queryClient.invalidateQueries({ queryKey: ['model-options'] })
           }}
@@ -973,7 +973,7 @@ export function DesktopController() {
             gateway={gatewayRef.current}
             onClose={closeOverlayToPreviousRoute}
             onConfigSaved={() => {
-              void refreshLydiaConfig()
+              void refreshAliceConfig()
               void refreshCurrentModel()
               void queryClient.invalidateQueries({ queryKey: ['model-options'] })
             }}

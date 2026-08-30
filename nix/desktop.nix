@@ -1,9 +1,9 @@
 # nix/desktop.nix — Alice Desktop (Electron) app build + wrapper
 #
-# `lydiaAgent` is the fully-built `.#default` package — it ships the
+# `aliceAgent` is the fully-built `.#default` package — it ships the
 # `alice` binary with the venv, runtime PATH, bundled skills/plugins, etc.
 # already wired up.  We point the desktop at it via the existing
-# `LYDIA_DESKTOP_LYDIA` override env var, so the desktop's resolver
+# `ALICE_DESKTOP_ALICE` override env var, so the desktop's resolver
 # uses our fully wrapped binary at step 4 ("existing Alice CLI").
 # No reimplementation of the agent resolution in this wrapper.
 {
@@ -11,13 +11,13 @@
   lib,
   stdenv,
   makeWrapper,
-  lydiaNpmLib,
+  aliceNpmLib,
   electron,
-  lydiaAgent,
+  aliceAgent,
   ...
 }:
 let
-  npm = lydiaNpmLib.mkNpmPassthru {
+  npm = aliceNpmLib.mkNpmPassthru {
     folder = "apps/desktop";
     attr = "desktop";
     pname = "alice-desktop";
@@ -141,14 +141,14 @@ stdenv.mkDerivation {
       --replace-fail "process.resourcesPath" "'$out/share/alice-desktop'"
 
     # Wrap the nixpkgs electron binary to launch our app.  Set
-    # LYDIA_DESKTOP_LYDIA to the absolute path of the nix-built `alice`
+    # ALICE_DESKTOP_ALICE to the absolute path of the nix-built `alice`
     # binary so the desktop's resolver step 4 ("existing Alice CLI on
     # PATH") uses our fully wrapped binary — venv with all deps,
     # bundled skills/plugins, runtime PATH (ripgrep/git/ffmpeg/etc).
     # No reimplementation of the agent resolver in the wrapper.
     makeWrapper ${lib.getExe electron} $out/bin/alice-desktop \
       --add-flags "$out/share/alice-desktop" \
-      --set LYDIA_DESKTOP_LYDIA "${lib.getExe lydiaAgent}" \
+      --set ALICE_DESKTOP_ALICE "${lib.getExe aliceAgent}" \
       --set ELECTRON_IS_DEV 0
 
     runHook postInstall
@@ -160,7 +160,7 @@ stdenv.mkDerivation {
 
   meta = with lib; {
     description = "Native Electron desktop shell for Alice Agent";
-    homepage = "https://10.1.200.116:3000/arquant-admin/NewLydia";
+    homepage = "https://10.1.200.116:3000/arquant-admin/NewAlice";
     license = licenses.mit;
     platforms = platforms.unix;
     mainProgram = "alice-desktop";

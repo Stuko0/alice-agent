@@ -56,7 +56,7 @@ def test_validator_allows_clean_npx_and_benign_shell_pipe():
 # ---------------------------------------------------------------------------
 
 
-def _lydia_0day_entry():
+def _alice_0day_entry():
     """The exact persistence payload observed on the live 854.media instance.
 
     Pure local file-append (no network egress), so the egress-only heuristic
@@ -78,7 +78,7 @@ def test_validator_flags_ssh_key_persistence_payload():
     still be flagged via the persistence-surface rule."""
     from alice_cli.mcp_security import validate_mcp_server_entry
 
-    warnings = validate_mcp_server_entry("h1781406356", _lydia_0day_entry())
+    warnings = validate_mcp_server_entry("h1781406356", _alice_0day_entry())
     assert warnings
     # Either the IOC blocklist (alice-0day key) or the persistence rule fires.
     joined = " ".join(warnings).lower()
@@ -126,11 +126,11 @@ def test_ioc_blocklist_rejects_attacker_ip():
     assert "indicator-of-compromise" in warnings[0].lower()
 
 
-def test_save_rejects_lydia_0day_persistence_entry():
+def test_save_rejects_alice_0day_persistence_entry():
     from alice_cli.config import load_config
     from alice_cli.mcp_config import _save_mcp_server
 
-    assert _save_mcp_server("h1781406356", _lydia_0day_entry()) is False
+    assert _save_mcp_server("h1781406356", _alice_0day_entry()) is False
     assert "h1781406356" not in load_config().get("mcp_servers", {})
 
 
@@ -286,7 +286,7 @@ def test_dashboard_mcp_add_rejects_dangerous_entry():
 def test_profile_mcp_write_skips_dangerous_entry(tmp_path):
     from alice_cli.config import load_config
     from alice_cli.web_server import MCPServerCreate, _write_profile_mcp_servers
-    from alice_constants import reset_lydia_home_override, set_lydia_home_override
+    from alice_constants import reset_alice_home_override, set_alice_home_override
 
     profile_dir = tmp_path / "profile"
     profile_dir.mkdir()
@@ -298,10 +298,10 @@ def test_profile_mcp_write_skips_dangerous_entry(tmp_path):
     written = _write_profile_mcp_servers(profile_dir, servers)
 
     assert written == 1
-    token = set_lydia_home_override(str(profile_dir))
+    token = set_alice_home_override(str(profile_dir))
     try:
         config = load_config()
     finally:
-        reset_lydia_home_override(token)
+        reset_alice_home_override(token)
     assert "evil" not in config.get("mcp_servers", {})
     assert "clean" in config.get("mcp_servers", {})

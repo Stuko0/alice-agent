@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://alice-agent.stuko.dev/en/docs/"><img src="https://img.shields.io/badge/Docs-alice--agent.stuko.dev-FFD700?style=for-the-badge" alt="Documentation"></a>
   <a href="https://discord.gg/Stuko"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="https://10.1.200.116:3000/arquant-admin/NewLydia/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://10.1.200.116:3000/arquant-admin/NewAlice/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
   <a href="https://stuko.dev"><img src="https://img.shields.io/badge/Built%20by-Stuko0-blueviolet?style=for-the-badge" alt="Built by Stuko"></a>
   <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/Lang-中文-red?style=for-the-badge" alt="中文"></a>
   <a href="README.ur-pk.md"><img src="https://img.shields.io/badge/Lang-اردو-green?style=for-the-badge" alt="اردو"></a>
@@ -120,9 +120,9 @@ alice doctor       # Diagnose any issues
 
 ---
 
-That logs you in via OAuth, sets Nous as your provider, and turns on the Tool Gateway. Check what's wired up any time with `alice portal info`. Full details on the [Tool Gateway docs page](https://alice-agent.stuko.dev/en/docs/user-guide/features/tool-gateway).
+Configure model providers, toolsets, and messaging channels using `alice setup` or `alice model`. Full details on the [Tool Gateway docs page](https://alice-agent.stuko.dev/en/docs/user-guide/features/tool-gateway).
 
-You can still bring your own keys per-tool whenever you want — the gateway is per-backend, not all-or-nothing.
+You can bring your own keys per-tool whenever you want — tool configuration is per-backend, not all-or-nothing.
 
 ---
 
@@ -239,7 +239,7 @@ scripts/run_tests.sh
 - 📚 [Skills Hub](https://agentskills.io)
 - 🐛 [Issues]([https://github.com/Stuko0/alice-agent/issues])
 - 🔌 [computer-use-linux](https://github.com/avifenesh/computer-use-linux) — Linux desktop-control MCP server for Alice and other MCP hosts, with AT-SPI accessibility trees, Wayland/X11 input, screenshots, and compositor window targeting.
-- 🔌 [LydiaClaw](https://github.com/AaronWong1999/lydiaclaw) — Community WeChat bridge: Run Alice Agent and OpenClaw on the same WeChat account.
+- 🔌 [AliceClaw](https://github.com/AaronWong1999/aliceclaw) — Community WeChat bridge: Run Alice Agent and OpenClaw on the same WeChat account.
 
 ---
 

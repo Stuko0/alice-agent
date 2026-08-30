@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import type { LydiaReviewFile } from '@/global'
+import type { AliceReviewFile } from '@/global'
 
 import { buildReviewTree } from './tree-data'
 
-const file = (path: string, added = 1, removed = 0): LydiaReviewFile => ({
+const file = (path: string, added = 1, removed = 0): AliceReviewFile => ({
   path,
   added,
   removed,

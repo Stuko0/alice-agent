@@ -70,7 +70,7 @@ alice memory setup        # select "honcho" — runs the Honcho-specific post-se
 
 The legacy `alice honcho setup` command still works (it now redirects to `alice memory setup`), but is only registered after Honcho is selected as the active memory provider.
 
-**Config:** `$ALICE_HOME/honcho.json` (profile-local) or `~/.honcho/config.json` (global). Resolution order: `$ALICE_HOME/honcho.json` > `~/.alice/honcho.json` > `~/.honcho/config.json`. See the [config reference](https://10.1.200.116:3000/arquant-admin/NewLydia/blob/main/plugins/memory/honcho/README.md) and the [Honcho integration guide](https://docs.honcho.dev/v3/guides/integrations/alice).
+**Config:** `$ALICE_HOME/honcho.json` (profile-local) or `~/.honcho/config.json` (global). Resolution order: `$ALICE_HOME/honcho.json` > `~/.alice/honcho.json` > `~/.honcho/config.json`. See the [config reference](https://10.1.200.116:3000/arquant-admin/NewAlice/blob/main/plugins/memory/honcho/README.md) and the [Honcho integration guide](https://docs.honcho.dev/v3/guides/integrations/alice).
 
 <details>
 <summary>Full config reference</summary>
@@ -272,7 +272,7 @@ Off-gateway these keys do nothing. `alice memory setup` only prompts for them wh
 
 </details>
 
-See the [config reference](https://10.1.200.116:3000/arquant-admin/NewLydia/blob/main/plugins/memory/honcho/README.md) and [Honcho integration guide](https://docs.honcho.dev/v3/guides/integrations/alice).
+See the [config reference](https://10.1.200.116:3000/arquant-admin/NewAlice/blob/main/plugins/memory/honcho/README.md) and [Honcho integration guide](https://docs.honcho.dev/v3/guides/integrations/alice).
 
 
 ---
@@ -412,7 +412,7 @@ The setup wizard installs dependencies automatically and only installs what's ne
 | `retain_assistant_prefix` | `Assistant` | Label used before assistant turns in auto-retained transcripts |
 | `recall_tags` | — | Tags to filter on recall |
 
-See [plugin README](https://10.1.200.116:3000/arquant-admin/NewLydia/blob/main/plugins/memory/hindsight/README.md) for the full configuration reference.
+See [plugin README](https://10.1.200.116:3000/arquant-admin/NewAlice/blob/main/plugins/memory/hindsight/README.md) for the full configuration reference.
 
 ---
 

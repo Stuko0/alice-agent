@@ -8,7 +8,7 @@ import pytest
 def managed(tmp_path, monkeypatch):
     md = tmp_path / "managed"
     md.mkdir()
-    monkeypatch.setenv("LYDIA_MANAGED_DIR", str(md))
+    monkeypatch.setenv("ALICE_MANAGED_DIR", str(md))
     from alice_cli import managed_scope
 
     managed_scope.invalidate_managed_cache()
@@ -25,7 +25,7 @@ def _write(md, body):
 def test_overlay_noop_without_scope(tmp_path, monkeypatch):
     from alice_cli import managed_scope
 
-    monkeypatch.setenv("LYDIA_MANAGED_DIR", str(tmp_path / "nope"))
+    monkeypatch.setenv("ALICE_MANAGED_DIR", str(tmp_path / "nope"))
     managed_scope.invalidate_managed_cache()
     src = {"display": {"skin": "user"}}
     assert managed_scope.apply_managed_overlay(src) == {"display": {"skin": "user"}}

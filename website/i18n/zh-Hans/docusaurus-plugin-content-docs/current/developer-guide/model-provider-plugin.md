@@ -251,10 +251,10 @@ alice -z "hello" --provider my-provider -m some-model
 
 ```toml
 [project.entry-points."alice_agent.plugins"]
-acme-inference = "acme_lydia_plugin:register"
+acme-inference = "acme_alice_plugin:register"
 ```
 
-……其中 `acme_lydia_plugin:register` 是一个调用 `register_provider(profile)` 的函数。通用 PluginManager 在 `discover_and_load()` 期间会拾取入口点插件。对于 `kind: model-provider` 的 pip 插件，你仍需在 manifest 中声明 kind（或依赖源码文本启发式检测）。
+……其中 `acme_alice_plugin:register` 是一个调用 `register_provider(profile)` 的函数。通用 PluginManager 在 `discover_and_load()` 期间会拾取入口点插件。对于 `kind: model-provider` 的 pip 插件，你仍需在 manifest 中声明 kind（或依赖源码文本启发式检测）。
 
 完整的入口点设置请参阅 [构建 Alice 插件](/guides/build-a-alice-plugin#distribute-via-pip)。
 

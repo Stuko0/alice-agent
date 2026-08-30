@@ -119,9 +119,9 @@ def test_shared_nous_store_writes_0o600_with_0o700_parent(tmp_path, monkeypatch)
     # pytest runs; redirect it into tmp_path explicitly. Use a distinct
     # subdirectory name (``shared_override``) so the guard's "real user
     # home" reference — which currently tracks ALICE_HOME via
-    # get_default_lydia_root() — can't collide with our override and
+    # get_default_alice_root() — can't collide with our override and
     # falsely claim we're writing to the real user's shared store.
-    monkeypatch.setenv("LYDIA_SHARED_AUTH_DIR", str(tmp_path / "shared_override"))
+    monkeypatch.setenv("ALICE_SHARED_AUTH_DIR", str(tmp_path / "shared_override"))
     old_umask = os.umask(0o022)
     try:
         from alice_cli import auth as auth_mod

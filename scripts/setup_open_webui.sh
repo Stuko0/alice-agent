@@ -20,9 +20,9 @@ set -euo pipefail
 #   OPEN_WEBUI_ENABLE_SERVICE=auto   # auto|true|false
 #   OPEN_WEBUI_VENV=~/.local/open-webui-venv
 #   OPEN_WEBUI_DATA_DIR=~/.local/share/open-webui/data
-#   LYDIA_API_PORT=8642
-#   LYDIA_API_HOST=127.0.0.1
-#   LYDIA_API_MODEL_NAME='Alice Agent'
+#   ALICE_API_PORT=8642
+#   ALICE_API_HOST=127.0.0.1
+#   ALICE_API_MODEL_NAME='Alice Agent'
 
 OPEN_WEBUI_PORT="${OPEN_WEBUI_PORT:-8080}"
 OPEN_WEBUI_HOST="${OPEN_WEBUI_HOST:-127.0.0.1}"
@@ -31,12 +31,12 @@ OPEN_WEBUI_ENABLE_SIGNUP="${OPEN_WEBUI_ENABLE_SIGNUP:-true}"
 OPEN_WEBUI_ENABLE_SERVICE="${OPEN_WEBUI_ENABLE_SERVICE:-auto}"
 OPEN_WEBUI_VENV="${OPEN_WEBUI_VENV:-$HOME/.local/open-webui-venv}"
 OPEN_WEBUI_DATA_DIR="${OPEN_WEBUI_DATA_DIR:-$HOME/.local/share/open-webui/data}"
-LYDIA_ENV_FILE="${LYDIA_ENV_FILE:-$HOME/.alice/.env}"
-LYDIA_API_PORT="${LYDIA_API_PORT:-8642}"
-LYDIA_API_HOST="${LYDIA_API_HOST:-127.0.0.1}"
-LYDIA_API_CONNECT_HOST="${LYDIA_API_CONNECT_HOST:-127.0.0.1}"
-LYDIA_API_MODEL_NAME="${LYDIA_API_MODEL_NAME:-Alice Agent}"
-LYDIA_API_BASE_URL="http://${LYDIA_API_CONNECT_HOST}:${LYDIA_API_PORT}/v1"
+ALICE_ENV_FILE="${ALICE_ENV_FILE:-$HOME/.alice/.env}"
+ALICE_API_PORT="${ALICE_API_PORT:-8642}"
+ALICE_API_HOST="${ALICE_API_HOST:-127.0.0.1}"
+ALICE_API_CONNECT_HOST="${ALICE_API_CONNECT_HOST:-127.0.0.1}"
+ALICE_API_MODEL_NAME="${ALICE_API_MODEL_NAME:-Alice Agent}"
+ALICE_API_BASE_URL="http://${ALICE_API_CONNECT_HOST}:${ALICE_API_PORT}/v1"
 LAUNCHER_PATH="$HOME/.local/bin/start-open-webui-alice.sh"
 LOG_DIR="$HOME/.alice/logs"
 
@@ -173,7 +173,7 @@ write_launcher() {
   local quoted_data_dir quoted_name quoted_base_url quoted_host quoted_port quoted_venv
   quoted_data_dir="$(shell_quote "$OPEN_WEBUI_DATA_DIR")"
   quoted_name="$(shell_quote "$OPEN_WEBUI_NAME")"
-  quoted_base_url="$(shell_quote "$LYDIA_API_BASE_URL")"
+  quoted_base_url="$(shell_quote "$ALICE_API_BASE_URL")"
   quoted_host="$(shell_quote "$OPEN_WEBUI_HOST")"
   quoted_port="$(shell_quote "$OPEN_WEBUI_PORT")"
   quoted_venv="$(shell_quote "$OPEN_WEBUI_VENV")"
@@ -218,7 +218,7 @@ EOF
 }
 
 ensure_env_permissions() {
-  chmod 600 "$LYDIA_ENV_FILE" 2>/dev/null || true
+  chmod 600 "$ALICE_ENV_FILE" 2>/dev/null || true
 }
 
 install_launchd_service() {
@@ -294,28 +294,28 @@ main() {
   install_macos_dependencies
 
   local api_key
-  api_key="$(get_env_value API_SERVER_KEY "$LYDIA_ENV_FILE")"
+  api_key="$(get_env_value API_SERVER_KEY "$ALICE_ENV_FILE")"
   if [[ -z "$api_key" ]]; then
     api_key="$(generate_secret)"
   fi
 
   log 'Ensuring Alice API server is configured...'
-  upsert_env API_SERVER_ENABLED true "$LYDIA_ENV_FILE"
-  upsert_env API_SERVER_HOST "$LYDIA_API_HOST" "$LYDIA_ENV_FILE"
-  upsert_env API_SERVER_PORT "$LYDIA_API_PORT" "$LYDIA_ENV_FILE"
-  upsert_env API_SERVER_MODEL_NAME "$LYDIA_API_MODEL_NAME" "$LYDIA_ENV_FILE"
-  upsert_env API_SERVER_KEY "$api_key" "$LYDIA_ENV_FILE"
+  upsert_env API_SERVER_ENABLED true "$ALICE_ENV_FILE"
+  upsert_env API_SERVER_HOST "$ALICE_API_HOST" "$ALICE_ENV_FILE"
+  upsert_env API_SERVER_PORT "$ALICE_API_PORT" "$ALICE_ENV_FILE"
+  upsert_env API_SERVER_MODEL_NAME "$ALICE_API_MODEL_NAME" "$ALICE_ENV_FILE"
+  upsert_env API_SERVER_KEY "$api_key" "$ALICE_ENV_FILE"
   ensure_env_permissions
 
   log 'Restarting Alice gateway so API server settings take effect...'
   alice gateway restart >/dev/null 2>&1 || true
   sleep 4
-  if ! curl -fsS "http://${LYDIA_API_CONNECT_HOST}:${LYDIA_API_PORT}/health" >/dev/null; then
+  if ! curl -fsS "http://${ALICE_API_CONNECT_HOST}:${ALICE_API_PORT}/health" >/dev/null; then
     log 'Alice API server did not answer on the first check. Trying to start gateway in the background...'
     nohup alice gateway run >/dev/null 2>&1 &
     sleep 6
   fi
-  curl -fsS "http://${LYDIA_API_CONNECT_HOST}:${LYDIA_API_PORT}/health" >/dev/null
+  curl -fsS "http://${ALICE_API_CONNECT_HOST}:${ALICE_API_PORT}/health" >/dev/null
 
   log 'Installing Open WebUI into a dedicated virtualenv...'
   install_open_webui
@@ -342,7 +342,7 @@ main() {
   esac
 
   log "Done. Open WebUI should be available at: http://${OPEN_WEBUI_HOST}:${OPEN_WEBUI_PORT}"
-  log "Alice API endpoint: ${LYDIA_API_BASE_URL}"
+  log "Alice API endpoint: ${ALICE_API_BASE_URL}"
   log 'Important: Open WebUI persists connection settings after first launch. If you later save a wrong API key in the Admin UI, update/delete that connection there or reset its database.'
 }
 

@@ -157,7 +157,7 @@ Skill 必须安装在运行调度器的机器上。若你在不同机器间切�
 可能是投递目标问题（见上方"投递失败"部分）或响应被静默抑制（`[SILENT]`）。
 
 **任务挂起或超时**
-调度器使用基于不活跃时间的超时机制（默认 600 秒，可通过 `LYDIA_CRON_TIMEOUT` 环境变量配置，`0` 表示无限制）。只要 agent 持续调用工具，就可以一直运行——计时器仅在持续不活跃后触发。长时间运行的任务应使用脚本处理数据采集，仅将结果投递出去。
+调度器使用基于不活跃时间的超时机制（默认 600 秒，可通过 `ALICE_CRON_TIMEOUT` 环境变量配置，`0` 表示无限制）。只要 agent 持续调用工具，就可以一直运行——计时器仅在持续不活跃后触发。长时间运行的任务应使用脚本处理数据采集，仅将结果投递出去。
 
 ### 检查 3：锁竞争
 
@@ -214,7 +214,7 @@ alice skills list                  # 确认已安装的 skill
 
 1. 使用 `alice cron run <job_id>` 运行任务（在下次 gateway tick 时触发），观察聊天输出中的错误
 2. 查看 `~/.alice/logs/agent.log` 中的调度器消息和 `~/.alice/logs/errors.log` 中的警告
-3. 在 [github.com/NousResearch/alice-agent](https://github.com/NousResearch/alice-agent) 提交 issue，并附上：
+3. 在 [github.com/Stuko0/alice-agent](https://github.com/Stuko0/alice-agent) 提交 issue，并附上：
    - 任务 ID 和调度表达式
    - 投递目标
    - 预期行为与实际行为

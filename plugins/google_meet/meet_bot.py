@@ -17,9 +17,9 @@ English-biased but it is:
 
 Run standalone for debugging::
 
-    LYDIA_MEET_URL=https://meet.google.com/abc-defg-hij \\
-    LYDIA_MEET_OUT_DIR=/tmp/meet-debug \\
-    LYDIA_MEET_HEADED=1 \\
+    ALICE_MEET_URL=https://meet.google.com/abc-defg-hij \\
+    ALICE_MEET_OUT_DIR=/tmp/meet-debug \\
+    ALICE_MEET_HEADED=1 \\
     python -m plugins.google_meet.meet_bot
 
 No meet.google.com URL → exits non-zero. Any URL that doesn't start with
@@ -49,7 +49,7 @@ MEET_URL_RE = re.compile(
 )
 
 
-# Filenames the bot reads/writes in ``LYDIA_MEET_OUT_DIR``.
+# Filenames the bot reads/writes in ``ALICE_MEET_OUT_DIR``.
 SAY_QUEUE_FILENAME = "say_queue.jsonl"
 SAY_PCM_FILENAME = "speaker.pcm"
 
@@ -179,13 +179,13 @@ class _BotState:
 
 # JavaScript injected into the Meet tab to observe captions. Captures
 # {speaker, text} tuples via a MutationObserver on the caption container,
-# and exposes ``window.__lydiaMeetDrain()`` to pull new entries. This
+# and exposes ``window.__aliceMeetDrain()`` to pull new entries. This
 # mirrors the OpenUtter caption scraping approach.
 _CAPTION_OBSERVER_JS = r"""
 (() => {
-  if (window.__lydiaMeetInstalled) return;
-  window.__lydiaMeetInstalled = true;
-  window.__lydiaMeetQueue = [];
+  if (window.__aliceMeetInstalled) return;
+  window.__aliceMeetInstalled = true;
+  window.__aliceMeetQueue = [];
 
   const captionSelector = '[role="region"][aria-label*="aption" i], ' +
                           'div[jsname="YSxPC"], ' +  // legacy
@@ -193,7 +193,7 @@ _CAPTION_OBSERVER_JS = r"""
 
   function pushEntry(speaker, text) {
     if (!text || !text.trim()) return;
-    window.__lydiaMeetQueue.push({
+    window.__aliceMeetQueue.push({
       ts: Date.now(),
       speaker: (speaker || '').trim(),
       text: text.trim(),
@@ -235,9 +235,9 @@ _CAPTION_OBSERVER_JS = r"""
     const iv = setInterval(() => { if (attach()) clearInterval(iv); }, 1500);
   }
 
-  window.__lydiaMeetDrain = () => {
-    const out = window.__lydiaMeetQueue.slice();
-    window.__lydiaMeetQueue = [];
+  window.__aliceMeetDrain = () => {
+    const out = window.__aliceMeetQueue.slice();
+    window.__aliceMeetQueue = [];
     return out;
   };
 })();
@@ -346,7 +346,7 @@ def _start_realtime_speaker(
     if platform_tag == "linux":
         import subprocess as _sp
 
-        sink = (bridge_info or {}).get("write_target") or "lydia_meet_sink"
+        sink = (bridge_info or {}).get("write_target") or "alice_meet_sink"
         try:
             proc = _sp.Popen(
                 [
@@ -445,27 +445,27 @@ def _mac_audio_device_index(device_name: str) -> str:
 
 
 def run_bot() -> int:  # noqa: C901 — orchestration, explicit branches
-    url = os.environ.get("LYDIA_MEET_URL", "").strip()
-    out_dir_env = os.environ.get("LYDIA_MEET_OUT_DIR", "").strip()
-    headed = os.environ.get("LYDIA_MEET_HEADED", "").lower() in {"1", "true", "yes"}
-    auth_state = os.environ.get("LYDIA_MEET_AUTH_STATE", "").strip()
-    guest_name = os.environ.get("LYDIA_MEET_GUEST_NAME", "Alice Agent")
-    duration_s = _parse_duration(os.environ.get("LYDIA_MEET_DURATION", ""))
-    # v2: optional realtime mode. Enabled when LYDIA_MEET_MODE=realtime.
-    mode = os.environ.get("LYDIA_MEET_MODE", "transcribe").strip().lower()
-    realtime_model = os.environ.get("LYDIA_MEET_REALTIME_MODEL", "gpt-realtime")
-    realtime_voice = os.environ.get("LYDIA_MEET_REALTIME_VOICE", "alloy")
-    realtime_instructions = os.environ.get("LYDIA_MEET_REALTIME_INSTRUCTIONS", "")
-    realtime_api_key = os.environ.get("LYDIA_MEET_REALTIME_KEY") or os.environ.get("OPENAI_API_KEY", "")
+    url = os.environ.get("ALICE_MEET_URL", "").strip()
+    out_dir_env = os.environ.get("ALICE_MEET_OUT_DIR", "").strip()
+    headed = os.environ.get("ALICE_MEET_HEADED", "").lower() in {"1", "true", "yes"}
+    auth_state = os.environ.get("ALICE_MEET_AUTH_STATE", "").strip()
+    guest_name = os.environ.get("ALICE_MEET_GUEST_NAME", "Alice Agent")
+    duration_s = _parse_duration(os.environ.get("ALICE_MEET_DURATION", ""))
+    # v2: optional realtime mode. Enabled when ALICE_MEET_MODE=realtime.
+    mode = os.environ.get("ALICE_MEET_MODE", "transcribe").strip().lower()
+    realtime_model = os.environ.get("ALICE_MEET_REALTIME_MODEL", "gpt-realtime")
+    realtime_voice = os.environ.get("ALICE_MEET_REALTIME_VOICE", "alloy")
+    realtime_instructions = os.environ.get("ALICE_MEET_REALTIME_INSTRUCTIONS", "")
+    realtime_api_key = os.environ.get("ALICE_MEET_REALTIME_KEY") or os.environ.get("OPENAI_API_KEY", "")
 
     if not url or not _is_safe_meet_url(url):
         sys.stderr.write(
-            "google_meet bot: refusing to launch — LYDIA_MEET_URL must be a "
+            "google_meet bot: refusing to launch — ALICE_MEET_URL must be a "
             "meet.google.com URL. got: %r\n" % url
         )
         return 2
     if not out_dir_env:
-        sys.stderr.write("google_meet bot: LYDIA_MEET_OUT_DIR is required\n")
+        sys.stderr.write("google_meet bot: ALICE_MEET_OUT_DIR is required\n")
         return 2
 
     out_dir = Path(out_dir_env)
@@ -497,7 +497,7 @@ def run_bot() -> int:  # noqa: C901 — orchestration, explicit branches
     }
     if rt["enabled"]:
         if not realtime_api_key:
-            state.set(error="realtime mode requested but no API key in LYDIA_MEET_REALTIME_KEY/OPENAI_API_KEY — falling back to transcribe")
+            state.set(error="realtime mode requested but no API key in ALICE_MEET_REALTIME_KEY/OPENAI_API_KEY — falling back to transcribe")
             rt["enabled"] = False
         else:
             try:
@@ -616,7 +616,7 @@ def run_bot() -> int:  # noqa: C901 — orchestration, explicit branches
             #   * periodically flushing realtime counters into status.json
             deadline = (time.time() + duration_s) if duration_s else None
             lobby_deadline = time.time() + float(
-                os.environ.get("LYDIA_MEET_LOBBY_TIMEOUT", "300")
+                os.environ.get("ALICE_MEET_LOBBY_TIMEOUT", "300")
             )
             last_admission_check = 0.0
             while not stop_flag["stop"]:
@@ -652,7 +652,7 @@ def run_bot() -> int:  # noqa: C901 — orchestration, explicit branches
                         break
 
                 try:
-                    queued = page.evaluate("window.__lydiaMeetDrain && window.__lydiaMeetDrain()")
+                    queued = page.evaluate("window.__aliceMeetDrain && window.__aliceMeetDrain()")
                     if isinstance(queued, list):
                         for entry in queued:
                             if not isinstance(entry, dict):
@@ -762,7 +762,7 @@ def _detect_admission(page) -> bool:
     (() => {
       const leave = document.querySelector('button[aria-label*="eave call" i]');
       if (leave) return true;
-      if (window.__lydiaMeetInstalled) {
+      if (window.__aliceMeetInstalled) {
         const caps = document.querySelector(
           '[role="region"][aria-label*="aption" i], ' +
           'div[jsname="YSxPC"], div[jsname="tgaKEf"]'

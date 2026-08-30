@@ -223,7 +223,7 @@ class TestVerifyCoreDependencies:
              patch("alice_cli.main._is_windows", return_value=True), \
              patch("alice_cli.main._venv_scripts_dir", return_value=fake_scripts), \
              patch("alice_cli.main._run_install_with_heartbeat"), \
-             patch("alice_cli.main._quarantine_running_lydia_exe", return_value=[]) as mock_quar:
+             patch("alice_cli.main._quarantine_running_alice_exe", return_value=[]) as mock_quar:
 
             from alice_cli.main import _verify_core_dependencies_installed
             _verify_core_dependencies_installed(["uv", "pip"], env=env)

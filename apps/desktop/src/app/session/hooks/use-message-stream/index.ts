@@ -38,7 +38,7 @@ interface MessageStreamOptions {
     runtimeSessionId?: string | null
   ) => Promise<void>
   queryClient: QueryClient
-  refreshLydiaConfig: () => Promise<void>
+  refreshAliceConfig: () => Promise<void>
   refreshSessions: () => Promise<void>
   sessionStateByRuntimeIdRef: MutableRefObject<Map<string, ClientSessionState>>
   updateSessionState: (
@@ -57,7 +57,7 @@ export function useMessageStream({
   activeSessionIdRef,
   hydrateFromStoredSession,
   queryClient,
-  refreshLydiaConfig,
+  refreshAliceConfig,
   refreshSessions,
   sessionStateByRuntimeIdRef,
   updateSessionState
@@ -524,7 +524,7 @@ export function useMessageStream({
     failAssistantMessage,
     flushQueuedDeltas,
     queryClient,
-    refreshLydiaConfig,
+    refreshAliceConfig,
     sessionInterrupted,
     updateSessionState,
     upsertToolCall

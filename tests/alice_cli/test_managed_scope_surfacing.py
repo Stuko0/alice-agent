@@ -9,7 +9,7 @@ def homes(tmp_path, monkeypatch):
     managed = tmp_path / "managed"
     managed.mkdir()
     monkeypatch.setenv("ALICE_HOME", str(home))
-    monkeypatch.setenv("LYDIA_MANAGED_DIR", str(managed))
+    monkeypatch.setenv("ALICE_MANAGED_DIR", str(managed))
     (home / "config.yaml").write_text("model:\n  default: user/model\n", encoding="utf-8")
     (managed / "config.yaml").write_text(
         "model:\n  default: managed/model\n", encoding="utf-8"
@@ -38,7 +38,7 @@ def test_config_show_no_managed_scope_silent(tmp_path, monkeypatch, capsys):
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setenv("ALICE_HOME", str(home))
-    monkeypatch.setenv("LYDIA_MANAGED_DIR", str(tmp_path / "nope"))
+    monkeypatch.setenv("ALICE_MANAGED_DIR", str(tmp_path / "nope"))
     (home / "config.yaml").write_text("model:\n  default: user/model\n", encoding="utf-8")
     import alice_cli.config as cfg
     from alice_cli import managed_scope
@@ -65,7 +65,7 @@ def test_doctor_reports_managed_scope(homes, capsys):
 
 
 def test_doctor_silent_with_no_managed_scope(tmp_path, monkeypatch, capsys):
-    monkeypatch.setenv("LYDIA_MANAGED_DIR", str(tmp_path / "nope"))
+    monkeypatch.setenv("ALICE_MANAGED_DIR", str(tmp_path / "nope"))
     from alice_cli import managed_scope, doctor
 
     managed_scope.invalidate_managed_cache()

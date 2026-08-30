@@ -314,7 +314,7 @@ Future messages in this room will use that transcript until `/reset` or another 
   update:
     platform_not_messaging:  "✗ /update はメッセージングプラットフォームでのみ利用可能です。ターミナルで `alice update` を実行してください。"
     not_git_repo:            "✗ Git リポジトリではありません — 更新できません。"
-    lydia_cmd_not_found:    "✗ `alice` コマンドが見つかりません。Alice は実行中ですが、更新コマンドは PATH 上にも現在の Python インタープリタ経由でも実行可能ファイルを見つけられませんでした。ターミナルで `alice update` を手動で実行してみてください。"
+    alice_cmd_not_found:    "✗ `alice` コマンドが見つかりません。Alice は実行中ですが、更新コマンドは PATH 上にも現在の Python インタープリタ経由でも実行可能ファイルを見つけられませんでした。ターミナルで `alice update` を手動で実行してみてください。"
     start_failed:            "✗ 更新の開始に失敗しました: {error}"
     starting:                "🌹 Alice の更新を開始しています… 進捗をここにストリーミングします。"
 

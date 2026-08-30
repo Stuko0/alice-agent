@@ -10,7 +10,7 @@ const path = require('node:path')
 
 const { isPackagedInstallPath } = require('./workspace-cwd.cjs')
 
-const installRoot = path.resolve('/opt/Lydia')
+const installRoot = path.resolve('/opt/Alice')
 
 test('isPackagedInstallPath returns false when not packaged', () => {
   assert.equal(isPackagedInstallPath(installRoot, { isPackaged: false, installRoots: [installRoot] }), false)

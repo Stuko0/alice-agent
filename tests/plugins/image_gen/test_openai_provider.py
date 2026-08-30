@@ -30,7 +30,7 @@ def _fake_response(*, b64=None, url=None, revised_prompt=None):
 
 
 @pytest.fixture(autouse=True)
-def _tmp_lydia_home(tmp_path, monkeypatch):
+def _tmp_alice_home(tmp_path, monkeypatch):
     monkeypatch.setenv("ALICE_HOME", str(tmp_path))
     yield tmp_path
 

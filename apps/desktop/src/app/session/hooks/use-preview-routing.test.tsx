@@ -66,7 +66,7 @@ describe('usePreviewRouting', () => {
     clearSessionPreviewRegistry()
     handleEvent = () => undefined
 
-    Object.defineProperty(window, 'lydiaDesktop', {
+    Object.defineProperty(window, 'aliceDesktop', {
       configurable: true,
       value: {
         normalizePreviewTarget: vi.fn(async (target: string) => previewTarget(target))
@@ -117,7 +117,7 @@ describe('usePreviewRouting', () => {
     })
 
     expect($previewTarget.get()).toBeNull()
-    expect(window.lydiaDesktop.normalizePreviewTarget).not.toHaveBeenCalled()
+    expect(window.aliceDesktop.normalizePreviewTarget).not.toHaveBeenCalled()
   })
 
   it('does not auto-open a preview from tool results', async () => {

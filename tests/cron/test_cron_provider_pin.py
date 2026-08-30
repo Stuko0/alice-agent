@@ -50,7 +50,7 @@ def _run_with_current_provider(job, current_provider, tmp_path):
     Returns (success, output, final_response, error, agent_constructed).
     """
     fake_db = MagicMock()
-    with patch("cron.scheduler._lydia_home", tmp_path), \
+    with patch("cron.scheduler._alice_home", tmp_path), \
          patch("cron.scheduler._resolve_origin", return_value=None), \
          patch("dotenv.load_dotenv"), \
          patch("alice_state.SessionDB", return_value=fake_db), \
@@ -249,8 +249,8 @@ def _run_with_current_provider_and_model(job, current_provider, current_model, t
         f"model:\n  default: {current_model}\n"
     )
     fake_db = MagicMock()
-    with patch("cron.scheduler._lydia_home", tmp_path), \
-         patch("cron.scheduler._get_lydia_home", return_value=tmp_path), \
+    with patch("cron.scheduler._alice_home", tmp_path), \
+         patch("cron.scheduler._get_alice_home", return_value=tmp_path), \
          patch("cron.scheduler._resolve_origin", return_value=None), \
          patch("dotenv.load_dotenv"), \
          patch("alice_state.SessionDB", return_value=fake_db), \

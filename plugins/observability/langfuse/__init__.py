@@ -9,16 +9,16 @@ runtime the plugin also requires the ``langfuse`` SDK and credentials; if
 either is missing the hooks are inert.
 
 Required env vars (set via ``alice native`` or ~/.alice/.env):
-  LYDIA_LANGFUSE_PUBLIC_KEY  - Langfuse project public key (pk-lf-...)
-  LYDIA_LANGFUSE_SECRET_KEY  - Langfuse project secret key (sk-lf-...)
-  LYDIA_LANGFUSE_BASE_URL    - Langfuse server URL (default: https://cloud.langfuse.com)
+  ALICE_LANGFUSE_PUBLIC_KEY  - Langfuse project public key (pk-lf-...)
+  ALICE_LANGFUSE_SECRET_KEY  - Langfuse project secret key (sk-lf-...)
+  ALICE_LANGFUSE_BASE_URL    - Langfuse server URL (default: https://cloud.langfuse.com)
 
 Optional env vars:
-  LYDIA_LANGFUSE_ENV         - environment tag (e.g. "production", "local")
-  LYDIA_LANGFUSE_RELEASE     - release/version tag
-  LYDIA_LANGFUSE_SAMPLE_RATE - sampling rate 0.0–1.0 (default: 1.0)
-  LYDIA_LANGFUSE_MAX_CHARS   - max chars per field (default: 12000)
-  LYDIA_LANGFUSE_DEBUG       - set to "true" for verbose logging
+  ALICE_LANGFUSE_ENV         - environment tag (e.g. "production", "local")
+  ALICE_LANGFUSE_RELEASE     - release/version tag
+  ALICE_LANGFUSE_SAMPLE_RATE - sampling rate 0.0–1.0 (default: 1.0)
+  ALICE_LANGFUSE_MAX_CHARS   - max chars per field (default: 12000)
+  ALICE_LANGFUSE_DEBUG       - set to "true" for verbose logging
 """
 from __future__ import annotations
 
@@ -75,8 +75,8 @@ _READ_FILE_TAIL_LINES = 15
 # credentials at construction time but drop every trace at flush time.
 # See #23823 — the silent-failure bug this guard fixes.
 _LANGFUSE_KEY_PREFIXES: Dict[str, str] = {
-    "LYDIA_LANGFUSE_PUBLIC_KEY": "pk-lf-",
-    "LYDIA_LANGFUSE_SECRET_KEY": "sk-lf-",
+    "ALICE_LANGFUSE_PUBLIC_KEY": "pk-lf-",
+    "ALICE_LANGFUSE_SECRET_KEY": "sk-lf-",
 }
 
 
@@ -93,7 +93,7 @@ def _env_bool(*names: str) -> bool:
 
 
 def _debug_enabled() -> bool:
-    return _env_bool("LYDIA_LANGFUSE_DEBUG")
+    return _env_bool("ALICE_LANGFUSE_DEBUG")
 
 
 def _debug(message: str) -> None:
@@ -165,8 +165,8 @@ def _get_langfuse() -> Optional[Langfuse]:
         _LANGFUSE_CLIENT = _INIT_FAILED
         return None
 
-    public_key = _env("LYDIA_LANGFUSE_PUBLIC_KEY") or _env("LANGFUSE_PUBLIC_KEY")
-    secret_key = _env("LYDIA_LANGFUSE_SECRET_KEY") or _env("LANGFUSE_SECRET_KEY")
+    public_key = _env("ALICE_LANGFUSE_PUBLIC_KEY") or _env("LANGFUSE_PUBLIC_KEY")
+    secret_key = _env("ALICE_LANGFUSE_SECRET_KEY") or _env("LANGFUSE_SECRET_KEY")
     if not (public_key and secret_key):
         _LANGFUSE_CLIENT = _INIT_FAILED
         return None
@@ -182,8 +182,8 @@ def _get_langfuse() -> Optional[Langfuse]:
     placeholder_issues = [
         msg
         for msg in (
-            _validate_langfuse_key("LYDIA_LANGFUSE_PUBLIC_KEY", public_key),
-            _validate_langfuse_key("LYDIA_LANGFUSE_SECRET_KEY", secret_key),
+            _validate_langfuse_key("ALICE_LANGFUSE_PUBLIC_KEY", public_key),
+            _validate_langfuse_key("ALICE_LANGFUSE_SECRET_KEY", secret_key),
         )
         if msg
     ]
@@ -191,17 +191,17 @@ def _get_langfuse() -> Optional[Langfuse]:
         logger.warning(
             "Langfuse plugin: credentials look like placeholders, traces will "
             "NOT be emitted (%s). Set real Langfuse keys (pk-lf-... / sk-lf-...) "
-            "or unset LYDIA_LANGFUSE_PUBLIC_KEY / LYDIA_LANGFUSE_SECRET_KEY to "
+            "or unset ALICE_LANGFUSE_PUBLIC_KEY / ALICE_LANGFUSE_SECRET_KEY to "
             "silence this warning.",
             "; ".join(placeholder_issues),
         )
         _LANGFUSE_CLIENT = _INIT_FAILED
         return None
 
-    base_url = _env("LYDIA_LANGFUSE_BASE_URL") or _env("LANGFUSE_BASE_URL") or "https://cloud.langfuse.com"
-    environment = _env("LYDIA_LANGFUSE_ENV") or _env("LANGFUSE_ENV")
-    release = _env("LYDIA_LANGFUSE_RELEASE") or _env("LANGFUSE_RELEASE")
-    sample_rate = _env("LYDIA_LANGFUSE_SAMPLE_RATE")
+    base_url = _env("ALICE_LANGFUSE_BASE_URL") or _env("LANGFUSE_BASE_URL") or "https://cloud.langfuse.com"
+    environment = _env("ALICE_LANGFUSE_ENV") or _env("LANGFUSE_ENV")
+    release = _env("ALICE_LANGFUSE_RELEASE") or _env("LANGFUSE_RELEASE")
+    sample_rate = _env("ALICE_LANGFUSE_SAMPLE_RATE")
 
     kwargs: Dict[str, Any] = {
         "public_key": public_key,
@@ -216,7 +216,7 @@ def _get_langfuse() -> Optional[Langfuse]:
         try:
             kwargs["sample_rate"] = float(sample_rate)
         except ValueError:
-            logger.warning("Invalid LYDIA_LANGFUSE_SAMPLE_RATE=%r", sample_rate)
+            logger.warning("Invalid ALICE_LANGFUSE_SAMPLE_RATE=%r", sample_rate)
 
     try:
         _LANGFUSE_CLIENT = Langfuse(**kwargs)
@@ -424,7 +424,7 @@ def _normalize_payload(value: Any, *, tool_name: str = "", args: Any = None) -> 
 
 def _safe_value(value: Any, *, max_chars: Optional[int] = None, depth: int = 0,
                 parse_json_strings: bool = False) -> Any:
-    max_chars = max_chars if max_chars is not None else int(_env("LYDIA_LANGFUSE_MAX_CHARS", "12000") or "12000")
+    max_chars = max_chars if max_chars is not None else int(_env("ALICE_LANGFUSE_MAX_CHARS", "12000") or "12000")
     if depth > 4:
         return "<max-depth>"
     if value is None or isinstance(value, (int, float, bool)):

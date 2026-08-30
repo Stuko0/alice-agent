@@ -3,7 +3,7 @@
 Build the real image and verify at runtime:
 
   1. /opt/alice is not writable by the alice user (immutable install tree)
-  2. PYTHONDONTWRITEBYTECODE and LYDIA_DISABLE_LAZY_INSTALLS are set
+  2. PYTHONDONTWRITEBYTECODE and ALICE_DISABLE_LAZY_INSTALLS are set
   3. /opt/alice/.install_method contains "docker" (code-scoped stamp)
   4. $ALICE_HOME/.install_method is NOT stamped as "docker" by stage2
   5. A stale "docker" stamp in $ALICE_HOME is healed (removed) on boot
@@ -18,7 +18,7 @@ from tests.docker.conftest import (
 )
 
 
-def test_install_tree_not_writable_by_lydia(
+def test_install_tree_not_writable_by_alice(
     built_image: str, container_name: str,
 ) -> None:
     """The alice user must not be able to modify /opt/alice.
@@ -53,24 +53,24 @@ def test_install_tree_not_writable_by_lydia(
     )
 
 
-def test_lydia_disable_lazy_installs_and_dont_write_bytecode(
+def test_alice_disable_lazy_installs_and_dont_write_bytecode(
     built_image: str, container_name: str,
 ) -> None:
     """The container must set PYTHONDONTWRITEBYTECODE and
-    LYDIA_DISABLE_LAZY_INSTALLS=1 so no .pyc files are written to the
+    ALICE_DISABLE_LAZY_INSTALLS=1 so no .pyc files are written to the
     immutable install tree and no lazy installs attempt to modify it."""
     start_container(built_image, container_name)
 
     r = docker_exec_sh(
         container_name,
         'test "$PYTHONDONTWRITEBYTECODE" = "1" && '
-        'test "$LYDIA_DISABLE_LAZY_INSTALLS" = "1" && '
+        'test "$ALICE_DISABLE_LAZY_INSTALLS" = "1" && '
         'echo ENV_OK || echo ENV_MISSING',
         timeout=10,
     )
     assert "ENV_OK" in r.stdout, (
         f"expected PYTHONDONTWRITEBYTECODE=1 and "
-        f"LYDIA_DISABLE_LAZY_INSTALLS=1, got: {r.stdout} stderr={r.stderr}"
+        f"ALICE_DISABLE_LAZY_INSTALLS=1, got: {r.stdout} stderr={r.stderr}"
     )
 
 

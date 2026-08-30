@@ -330,13 +330,13 @@ def _build_allowed_mentions():
 
 def _discord_ready_timeout_seconds() -> float:
     """Return the Discord ready wait timeout during gateway startup."""
-    raw = os.getenv("LYDIA_GATEWAY_PLATFORM_CONNECT_TIMEOUT", "").strip()
+    raw = os.getenv("ALICE_GATEWAY_PLATFORM_CONNECT_TIMEOUT", "").strip()
     if raw:
         try:
             return max(0.0, float(raw))
         except ValueError:
             logger.warning(
-                "Ignoring invalid LYDIA_GATEWAY_PLATFORM_CONNECT_TIMEOUT=%r",
+                "Ignoring invalid ALICE_GATEWAY_PLATFORM_CONNECT_TIMEOUT=%r",
                 raw,
             )
     return 30.0
@@ -766,8 +766,8 @@ class DiscordAdapter(BasePlatformAdapter):
         self._voice_clients: Dict[int, Any] = {}  # guild_id -> VoiceClient
         self._voice_locks: Dict[int, asyncio.Lock] = {}  # guild_id -> serialize join/leave
         # Text batching: merge rapid successive messages (Telegram-style)
-        self._text_batch_delay_seconds = env_float("LYDIA_DISCORD_TEXT_BATCH_DELAY_SECONDS", 0.6)
-        self._text_batch_split_delay_seconds = env_float("LYDIA_DISCORD_TEXT_BATCH_SPLIT_DELAY_SECONDS", 2.0)
+        self._text_batch_delay_seconds = env_float("ALICE_DISCORD_TEXT_BATCH_DELAY_SECONDS", 0.6)
+        self._text_batch_split_delay_seconds = env_float("ALICE_DISCORD_TEXT_BATCH_SPLIT_DELAY_SECONDS", 2.0)
         self._pending_text_batches: Dict[str, MessageEvent] = {}
         self._pending_text_batch_tasks: Dict[str, asyncio.Task] = {}
         self._voice_text_channels: Dict[int, int] = {}  # guild_id -> text_channel_id
@@ -809,10 +809,10 @@ class DiscordAdapter(BasePlatformAdapter):
         # ``discord.liveness_failure_threshold`` (bridged to these env vars by
         # ``_apply_yaml_config``); set either to 0 to disable.
         self._liveness_interval_seconds = env_float(
-            "LYDIA_DISCORD_LIVENESS_INTERVAL_SECONDS", 60.0
+            "ALICE_DISCORD_LIVENESS_INTERVAL_SECONDS", 60.0
         )
         self._liveness_failure_threshold = env_int(
-            "LYDIA_DISCORD_LIVENESS_FAILURE_THRESHOLD", 3
+            "ALICE_DISCORD_LIVENESS_FAILURE_THRESHOLD", 3
         )
         self._liveness_task: Optional[asyncio.Task] = None
         # True while disconnect() is intentionally closing discord.py. The
@@ -1305,7 +1305,7 @@ class DiscordAdapter(BasePlatformAdapter):
 
         Fix: await all pending text-batch tasks before delegating to the base
         cancel. The flush deadline is clamped below the gateway's per-adapter
-        disconnect budget (``LYDIA_GATEWAY_ADAPTER_DISCONNECT_TIMEOUT``, default
+        disconnect budget (``ALICE_GATEWAY_ADAPTER_DISCONNECT_TIMEOUT``, default
         5s) so the gateway's outer ``wait_for`` can't hard-cancel us mid-flush —
         we cancel our own stragglers cleanly inside the budget instead.
         """
@@ -1342,7 +1342,7 @@ class DiscordAdapter(BasePlatformAdapter):
         ``GatewayRunner._adapter_disconnect_timeout_secs``.
         """
         budget = 5.0  # mirrors gateway _ADAPTER_DISCONNECT_TIMEOUT_SECS_DEFAULT
-        raw = os.getenv("LYDIA_GATEWAY_ADAPTER_DISCONNECT_TIMEOUT", "").strip()
+        raw = os.getenv("ALICE_GATEWAY_ADAPTER_DISCONNECT_TIMEOUT", "").strip()
         if raw:
             try:
                 parsed = float(raw)
@@ -2676,7 +2676,7 @@ class DiscordAdapter(BasePlatformAdapter):
         # Synthesise the ack via the configured TTS provider, then layer it.
         import uuid as _uuid
         audio_path = os.path.join(
-            tempfile.gettempdir(), "lydia_voice",
+            tempfile.gettempdir(), "alice_voice",
             f"ack_{_uuid.uuid4().hex[:12]}.mp3",
         )
         os.makedirs(os.path.dirname(audio_path), exist_ok=True)
@@ -7586,11 +7586,11 @@ def _apply_yaml_config(yaml_cfg: dict, discord_cfg: dict) -> dict | None:
     # __init__; set either to 0 to disable.  config.yaml is the user-facing
     # surface — these env vars are an internal mechanism only.
     lis = discord_cfg.get("liveness_interval_seconds")
-    if lis is not None and not os.getenv("LYDIA_DISCORD_LIVENESS_INTERVAL_SECONDS"):
-        os.environ["LYDIA_DISCORD_LIVENESS_INTERVAL_SECONDS"] = str(lis)
+    if lis is not None and not os.getenv("ALICE_DISCORD_LIVENESS_INTERVAL_SECONDS"):
+        os.environ["ALICE_DISCORD_LIVENESS_INTERVAL_SECONDS"] = str(lis)
     lft = discord_cfg.get("liveness_failure_threshold")
-    if lft is not None and not os.getenv("LYDIA_DISCORD_LIVENESS_FAILURE_THRESHOLD"):
-        os.environ["LYDIA_DISCORD_LIVENESS_FAILURE_THRESHOLD"] = str(lft)
+    if lft is not None and not os.getenv("ALICE_DISCORD_LIVENESS_FAILURE_THRESHOLD"):
+        os.environ["ALICE_DISCORD_LIVENESS_FAILURE_THRESHOLD"] = str(lft)
     return None  # all settings flow through env; nothing to merge into extras
 
 

@@ -314,7 +314,7 @@ Future messages in this room will use that transcript until `/reset` or another 
   update:
     platform_not_messaging:  "✗ /update 僅在訊息平台上可用。請在終端機執行 `alice update`。"
     not_git_repo:            "✗ 不是 git 儲存庫 — 無法更新。"
-    lydia_cmd_not_found:    "✗ 找不到 `alice` 指令。Alice 正在執行，但更新指令無法在 PATH 上或透過目前的 Python 解譯器找到執行檔。請嘗試在終端機中手動執行 `alice update`。"
+    alice_cmd_not_found:    "✗ 找不到 `alice` 指令。Alice 正在執行，但更新指令無法在 PATH 上或透過目前的 Python 解譯器找到執行檔。請嘗試在終端機中手動執行 `alice update`。"
     start_failed:            "✗ 啟動更新失敗：{error}"
     starting:                "🌹 正在啟動 Alice 更新…… 進度將在此處顯示。"
 

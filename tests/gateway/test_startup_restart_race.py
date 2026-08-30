@@ -123,7 +123,7 @@ def make_startup_runner(tmp_path):
 
 
 def patch_startup_side_effects(monkeypatch, tmp_path):
-    monkeypatch.setattr(gateway_run, "_lydia_home", tmp_path)
+    monkeypatch.setattr(gateway_run, "_alice_home", tmp_path)
     monkeypatch.setattr("alice_cli.plugins.discover_plugins", lambda: None)
     monkeypatch.setattr("agent.shell_hooks.register_from_config", lambda *args, **kwargs: None)
     monkeypatch.setattr("tools.process_registry.process_registry.recover_from_checkpoint", lambda: 0)
@@ -277,7 +277,7 @@ async def test_start_gateway_does_not_start_cron_after_aborted_startup(tmp_path,
     monkeypatch.setattr("gateway.status.remove_pid_file", lambda: None)
     monkeypatch.setattr("gateway.status.release_gateway_runtime_lock", lambda: None)
     monkeypatch.setattr("tools.skills_sync.sync_skills", lambda quiet=True: None)
-    monkeypatch.setattr("alice_logging.setup_logging", lambda lydia_home, mode: None)
+    monkeypatch.setattr("alice_logging.setup_logging", lambda alice_home, mode: None)
     monkeypatch.setattr("gateway.run.GatewayRunner", AbortedStartupRunner)
     monkeypatch.setattr("gateway.run._start_cron_ticker", fail_if_cron_starts)
     monkeypatch.setattr("tools.mcp_tool.shutdown_mcp_servers", lambda: None)

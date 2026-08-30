@@ -35,7 +35,7 @@ def _restore_stdout():
 @pytest.fixture()
 def server():
     with patch.dict("sys.modules", {
-        "alice_constants": MagicMock(get_alice_home=MagicMock(return_value="/tmp/lydia_test")),
+        "alice_constants": MagicMock(get_alice_home=MagicMock(return_value="/tmp/alice_test")),
         "alice_cli.env_loader": MagicMock(),
         "alice_cli.banner": MagicMock(),
         "alice_state": MagicMock(),

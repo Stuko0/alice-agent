@@ -72,7 +72,7 @@ class TestNonInteractiveSetup:
         args = _make_setup_args(non_interactive=True)
 
         with (
-            patch("alice_cli.setup.ensure_lydia_home"),
+            patch("alice_cli.setup.ensure_alice_home"),
             patch("alice_cli.setup.load_config", return_value={}),
             patch("alice_cli.setup.get_alice_home", return_value="/tmp/.alice"),
             patch("alice_cli.auth.get_active_provider", side_effect=AssertionError("wizard continued")),
@@ -90,7 +90,7 @@ class TestNonInteractiveSetup:
         args = _make_setup_args(non_interactive=False)
 
         with (
-            patch("alice_cli.setup.ensure_lydia_home"),
+            patch("alice_cli.setup.ensure_alice_home"),
             patch("alice_cli.setup.load_config", return_value={}),
             patch("alice_cli.setup.get_alice_home", return_value="/tmp/.alice"),
             patch("alice_cli.auth.get_active_provider", side_effect=AssertionError("wizard continued")),

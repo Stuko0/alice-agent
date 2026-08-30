@@ -12,7 +12,7 @@ import yaml
 
 
 @pytest.fixture
-def isolated_profiles(tmp_path, monkeypatch, _isolate_lydia_home):
+def isolated_profiles(tmp_path, monkeypatch, _isolate_alice_home):
     """Isolated default home + one named profile, each with its own .env."""
     from alice_constants import get_alice_home
     from alice_cli import profiles
@@ -29,7 +29,7 @@ def isolated_profiles(tmp_path, monkeypatch, _isolate_lydia_home):
     )
     (worker_home / ".env").write_text("", encoding="utf-8")
 
-    monkeypatch.setattr(profiles, "_get_default_lydia_home", lambda: default_home)
+    monkeypatch.setattr(profiles, "_get_default_alice_home", lambda: default_home)
     monkeypatch.setattr(profiles, "_get_profiles_root", lambda: profiles_root)
     return {"default": default_home, "worker_alpha": worker_home}
 

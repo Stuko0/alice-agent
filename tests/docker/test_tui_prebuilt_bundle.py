@@ -4,12 +4,12 @@ Regression guard for the hosted-chat failure where the embedded dashboard
 Chat tab died with a 502 / "[session ended]". Root cause: the image installs
 only a subset of the npm monorepo workspaces (root/web/ui-tui, never apps/*),
 so the actualized node_modules permanently disagrees with the canonical
-package-lock.json. Without LYDIA_TUI_DIR set, ``_make_tui_argv`` falls
+package-lock.json. Without ALICE_TUI_DIR set, ``_make_tui_argv`` falls
 through to ``_tui_need_npm_install`` (which returns True forever) and tries a
 runtime ``npm install`` that can never converge and races itself across
 concurrent /api/pty connections → ENOTEMPTY.
 
-The fix is ``ENV LYDIA_TUI_DIR=/opt/alice/ui-tui`` in the Dockerfile, which
+The fix is ``ENV ALICE_TUI_DIR=/opt/alice/ui-tui`` in the Dockerfile, which
 makes the launcher take the prebuilt-bundle fast path (``node --expose-gc
 .../dist/entry.js``) and skip the install check entirely. These tests assert
 that invariant holds in the built image.
@@ -39,16 +39,16 @@ def _exec_py(image: str, py: str) -> str:
     return r.stdout.strip()
 
 
-def test_lydia_tui_dir_env_is_set(built_image: str) -> None:
-    """LYDIA_TUI_DIR must point at the prebuilt bundle dir in the image."""
+def test_alice_tui_dir_env_is_set(built_image: str) -> None:
+    """ALICE_TUI_DIR must point at the prebuilt bundle dir in the image."""
     r = subprocess.run(
         ["docker", "run", "--rm", "--entrypoint", "sh", built_image,
-         "-c", 'printf "%s" "$LYDIA_TUI_DIR"'],
+         "-c", 'printf "%s" "$ALICE_TUI_DIR"'],
         capture_output=True, text=True, timeout=60,
     )
     assert r.returncode == 0, r.stderr[-2000:]
     assert r.stdout.strip() == "/opt/alice/ui-tui", (
-        f"LYDIA_TUI_DIR={r.stdout.strip()!r} (expected /opt/alice/ui-tui)"
+        f"ALICE_TUI_DIR={r.stdout.strip()!r} (expected /opt/alice/ui-tui)"
     )
 
 
@@ -71,7 +71,7 @@ def test_prebuilt_bundle_present_and_no_runtime_install(built_image: str) -> Non
     )
     out = json.loads(_exec_py(built_image, py))
     assert out["dist_entry_exists"], "prebuilt ui-tui/dist/entry.js missing from image"
-    # With LYDIA_TUI_DIR set, _make_tui_argv returns the prebuilt path BEFORE
+    # With ALICE_TUI_DIR set, _make_tui_argv returns the prebuilt path BEFORE
     # ever reaching the install check — so the resolved argv is what matters.
     assert out["uses_prebuilt"], f"launcher did not take prebuilt path: argv={out['argv']!r}"
     assert "npm" not in out["argv"][0].lower(), (

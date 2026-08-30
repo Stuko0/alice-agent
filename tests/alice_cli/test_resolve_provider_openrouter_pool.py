@@ -25,7 +25,7 @@ def _clean_inference_env(monkeypatch):
         "ANTHROPIC_TOKEN",
         "CLAUDE_CODE_OAUTH_TOKEN",
         "NOUS_API_KEY",
-        "LYDIA_INFERENCE_PROVIDER",
+        "ALICE_INFERENCE_PROVIDER",
     ):
         monkeypatch.delenv(key, raising=False)
 

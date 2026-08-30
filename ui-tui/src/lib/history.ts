@@ -3,8 +3,8 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 const MAX = 1000
-const dir = process.env.LYDIA_HOME ?? join(homedir(), '.alice')
-const file = join(dir, '.lydia_history')
+const dir = process.env.ALICE_HOME ?? join(homedir(), '.alice')
+const file = join(dir, '.alice_history')
 
 let cache: string[] | null = null
 

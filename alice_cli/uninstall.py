@@ -327,7 +327,7 @@ def _alice_path_markers(alice_home: Path) -> list[str]:
     markers = [root + "\\alice-agent", root + "\\git", root + "\\node", root + "\\venv"]
     # Also match if ALICE_HOME was customised to somewhere else — find-and-nuke
     # any entry whose path component contains "alice".  We don't want to catch
-    # unrelated entries like "clydia-foo" or "ephermeral", so we look for
+    # unrelated entries like "calice-foo" or "ephermeral", so we look for
     # backslash-alice as a word-ish boundary.
     return markers
 
@@ -867,9 +867,9 @@ def _perform_uninstall(
         print()
         print("To reinstall later with your existing settings:")
         if _is_windows():
-            print(color("  iex (irm https://alice-agent.nousresearch.com/install.ps1)", Colors.DIM))
+            print(color("  iex (irm https://alice-agent.stuko.dev/install.ps1)", Colors.DIM))
         else:
-            print(color("  curl -fsSL https://alice-agent.nousresearch.com/install.sh | bash", Colors.DIM))
+            print(color("  curl -fsSL https://alice-agent.stuko.dev/install.sh | bash", Colors.DIM))
         print()
 
     if _is_windows():

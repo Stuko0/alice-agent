@@ -35,10 +35,10 @@ test('desktop background child processes opt into hidden Windows consoles', () =
   requireHiddenChildOptions(source, /spawn\(\s*command,\s*args/)
   requireHiddenChildOptions(source, "spawn('curl'")
   requireHiddenChildOptions(source, /spawn\(\s*backend\.command,\s*backend\.args/)
-  requireHiddenChildOptions(source, /lydiaProcess = spawn\(\s*backend\.command,\s*backend\.args/)
+  requireHiddenChildOptions(source, /aliceProcess = spawn\(\s*backend\.command,\s*backend\.args/)
   requireHiddenChildOptions(source, /spawn\(\s*py,\s*\['-m', 'alice_cli\.main', 'uninstall', '--gui-summary'\]/)
 
-  assert.match(source, /function unwrapWindowsVenvLydiaCommand\(command, backendArgs\)/)
+  assert.match(source, /function unwrapWindowsVenvAliceCommand\(command, backendArgs\)/)
   assert.match(source, /function getVenvSitePackagesEntries\(venvRoot\)/)
   assert.match(source, /path\.join\(venvRoot, 'Lib', 'site-packages'\)/)
   assert.match(source, /args: \['-m', 'alice_cli\.main', \.\.\.backendArgs\]/)
@@ -65,13 +65,13 @@ test('desktop backend launches console python so child consoles are inherited, n
   )
 
   // Console python restores stdout, so the port is announced on the normal
-  // LYDIA_DASHBOARD_READY stdout line — no ready-file side channel is set.
+  // ALICE_DASHBOARD_READY stdout line — no ready-file side channel is set.
   assert.doesNotMatch(source, /readyFile: true/, 'no backend should opt into the pythonw ready-file path')
 
   // Both desktop backend launches must still go through hiddenWindowsChildOptions
   // so the single backend console is created windowless.
   requireHiddenChildOptions(source, /spawn\(\s*backend\.command,\s*backend\.args/)
-  requireHiddenChildOptions(source, /lydiaProcess = spawn\(\s*backend\.command,\s*backend\.args/)
+  requireHiddenChildOptions(source, /aliceProcess = spawn\(\s*backend\.command,\s*backend\.args/)
 })
 
 test('desktop backend teardown tree-kills Windows backend descendants', () => {
@@ -84,17 +84,17 @@ test('desktop backend teardown tree-kills Windows backend descendants', () => {
   assert.match(helperSnippet, /forceKillProcessTree\(child\.pid\)/)
   assert.match(helperSnippet, /child\.kill\('SIGTERM'\)/)
 
-  const resetIndex = source.indexOf('function resetLydiaConnection()')
-  assert.notEqual(resetIndex, -1, 'missing resetLydiaConnection')
+  const resetIndex = source.indexOf('function resetAliceConnection()')
+  assert.notEqual(resetIndex, -1, 'missing resetAliceConnection')
   const resetSnippet = source.slice(resetIndex, resetIndex + 300)
-  assert.match(resetSnippet, /stopBackendChild\(lydiaProcess\)/)
-  assert.doesNotMatch(resetSnippet, /lydiaProcess\.kill\('SIGTERM'\)/)
+  assert.match(resetSnippet, /stopBackendChild\(aliceProcess\)/)
+  assert.doesNotMatch(resetSnippet, /aliceProcess\.kill\('SIGTERM'\)/)
 
   const quitIndex = source.indexOf("app.on('before-quit'")
   assert.notEqual(quitIndex, -1, 'missing before-quit handler')
   const quitSnippet = source.slice(quitIndex, quitIndex + 900)
-  assert.match(quitSnippet, /stopBackendChild\(lydiaProcess\)/)
-  assert.doesNotMatch(quitSnippet, /lydiaProcess\.kill\('SIGTERM'\)/)
+  assert.match(quitSnippet, /stopBackendChild\(aliceProcess\)/)
+  assert.doesNotMatch(quitSnippet, /aliceProcess\.kill\('SIGTERM'\)/)
 })
 
 test('intentional or interactive desktop child processes stay documented', () => {

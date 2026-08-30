@@ -37,7 +37,7 @@ export function ReviewProviderChip({ remoteInfo }: { remoteInfo: RemoteInfo }) {
         disabled={!remoteInfo.prUrl}
         onClick={() => {
           if (remoteInfo.prUrl) {
-            void window.lydiaDesktop?.openExternal(remoteInfo.prUrl)
+            void window.aliceDesktop?.openExternal(remoteInfo.prUrl)
           }
         }}
         type="button"

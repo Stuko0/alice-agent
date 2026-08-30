@@ -4,9 +4,9 @@
 //   logFrameEvent (ink.onFrame) → yoga / renderer / diff / optimize / write
 //                                 phases + yoga counters + scroll fast-path
 //
-// Both gate on LYDIA_DEV_PERF=1 and dump JSON-lines (default ~/.alice/perf.log,
-// override LYDIA_DEV_PERF_LOG). Tagged { src: 'react' | 'frame' } for jq.
-// LYDIA_DEV_PERF_MS (default 2) skips sub-ms idle frames; set 0 to capture all.
+// Both gate on ALICE_DEV_PERF=1 and dump JSON-lines (default ~/.alice/perf.log,
+// override ALICE_DEV_PERF_LOG). Tagged { src: 'react' | 'frame' } for jq.
+// ALICE_DEV_PERF_MS (default 2) skips sub-ms idle frames; set 0 to capture all.
 //
 // Zero cost when unset: PerfPane returns children directly, logFrameEvent is
 // undefined so ink doesn't pay the timing cost.
@@ -19,9 +19,9 @@ import type { FrameEvent } from '@alice/ink'
 import { scrollFastPathStats } from '@alice/ink'
 import { Profiler, type ProfilerOnRenderCallback, type ReactNode } from 'react'
 
-const ENABLED = /^(?:1|true|yes|on)$/i.test((process.env.LYDIA_DEV_PERF ?? '').trim())
-const THRESHOLD_MS = Number(process.env.LYDIA_DEV_PERF_MS ?? '2') || 0
-const LOG_PATH = process.env.LYDIA_DEV_PERF_LOG?.trim() || join(homedir(), '.alice', 'perf.log')
+const ENABLED = /^(?:1|true|yes|on)$/i.test((process.env.ALICE_DEV_PERF ?? '').trim())
+const THRESHOLD_MS = Number(process.env.ALICE_DEV_PERF_MS ?? '2') || 0
+const LOG_PATH = process.env.ALICE_DEV_PERF_LOG?.trim() || join(homedir(), '.alice', 'perf.log')
 
 let logReady = false
 

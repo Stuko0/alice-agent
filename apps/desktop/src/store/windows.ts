@@ -75,7 +75,7 @@ export function isWatchWindow(): boolean {
 // True when running inside the Electron desktop shell (the preload bridge is
 // present). The "open in new window" affordance is desktop-only.
 export function canOpenSessionWindow(): boolean {
-  return typeof window !== 'undefined' && typeof window.lydiaDesktop?.openSessionWindow === 'function'
+  return typeof window !== 'undefined' && typeof window.aliceDesktop?.openSessionWindow === 'function'
 }
 
 type WindowOpenResult = { ok: boolean; error?: string } | undefined
@@ -102,14 +102,14 @@ export async function openSessionInNewWindow(sessionId: string, opts?: { watch?:
     return
   }
 
-  await openWindow(() => window.lydiaDesktop.openSessionWindow(sessionId, opts), 'Could not open chat in a new window')
+  await openWindow(() => window.aliceDesktop.openSessionWindow(sessionId, opts), 'Could not open chat in a new window')
 }
 
 // Open a fresh compact window on the new-session draft.
 export async function openNewSessionInNewWindow(): Promise<void> {
-  if (!canOpenSessionWindow() || typeof window.lydiaDesktop.openNewSessionWindow !== 'function') {
+  if (!canOpenSessionWindow() || typeof window.aliceDesktop.openNewSessionWindow !== 'function') {
     return
   }
 
-  await openWindow(() => window.lydiaDesktop.openNewSessionWindow(), 'Could not open new session window')
+  await openWindow(() => window.aliceDesktop.openNewSessionWindow(), 'Could not open new session window')
 }

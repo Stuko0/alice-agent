@@ -31,7 +31,7 @@ description: "配置、扩展或贡献 Alice Agent"
 
 # Alice Agent
 
-Alice Agent 是 Nous Research 开发的开源 AI agent 框架，可在终端、消息平台和 IDE 中运行。它与 Claude Code（Anthropic）、Codex（OpenAI）和 OpenClaw 同属一类——使用工具调用（tool calling）与系统交互的自主编码和任务执行 agent。Alice 支持任意 LLM 提供商（OpenRouter、Anthropic、OpenAI、DeepSeek、本地模型及 15+ 其他提供商），可在 Linux、macOS 和 WSL 上运行。
+Alice Agent 是 Stuko 开发的开源 AI agent 框架，可在终端、消息平台和 IDE 中运行。它与 Claude Code（Anthropic）、Codex（OpenAI）和 OpenClaw 同属一类——使用工具调用（tool calling）与系统交互的自主编码和任务执行 agent。Alice 支持任意 LLM 提供商（OpenRouter、Anthropic、OpenAI、DeepSeek、本地模型及 15+ 其他提供商），可在 Linux、macOS 和 WSL 上运行。
 
 Alice 的差异化特性：
 
@@ -46,13 +46,13 @@ Alice 的差异化特性：
 
 **此 skill 帮助你高效使用 Alice Agent** — 包括设置、配置功能、生成额外的 agent 实例、排查问题、找到正确的命令和设置，以及在需要扩展或贡献时理解系统的工作原理。
 
-**文档：** https://alice-agent.nousresearch.com/docs/
+**文档：** https://alice-agent.stuko.dev/docs/
 
 ## 快速开始
 
 ```bash
 # 安装
-curl -fsSL https://alice-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://alice-agent.stuko.dev/install.sh | bash
 
 # 交互式聊天（默认）
 alice
@@ -170,7 +170,7 @@ alice gateway setup        Configure platforms
 
 支持的平台：Telegram、Discord、Slack、WhatsApp、Signal、Email、SMS、Matrix、Mattermost、Home Assistant、DingTalk、Feishu、WeCom、BlueBubbles（iMessage）、Weixin（WeChat）、API Server、Webhooks。Open WebUI 通过 API Server 适配器连接。
 
-平台文档：https://alice-agent.nousresearch.com/docs/user-guide/messaging/
+平台文档：https://alice-agent.stuko.dev/docs/user-guide/messaging/
 
 ### 会话
 
@@ -247,7 +247,7 @@ alice uninstall            Uninstall Alice
 
 ## 斜杠命令（会话内）
 
-在交互式聊天会话中输入这些命令。新命令会不定期上线；如果以下内容看起来过时，请在会话内运行 `/help` 获取权威列表，或查看[实时斜杠命令参考](https://alice-agent.nousresearch.com/docs/reference/slash-commands)。命令注册表的权威来源是 `alice_cli/commands.py` — 每个消费方（自动补全、Telegram 菜单、Slack 映射、`/help`）均从中派生。
+在交互式聊天会话中输入这些命令。新命令会不定期上线；如果以下内容看起来过时，请在会话内运行 `/help` 获取权威列表，或查看[实时斜杠命令参考](https://alice-agent.stuko.dev/docs/reference/slash-commands)。命令注册表的权威来源是 `alice_cli/commands.py` — 每个消费方（自动补全、Telegram 菜单、Slack 映射、`/help`）均从中派生。
 
 ### 会话控制
 ```
@@ -376,7 +376,7 @@ Profiles 使用 `~/.alice/profiles/<name>/`，布局相同。
 | `delegation` | `model`, `provider`, `base_url`, `api_key`, `max_iterations` (50), `reasoning_effort` |
 | `checkpoints` | `enabled`, `max_snapshots` (50) |
 
-完整配置参考：https://alice-agent.nousresearch.com/docs/user-guide/configuration
+完整配置参考：https://alice-agent.stuko.dev/docs/user-guide/configuration
 
 ### 提供商
 
@@ -406,7 +406,7 @@ Profiles 使用 `~/.alice/profiles/<name>/`，布局相同。
 | 自定义端点 | 配置 | `config.yaml` 中的 `model.base_url` + `model.api_key` |
 | GitHub Copilot ACP | 外部 | `COPILOT_CLI_PATH` 或 Copilot CLI |
 
-完整提供商文档：https://alice-agent.nousresearch.com/docs/integrations/providers
+完整提供商文档：https://alice-agent.stuko.dev/docs/integrations/providers
 
 ### Toolset
 
@@ -445,7 +445,7 @@ Profiles 使用 `~/.alice/profiles/<name>/`，布局相同。
 | `rl` | 强化学习工具（默认关闭） |
 | `moa` | Mixture of Agents（默认关闭） |
 
-完整枚举位于 `toolsets.py` 的 `TOOLSETS` 字典中；`_LYDIA_CORE_TOOLS` 是大多数平台继承的默认工具包。
+完整枚举位于 `toolsets.py` 的 `TOOLSETS` 字典中；`_ALICE_CORE_TOOLS` 是大多数平台继承的默认工具包。
 
 工具变更在 `/reset`（新会话）后生效。为保留 prompt 缓存，变更**不会**在对话中途生效。
 
@@ -463,7 +463,7 @@ Profiles 使用 `~/.alice/profiles/<name>/`，布局相同。
 alice config set security.redact_secrets true       # 全局启用
 ```
 
-**需要重启。** `security.redact_secrets` 在导入时快照 — 在会话中途切换（例如通过工具调用执行 `export LYDIA_REDACT_SECRETS=true`）对正在运行的进程**不会**生效。告知用户在终端运行 `alice config set security.redact_secrets true`，然后启动新会话。这是有意为之——防止 LLM 在任务中途自行切换该开关。
+**需要重启。** `security.redact_secrets` 在导入时快照 — 在会话中途切换（例如通过工具调用执行 `export ALICE_REDACT_SECRETS=true`）对正在运行的进程**不会**生效。告知用户在终端运行 `alice config set security.redact_secrets true`，然后启动新会话。这是有意为之——防止 LLM 在任务中途自行切换该开关。
 
 再次禁用：
 ```bash
@@ -494,7 +494,7 @@ alice config set approvals.mode off         # 绕过一切（不推荐）
 
 单次调用绕过（不更改配置）：
 - `alice --yolo …`
-- `export LYDIA_YOLO_MODE=1`
+- `export ALICE_YOLO_MODE=1`
 
 注意：YOLO / `approvals.mode: off` **不会**关闭密钥脱敏。两者相互独立。
 
@@ -648,7 +648,7 @@ terminal(command="tmux new-session -d -s resumed 'alice --resume 20260225_143052
 - **每任务选项：** `skills`、`model`/`provider` 覆盖、`script`（预运行数据收集；`no_agent=True` 使脚本成为整个任务）、`context_from`（将任务 A 的输出链接到任务 B）、`workdir`（在特定目录中运行，加载其 `AGENTS.md` / `CLAUDE.md`）、多平台投递。
 - **不变量：** 每次运行 3 分钟硬中断，`.tick.lock` 文件防止跨进程重复 tick，cron 会话默认传递 `skip_memory=True`，cron 投递使用页眉/页脚框架而非镜像到目标 gateway 会话（保持角色交替完整）。
 
-用户文档：https://alice-agent.nousresearch.com/docs/user-guide/features/cron
+用户文档：https://alice-agent.stuko.dev/docs/user-guide/features/cron
 
 ### Curator（skill 生命周期）
 
@@ -660,18 +660,18 @@ agent 创建的 skill 的后台维护。跟踪使用情况，将闲置 skill 标
 - **遥测：** `~/.alice/skills/.usage.json` 中的 sidecar 保存每个 skill 的 `use_count`、`view_count`、`patch_count`、`last_activity_at`、`state`、`pinned`。
 
 配置：`curator.*`（`enabled`、`interval_hours`、`min_idle_hours`、`stale_after_days`、`archive_after_days`、`backup.*`）。
-用户文档：https://alice-agent.nousresearch.com/docs/user-guide/features/curator
+用户文档：https://alice-agent.stuko.dev/docs/user-guide/features/curator
 
 ### Kanban（多 agent 工作队列）
 
-用于多 profile/多 worker 协作的持久化 SQLite 看板（kanban）。用户通过 `alice kanban <verb>` 驱动；调度器生成的 worker 看到由 `LYDIA_KANBAN_TASK` 控制的专注 `kanban_*` toolset，orchestrator profile 可以选择加入更广泛的 `kanban` toolset。普通会话除非配置，否则没有任何 `kanban_*` schema 占用。
+用于多 profile/多 worker 协作的持久化 SQLite 看板（kanban）。用户通过 `alice kanban <verb>` 驱动；调度器生成的 worker 看到由 `ALICE_KANBAN_TASK` 控制的专注 `kanban_*` toolset，orchestrator profile 可以选择加入更广泛的 `kanban` toolset。普通会话除非配置，否则没有任何 `kanban_*` schema 占用。
 
 - **CLI 动词（常用）：** `init`、`create`、`list`（别名 `ls`）、`show`、`assign`、`link`、`unlink`、`comment`、`complete`、`block`、`unblock`、`archive`、`tail`。不常用：`watch`、`stats`、`runs`、`log`、`dispatch`、`daemon`、`gc`。
 - **Worker/orchestrator toolset：** `kanban_show`、`kanban_complete`、`kanban_block`、`kanban_heartbeat`、`kanban_comment`、`kanban_create`、`kanban_link`；在调度器生成的任务之外显式启用 `kanban` toolset 的 profile 还可获得 `kanban_list` 和 `kanban_unblock` 用于看板路由。
 - **调度器** 默认在 gateway 内运行（`kanban.dispatch_in_gateway: true`）——回收过期认领、推进就绪任务、原子认领、生成已分配的 profile。在配置的 `kanban.failure_limit` 次连续非成功尝试后自动阻塞任务（默认：2）。
-- **隔离：** 看板是硬边界（worker 在环境中固定 `LYDIA_KANBAN_BOARD`）；租户是看板内用于工作区路径和记忆键隔离的软命名空间。
+- **隔离：** 看板是硬边界（worker 在环境中固定 `ALICE_KANBAN_BOARD`）；租户是看板内用于工作区路径和记忆键隔离的软命名空间。
 
-用户文档：https://alice-agent.nousresearch.com/docs/user-guide/features/kanban
+用户文档：https://alice-agent.stuko.dev/docs/user-guide/features/kanban
 
 ---
 
@@ -780,18 +780,18 @@ alice config set auxiliary.vision.model <model_name>
 
 | 查找内容... | 位置 |
 |----------------|----------|
-| 配置选项 | `alice config edit` 或[配置文档](https://alice-agent.nousresearch.com/docs/user-guide/configuration) |
-| 可用工具 | `alice native list` 或[工具参考](https://alice-agent.nousresearch.com/docs/reference/tools-reference) |
-| 斜杠命令 | 会话内 `/help` 或[斜杠命令参考](https://alice-agent.nousresearch.com/docs/reference/slash-commands) |
-| Skill 目录 | `alice skills browse` 或[Skill 目录](https://alice-agent.nousresearch.com/docs/reference/skills-catalog) |
-| 提供商设置 | `alice model` 或[提供商指南](https://alice-agent.nousresearch.com/docs/integrations/providers) |
-| 平台设置 | `alice gateway setup` 或[消息文档](https://alice-agent.nousresearch.com/docs/user-guide/messaging/) |
-| MCP 服务器 | `alice mcp list` 或[MCP 指南](https://alice-agent.nousresearch.com/docs/user-guide/features/mcp) |
-| Profiles | `alice profile list` 或[Profiles 文档](https://alice-agent.nousresearch.com/docs/user-guide/profiles) |
-| Cron 任务 | `alice cron list` 或[Cron 文档](https://alice-agent.nousresearch.com/docs/user-guide/features/cron) |
-| 记忆 | `alice memory status` 或[记忆文档](https://alice-agent.nousresearch.com/docs/user-guide/features/memory) |
-| 环境变量 | `alice config env-path` 或[环境变量参考](https://alice-agent.nousresearch.com/docs/reference/environment-variables) |
-| CLI 命令 | `alice --help` 或[CLI 参考](https://alice-agent.nousresearch.com/docs/reference/cli-commands) |
+| 配置选项 | `alice config edit` 或[配置文档](https://alice-agent.stuko.dev/docs/user-guide/configuration) |
+| 可用工具 | `alice native list` 或[工具参考](https://alice-agent.stuko.dev/docs/reference/tools-reference) |
+| 斜杠命令 | 会话内 `/help` 或[斜杠命令参考](https://alice-agent.stuko.dev/docs/reference/slash-commands) |
+| Skill 目录 | `alice skills browse` 或[Skill 目录](https://alice-agent.stuko.dev/docs/reference/skills-catalog) |
+| 提供商设置 | `alice model` 或[提供商指南](https://alice-agent.stuko.dev/docs/integrations/providers) |
+| 平台设置 | `alice gateway setup` 或[消息文档](https://alice-agent.stuko.dev/docs/user-guide/messaging/) |
+| MCP 服务器 | `alice mcp list` 或[MCP 指南](https://alice-agent.stuko.dev/docs/user-guide/features/mcp) |
+| Profiles | `alice profile list` 或[Profiles 文档](https://alice-agent.stuko.dev/docs/user-guide/profiles) |
+| Cron 任务 | `alice cron list` 或[Cron 文档](https://alice-agent.stuko.dev/docs/user-guide/features/cron) |
+| 记忆 | `alice memory status` 或[记忆文档](https://alice-agent.stuko.dev/docs/user-guide/features/memory) |
+| 环境变量 | `alice config env-path` 或[环境变量参考](https://alice-agent.stuko.dev/docs/reference/environment-variables) |
+| CLI 命令 | `alice --help` 或[CLI 参考](https://alice-agent.stuko.dev/docs/reference/cli-commands) |
 | Gateway 日志 | `~/.alice/logs/gateway.log` |
 | 会话文件 | `~/.alice/sessions/` 或 `alice sessions browse` |
 | 源代码 | `~/.alice/alice-agent/` |
@@ -800,7 +800,7 @@ alice config set auxiliary.vision.model <model_name>
 
 ## 贡献者快速参考
 
-面向偶尔贡献者和 PR 作者。完整开发者文档：https://alice-agent.nousresearch.com/docs/developer-guide/
+面向偶尔贡献者和 PR 作者。完整开发者文档：https://alice-agent.stuko.dev/docs/developer-guide/
 
 ### 项目结构
 
@@ -853,7 +853,7 @@ registry.register(
 )
 ```
 
-**2. 添加到 `toolsets.py`** → `_LYDIA_CORE_TOOLS` 列表。
+**2. 添加到 `toolsets.py`** → `_ALICE_CORE_TOOLS` 列表。
 
 自动发现：任何包含顶层 `registry.register()` 调用的 `tools/*.py` 文件都会自动导入——无需手动列出。
 

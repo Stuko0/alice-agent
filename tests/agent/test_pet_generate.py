@@ -12,10 +12,10 @@ import os
 import pytest
 
 pytestmark = pytest.mark.skipif(
-    os.environ.get("LYDIA_RUN_SLOW_PET_TESTS") != "1",
+    os.environ.get("ALICE_RUN_SLOW_PET_TESTS") != "1",
     reason=(
         "pet generation image-processing suite is opt-in; run with "
-        "LYDIA_RUN_SLOW_PET_TESTS=1 scripts/run_tests.sh tests/agent/test_pet_generate.py"
+        "ALICE_RUN_SLOW_PET_TESTS=1 scripts/run_tests.sh tests/agent/test_pet_generate.py"
     ),
 )
 

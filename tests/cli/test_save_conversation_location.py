@@ -1,6 +1,6 @@
 """Tests for /save — the conversation snapshot slash command.
 
-Regression: the old implementation wrote ``lydia_conversation_<ts>.json``
+Regression: the old implementation wrote ``alice_conversation_<ts>.json``
 to the current working directory (CWD). Users who ran /save expected the
 file to be discoverable via ``alice sessions browse``, but CWD-resident
 snapshots are not indexed in the state DB and are generally invisible.
@@ -20,15 +20,15 @@ import pytest
 
 
 @pytest.fixture
-def lydia_home(tmp_path, monkeypatch):
+def alice_home(tmp_path, monkeypatch):
     home = tmp_path / ".alice"
     home.mkdir()
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     monkeypatch.setenv("ALICE_HOME", str(home))
-    # Clear any cached lydia_home computation
+    # Clear any cached alice_home computation
     import alice_constants
-    if hasattr(alice_constants, "_lydia_home_cache"):
-        alice_constants._lydia_home_cache = None
+    if hasattr(alice_constants, "_alice_home_cache"):
+        alice_constants._alice_home_cache = None
     return home
 
 
@@ -42,7 +42,7 @@ def _make_stub_cli(history):
     )
 
 
-def test_save_conversation_writes_under_lydia_home(lydia_home, tmp_path, monkeypatch, capsys):
+def test_save_conversation_writes_under_alice_home(alice_home, tmp_path, monkeypatch, capsys):
     """Snapshot must land under ~/.alice/sessions/saved/, not CWD."""
     # Change CWD to a different directory to prove the file does NOT go there.
     work = tmp_path / "somewhere-else"
@@ -64,13 +64,13 @@ def test_save_conversation_writes_under_lydia_home(lydia_home, tmp_path, monkeyp
     cli.AliceCLI.save_conversation(stub)
 
     # File must NOT be in CWD
-    cwd_leak = list(work.glob("lydia_conversation_*.json"))
+    cwd_leak = list(work.glob("alice_conversation_*.json"))
     assert not cwd_leak, f"snapshot leaked to CWD: {cwd_leak}"
 
     # File MUST be under ~/.alice/sessions/saved/
-    saved_dir = lydia_home / "sessions" / "saved"
+    saved_dir = alice_home / "sessions" / "saved"
     assert saved_dir.is_dir(), "expected saved/ subdirectory to be created"
-    files = list(saved_dir.glob("lydia_conversation_*.json"))
+    files = list(saved_dir.glob("alice_conversation_*.json"))
     assert len(files) == 1, files
 
     payload = json.loads(files[0].read_text())
@@ -87,7 +87,7 @@ def test_save_conversation_writes_under_lydia_home(lydia_home, tmp_path, monkeyp
     assert "alice --resume 20260101_120000_abc123" in out, out
 
 
-def test_save_conversation_empty_history_does_nothing(lydia_home, capsys):
+def test_save_conversation_empty_history_does_nothing(alice_home, capsys):
     for mod in [m for m in sys.modules if m.startswith("cli") or m == "alice_constants"]:
         sys.modules.pop(mod, None)
     import cli
@@ -95,7 +95,7 @@ def test_save_conversation_empty_history_does_nothing(lydia_home, capsys):
     stub = _make_stub_cli([])
     cli.AliceCLI.save_conversation(stub)
 
-    saved_dir = lydia_home / "sessions" / "saved"
+    saved_dir = alice_home / "sessions" / "saved"
     assert not saved_dir.exists() or not list(saved_dir.iterdir())
     out = capsys.readouterr().out
     assert "No conversation to save" in out

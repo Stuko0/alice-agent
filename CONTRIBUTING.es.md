@@ -45,7 +45,7 @@ Las habilidades incluidas (en `skills/`) se envían con cada instalación de Ali
 
 Si tu habilidad es oficial y útil pero no universalmente necesaria (ej., una integración de servicio de pago, una dependencia pesada), ponla en **`optional-skills/`** — se envía con el repositorio pero no está activada por defecto. Los usuarios pueden descubrirla a través de `alice skills browse` (etiquetada como "oficial") e instalarla con `alice skills install` (sin advertencia de terceros, confianza integrada).
 
-Si tu habilidad es especializada, contribuida por la comunidad o de nicho, es mejor para un **Skills Hub** — súbela a un registro de habilidades y compártela en el [Discord de Nous Research](https://discord.gg/NousResearch). Los usuarios pueden instalarla con `alice skills install`.
+Si tu habilidad es especializada, contribuida por la comunidad o de nicho, es mejor para un **Skills Hub** — súbela a un registro de habilidades y compártela en el [Discord de Stuko](https://stuko.dev). Los usuarios pueden instalarla con `alice skills install`.
 
 ---
 
@@ -55,7 +55,7 @@ Si tu habilidad es especializada, contribuida por la comunidad o de nicho, es me
 
 Los plugins de memoria independientes:
 
-- Implementan el mismo ABC `MemoryProvider` (`agent/memory_provider.py`) — `sync_turn`, `prefetch`, `shutdown` y opcionalmente `post_setup(lydia_home, config)` para integración con el asistente de configuración
+- Implementan el mismo ABC `MemoryProvider` (`agent/memory_provider.py`) — `sync_turn`, `prefetch`, `shutdown` y opcionalmente `post_setup(alice_home, config)` para integración con el asistente de configuración
 - Usan el mismo sistema de descubrimiento — `discover_memory_providers()` los recoge desde directorios de plugins de usuario/proyecto y entry points de pip
 - Se integran con `alice memory setup` a través de `post_setup()` — sin necesidad de tocar el código base
 - Pueden registrar sus propios subcomandos CLI a través de `register_cli(subparser)` en un archivo `cli.py`
@@ -81,7 +81,7 @@ Esto no es una barra de calidad — es una decisión de acoplamiento y mantenimi
 ### Clonar e instalar
 
 ```bash
-git clone https://10.1.200.116:3000/arquant-admin/NewLydia.git
+git clone https://10.1.200.116:3000/arquant-admin/NewAlice.git
 cd alice-agent
 
 # Crear venv con Python 3.11
@@ -154,7 +154,7 @@ alice-agent/
 │   ├── main.py                   # Punto de entrada, análisis de argumentos, despacho de comandos
 │   ├── config.py                 # Gestión de configuración, migración, definiciones de variables de entorno
 │   ├── setup.py                  # Asistente de configuración interactivo
-│   ├── auth.py                   # Resolución de proveedor, OAuth, Nous Portal
+│   ├── auth.py                   # Resolución de proveedor, OAuth, validación de clave API
 │   ├── models.py                 # Listas de selección de modelos de OpenRouter
 │   ├── banner.py                 # Banner de bienvenida, arte ASCII
 │   ├── commands.py               # Registro central de comandos de barra (CommandDef), autocompletado, ayudantes del gateway
@@ -194,7 +194,7 @@ alice-agent/
 ├── skills/                   # Habilidades incluidas (copiadas a ~/.alice/skills/ en la instalación)
 ├── optional-skills/          # Habilidades opcionales oficiales (descubribles vía hub, no activadas por defecto)
 ├── tests/                    # Suite de tests
-├── website/                  # Sitio de documentación (alice-agent.nousresearch.com)
+├── website/                  # Sitio de documentación (alice-agent.stuko.dev)
 │
 ├── cli-config.yaml.example   # Configuración de ejemplo (copiada a ~/.alice/config.yaml)
 └── AGENTS.md                 # Guía de desarrollo para asistentes de codificación IA
@@ -206,7 +206,7 @@ alice-agent/
 |------|-----------|
 | `~/.alice/config.yaml` | Configuración (modelo, terminal, toolsets, compresión, etc.) |
 | `~/.alice/.env` | Claves API y secretos |
-| `~/.alice/auth.json` | Credenciales OAuth (Nous Portal) |
+| `~/.alice/auth.json` | Credenciales OAuth |
 | `~/.alice/skills/` | Todas las habilidades activas (incluidas + instaladas desde hub + creadas por el agente) |
 | `~/.alice/memories/` | Memoria persistente (MEMORY.md, USER.md) |
 | `~/.alice/state.db` | Base de datos de sesiones SQLite |
@@ -311,7 +311,7 @@ importado por `discover_builtin_tools()` en `tools/registry.py` cuando `model_to
 se carga. **No** hay una lista de importaciones manual en `model_tools.py` que mantener.
 
 Todavía debes añadir el nombre de la herramienta a la lista apropiada en `toolsets.py`
-(por ejemplo `_LYDIA_CORE_TOOLS` o un toolset dedicado); de lo contrario la herramienta
+(por ejemplo `_ALICE_CORE_TOOLS` o un toolset dedicado); de lo contrario la herramienta
 se registra pero nunca se expone al agente.
 
 Consulta `AGENTS.md` (sección **Adding New Tools**) para rutas conscientes del perfil y
@@ -581,7 +581,7 @@ test(tools): añadir tests unitarios para file_operations
 
 ## Reportar Issues
 
-- Usa [GitHub Issues](https://10.1.200.116:3000/arquant-admin/NewLydia/issues)
+- Usa [GitHub Issues](https://10.1.200.116:3000/arquant-admin/NewAlice/issues)
 - Incluye: SO, versión de Python, versión de Alice (`alice version`), traza de error completa
 - Incluye pasos para reproducir
 - Verifica los issues existentes antes de crear duplicados
@@ -591,7 +591,7 @@ test(tools): añadir tests unitarios para file_operations
 
 ## Comunidad
 
-- **Discord**: [discord.gg/NousResearch](https://discord.gg/NousResearch) — para preguntas, mostrar proyectos y compartir habilidades
+- **Discord**: [stuko.dev](https://stuko.dev) — para preguntas, mostrar proyectos y compartir habilidades
 - **GitHub Discussions**: Para propuestas de diseño y discusiones de arquitectura
 - **Skills Hub**: Sube habilidades especializadas a un registro y compártelas con la comunidad
 

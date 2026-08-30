@@ -66,7 +66,7 @@ Watch a GitHub repo (set `GITHUB_TOKEN` in `${ALICE_HOME:-~/.alice}/.env` to avo
 
 ```bash
 python $ALICE_HOME/skills/devops/watchers/scripts/watch_github.py \
-  --name alice-issues --repo NousResearch/alice-agent --scope issues
+  --name alice-issues --repo Stuko0/alice-agent --scope issues
 ```
 
 Poll an arbitrary JSON API:

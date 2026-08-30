@@ -446,7 +446,7 @@ class TestGatewayRuntimeStatus:
         for cmdline in (
             "alice -p coder gateway run --replace",
             "/opt/alice/.venv/bin/alice --profile coder gateway run --replace",
-            "lydia_home=/opt/data/profiles/coder alice gateway run --replace",
+            "alice_home=/opt/data/profiles/coder alice gateway run --replace",
         ):
             monkeypatch.setattr(status, "_read_process_cmdline", lambda pid, c=cmdline: c)
             assert (
@@ -689,7 +689,7 @@ class TestScopedLocks:
         assert lock_path.read_text(encoding="utf-8") == "\n"
 
     def test_acquire_scoped_lock_rejects_live_other_process(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("LYDIA_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
+        monkeypatch.setenv("ALICE_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
         lock_path = tmp_path / "locks" / "telegram-bot-token-2bb80d537b1da3e3.lock"
         lock_path.parent.mkdir(parents=True, exist_ok=True)
         lock_path.write_text(json.dumps({
@@ -716,7 +716,7 @@ class TestScopedLocks:
         succeeds) but belongs to a completely different program.  The lock
         must be treated as stale.
         """
-        monkeypatch.setenv("LYDIA_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
+        monkeypatch.setenv("ALICE_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
         lock_path = tmp_path / "locks" / "telegram-bot-token-2bb80d537b1da3e3.lock"
         lock_path.parent.mkdir(parents=True, exist_ok=True)
         lock_path.write_text(json.dumps({
@@ -752,7 +752,7 @@ class TestScopedLocks:
         lock.  Fall back to the lock record's own argv — written by the
         gateway at startup — before declaring the lock stale.
         """
-        monkeypatch.setenv("LYDIA_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
+        monkeypatch.setenv("ALICE_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
         lock_path = tmp_path / "locks" / "telegram-bot-token-2bb80d537b1da3e3.lock"
         lock_path.parent.mkdir(parents=True, exist_ok=True)
         lock_path.write_text(json.dumps({
@@ -776,7 +776,7 @@ class TestScopedLocks:
 
     def test_acquire_scoped_lock_keeps_lock_when_pid_reused_by_gateway(self, tmp_path, monkeypatch):
         """When start_time is None but the live PID still looks like a gateway, keep the lock."""
-        monkeypatch.setenv("LYDIA_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
+        monkeypatch.setenv("ALICE_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
         lock_path = tmp_path / "locks" / "telegram-bot-token-2bb80d537b1da3e3.lock"
         lock_path.parent.mkdir(parents=True, exist_ok=True)
         lock_path.write_text(json.dumps({
@@ -796,7 +796,7 @@ class TestScopedLocks:
         assert existing["pid"] == 99999
 
     def test_acquire_scoped_lock_replaces_stale_record(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("LYDIA_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
+        monkeypatch.setenv("ALICE_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
         lock_path = tmp_path / "locks" / "telegram-bot-token-2bb80d537b1da3e3.lock"
         lock_path.parent.mkdir(parents=True, exist_ok=True)
         lock_path.write_text(json.dumps({
@@ -817,7 +817,7 @@ class TestScopedLocks:
 
     def test_acquire_scoped_lock_recovers_empty_lock_file(self, tmp_path, monkeypatch):
         """Empty lock file (0 bytes) left by a crashed process should be treated as stale."""
-        monkeypatch.setenv("LYDIA_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
+        monkeypatch.setenv("ALICE_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
         lock_path = tmp_path / "locks" / "slack-app-token-2bb80d537b1da3e3.lock"
         lock_path.parent.mkdir(parents=True, exist_ok=True)
         lock_path.write_text("")  # simulate crash between O_CREAT and json.dump
@@ -831,7 +831,7 @@ class TestScopedLocks:
 
     def test_acquire_scoped_lock_recovers_corrupt_lock_file(self, tmp_path, monkeypatch):
         """Lock file with invalid JSON should be treated as stale."""
-        monkeypatch.setenv("LYDIA_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
+        monkeypatch.setenv("ALICE_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
         lock_path = tmp_path / "locks" / "slack-app-token-2bb80d537b1da3e3.lock"
         lock_path.parent.mkdir(parents=True, exist_ok=True)
         lock_path.write_text("{truncated")  # simulate partial write
@@ -843,7 +843,7 @@ class TestScopedLocks:
         assert payload["pid"] == os.getpid()
 
     def test_release_scoped_lock_only_removes_current_owner(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("LYDIA_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
+        monkeypatch.setenv("ALICE_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
 
         acquired, _ = status.acquire_scoped_lock("telegram-bot-token", "secret", metadata={"platform": "telegram"})
         assert acquired is True
@@ -854,7 +854,7 @@ class TestScopedLocks:
         assert not lock_path.exists()
 
     def test_release_all_scoped_locks_can_target_single_owner(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("LYDIA_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
+        monkeypatch.setenv("ALICE_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
         lock_dir = tmp_path / "locks"
         lock_dir.mkdir(parents=True, exist_ok=True)
 
@@ -881,7 +881,7 @@ class TestScopedLocks:
         assert other_lock.exists()
 
     def test_release_all_scoped_locks_skips_pid_reuse_mismatch(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("LYDIA_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
+        monkeypatch.setenv("ALICE_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
         lock_dir = tmp_path / "locks"
         lock_dir.mkdir(parents=True, exist_ok=True)
 
@@ -908,7 +908,7 @@ class TestScopedLocks:
         PID and start_time as a previous gateway. The start_time check passes,
         but the live process is not a gateway — the lock must be evicted.
         """
-        monkeypatch.setenv("LYDIA_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
+        monkeypatch.setenv("ALICE_GATEWAY_LOCK_DIR", str(tmp_path / "locks"))
         lock_path = tmp_path / "locks" / "telegram-bot-token-2bb80d537b1da3e3.lock"
         lock_path.parent.mkdir(parents=True, exist_ok=True)
         lock_path.write_text(json.dumps({
@@ -1135,7 +1135,7 @@ class TestTakeoverMarker:
         # We are not the target — must NOT consume as planned
         assert result is False
 
-    def test_write_marker_records_replacer_lydia_home(self, tmp_path, monkeypatch):
+    def test_write_marker_records_replacer_alice_home(self, tmp_path, monkeypatch):
         """The marker stamps the replacer's ALICE_HOME for cross-profile guard (#29092)."""
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
         monkeypatch.setattr(status, "_get_process_start_time", lambda pid: 42)
@@ -1143,7 +1143,7 @@ class TestTakeoverMarker:
         status.write_takeover_marker(target_pid=12345)
 
         payload = json.loads((tmp_path / ".gateway-takeover.json").read_text())
-        assert payload["replacer_lydia_home"] == str(tmp_path)
+        assert payload["replacer_alice_home"] == str(tmp_path)
 
     def test_consume_rejects_marker_from_different_profile(self, tmp_path, monkeypatch):
         """Regression (#29092): a marker written by a gateway under a DIFFERENT
@@ -1162,7 +1162,7 @@ class TestTakeoverMarker:
             "target_pid": os.getpid(),
             "target_start_time": 100,
             "replacer_pid": 99999,
-            "replacer_lydia_home": str(tmp_path / "profiles" / "other"),
+            "replacer_alice_home": str(tmp_path / "profiles" / "other"),
             "written_at": datetime.now(timezone.utc).isoformat(),
         }))
 
@@ -1172,9 +1172,9 @@ class TestTakeoverMarker:
         # Left in place for the correct profile, not griefed away.
         assert marker_path.exists()
 
-    def test_consume_accepts_legacy_marker_without_lydia_home(self, tmp_path, monkeypatch):
+    def test_consume_accepts_legacy_marker_without_alice_home(self, tmp_path, monkeypatch):
         """Back-compat (#29092): markers written by older Alice versions have no
-        ``replacer_lydia_home`` field; an absent field is treated as same-home so
+        ``replacer_alice_home`` field; an absent field is treated as same-home so
         single-profile setups and mixed old/new deployments keep working.
         """
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))

@@ -74,13 +74,13 @@ If the docs fetch fails or times out, continue with the local skill and live API
 - Optional Drive token variable: `$HERENOW_DRIVE_TOKEN`
 - Optional credentials file: `~/.herenow/credentials`
 - Skill helper paths:
-  - `${LYDIA_SKILL_DIR}/scripts/publish.sh` for publishing sites
-  - `${LYDIA_SKILL_DIR}/scripts/drive.sh` for private Drive storage
+  - `${ALICE_SKILL_DIR}/scripts/publish.sh` for publishing sites
+  - `${ALICE_SKILL_DIR}/scripts/drive.sh` for private Drive storage
 
 ## Create a site
 
 ```bash
-PUBLISH="${LYDIA_SKILL_DIR}/scripts/publish.sh"
+PUBLISH="${ALICE_SKILL_DIR}/scripts/publish.sh"
 bash "$PUBLISH" {file-or-dir} --client alice
 ```
 
@@ -98,7 +98,7 @@ You can also publish raw files without any HTML. Single files get a rich auto-vi
 ## Update an existing site
 
 ```bash
-PUBLISH="${LYDIA_SKILL_DIR}/scripts/publish.sh"
+PUBLISH="${ALICE_SKILL_DIR}/scripts/publish.sh"
 bash "$PUBLISH" {file-or-dir} --slug {slug} --client alice
 ```
 
@@ -113,7 +113,7 @@ Use a Drive when the user wants private cloud storage for agent files: documents
 Every signed-in account has a default Drive named `My Drive`.
 
 ```bash
-DRIVE="${LYDIA_SKILL_DIR}/scripts/drive.sh"
+DRIVE="${ALICE_SKILL_DIR}/scripts/drive.sh"
 bash "$DRIVE" default
 bash "$DRIVE" ls "My Drive"
 bash "$DRIVE" put "My Drive" notes/today.md --from ./notes/today.md

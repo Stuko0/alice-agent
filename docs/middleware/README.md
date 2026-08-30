@@ -154,7 +154,7 @@ def register(ctx):
 def tag_llm_request(**kwargs):
     request = dict(kwargs["request"])
     extra_body = dict(request.get("extra_body") or {})
-    extra_body.setdefault("metadata", {})["lydia_middleware_demo"] = True
+    extra_body.setdefault("metadata", {})["alice_middleware_demo"] = True
     request["extra_body"] = extra_body
     return {
         "request": request,

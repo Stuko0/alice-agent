@@ -30,7 +30,7 @@ def _seed_one_function(text: str) -> str:
 
 def _path_guard_functions(text: str) -> str:
     start = text.index("path_has_symlink_component() {")
-    end = text.index("\n\nchown_lydia_tree() {", start)
+    end = text.index("\n\nchown_alice_tree() {", start)
     return text[start:end]
 
 
@@ -57,7 +57,7 @@ def test_seed_one_refuses_symlinked_destinations(
         "set -e\n"
         f'ALICE_HOME="{home}"\n'
         f'INSTALL_DIR="{install_dir}"\n'
-        "as_lydia() { \"$@\"; }\n"
+        "as_alice() { \"$@\"; }\n"
         f"{_path_guard_functions(stage2_text)}\n"
         f"{_seed_one_function(stage2_text)}\n"
         'seed_one ".env" ".env.example"\n'
@@ -96,7 +96,7 @@ def test_seed_one_is_quiet_for_existing_symlinked_files(
         "set -e\n"
         f'ALICE_HOME="{home}"\n'
         f'INSTALL_DIR="{install_dir}"\n'
-        "as_lydia() { \"$@\"; }\n"
+        "as_alice() { \"$@\"; }\n"
         f"{_path_guard_functions(stage2_text)}\n"
         f"{_seed_one_function(stage2_text)}\n"
         'seed_one ".env" ".env.example"\n'

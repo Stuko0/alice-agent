@@ -81,7 +81,7 @@ python $ALICE_HOME/skills/devops/watchers/scripts/watch_rss.py \
 
 ```bash
 python $ALICE_HOME/skills/devops/watchers/scripts/watch_github.py \
-  --name alice-issues --repo NousResearch/alice-agent --scope issues
+  --name alice-issues --repo Stuko0/alice-agent --scope issues
 ```
 
 轮询任意 JSON API：

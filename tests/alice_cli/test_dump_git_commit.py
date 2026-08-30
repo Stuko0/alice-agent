@@ -3,7 +3,7 @@
 ``alice dump`` prints the running commit so support bug reports identify the
 exact version.  Source installs resolve it live via ``git rev-parse``; the
 published Docker image excludes ``.git`` and falls back to the baked SHA
-written by the Dockerfile's ``LYDIA_GIT_SHA`` build-arg.
+written by the Dockerfile's ``ALICE_GIT_SHA`` build-arg.
 
 These tests cover both paths plus the failure modes (no git, no baked file).
 """

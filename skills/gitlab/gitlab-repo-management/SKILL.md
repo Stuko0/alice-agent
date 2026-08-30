@@ -27,8 +27,8 @@ if command -v glab &>/dev/null && glab auth status &>/dev/null; then
 else
   AUTH="git"
   if [ -z "$GITLAB_TOKEN" ]; then
-    if _lydia_env="${ALICE_HOME:-$HOME/.alice}/.env"; [ -f "$_lydia_env" ] && grep -q "^GITLAB_TOKEN=" "$_lydia_env"; then
-      GITLAB_TOKEN=$(grep "^GITLAB_TOKEN=" "$_lydia_env" | head -1 | cut -d= -f2 | tr -d '\n\r')
+    if _alice_env="${ALICE_HOME:-$HOME/.alice}/.env"; [ -f "$_alice_env" ] && grep -q "^GITLAB_TOKEN=" "$_alice_env"; then
+      GITLAB_TOKEN=$(grep "^GITLAB_TOKEN=" "$_alice_env" | head -1 | cut -d= -f2 | tr -d '\n\r')
     elif grep -q "github.com" ~/.git-credentials 2>/dev/null; then
       GITLAB_TOKEN=$(grep "${GITLAB_HOST:-gitlab\.com}" ~/.git-credentials 2>/dev/null | head -1 | sed 's|https://[^:]*:\([^@]*\)@.*|\1|')
     fi

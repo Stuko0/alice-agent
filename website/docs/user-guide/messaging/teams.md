@@ -105,7 +105,7 @@ TEAMS_ALLOWED_USERS=<your-aad-object-id>
 ## Step 5: Start the Gateway
 
 ```bash
-LYDIA_UID=$(id -u) LYDIA_GID=$(id -g) docker compose up -d gateway
+ALICE_UID=$(id -u) ALICE_GID=$(id -g) docker compose up -d gateway
 ```
 
 This starts the gateway. The default webhook port is `3978` (override with `TEAMS_PORT`). Check that it's running:

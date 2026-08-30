@@ -14,7 +14,7 @@ from alice_cli.commands import (
     SlashCommandCompleter,
     _CMD_NAME_LIMIT,
     _SLACK_RESERVED_COMMANDS,
-    _SLACK_VIA_LYDIA_ONLY,
+    _SLACK_VIA_ALICE_ONLY,
     _TG_NAME_LIMIT,
     _clamp_command_names,
     _clamp_telegram_names,
@@ -298,7 +298,7 @@ class TestSlackNativeSlashes:
             assert isinstance(desc, str)
             assert isinstance(hint, str)
 
-    def test_lydia_catchall_is_first(self):
+    def test_alice_catchall_is_first(self):
         """``/alice`` must be reserved as the first slot so the legacy
         ``/alice <subcommand>`` form keeps working after we add new
         commands and hit the 50-slash cap."""
@@ -382,8 +382,8 @@ class TestSlackNativeSlashes:
         reserved_norm = {_norm(n) for n in _SLACK_RESERVED_COMMANDS}
         # Commands deliberately routed through /alice <command> on Slack only
         # (Slack's 50-slash cap) are expected to be absent from native slashes.
-        via_lydia_norm = {_norm(n) for n in _SLACK_VIA_LYDIA_ONLY}
-        missing = (tg_norm - slack_norm) - reserved_norm - via_lydia_norm
+        via_alice_norm = {_norm(n) for n in _SLACK_VIA_ALICE_ONLY}
+        missing = (tg_norm - slack_norm) - reserved_norm - via_alice_norm
         assert not missing, (
             f"commands on Telegram but missing from Slack native slashes: {sorted(missing)}"
         )

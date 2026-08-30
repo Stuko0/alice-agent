@@ -39,7 +39,7 @@ from unittest.mock import patch, MagicMock
 from tools.code_execution_tool import (
     SANDBOX_ALLOWED_TOOLS,
     execute_code,
-    generate_lydia_tools_module,
+    generate_alice_tools_module,
     check_sandbox_requirements,
     build_execute_code_schema,
     EXECUTE_CODE_SCHEMA,
@@ -79,54 +79,54 @@ class TestSandboxRequirements(unittest.TestCase):
         self.assertIn("code", EXECUTE_CODE_SCHEMA["parameters"]["required"])
 
 
-class TestLydiaToolsGeneration(unittest.TestCase):
+class TestAliceToolsGeneration(unittest.TestCase):
     def test_generates_all_allowed_tools(self):
-        src = generate_lydia_tools_module(list(SANDBOX_ALLOWED_TOOLS))
+        src = generate_alice_tools_module(list(SANDBOX_ALLOWED_TOOLS))
         for tool in SANDBOX_ALLOWED_TOOLS:
             self.assertIn(f"def {tool}(", src)
 
     def test_generates_subset(self):
-        src = generate_lydia_tools_module(["terminal", "web_search"])
+        src = generate_alice_tools_module(["terminal", "web_search"])
         self.assertIn("def terminal(", src)
         self.assertIn("def web_search(", src)
         self.assertNotIn("def read_file(", src)
 
     def test_empty_list_generates_nothing(self):
-        src = generate_lydia_tools_module([])
+        src = generate_alice_tools_module([])
         self.assertNotIn("def terminal(", src)
         self.assertIn("def _call(", src)  # infrastructure still present
 
     def test_non_allowed_tools_ignored(self):
-        src = generate_lydia_tools_module(["vision_analyze", "terminal"])
+        src = generate_alice_tools_module(["vision_analyze", "terminal"])
         self.assertIn("def terminal(", src)
         self.assertNotIn("def vision_analyze(", src)
 
     def test_rpc_infrastructure_present(self):
-        src = generate_lydia_tools_module(["terminal"])
-        self.assertIn("LYDIA_RPC_SOCKET", src)
+        src = generate_alice_tools_module(["terminal"])
+        self.assertIn("ALICE_RPC_SOCKET", src)
         self.assertIn("AF_UNIX", src)
         self.assertIn("def _connect(", src)
         self.assertIn("def _call(", src)
 
     def test_convenience_helpers_present(self):
         """Verify json_parse, shell_quote, and retry helpers are generated."""
-        src = generate_lydia_tools_module(["terminal"])
+        src = generate_alice_tools_module(["terminal"])
         self.assertIn("def json_parse(", src)
         self.assertIn("def shell_quote(", src)
         self.assertIn("def retry(", src)
         self.assertIn("import json, os, socket, shlex, threading, time", src)
 
     def test_file_transport_uses_tempfile_fallback_for_rpc_dir(self):
-        src = generate_lydia_tools_module(["terminal"], transport="file")
+        src = generate_alice_tools_module(["terminal"], transport="file")
         self.assertIn("import json, os, shlex, tempfile, threading, time", src)
-        self.assertIn("os.path.join(tempfile.gettempdir(), \"lydia_rpc\")", src)
-        self.assertNotIn('os.environ.get("LYDIA_RPC_DIR", "/tmp/lydia_rpc")', src)
+        self.assertIn("os.path.join(tempfile.gettempdir(), \"alice_rpc\")", src)
+        self.assertNotIn('os.environ.get("ALICE_RPC_DIR", "/tmp/alice_rpc")', src)
 
     def test_uds_transport_serializes_concurrent_calls(self):
         """Regression: UDS _call() must hold a lock across send+recv so that
         concurrent tool calls from multiple threads don't interleave on the
         shared socket and receive each other's responses."""
-        src = generate_lydia_tools_module(["terminal"], transport="uds")
+        src = generate_alice_tools_module(["terminal"], transport="uds")
         self.assertIn("_call_lock = threading.Lock()", src)
         self.assertIn("with _call_lock:", src)
 
@@ -134,7 +134,7 @@ class TestLydiaToolsGeneration(unittest.TestCase):
         """Regression: file transport _call() must allocate `_seq` under a
         lock, otherwise concurrent threads can pick the same seq and clobber
         each other's request files."""
-        src = generate_lydia_tools_module(["terminal"], transport="file")
+        src = generate_alice_tools_module(["terminal"], transport="file")
         self.assertIn("_seq_lock = threading.Lock()", src)
         self.assertIn("with _seq_lock:", src)
 
@@ -169,13 +169,13 @@ class TestExecuteCodeRemoteTempDir(unittest.TestCase):
         mkdir_cmd = env.commands[1][0]
         run_cmd = next(cmd for cmd, _, _ in env.commands if "python3 script.py" in cmd)
         cleanup_cmd = env.commands[-1][0]
-        self.assertIn("mkdir -p /data/data/com.termux/files/usr/tmp/lydia_exec_", mkdir_cmd)
-        self.assertIn("LYDIA_RPC_DIR=/data/data/com.termux/files/usr/tmp/lydia_exec_", run_cmd)
-        self.assertIn("rm -rf /data/data/com.termux/files/usr/tmp/lydia_exec_", cleanup_cmd)
-        self.assertNotIn("mkdir -p /tmp/lydia_exec_", mkdir_cmd)
+        self.assertIn("mkdir -p /data/data/com.termux/files/usr/tmp/alice_exec_", mkdir_cmd)
+        self.assertIn("ALICE_RPC_DIR=/data/data/com.termux/files/usr/tmp/alice_exec_", run_cmd)
+        self.assertIn("rm -rf /data/data/com.termux/files/usr/tmp/alice_exec_", cleanup_cmd)
+        self.assertNotIn("mkdir -p /tmp/alice_exec_", mkdir_cmd)
 
     def test_timezone_shell_quoted_in_remote_execution(self):
-        """LYDIA_TIMEZONE must be shell-quoted in remote env_prefix to prevent injection."""
+        """ALICE_TIMEZONE must be shell-quoted in remote env_prefix to prevent injection."""
         class FakeEnv:
             def __init__(self):
                 self.commands = []
@@ -203,7 +203,7 @@ class TestExecuteCodeRemoteTempDir(unittest.TestCase):
              patch("tools.code_execution_tool._ship_file_to_remote"), \
              patch("tools.code_execution_tool.threading.Thread",
                    return_value=fake_thread), \
-             patch.dict(os.environ, {"LYDIA_TIMEZONE": malicious_tz}):
+             patch.dict(os.environ, {"ALICE_TIMEZONE": malicious_tz}):
             result = json.loads(_execute_remote("print('hello')", "task-1", ["terminal"]))
 
         self.assertEqual(result["status"], "success")
@@ -577,7 +577,7 @@ class TestStubSchemaDrift(unittest.TestCase):
     def test_generated_module_accepts_all_params(self):
         """The generated alice_tools.py module should accept all current params
         without TypeError when called with keyword arguments."""
-        src = generate_lydia_tools_module(list(SANDBOX_ALLOWED_TOOLS))
+        src = generate_alice_tools_module(list(SANDBOX_ALLOWED_TOOLS))
 
         # Compile the generated module to check for syntax errors
         compile(src, "alice_tools.py", "exec")
@@ -788,9 +788,9 @@ class TestEnvVarFiltering(unittest.TestCase):
         child_env = self._get_child_env()
         self.assertIn("HOME", child_env)
 
-    def test_lydia_rpc_socket_injected(self):
+    def test_alice_rpc_socket_injected(self):
         child_env = self._get_child_env()
-        self.assertIn("LYDIA_RPC_SOCKET", child_env)
+        self.assertIn("ALICE_RPC_SOCKET", child_env)
 
     def test_pythondontwritebytecode_set(self):
         child_env = self._get_child_env()
@@ -799,7 +799,7 @@ class TestEnvVarFiltering(unittest.TestCase):
     def test_timezone_injected_when_set(self):
         env_backup = os.environ.copy()
         try:
-            os.environ["LYDIA_TIMEZONE"] = "America/New_York"
+            os.environ["ALICE_TIMEZONE"] = "America/New_York"
             child_env = self._get_child_env()
             self.assertEqual(child_env.get("TZ"), "America/New_York")
         finally:
@@ -809,7 +809,7 @@ class TestEnvVarFiltering(unittest.TestCase):
     def test_timezone_not_set_when_empty(self):
         env_backup = os.environ.copy()
         try:
-            os.environ.pop("LYDIA_TIMEZONE", None)
+            os.environ.pop("ALICE_TIMEZONE", None)
             child_env = self._get_child_env()
             if "TZ" in child_env:
                 self.assertNotEqual(child_env["TZ"], "")

@@ -21,9 +21,9 @@ alice plugins enable observability/langfuse
 Set these in `~/.alice/.env` (or via `alice native`):
 
 ```bash
-LYDIA_LANGFUSE_PUBLIC_KEY=pk-lf-...
-LYDIA_LANGFUSE_SECRET_KEY=sk-lf-...
-LYDIA_LANGFUSE_BASE_URL=https://cloud.langfuse.com   # or your self-hosted URL
+ALICE_LANGFUSE_PUBLIC_KEY=pk-lf-...
+ALICE_LANGFUSE_SECRET_KEY=sk-lf-...
+ALICE_LANGFUSE_BASE_URL=https://cloud.langfuse.com   # or your self-hosted URL
 ```
 
 Without the SDK or credentials the hooks no-op silently — the plugin fails
@@ -39,11 +39,11 @@ alice chat -q "hello"              # then check Langfuse for a "Alice turn" trac
 ## Optional tuning
 
 ```bash
-LYDIA_LANGFUSE_ENV=production       # environment tag
-LYDIA_LANGFUSE_RELEASE=v1.0.0       # release tag
-LYDIA_LANGFUSE_SAMPLE_RATE=0.5      # sample 50% of traces
-LYDIA_LANGFUSE_MAX_CHARS=12000      # max chars per field (default: 12000)
-LYDIA_LANGFUSE_DEBUG=true           # verbose plugin logging
+ALICE_LANGFUSE_ENV=production       # environment tag
+ALICE_LANGFUSE_RELEASE=v1.0.0       # release tag
+ALICE_LANGFUSE_SAMPLE_RATE=0.5      # sample 50% of traces
+ALICE_LANGFUSE_MAX_CHARS=12000      # max chars per field (default: 12000)
+ALICE_LANGFUSE_DEBUG=true           # verbose plugin logging
 ```
 
 ## Disable

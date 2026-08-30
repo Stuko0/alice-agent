@@ -29,7 +29,7 @@ alice [global-options] <command> [subcommand/options]
 | `--pass-session-id` | 在 agent 的 system prompt（系统提示词）中包含会话 ID。 |
 | `--ignore-user-config` | 忽略 `~/.alice/config.yaml`，回退到内置默认值。`.env` 中的凭据仍会加载。 |
 | `--ignore-rules` | 跳过 `AGENTS.md`、`SOUL.md`、`.cursorrules`、memory（记忆）和预加载 skill 的自动注入。 |
-| `--tui` | 启动 [TUI](../user-guide/tui.md) 而非经典 CLI。等同于 `LYDIA_TUI=1`。 |
+| `--tui` | 启动 [TUI](../user-guide/tui.md) 而非经典 CLI。等同于 `ALICE_TUI=1`。 |
 | `--dev` | 与 `--tui` 配合使用：通过 `tsx` 直接运行 TypeScript 源码而非预构建包（供 TUI 贡献者使用）。 |
 
 ## 顶级命令
@@ -138,13 +138,13 @@ answer=$(alice -z "summarize this" < /path/to/file.txt)
 
 | 标志 | 等效环境变量 | 用途 |
 |---|---|---|
-| `-m` / `--model <model>` | `LYDIA_INFERENCE_MODEL` | 覆盖本次运行的模型 |
+| `-m` / `--model <model>` | `ALICE_INFERENCE_MODEL` | 覆盖本次运行的模型 |
 | `--provider <provider>` | _(无)_ | 覆盖本次运行的 provider |
 
 ```bash
 alice -z "…" --provider openrouter --model openai/gpt-5.5
 # 或：
-LYDIA_INFERENCE_MODEL=anthropic/claude-sonnet-4.6 alice -z "…"
+ALICE_INFERENCE_MODEL=anthropic/claude-sonnet-4.6 alice -z "…"
 ```
 
 相同的 agent、相同的工具、相同的 skill——只是剥离了所有交互式/装饰性层。如果你还需要在记录中包含工具输出，请改用 `alice chat -q`；`-z` 专门用于"我只需要最终答案"的场景。
@@ -224,7 +224,7 @@ alice gateway <subcommand>
 | 选项 | 说明 |
 |--------|-------------|
 | `--all` | 在 `start` / `restart` / `stop` 时：对**每个 profile** 的 gateway 执行操作，而不仅限于活跃的 `ALICE_HOME`。当你并行运行多个 profile 并希望在 `alice update` 后全部重启时很有用。 |
-| `--no-supervise` | 在 `run` 时：在 s6-overlay Docker 镜像内部，跳过 s6 自动监管，退回到 pre-s6 前台语义——gateway 作为容器主进程运行，无自动重启。在 s6 镜像之外为空操作。等同于设置 `LYDIA_GATEWAY_NO_SUPERVISE=1`。 |
+| `--no-supervise` | 在 `run` 时：在 s6-overlay Docker 镜像内部，跳过 s6 自动监管，退回到 pre-s6 前台语义——gateway 作为容器主进程运行，无自动重启。在 s6 镜像之外为空操作。等同于设置 `ALICE_GATEWAY_NO_SUPERVISE=1`。 |
 
 :::tip WSL 用户
 使用 `alice gateway run` 而非 `alice gateway start`——WSL 的 systemd 支持不稳定。用 tmux 包裹以保持持久运行：`tmux new -s alice 'alice gateway run'`。详见 [WSL FAQ](/reference/faq#wsl-gateway-keeps-disconnecting-or-alice-gateway-start-fails)。
@@ -292,7 +292,7 @@ alice portal [status|open|tools]
 | 子命令 | 说明 |
 |------------|-------------|
 | `status`（默认） | Portal 认证状态 + 每个工具的 Tool Gateway 路由摘要。不带子命令时也会显示。 |
-| `open` | 在默认浏览器中打开 `portal.nousresearch.com/manage-subscription`。 |
+| `open` | 在默认浏览器中打开 `stuko.dev/manage-subscription`。 |
 | `tools` | 列出每个 Tool Gateway 合作伙伴（Firecrawl、FAL、OpenAI TTS、Browser Use、Modal）及哪些通过 Nous 路由。 |
 
 关于 gateway 本身的配置，请参阅 [Tool Gateway](../user-guide/features/tool-gateway.md)。关于一键设置路径，请参阅上方的 `alice setup --portal`。
@@ -391,9 +391,9 @@ alice kanban [--board <slug>] <action> [options]
 
 | 标志 | 用途 |
 |------|---------|
-| `--board <slug>` | 操作特定看板。默认为当前看板（通过 `alice kanban boards switch`、`LYDIA_KANBAN_BOARD` 环境变量或 `default` 设置）。 |
+| `--board <slug>` | 操作特定看板。默认为当前看板（通过 `alice kanban boards switch`、`ALICE_KANBAN_BOARD` 环境变量或 `default` 设置）。 |
 
-**这是人工/脚本操作界面。** 调度器生成的 agent worker 通过专用的 `kanban_*` [toolset](/user-guide/features/kanban#how-workers-interact-with-the-board)（`kanban_show`、`kanban_complete`、`kanban_block`、`kanban_create`、`kanban_link`、`kanban_comment`、`kanban_heartbeat`；编排器 profile 还可使用 `kanban_list` 和 `kanban_unblock`）驱动看板，而非调用 `alice kanban`。Worker 的环境中固定了 `LYDIA_KANBAN_BOARD`，因此物理上无法看到其他看板。
+**这是人工/脚本操作界面。** 调度器生成的 agent worker 通过专用的 `kanban_*` [toolset](/user-guide/features/kanban#how-workers-interact-with-the-board)（`kanban_show`、`kanban_complete`、`kanban_block`、`kanban_create`、`kanban_link`、`kanban_comment`、`kanban_heartbeat`；编排器 profile 还可使用 `kanban_list` 和 `kanban_unblock`）驱动看板，而非调用 `alice kanban`。Worker 的环境中固定了 `ALICE_KANBAN_BOARD`，因此物理上无法看到其他看板。
 
 | 操作 | 用途 |
 |--------|---------|
@@ -440,7 +440,7 @@ alice kanban boards rm atm10-server
 alice kanban boards rm atm10-server --delete
 ```
 
-看板解析顺序（优先级从高到低）：`--board <slug>` 标志 → `LYDIA_KANBAN_BOARD` 环境变量 → `~/.alice/kanban/current` 文件 → `default`。
+看板解析顺序（优先级从高到低）：`--board <slug>` 标志 → `ALICE_KANBAN_BOARD` 环境变量 → `~/.alice/kanban/current` 文件 → `default`。
 
 所有操作也可作为 gateway 中的斜杠命令使用（`/kanban …`），参数界面相同——包括 `boards` 子命令和 `--board` 标志。
 
@@ -526,7 +526,7 @@ os:               Linux 6.14.0-37-generic x86_64
 python:           3.11.14
 openai_sdk:       2.24.0
 profile:          default
-lydia_home:      ~/.alice
+alice_home:      ~/.alice
 model:            anthropic/claude-opus-4.6
 provider:         openrouter
 terminal:         local

@@ -13,7 +13,7 @@ import type {
   DesktopUpdateStatus,
   DesktopVersionInfo
 } from '@/global'
-import { checkLydiaUpdate, getActionStatus, updateLydia } from '@/alice'
+import { checkAliceUpdate, getActionStatus, updateAlice } from '@/alice'
 import { translateNow } from '@/i18n'
 import { persistString, storedString } from '@/lib/storage'
 import { dismissNotification, notify } from '@/store/notifications'
@@ -136,7 +136,7 @@ export function reportBackendContract(contract: number | undefined): void {
 
   notify({
     action: {
-      label: translateNow('notifications.updateLydia'),
+      label: translateNow('notifications.updateAlice'),
       onClick: () => {
         snoozeSkewToast()
         void applyBackendUpdate()
@@ -227,7 +227,7 @@ export async function refreshDesktopVersion(): Promise<DesktopVersionInfo | null
   // mid-reload, or the bridge not yet ready on first paint) would surface
   // as an unhandled promise rejection in the renderer. Swallow it.
   try {
-    const next = await window.lydiaDesktop?.getVersion?.()
+    const next = await window.aliceDesktop?.getVersion?.()
 
     if (next) {
       $desktopVersion.set(next)
@@ -265,7 +265,7 @@ export async function checkBackendUpdates(): Promise<DesktopUpdateStatus | null>
   $backendUpdateChecking.set(true)
 
   try {
-    const status = mapBackendCheck(await checkLydiaUpdate(true))
+    const status = mapBackendCheck(await checkAliceUpdate(true))
     $backendUpdateStatus.set(status)
     maybeNotifyUpdateAvailable(status)
 
@@ -287,7 +287,7 @@ export async function checkBackendUpdates(): Promise<DesktopUpdateStatus | null>
 }
 
 export async function checkUpdates(): Promise<DesktopUpdateStatus | null> {
-  const bridge = window.lydiaDesktop?.updates
+  const bridge = window.aliceDesktop?.updates
 
   if (!bridge || $updateChecking.get()) {
     return $updateStatus.get()
@@ -322,7 +322,7 @@ export async function checkUpdates(): Promise<DesktopUpdateStatus | null> {
 }
 
 export async function applyUpdates(opts: DesktopUpdateApplyOptions = {}): Promise<DesktopUpdateApplyResult> {
-  const bridge = window.lydiaDesktop?.updates
+  const bridge = window.aliceDesktop?.updates
 
   if (!bridge) {
     return { ok: false, error: 'unavailable', message: 'Desktop bridge unavailable.' }
@@ -428,7 +428,7 @@ async function waitForBackendReturn(): Promise<boolean> {
     await new Promise(resolve => globalThis.setTimeout(resolve, BACKEND_RETURN_POLL_MS))
 
     try {
-      await checkLydiaUpdate()
+      await checkAliceUpdate()
 
       return true
     } catch {
@@ -490,7 +490,7 @@ export async function applyBackendUpdate(): Promise<DesktopUpdateApplyResult> {
   })
 
   try {
-    const started = await updateLydia()
+    const started = await updateAlice()
 
     if (!started.ok) {
       const message = (started as { message?: string }).message || translateNow('updates.applyStatus.notAvailable')
@@ -604,7 +604,7 @@ export function startUpdatePoller(): void {
     return
   }
 
-  const bridge = window.lydiaDesktop?.updates
+  const bridge = window.aliceDesktop?.updates
 
   if (!bridge) {
     return

@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from alice_cli.auth import AuthError
-from alice_cli import main as lydia_main
+from alice_cli import main as alice_main
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +217,7 @@ def test_cli_turn_routing_uses_primary_when_disabled(monkeypatch):
 def test_cli_prefers_config_provider_over_stale_env_override(monkeypatch):
     cli = _import_cli()
 
-    monkeypatch.setenv("LYDIA_INFERENCE_PROVIDER", "openrouter")
+    monkeypatch.setenv("ALICE_INFERENCE_PROVIDER", "openrouter")
     config_copy = dict(cli.CLI_CONFIG)
     model_copy = dict(config_copy.get("model", {}))
     model_copy["provider"] = "custom"
@@ -300,7 +300,7 @@ def test_model_flow_nous_prints_subscription_guidance_without_mutating_explicit_
     monkeypatch.setattr("alice_cli.auth._save_model_choice", lambda model: None)
     monkeypatch.setattr("alice_cli.auth._update_config_for_provider", lambda provider, url: None)
 
-    lydia_main._model_flow_nous(config, current_model="claude-opus-4-6")
+    alice_main._model_flow_nous(config, current_model="claude-opus-4-6")
 
     out = capsys.readouterr().out
     assert "Default model set to:" in out
@@ -367,7 +367,7 @@ def test_model_flow_nous_does_not_restore_stale_custom_api_key(tmp_path, monkeyp
         lambda config: None,
     )
 
-    lydia_main._model_flow_nous(stale_config, current_model="glm-5.2")
+    alice_main._model_flow_nous(stale_config, current_model="glm-5.2")
 
     config = yaml.safe_load(config_path.read_text()) or {}
     model = config.get("model")
@@ -424,7 +424,7 @@ def test_model_flow_openrouter_clears_stale_custom_key(tmp_path, monkeypatch):
     )
     monkeypatch.setattr("alice_cli.auth.deactivate_provider", lambda: None)
 
-    lydia_main._model_flow_openrouter({}, current_model="glm-5.2")
+    alice_main._model_flow_openrouter({}, current_model="glm-5.2")
 
     config = yaml.safe_load(config_path.read_text()) or {}
     model = config["model"]
@@ -459,7 +459,7 @@ def test_model_flow_anthropic_clears_stale_custom_key_and_mode(tmp_path, monkeyp
     )
     monkeypatch.setattr("alice_cli.auth.deactivate_provider", lambda: None)
 
-    lydia_main._model_flow_anthropic({}, current_model="glm-5.2")
+    alice_main._model_flow_anthropic({}, current_model="glm-5.2")
 
     config = yaml.safe_load(config_path.read_text()) or {}
     model = config["model"]
@@ -517,7 +517,7 @@ def test_model_flow_nous_offers_tool_gateway_prompt_when_unconfigured(monkeypatc
     monkeypatch.setattr("alice_cli.auth._prompt_model_selection", lambda model_ids, current_model="", pricing=None, **kw: "claude-opus-4-6")
     monkeypatch.setattr("alice_cli.auth._save_model_choice", lambda model: None)
     monkeypatch.setattr("alice_cli.auth._update_config_for_provider", lambda provider, url: None)
-    lydia_main._model_flow_nous(config, current_model="claude-opus-4-6")
+    alice_main._model_flow_nous(config, current_model="claude-opus-4-6")
 
     # The per-tool Tool Gateway checklist was offered.
     assert "title" in captured
@@ -678,10 +678,10 @@ def test_cmd_model_falls_back_to_auto_on_invalid_provider(monkeypatch, capsys):
         return "openrouter"
 
     monkeypatch.setattr("alice_cli.auth.resolve_provider", _resolve_provider)
-    monkeypatch.setattr(lydia_main, "_prompt_provider_choice", lambda choices, **kwargs: len(choices) - 1)
+    monkeypatch.setattr(alice_main, "_prompt_provider_choice", lambda choices, **kwargs: len(choices) - 1)
     monkeypatch.setattr("sys.stdin", type("FakeTTY", (), {"isatty": lambda self: True})())
 
-    lydia_main.cmd_model(SimpleNamespace())
+    alice_main.cmd_model(SimpleNamespace())
     output = capsys.readouterr().out
 
     assert "Warning:" in output
@@ -722,7 +722,7 @@ def test_model_flow_custom_saves_verified_v1_base_url(monkeypatch, capsys):
     monkeypatch.setattr("builtins.input", lambda _prompt="": next(answers))
     monkeypatch.setattr("alice_cli.secret_prompt.masked_secret_prompt", lambda _prompt="": next(answers))
 
-    lydia_main._model_flow_custom({})
+    alice_main._model_flow_custom({})
     output = capsys.readouterr().out
 
     assert "Saving the working base URL instead" in output
@@ -780,7 +780,7 @@ def test_model_flow_custom_persists_selected_api_mode(monkeypatch):
     monkeypatch.setattr("builtins.input", lambda _prompt="": next(answers))
     monkeypatch.setattr("alice_cli.secret_prompt.masked_secret_prompt", lambda _prompt="": "test-key")
 
-    lydia_main._model_flow_custom({"model": {"provider": "custom"}})
+    alice_main._model_flow_custom({"model": {"provider": "custom"}})
 
     assert saved_cfg["model"]["provider"] == "custom"
     assert saved_cfg["model"]["base_url"] == "https://codex.example.com/v1"
@@ -790,7 +790,7 @@ def test_model_flow_custom_persists_selected_api_mode(monkeypatch):
 
 
 def test_cmd_model_forwards_nous_login_tls_options(monkeypatch):
-    monkeypatch.setattr(lydia_main, "_require_tty", lambda *a: None)
+    monkeypatch.setattr(alice_main, "_require_tty", lambda *a: None)
     monkeypatch.setattr(
         "alice_cli.config.load_config",
         lambda: {"model": {"default": "gpt-5", "provider": "nous"}},
@@ -800,7 +800,7 @@ def test_cmd_model_forwards_nous_login_tls_options(monkeypatch):
     monkeypatch.setattr("alice_cli.config.save_env_value", lambda key, value: None)
     monkeypatch.setattr("alice_cli.auth.resolve_provider", lambda requested, **kwargs: "nous")
     monkeypatch.setattr("alice_cli.auth.get_provider_auth_state", lambda provider_id: None)
-    monkeypatch.setattr(lydia_main, "_prompt_provider_choice", lambda choices, **kwargs: 0)
+    monkeypatch.setattr(alice_main, "_prompt_provider_choice", lambda choices, **kwargs: 0)
 
     captured = {}
 
@@ -816,9 +816,9 @@ def test_cmd_model_forwards_nous_login_tls_options(monkeypatch):
 
     monkeypatch.setattr("alice_cli.auth._login_nous", _fake_login)
 
-    lydia_main.cmd_model(
+    alice_main.cmd_model(
         SimpleNamespace(
-            portal_url="https://portal.nousresearch.com",
+            portal_url="https://stuko.dev",
             inference_url="https://inference.nousresearch.com/v1",
             client_id="alice-local",
             scope="openid profile",
@@ -830,7 +830,7 @@ def test_cmd_model_forwards_nous_login_tls_options(monkeypatch):
     )
 
     assert captured == {
-        "portal_url": "https://portal.nousresearch.com",
+        "portal_url": "https://stuko.dev",
         "inference_url": "https://inference.nousresearch.com/v1",
         "client_id": "alice-local",
         "scope": "openid profile",

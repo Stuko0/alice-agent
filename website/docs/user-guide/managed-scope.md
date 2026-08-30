@@ -44,18 +44,18 @@ the feature.
 
 ### Relocating the directory
 
-The location can be relocated with the `LYDIA_MANAGED_DIR` environment variable
+The location can be relocated with the `ALICE_MANAGED_DIR` environment variable
 (for containers or non-`/etc` deployments). This is a deployment/bootstrap path
 knob — like `ALICE_HOME` — set by the same administrator who owns the managed
 files. It is **never persisted** to any `.env` by Alice.
 
 ```bash
 # Point managed scope at a custom directory (set by IT / the deployment, not the user)
-export LYDIA_MANAGED_DIR=/opt/org/alice-policy
+export ALICE_MANAGED_DIR=/opt/org/alice-policy
 ```
 
 :::warning
-A user who can set `LYDIA_MANAGED_DIR` can repoint managed scope at a directory
+A user who can set `ALICE_MANAGED_DIR` can repoint managed scope at a directory
 they control, defeating it. In a real deployment this variable should be fixed
 by the administrator (e.g. baked into the service unit / container image), not
 left user-settable. `alice doctor` reports the *resolved* managed directory so

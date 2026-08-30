@@ -1,6 +1,6 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron')
 
-contextBridge.exposeInMainWorld('lydiaDesktop', {
+contextBridge.exposeInMainWorld('aliceDesktop', {
   getConnection: profile => ipcRenderer.invoke('alice:connection', profile),
   revalidateConnection: () => ipcRenderer.invoke('alice:connection:revalidate'),
   touchBackend: profile => ipcRenderer.invoke('alice:backend:touch', profile),

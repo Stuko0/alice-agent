@@ -57,10 +57,10 @@ class TestRuntimeProviderUsesScope:
 
     def test_getenv_global_var_still_reads_environ(self, monkeypatch):
         from alice_cli.runtime_provider import _getenv
-        monkeypatch.setenv("LYDIA_MAX_ITERATIONS", "42")
+        monkeypatch.setenv("ALICE_MAX_ITERATIONS", "42")
         ss.set_multiplex_active(True)
         # global var: no scope needed, no raise
-        assert _getenv("LYDIA_MAX_ITERATIONS") == "42"
+        assert _getenv("ALICE_MAX_ITERATIONS") == "42"
 
 
 class TestMcpInterpolationUsesScope:

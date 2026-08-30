@@ -140,7 +140,7 @@ def test_spotify_interactive_setup_persists_client_id(
     monkeypatch: pytest.MonkeyPatch,
     capsys,
 ) -> None:
-    """The wizard writes LYDIA_SPOTIFY_CLIENT_ID to .env and returns the value."""
+    """The wizard writes ALICE_SPOTIFY_CLIENT_ID to .env and returns the value."""
     monkeypatch.setenv("ALICE_HOME", str(tmp_path))
     monkeypatch.setattr("builtins.input", lambda prompt="": "wizard-client-123")
     # Prevent actually opening the browser during tests.
@@ -155,9 +155,9 @@ def test_spotify_interactive_setup_persists_client_id(
     env_path = tmp_path / ".env"
     assert env_path.exists()
     env_text = env_path.read_text()
-    assert "LYDIA_SPOTIFY_CLIENT_ID=wizard-client-123" in env_text
+    assert "ALICE_SPOTIFY_CLIENT_ID=wizard-client-123" in env_text
     # Default redirect URI should NOT be persisted.
-    assert "LYDIA_SPOTIFY_REDIRECT_URI" not in env_text
+    assert "ALICE_SPOTIFY_REDIRECT_URI" not in env_text
 
     # Docs URL should appear in wizard output so users can find the guide.
     output = capsys.readouterr().out
@@ -181,7 +181,7 @@ def test_spotify_interactive_setup_empty_aborts(
 
     env_path = tmp_path / ".env"
     if env_path.exists():
-        assert "LYDIA_SPOTIFY_CLIENT_ID" not in env_path.read_text()
+        assert "ALICE_SPOTIFY_CLIENT_ID" not in env_path.read_text()
 
 
 # ---------------------------------------------------------------------------

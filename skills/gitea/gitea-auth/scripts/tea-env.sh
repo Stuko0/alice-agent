@@ -23,8 +23,8 @@ if command -v tea &>/dev/null && tea logins list &>/dev/null 2>&1; then
     TEA_USER=$(tea api user --jq '.login' 2>/dev/null)
 elif [ -n "$GITEA_TOKEN" ]; then
     TEA_AUTH_METHOD="curl"
-elif _lydia_env="${LYDIA_HOME:-$HOME/.alice}/.env"; [ -f "$_lydia_env" ] && grep -q "^GITEA_TOKEN=" "$_lydia_env" 2>/dev/null; then
-    GITEA_TOKEN=$(grep "^GITEA_TOKEN=" "$_lydia_env" | head -1 | cut -d= -f2 | tr -d '\n\r')
+elif _alice_env="${ALICE_HOME:-$HOME/.alice}/.env"; [ -f "$_alice_env" ] && grep -q "^GITEA_TOKEN=" "$_alice_env" 2>/dev/null; then
+    GITEA_TOKEN=$(grep "^GITEA_TOKEN=" "$_alice_env" | head -1 | cut -d= -f2 | tr -d '\n\r')
     if [ -n "$GITEA_TOKEN" ]; then
         TEA_AUTH_METHOD="curl"
     fi

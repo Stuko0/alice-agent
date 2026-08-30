@@ -14,14 +14,14 @@ const PLATFORM = process.platform
 
 // Platform-specific packaged-app layout. The thin installer ships an Electron
 // app shell plus extraResources (install-stamp.json + native-deps/) -- it
-// no longer bundles the Lydia Agent Python payload (that's fetched at first
+// no longer bundles the Alice Agent Python payload (that's fetched at first
 // launch via install.ps1 / install.sh, per the Phase 1 thin-installer flow).
 const APP = (() => {
   if (PLATFORM === 'darwin') {
-    const appPath = path.join(RELEASE_ROOT, `mac-${ARCH}`, 'Lydia.app')
+    const appPath = path.join(RELEASE_ROOT, `mac-${ARCH}`, 'Alice.app')
     return {
       appPath,
-      binary: path.join(appPath, 'Contents', 'MacOS', 'Lydia'),
+      binary: path.join(appPath, 'Contents', 'MacOS', 'Alice'),
       resourcesPath: path.join(appPath, 'Contents', 'Resources'),
       asarPath: path.join(appPath, 'Contents', 'Resources', 'app.asar'),
       unpackedDistIndex: path.join(appPath, 'Contents', 'Resources', 'app.asar.unpacked', 'dist', 'index.html')
@@ -31,7 +31,7 @@ const APP = (() => {
     const unpacked = path.join(RELEASE_ROOT, 'win-unpacked')
     return {
       appPath: unpacked,
-      binary: path.join(unpacked, 'Lydia.exe'),
+      binary: path.join(unpacked, 'Alice.exe'),
       resourcesPath: path.join(unpacked, 'resources'),
       asarPath: path.join(unpacked, 'resources', 'app.asar'),
       unpackedDistIndex: path.join(unpacked, 'resources', 'app.asar.unpacked', 'dist', 'index.html')
@@ -41,25 +41,25 @@ const APP = (() => {
   const unpacked = path.join(RELEASE_ROOT, 'linux-unpacked')
   return {
     appPath: unpacked,
-    binary: path.join(unpacked, 'lydia'),
+    binary: path.join(unpacked, 'alice'),
     resourcesPath: path.join(unpacked, 'resources'),
     asarPath: path.join(unpacked, 'resources', 'app.asar'),
     unpackedDistIndex: path.join(unpacked, 'resources', 'app.asar.unpacked', 'dist', 'index.html')
   }
 })()
 
-// Default LYDIA_HOME for non-sandboxed runs -- matches main.cjs's
-// resolveLydiaHome(). On Windows it's %LOCALAPPDATA%\lydia; elsewhere
-// it's ~/.lydia. The fresh-install sandbox launchFresh() sets its own
-// LYDIA_HOME and never touches this.
-const DEFAULT_LYDIA_HOME = (() => {
+// Default ALICE_HOME for non-sandboxed runs -- matches main.cjs's
+// resolveAliceHome(). On Windows it's %LOCALAPPDATA%\alice; elsewhere
+// it's ~/.alice. The fresh-install sandbox launchFresh() sets its own
+// ALICE_HOME and never touches this.
+const DEFAULT_ALICE_HOME = (() => {
   if (PLATFORM === 'win32' && process.env.LOCALAPPDATA) {
-    return path.join(process.env.LOCALAPPDATA, 'lydia')
+    return path.join(process.env.LOCALAPPDATA, 'alice')
   }
-  return path.join(os.homedir(), '.lydia')
+  return path.join(os.homedir(), '.alice')
 })()
-const VENV_ROOT = path.join(DEFAULT_LYDIA_HOME, 'lydia-agent', 'venv')
-const FRESH_SANDBOX_ROOT = path.join(os.tmpdir(), 'lydia-desktop-fresh-install')
+const VENV_ROOT = path.join(DEFAULT_ALICE_HOME, 'alice-agent', 'venv')
+const FRESH_SANDBOX_ROOT = path.join(os.tmpdir(), 'alice-desktop-fresh-install')
 
 function die(message) {
   console.error(`\n${message}`)
@@ -109,7 +109,7 @@ function ensurePlatformBuilds() {
 }
 
 function ensurePackagedApp() {
-  if (process.env.LYDIA_DESKTOP_SKIP_BUILD === '1' && exists(APP.binary)) {
+  if (process.env.ALICE_DESKTOP_SKIP_BUILD === '1' && exists(APP.binary)) {
     return
   }
 
@@ -118,10 +118,10 @@ function ensurePackagedApp() {
 
 function resolveDmgPath() {
   if (!exists(RELEASE_ROOT)) {
-    return path.join(RELEASE_ROOT, `Lydia-${PACKAGE_JSON.version}-${ARCH}.dmg`)
+    return path.join(RELEASE_ROOT, `Alice-${PACKAGE_JSON.version}-${ARCH}.dmg`)
   }
 
-  const prefix = `Lydia-${PACKAGE_JSON.version}`
+  const prefix = `Alice-${PACKAGE_JSON.version}`
   const candidates = fs
     .readdirSync(RELEASE_ROOT)
     .filter(name => name.endsWith('.dmg'))
@@ -135,11 +135,11 @@ function resolveDmgPath() {
 
   return candidates.length > 0
     ? path.join(RELEASE_ROOT, candidates[0])
-    : path.join(RELEASE_ROOT, `Lydia-${PACKAGE_JSON.version}-${ARCH}.dmg`)
+    : path.join(RELEASE_ROOT, `Alice-${PACKAGE_JSON.version}-${ARCH}.dmg`)
 }
 
 function resolveNsisPath() {
-  // electron-builder NSIS artifactName template is 'Lydia-${version}-${os}-${arch}.${ext}'
+  // electron-builder NSIS artifactName template is 'Alice-${version}-${os}-${arch}.${ext}'
   if (!exists(RELEASE_ROOT)) return null
   const candidates = fs
     .readdirSync(RELEASE_ROOT)
@@ -156,7 +156,7 @@ function ensureDmg() {
   if (PLATFORM !== 'darwin') {
     die('DMG mode is macOS-only; on Windows use the `nsis` mode instead.')
   }
-  if (process.env.LYDIA_DESKTOP_SKIP_BUILD === '1' && exists(resolveDmgPath())) {
+  if (process.env.ALICE_DESKTOP_SKIP_BUILD === '1' && exists(resolveDmgPath())) {
     return
   }
   run('npm', ['run', 'dist:mac:dmg'])
@@ -166,7 +166,7 @@ function ensureNsis() {
   if (PLATFORM !== 'win32') {
     die('NSIS mode is win32-only; on macOS use the `dmg` mode instead.')
   }
-  if (process.env.LYDIA_DESKTOP_SKIP_BUILD === '1' && resolveNsisPath()) {
+  if (process.env.ALICE_DESKTOP_SKIP_BUILD === '1' && resolveNsisPath()) {
     return
   }
   run('npm', ['run', 'dist:win:nsis'])
@@ -236,11 +236,11 @@ function launchFresh() {
 
   const sandbox = fs.mkdtempSync(`${FRESH_SANDBOX_ROOT}-`)
   const userDataDir = path.join(sandbox, 'electron-user-data')
-  const lydiaHome = path.join(sandbox, 'lydia-home')
+  const aliceHome = path.join(sandbox, 'alice-home')
   const cwd = path.join(sandbox, 'workspace')
 
   fs.mkdirSync(userDataDir, { recursive: true })
-  fs.mkdirSync(lydiaHome, { recursive: true })
+  fs.mkdirSync(aliceHome, { recursive: true })
   fs.mkdirSync(cwd, { recursive: true })
 
   // Strip every credential-shaped env var so the sandbox is actually fresh.
@@ -250,13 +250,13 @@ function launchFresh() {
     env[key] = value
   }
 
-  env.LYDIA_DESKTOP_CWD = cwd
-  env.LYDIA_DESKTOP_IGNORE_EXISTING = '1'
-  env.LYDIA_DESKTOP_TEST_MODE = 'fresh-install'
-  env.LYDIA_DESKTOP_USER_DATA_DIR = userDataDir
-  env.LYDIA_HOME = lydiaHome
-  delete env.LYDIA_DESKTOP_LYDIA
-  delete env.LYDIA_DESKTOP_LYDIA_ROOT
+  env.ALICE_DESKTOP_CWD = cwd
+  env.ALICE_DESKTOP_IGNORE_EXISTING = '1'
+  env.ALICE_DESKTOP_TEST_MODE = 'fresh-install'
+  env.ALICE_DESKTOP_USER_DATA_DIR = userDataDir
+  env.ALICE_HOME = aliceHome
+  delete env.ALICE_DESKTOP_ALICE
+  delete env.ALICE_DESKTOP_ALICE_ROOT
 
   const child = spawn(APP.binary, [], {
     cwd: os.homedir(),
@@ -269,14 +269,14 @@ function launchFresh() {
   console.log('\nFresh install sandbox:')
   console.log(`  root: ${sandbox}`)
   console.log(`  electron userData: ${userDataDir}`)
-  console.log(`  LYDIA_HOME: ${lydiaHome}`)
+  console.log(`  ALICE_HOME: ${aliceHome}`)
   console.log(`  cwd: ${cwd}`)
 
-  return { runtimeRoot: path.join(lydiaHome, 'lydia-agent', 'venv') }
+  return { runtimeRoot: path.join(aliceHome, 'alice-agent', 'venv') }
 }
 
 // Validate the packaged bundle matches the thin-installer architecture:
-//   - The Lydia Agent Python payload is NOT shipped (it's fetched at first
+//   - The Alice Agent Python payload is NOT shipped (it's fetched at first
 //     launch via install.ps1's stage protocol).
 //   - install-stamp.json IS shipped in resources/ with a valid commit + branch.
 //   - native-deps/@homebridge/node-pty-prebuilt-multiarch/ IS shipped with
@@ -290,9 +290,9 @@ function validateBundle() {
   }
 
   // Negative assertion: the OLD fat-installer factory payload must NOT be
-  // present anymore. If a stray ship of lydia_cli sneaks back in we want
+  // present anymore. If a stray ship of alice_cli sneaks back in we want
   // to fail loudly rather than re-introduce the 400MB delta we just removed.
-  const staleFactoryMarker = path.join(APP.resourcesPath, 'lydia-agent', 'lydia_cli', 'main.py')
+  const staleFactoryMarker = path.join(APP.resourcesPath, 'alice-agent', 'alice_cli', 'main.py')
   if (exists(staleFactoryMarker)) {
     die(
       `Thin-installer regression: factory-payload file should NOT be in the package: ${staleFactoryMarker}`
@@ -382,14 +382,14 @@ function printArtifacts(options = {}) {
 
 function help() {
   console.log(`Usage:
-  npm run test:desktop:existing  # build packaged app, launch with normal PATH/existing Lydia
-  npm run test:desktop:fresh     # build packaged app, launch with temp userData + LYDIA_HOME
+  npm run test:desktop:existing  # build packaged app, launch with normal PATH/existing Alice
+  npm run test:desktop:fresh     # build packaged app, launch with temp userData + ALICE_HOME
   npm run test:desktop:dmg       # (macOS only) build DMG and open it
   npm run test:desktop:nsis      # (win32 only) build NSIS installer
   npm run test:desktop:all       # build installer, validate app payload, print paths
 
 Fast rerun (skip rebuild if the packaged app already exists):
-  LYDIA_DESKTOP_SKIP_BUILD=1 npm run test:desktop:fresh
+  ALICE_DESKTOP_SKIP_BUILD=1 npm run test:desktop:fresh
 `)
 }
 

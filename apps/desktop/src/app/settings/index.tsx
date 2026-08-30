@@ -2,7 +2,7 @@ import { useRef } from 'react'
 
 import { codiconIcon } from '@/components/ui/codicon'
 import { Tip } from '@/components/ui/tooltip'
-import { getLydiaConfigDefaults, getLydiaConfigRecord, saveLydiaConfig } from '@/alice'
+import { getAliceConfigDefaults, getAliceConfigRecord, saveAliceConfig } from '@/alice'
 import { useI18n } from '@/i18n'
 import { triggerHaptic } from '@/lib/haptics'
 import { Archive, Bell, Download, Globe, Info, KeyRound, RefreshCw, Settings2, Upload, Wrench, Zap } from '@/lib/icons'
@@ -58,7 +58,7 @@ export function SettingsView({ gateway, onClose, onConfigSaved, onMainModelChang
 
   const exportConfig = async () => {
     try {
-      const cfg = await getLydiaConfigRecord()
+      const cfg = await getAliceConfigRecord()
       const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -78,7 +78,7 @@ export function SettingsView({ gateway, onClose, onConfigSaved, onMainModelChang
     }
 
     try {
-      await saveLydiaConfig(await getLydiaConfigDefaults())
+      await saveAliceConfig(await getAliceConfigDefaults())
       triggerHaptic('success')
       onConfigSaved?.()
     } catch (err) {

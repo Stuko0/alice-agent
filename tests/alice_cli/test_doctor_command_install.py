@@ -22,9 +22,9 @@ def _setup_doctor_env(monkeypatch, tmp_path, venv_name="venv"):
     # Create a fake venv entry point
     venv_bin_dir = project / venv_name / "bin"
     venv_bin_dir.mkdir(parents=True, exist_ok=True)
-    lydia_bin = venv_bin_dir / "alice"
-    lydia_bin.write_text("#!/usr/bin/env python\n# entry point\n")
-    lydia_bin.chmod(0o755)
+    alice_bin = venv_bin_dir / "alice"
+    alice_bin.write_text("#!/usr/bin/env python\n# entry point\n")
+    alice_bin.chmod(0o755)
 
     monkeypatch.setattr(doctor_mod, "ALICE_HOME", home)
     monkeypatch.setattr(doctor_mod, "PROJECT_ROOT", project)
@@ -52,7 +52,7 @@ def _setup_doctor_env(monkeypatch, tmp_path, venv_name="venv"):
     except Exception:
         pass
 
-    return home, project, lydia_bin
+    return home, project, alice_bin
 
 
 def _run_doctor(fix=False):
@@ -71,13 +71,13 @@ class TestDoctorCommandInstallation:
 
     @pytest.mark.skipif(sys.platform == "win32", reason="Symlink check is Unix-only")
     def test_correct_symlink_shows_ok(self, monkeypatch, tmp_path):
-        home, project, lydia_bin = _setup_doctor_env(monkeypatch, tmp_path)
+        home, project, alice_bin = _setup_doctor_env(monkeypatch, tmp_path)
 
         # Create the command link dir with correct symlink
         cmd_link_dir = tmp_path / ".local" / "bin"
         cmd_link_dir.mkdir(parents=True)
         cmd_link = cmd_link_dir / "alice"
-        cmd_link.symlink_to(lydia_bin)
+        cmd_link.symlink_to(alice_bin)
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
@@ -88,7 +88,7 @@ class TestDoctorCommandInstallation:
 
     @pytest.mark.skipif(sys.platform == "win32", reason="Symlink check is Unix-only")
     def test_missing_symlink_shows_fail(self, monkeypatch, tmp_path):
-        home, project, lydia_bin = _setup_doctor_env(monkeypatch, tmp_path)
+        home, project, alice_bin = _setup_doctor_env(monkeypatch, tmp_path)
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         # Don't create the symlink — it should be missing
@@ -101,7 +101,7 @@ class TestDoctorCommandInstallation:
 
     @pytest.mark.skipif(sys.platform == "win32", reason="Symlink check is Unix-only")
     def test_fix_creates_missing_symlink(self, monkeypatch, tmp_path):
-        home, project, lydia_bin = _setup_doctor_env(monkeypatch, tmp_path)
+        home, project, alice_bin = _setup_doctor_env(monkeypatch, tmp_path)
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
@@ -112,17 +112,17 @@ class TestDoctorCommandInstallation:
         # Verify the symlink was actually created
         cmd_link = tmp_path / ".local" / "bin" / "alice"
         assert cmd_link.is_symlink()
-        assert cmd_link.resolve() == lydia_bin.resolve()
+        assert cmd_link.resolve() == alice_bin.resolve()
 
     @pytest.mark.skipif(sys.platform == "win32", reason="Symlink check is Unix-only")
     def test_wrong_target_symlink_shows_warn(self, monkeypatch, tmp_path):
-        home, project, lydia_bin = _setup_doctor_env(monkeypatch, tmp_path)
+        home, project, alice_bin = _setup_doctor_env(monkeypatch, tmp_path)
 
         # Create a symlink pointing to the wrong target
         cmd_link_dir = tmp_path / ".local" / "bin"
         cmd_link_dir.mkdir(parents=True)
         cmd_link = cmd_link_dir / "alice"
-        wrong_target = tmp_path / "wrong_lydia"
+        wrong_target = tmp_path / "wrong_alice"
         wrong_target.write_text("#!/usr/bin/env python\n")
         cmd_link.symlink_to(wrong_target)
 
@@ -134,13 +134,13 @@ class TestDoctorCommandInstallation:
 
     @pytest.mark.skipif(sys.platform == "win32", reason="Symlink check is Unix-only")
     def test_fix_repairs_wrong_symlink(self, monkeypatch, tmp_path):
-        home, project, lydia_bin = _setup_doctor_env(monkeypatch, tmp_path)
+        home, project, alice_bin = _setup_doctor_env(monkeypatch, tmp_path)
 
         # Create a symlink pointing to wrong target
         cmd_link_dir = tmp_path / ".local" / "bin"
         cmd_link_dir.mkdir(parents=True)
         cmd_link = cmd_link_dir / "alice"
-        wrong_target = tmp_path / "wrong_lydia"
+        wrong_target = tmp_path / "wrong_alice"
         wrong_target.write_text("#!/usr/bin/env python\n")
         cmd_link.symlink_to(wrong_target)
 
@@ -151,7 +151,7 @@ class TestDoctorCommandInstallation:
 
         # Verify the symlink now points to the correct target
         assert cmd_link.is_symlink()
-        assert cmd_link.resolve() == lydia_bin.resolve()
+        assert cmd_link.resolve() == alice_bin.resolve()
 
     @pytest.mark.skipif(sys.platform == "win32", reason="Symlink check is Unix-only")
     def test_missing_venv_entry_point_shows_warn(self, monkeypatch, tmp_path):
@@ -195,11 +195,11 @@ class TestDoctorCommandInstallation:
         home, project, _ = _setup_doctor_env(monkeypatch, tmp_path, venv_name=".venv")
 
         # Create the command link with correct symlink
-        lydia_bin = project / ".venv" / "bin" / "alice"
+        alice_bin = project / ".venv" / "bin" / "alice"
         cmd_link_dir = tmp_path / ".local" / "bin"
         cmd_link_dir.mkdir(parents=True)
         cmd_link = cmd_link_dir / "alice"
-        cmd_link.symlink_to(lydia_bin)
+        cmd_link.symlink_to(alice_bin)
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
@@ -210,7 +210,7 @@ class TestDoctorCommandInstallation:
     @pytest.mark.skipif(sys.platform == "win32", reason="Symlink check is Unix-only")
     def test_non_symlink_regular_file_shows_ok(self, monkeypatch, tmp_path):
         """If ~/.local/bin/alice is a regular file (not symlink), accept it."""
-        home, project, lydia_bin = _setup_doctor_env(monkeypatch, tmp_path)
+        home, project, alice_bin = _setup_doctor_env(monkeypatch, tmp_path)
 
         cmd_link_dir = tmp_path / ".local" / "bin"
         cmd_link_dir.mkdir(parents=True)
@@ -229,7 +229,7 @@ class TestDoctorCommandInstallation:
         prefix_bin = prefix_dir / "bin"
         prefix_bin.mkdir(parents=True)
 
-        home, project, lydia_bin = _setup_doctor_env(monkeypatch, tmp_path)
+        home, project, alice_bin = _setup_doctor_env(monkeypatch, tmp_path)
 
         monkeypatch.setenv("TERMUX_VERSION", "0.118.3")
         monkeypatch.setenv("PREFIX", str(prefix_dir))

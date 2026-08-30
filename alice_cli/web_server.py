@@ -2314,7 +2314,7 @@ async def get_status(profile: Optional[str] = None):
 
         # Dashboard auth gate (Phase 7): surface whether the gate is engaged
         # and which providers are registered so ``alice status`` and the
-        # SPA's StatusPage can show "OAuth gate ON via Nous Research" or
+        # SPA's StatusPage can show "OAuth gate ON via Stuko" or
         # "loopback only — no auth gate" with no extra round trips.
         auth_required = bool(getattr(app.state, "auth_required", False))
         auth_providers: list[str] = []
@@ -2663,7 +2663,7 @@ async def get_portal_status():
         "portal_url": auth.get("portal_base_url"),
         "inference_url": auth.get("inference_base_url"),
         "provider": str((model_cfg or {}).get("provider") or ""),
-        "subscription_url": "https://portal.nousresearch.com/manage-subscription",
+        "subscription_url": "https://stuko.dev/manage-subscription",
         "features": features,
     }
 
@@ -3275,6 +3275,19 @@ async def api_providers_custom_add(request: Request) -> dict:
         raise HTTPException(status_code=400, detail="body must be JSON")
     if not isinstance(body, dict):
         raise HTTPException(status_code=400, detail="body must be a JSON object")
+    
+    # Handle _api_key_value: if the frontend detected an actual API key value
+    # instead of an env var name, save it as the key_env value
+    api_key_value = body.pop("_api_key_value", None)
+    key_env_name = body.get("key_env") or body.get("api_key_env")
+    if api_key_value and key_env_name:
+        # Save the actual API key to the env file using the env var name
+        from alice_cli.config import save_env_value
+        try:
+            save_env_value(key_env_name, api_key_value)
+        except Exception:
+            pass  # Non-fatal: provider will be created but key won't work until saved
+    
     try:
         entry = add_custom_provider(body)
     except ValueError as exc:
@@ -5442,7 +5455,7 @@ _PLATFORM_OVERRIDES: dict[str, dict[str, Any]] = {
     "email": {
         "name": "Email",
         "description": "Talk to Alice through an IMAP/SMTP mailbox.",
-        "docs_url": "https://alice-agent.nousresearch.com/docs/user-guide/messaging/",
+        "docs_url": "https://alice-agent.stuko.dev/docs/user-guide/messaging/",
         "env_vars": (
             "EMAIL_ADDRESS",
             "EMAIL_PASSWORD",
@@ -5485,7 +5498,7 @@ _PLATFORM_OVERRIDES: dict[str, dict[str, Any]] = {
     "google_chat": {
         "name": "Google Chat",
         "description": "Connect Alice to Google Chat via Cloud Pub/Sub.",
-        "docs_url": "https://alice-agent.nousresearch.com/docs/user-guide/messaging/google_chat",
+        "docs_url": "https://alice-agent.stuko.dev/docs/user-guide/messaging/google_chat",
     },
     "wecom": {
         "name": "WeCom (group bot)",
@@ -5514,7 +5527,7 @@ _PLATFORM_OVERRIDES: dict[str, dict[str, Any]] = {
     "weixin": {
         "name": "Weixin / WeChat (Personal)",
         "description": "Connect a personal WeChat account through Tencent's iLink Bot API.",
-        "docs_url": "https://alice-agent.nousresearch.com/docs/user-guide/messaging/weixin/",
+        "docs_url": "https://alice-agent.stuko.dev/docs/user-guide/messaging/weixin/",
         "env_vars": ("WEIXIN_ACCOUNT_ID", "WEIXIN_TOKEN", "WEIXIN_BASE_URL"),
         "required_env": ("WEIXIN_ACCOUNT_ID", "WEIXIN_TOKEN"),
     },
@@ -5540,7 +5553,7 @@ _PLATFORM_OVERRIDES: dict[str, dict[str, Any]] = {
     # plugin registry. Only the docs link needs an override here so the
     # Channels page can point at the Microsoft Teams setup guide.
     "teams": {
-        "docs_url": "https://alice-agent.nousresearch.com/docs/user-guide/messaging/teams",
+        "docs_url": "https://alice-agent.stuko.dev/docs/user-guide/messaging/teams",
     },
     "yuanbao": {
         "name": "Yuanbao (元宝)",
@@ -5551,7 +5564,7 @@ _PLATFORM_OVERRIDES: dict[str, dict[str, Any]] = {
     "api_server": {
         "name": "API server",
         "description": "Expose Alice as an OpenAI-compatible HTTP API for tools like Open WebUI.",
-        "docs_url": "https://alice-agent.nousresearch.com/docs/user-guide/messaging/",
+        "docs_url": "https://alice-agent.stuko.dev/docs/user-guide/messaging/",
         "env_vars": (
             "API_SERVER_ENABLED",
             "API_SERVER_KEY",
@@ -5564,7 +5577,7 @@ _PLATFORM_OVERRIDES: dict[str, dict[str, Any]] = {
     "webhook": {
         "name": "Webhooks",
         "description": "Receive events from GitHub, GitLab, and other webhook sources.",
-        "docs_url": "https://alice-agent.nousresearch.com/docs/user-guide/messaging/webhooks/",
+        "docs_url": "https://alice-agent.stuko.dev/docs/user-guide/messaging/webhooks/",
         "env_vars": ("WEBHOOK_ENABLED", "WEBHOOK_PORT", "WEBHOOK_SECRET"),
         "required_env": (),
     },
@@ -6044,8 +6057,8 @@ def _write_platform_enabled(platform_id: str, enabled: bool) -> None:
     write_platform_config_field(platform_id, "enabled", enabled)
 
 
-_TELEGRAM_ONBOARDING_DEFAULT_URL = "https://setup.alice-agent.nousresearch.com"
-_TELEGRAM_ONBOARDING_USER_AGENT = f"LydiaDashboard/{__version__}"
+_TELEGRAM_ONBOARDING_DEFAULT_URL = "https://setup.alice-agent.stuko.dev"
+_TELEGRAM_ONBOARDING_USER_AGENT = f"AliceDashboard/{__version__}"
 _TELEGRAM_USER_ID_RE = re.compile(r"^\d+$")
 
 
@@ -6716,7 +6729,7 @@ _OAUTH_PROVIDER_CATALOG: tuple[Dict[str, Any], ...] = (
         # lands back on the loopback listener — no code to copy/paste.
         "flow": "loopback",
         "cli_command": "alice auth add xai-oauth",
-        "docs_url": "https://alice-agent.nousresearch.com/docs/guides/xai-grok-oauth",
+        "docs_url": "https://alice-agent.stuko.dev/docs/guides/xai-grok-oauth",
         "status_fn": None,  # dispatched via auth.get_xai_oauth_auth_status
     },
     {
@@ -6773,7 +6786,7 @@ _OAUTH_PROVIDER_CATALOG: tuple[Dict[str, Any], ...] = (
         "name": "Nous Portal",
         "flow": "device_code",
         "cli_command": "alice auth add nous",
-        "docs_url": "https://portal.nousresearch.com",
+        "docs_url": "https://stuko.dev",
         "status_fn": None,  # dispatched via auth.get_nous_auth_status
     },
 )

@@ -34,7 +34,7 @@ WORKERS_RUN_DURATION_S = 8
 
 
 def run() -> int:
-    home = tempfile.mkdtemp(prefix="lydia_parent_gate_stress_")
+    home = tempfile.mkdtemp(prefix="alice_parent_gate_stress_")
     os.environ["ALICE_HOME"] = home
     os.environ["HOME"] = home
 

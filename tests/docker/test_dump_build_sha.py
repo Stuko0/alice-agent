@@ -3,7 +3,7 @@
 Background: ``.dockerignore`` excludes ``.git``, so ``git rev-parse HEAD``
 fails inside the published image and ``alice dump`` used to report
 ``version: ... [(unknown)]``.  The Dockerfile now writes the build-time
-``$LYDIA_GIT_SHA`` build-arg to ``/opt/alice/.lydia_build_sha`` and
+``$ALICE_GIT_SHA`` build-arg to ``/opt/alice/.alice_build_sha`` and
 ``alice_cli/build_info.py`` reads it as a fallback.
 
 CI (``.github/workflows/docker.yml``) always sets the build-arg
@@ -13,7 +13,7 @@ is absent and ``alice dump`` correctly falls back to ``(unknown)``.
 
 This test handles both cases:
 
-* If ``/opt/alice/.lydia_build_sha`` exists in the image, assert that
+* If ``/opt/alice/.alice_build_sha`` exists in the image, assert that
   ``alice dump`` surfaces its content as the version SHA (not
   ``(unknown)``).
 * If the file is absent, assert the legacy behaviour (``(unknown)``)
@@ -51,11 +51,11 @@ def _run_dump(image: str) -> str:
 
 
 def _read_baked_sha_from_image(image: str) -> str | None:
-    """Return the ``/opt/alice/.lydia_build_sha`` content, or None if absent."""
+    """Return the ``/opt/alice/.alice_build_sha`` content, or None if absent."""
     r = subprocess.run(
         [
             "docker", "run", "--rm", "--entrypoint", "cat", image,
-            "/opt/alice/.lydia_build_sha",
+            "/opt/alice/.alice_build_sha",
         ],
         capture_output=True, text=True, timeout=30,
     )
@@ -65,7 +65,7 @@ def _read_baked_sha_from_image(image: str) -> str | None:
 
 
 def test_dump_reports_baked_sha_when_present(built_image: str) -> None:
-    """When the image was built with ``LYDIA_GIT_SHA``, dump must surface it.
+    """When the image was built with ``ALICE_GIT_SHA``, dump must surface it.
 
     Together with the smoke-test action (which exercises ``--help``), this
     closes the regression loop for the missing-sha bug: any future change

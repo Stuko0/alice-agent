@@ -54,7 +54,7 @@ export function UninstallSection() {
 
   useEffect(() => {
     let alive = true
-    const bridge = window.lydiaDesktop?.uninstall
+    const bridge = window.aliceDesktop?.uninstall
 
     if (!bridge) {
       setLoading(false)
@@ -83,7 +83,7 @@ export function UninstallSection() {
     }
   }, [])
 
-  const bridge = window.lydiaDesktop?.uninstall
+  const bridge = window.aliceDesktop?.uninstall
 
   if (!bridge) {
     return null

@@ -11,7 +11,7 @@ JSON.
 > **Credit:** the single-project-workspace layout, profile-config patching
 > approach, SOUL.md-per-profile convention, and `--workspace dir:<path>` rule
 > are adapted from alt-glitch's original multi-agent video pipeline:
-> [NousResearch/kanban-video-pipeline](https://github.com/NousResearch/kanban-video-pipeline).
+> [Stuko0/kanban-video-pipeline](https://github.com/Stuko0/kanban-video-pipeline).
 > This skill generalizes those patterns across video styles and replaces the
 > string-replacement config patcher with a PyYAML-based one.
 
@@ -226,16 +226,16 @@ check_key() {
     local var="$1"
     local kc_account="$2"
     local kc_service="$3"
-    local _lydia_env="${ALICE_HOME:-$HOME/.alice}/.env"
-    if grep -q "^${var}=" "$_lydia_env" 2>/dev/null && \
-       [ -n "$(grep "^${var}=" "$_lydia_env" | cut -d= -f2-)" ]; then
+    local _alice_env="${ALICE_HOME:-$HOME/.alice}/.env"
+    if grep -q "^${var}=" "$_alice_env" 2>/dev/null && \
+       [ -n "$(grep "^${var}=" "$_alice_env" | cut -d= -f2-)" ]; then
         return 0
     fi
     if command -v security >/dev/null 2>&1 && \
        security find-generic-password -a "${kc_account}" -s "${kc_service}" -w >/dev/null 2>&1; then
         return 0
     fi
-    echo "ERROR: ${var} not set in ${_lydia_env} or Keychain (${kc_account}/${kc_service})"
+    echo "ERROR: ${var} not set in ${_alice_env} or Keychain (${kc_account}/${kc_service})"
     return 1
 }
 

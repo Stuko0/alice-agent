@@ -289,7 +289,7 @@ def test_termux_fast_cli_launch_chat_uses_light_parser(monkeypatch, main_mod):
     prepared = []
 
     monkeypatch.setenv("TERMUX_VERSION", "1")
-    monkeypatch.delenv("LYDIA_TUI", raising=False)
+    monkeypatch.delenv("ALICE_TUI", raising=False)
     monkeypatch.setattr(
         sys, "argv", ["alice", "chat", "-q", "hello", "--toolsets", "web,terminal"]
     )
@@ -318,9 +318,9 @@ def test_termux_fast_cli_launch_bare_defers_agent_startup(monkeypatch, main_mod)
     prepared = []
 
     monkeypatch.setenv("TERMUX_VERSION", "1")
-    monkeypatch.delenv("LYDIA_TUI", raising=False)
-    monkeypatch.delenv("LYDIA_DEFER_AGENT_STARTUP", raising=False)
-    monkeypatch.delenv("LYDIA_FAST_STARTUP_BANNER", raising=False)
+    monkeypatch.delenv("ALICE_TUI", raising=False)
+    monkeypatch.delenv("ALICE_DEFER_AGENT_STARTUP", raising=False)
+    monkeypatch.delenv("ALICE_FAST_STARTUP_BANNER", raising=False)
     monkeypatch.setattr(sys, "argv", ["alice"])
     monkeypatch.setattr(
         main_mod, "_prepare_agent_startup", lambda args: prepared.append(args.command)
@@ -340,8 +340,8 @@ def test_termux_fast_cli_launch_bare_defers_agent_startup(monkeypatch, main_mod)
     assert main_mod._try_termux_fast_cli_launch() is True
     assert prepared == []
     assert captured == {"query": None, "command": None, "compact": True}
-    assert os.environ["LYDIA_DEFER_AGENT_STARTUP"] == "1"
-    assert os.environ["LYDIA_FAST_STARTUP_BANNER"] == "1"
+    assert os.environ["ALICE_DEFER_AGENT_STARTUP"] == "1"
+    assert os.environ["ALICE_FAST_STARTUP_BANNER"] == "1"
 
 
 def test_termux_fast_cli_launch_oneshot_uses_light_parser(monkeypatch, main_mod):
@@ -349,7 +349,7 @@ def test_termux_fast_cli_launch_oneshot_uses_light_parser(monkeypatch, main_mod)
     prepared = []
 
     monkeypatch.setenv("TERMUX_VERSION", "1")
-    monkeypatch.delenv("LYDIA_TUI", raising=False)
+    monkeypatch.delenv("ALICE_TUI", raising=False)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -386,7 +386,7 @@ def test_termux_fast_cli_launch_version_skips_update_check(monkeypatch, main_mod
     captured = []
 
     monkeypatch.setenv("TERMUX_VERSION", "1")
-    monkeypatch.delenv("LYDIA_TUI", raising=False)
+    monkeypatch.delenv("ALICE_TUI", raising=False)
     monkeypatch.setattr(sys, "argv", ["alice", "version"])
     monkeypatch.setattr(
         main_mod, "_print_version_info", lambda *, check_updates: captured.append(check_updates)
@@ -400,7 +400,7 @@ def test_termux_ultrafast_version_runs_before_heavy_startup(
     monkeypatch, capsys, main_mod
 ):
     monkeypatch.setenv("TERMUX_VERSION", "1")
-    monkeypatch.delenv("LYDIA_TERMUX_DISABLE_FAST_CLI", raising=False)
+    monkeypatch.delenv("ALICE_TERMUX_DISABLE_FAST_CLI", raising=False)
     monkeypatch.setattr(sys, "argv", ["alice", "--version"])
 
     assert main_mod._try_termux_ultrafast_version() is True
@@ -426,7 +426,7 @@ def test_read_openai_version_fast(monkeypatch, tmp_path, main_mod):
 
 def test_termux_fast_cli_launch_skips_help(monkeypatch, main_mod):
     monkeypatch.setenv("TERMUX_VERSION", "1")
-    monkeypatch.delenv("LYDIA_TUI", raising=False)
+    monkeypatch.delenv("ALICE_TUI", raising=False)
     monkeypatch.setattr(sys, "argv", ["alice", "chat", "--help"])
 
     assert main_mod._try_termux_fast_cli_launch() is False
@@ -434,8 +434,8 @@ def test_termux_fast_cli_launch_skips_help(monkeypatch, main_mod):
 
 def test_termux_fast_cli_launch_can_be_disabled(monkeypatch, main_mod):
     monkeypatch.setenv("TERMUX_VERSION", "1")
-    monkeypatch.setenv("LYDIA_TERMUX_DISABLE_FAST_CLI", "1")
-    monkeypatch.delenv("LYDIA_TUI", raising=False)
+    monkeypatch.setenv("ALICE_TERMUX_DISABLE_FAST_CLI", "1")
+    monkeypatch.delenv("ALICE_TUI", raising=False)
     monkeypatch.setattr(sys, "argv", ["alice", "version"])
 
     assert main_mod._try_termux_fast_cli_launch() is False
@@ -450,7 +450,7 @@ def test_termux_bundled_skills_stamp_controls_sync(monkeypatch, tmp_path, main_m
     main_mod._mark_termux_bundled_skills_synced()
     assert main_mod._termux_bundled_skills_sync_needed() is False
 
-    monkeypatch.setenv("LYDIA_TERMUX_FORCE_SKILLS_SYNC", "1")
+    monkeypatch.setenv("ALICE_TERMUX_FORCE_SKILLS_SYNC", "1")
     assert main_mod._termux_bundled_skills_sync_needed() is True
 
 
@@ -475,7 +475,7 @@ def test_termux_forced_bundled_skill_sync_runs(monkeypatch, tmp_path, main_mod):
     calls = []
 
     monkeypatch.setenv("TERMUX_VERSION", "1")
-    monkeypatch.setenv("LYDIA_TERMUX_FORCE_SKILLS_SYNC", "1")
+    monkeypatch.setenv("ALICE_TERMUX_FORCE_SKILLS_SYNC", "1")
     monkeypatch.setattr(main_mod, "get_alice_home", lambda: tmp_path)
     monkeypatch.setattr(main_mod, "_termux_bundled_skills_fingerprint", lambda: "fp1")
     monkeypatch.setitem(
@@ -897,7 +897,7 @@ def test_launch_tui_exports_model_provider_and_toolsets(monkeypatch, main_mod):
     def fake_call(argv, cwd=None, env=None):
         nonlocal active_path_during_call
         captured.update({"argv": argv, "cwd": cwd, "env": env})
-        active_path_during_call = Path(env["LYDIA_TUI_ACTIVE_SESSION_FILE"])
+        active_path_during_call = Path(env["ALICE_TUI_ACTIVE_SESSION_FILE"])
         assert active_path_during_call.exists()
         return 1
 
@@ -909,12 +909,12 @@ def test_launch_tui_exports_model_provider_and_toolsets(monkeypatch, main_mod):
         )
 
     env = captured["env"]
-    assert env["LYDIA_MODEL"] == "nous/alice-test"
-    assert env["LYDIA_INFERENCE_MODEL"] == "nous/alice-test"
-    assert env["LYDIA_TUI_PROVIDER"] == "nous"
-    assert env["LYDIA_INFERENCE_PROVIDER"] == "nous"
-    assert env["LYDIA_TUI_TOOLSETS"] == "web,terminal"
-    active_path = Path(env["LYDIA_TUI_ACTIVE_SESSION_FILE"])
+    assert env["ALICE_MODEL"] == "nous/alice-test"
+    assert env["ALICE_INFERENCE_MODEL"] == "nous/alice-test"
+    assert env["ALICE_TUI_PROVIDER"] == "nous"
+    assert env["ALICE_INFERENCE_PROVIDER"] == "nous"
+    assert env["ALICE_TUI_TOOLSETS"] == "web,terminal"
+    active_path = Path(env["ALICE_TUI_ACTIVE_SESSION_FILE"])
     assert active_path.name.startswith("alice-tui-active-session-")
     assert active_path.suffix == ".json"
     assert active_path_during_call == active_path
@@ -923,7 +923,7 @@ def test_launch_tui_exports_model_provider_and_toolsets(monkeypatch, main_mod):
 
 
 def test_launch_tui_applies_terminal_backend_config(
-    monkeypatch, main_mod, _isolate_lydia_home
+    monkeypatch, main_mod, _isolate_alice_home
 ):
     captured = {}
     config_path = Path(os.environ["ALICE_HOME"]) / "config.yaml"
@@ -983,7 +983,7 @@ def test_launch_tui_exit_code_42_relaunches_update(monkeypatch, main_mod):
 def test_launch_tui_drops_stale_resume_env_without_resume_arg(monkeypatch, main_mod):
     captured = {}
 
-    monkeypatch.setenv("LYDIA_TUI_RESUME", "stale-missing-session")
+    monkeypatch.setenv("ALICE_TUI_RESUME", "stale-missing-session")
     monkeypatch.setattr(
         main_mod,
         "_make_tui_argv",
@@ -998,13 +998,13 @@ def test_launch_tui_drops_stale_resume_env_without_resume_arg(monkeypatch, main_
     with pytest.raises(SystemExit):
         main_mod._launch_tui()
 
-    assert "LYDIA_TUI_RESUME" not in captured["env"]
+    assert "ALICE_TUI_RESUME" not in captured["env"]
 
 
 def test_launch_tui_sets_resume_env_from_resume_arg(monkeypatch, main_mod):
     captured = {}
 
-    monkeypatch.setenv("LYDIA_TUI_RESUME", "stale-missing-session")
+    monkeypatch.setenv("ALICE_TUI_RESUME", "stale-missing-session")
     monkeypatch.setattr(
         main_mod,
         "_make_tui_argv",
@@ -1019,10 +1019,10 @@ def test_launch_tui_sets_resume_env_from_resume_arg(monkeypatch, main_mod):
     with pytest.raises(SystemExit):
         main_mod._launch_tui(resume_session_id="20260518_000000_goodid")
 
-    assert captured["env"]["LYDIA_TUI_RESUME"] == "20260518_000000_goodid"
+    assert captured["env"]["ALICE_TUI_RESUME"] == "20260518_000000_goodid"
 
 
-def test_make_tui_argv_dev_prebuilds_lydia_ink(monkeypatch, main_mod, tmp_path):
+def test_make_tui_argv_dev_prebuilds_alice_ink(monkeypatch, main_mod, tmp_path):
     tui_dir = tmp_path / "ui-tui"
     tsx = tui_dir / "node_modules" / ".bin" / "tsx"
     ink_dir = tui_dir / "packages" / "alice-ink"
@@ -1032,7 +1032,7 @@ def test_make_tui_argv_dev_prebuilds_lydia_ink(monkeypatch, main_mod, tmp_path):
 
     monkeypatch.setattr(main_mod, "_ensure_tui_node", lambda: None)
     monkeypatch.setattr(main_mod, "_tui_need_npm_install", lambda _tui_dir: False)
-    monkeypatch.delenv("LYDIA_TUI_DIR", raising=False)
+    monkeypatch.delenv("ALICE_TUI_DIR", raising=False)
     monkeypatch.setattr(main_mod.shutil, "which", lambda bin_name: f"/usr/bin/{bin_name}")
 
     calls = []

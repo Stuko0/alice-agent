@@ -109,14 +109,14 @@ alice cron create "0 9 * * 1" \
 监控某个仓库的新 issue、PR 或 release。
 
 ```bash
-/cron add "every 6h" "Check the GitHub repository NousResearch/alice-agent for:
+/cron add "every 6h" "Check the GitHub repository Stuko0/alice-agent for:
 - New issues opened in the last 6 hours
 - New PRs opened or merged in the last 6 hours
 - Any new releases
 
 Use the terminal to run gh commands:
-  gh issue list --repo NousResearch/alice-agent --state open --json number,title,author,createdAt --limit 10
-  gh pr list --repo NousResearch/alice-agent --state all --json number,title,author,createdAt,mergedAt --limit 10
+  gh issue list --repo Stuko0/alice-agent --state open --json number,title,author,createdAt --limit 10
+  gh pr list --repo Stuko0/alice-agent --state all --json number,title,author,createdAt,mergedAt --limit 10
 
 Filter to only items from the last 6 hours. If nothing new, respond with [SILENT].
 Otherwise, provide a concise summary of the activity." --name "Repo watcher" --deliver discord

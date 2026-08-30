@@ -7,4 +7,4 @@ def test_windows_native_install_path_docs_match_installer() -> None:
 
     assert "%LOCALAPPDATA%\\alice\\alice-agent\\venv\\Scripts" in doc
     assert "Get-Command alice        # should print C:\\Users\\<you>\\AppData\\Local\\alice\\alice-agent\\venv\\Scripts\\alice.exe" in doc
-    assert '$lydiaBin = "$InstallDir\\venv\\Scripts"' in install
+    assert '$aliceBin = "$InstallDir\\venv\\Scripts"' in install

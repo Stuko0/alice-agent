@@ -172,7 +172,7 @@ class TestGatewayCommandWSLMessages:
         # the WSL guidance branch, invoking gateway_windows.install() which
         # writes a Startup-folder .cmd into the real user's Startup folder
         # (NOT tmp_path) pointing at a now-vanished pytest fixture path.
-        # The user then sees a broken Lydia_Gateway.cmd flash a cmd.exe
+        # The user then sees a broken Alice_Gateway.cmd flash a cmd.exe
         # window on every login. See fix/windows-gateway-reliability.
         monkeypatch.setattr(gateway, "is_windows", lambda: False)
 

@@ -66,7 +66,7 @@ Each entry requires both `provider` and `model`. Entries missing either field ar
 | xAI (Grok) | `xai` (alias `grok`) | `XAI_API_KEY` (optional: `XAI_BASE_URL`) |
 | xAI Grok OAuth (SuperGrok) | `xai-oauth` (alias `grok-oauth`) | `alice model` → xAI Grok OAuth (browser login; SuperGrok subscription) |
 | AWS Bedrock | `bedrock` | Standard boto3 auth (`AWS_REGION` + `AWS_PROFILE` or `AWS_ACCESS_KEY_ID`) |
-| Qwen Portal (OAuth) | `qwen-oauth` | `alice model` (Qwen Portal OAuth; optional: `LYDIA_QWEN_BASE_URL`) |
+| Qwen Portal (OAuth) | `qwen-oauth` | `alice model` (Qwen Portal OAuth; optional: `ALICE_QWEN_BASE_URL`) |
 | MiniMax (OAuth) | `minimax-oauth` | `alice model` (MiniMax portal OAuth) |
 | OpenCode Zen | `opencode-zen` | `OPENCODE_ZEN_API_KEY` |
 | OpenCode Go | `opencode-go` | `OPENCODE_GO_API_KEY` |
@@ -140,7 +140,7 @@ model:
 
 fallback_providers:
   - provider: nous
-    model: __PROT_NOUS_LYDIA__-3
+    model: __PROT_NOUS_ALICE__-3
 ```
 
 **Local model as fallback for cloud:**

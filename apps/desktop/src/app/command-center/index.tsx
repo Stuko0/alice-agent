@@ -5,7 +5,7 @@ import { PageLoader } from '@/components/page-loader'
 import { Button } from '@/components/ui/button'
 import { SearchField } from '@/components/ui/search-field'
 import { SegmentedControl } from '@/components/ui/segmented-control'
-import { getActionStatus, getLogs, getStatus, getUsageAnalytics, restartGateway, updateLydia } from '@/alice'
+import { getActionStatus, getLogs, getStatus, getUsageAnalytics, restartGateway, updateAlice } from '@/alice'
 import type { ActionStatusResponse, AnalyticsResponse, StatusResponse } from '@/alice'
 import { useI18n } from '@/i18n'
 import { sessionTitle } from '@/lib/chat-runtime'
@@ -229,7 +229,7 @@ export function CommandCenterView({ initialSection, onClose, onDeleteSession, on
       setSystemError('')
 
       try {
-        const started = kind === 'restart' ? await restartGateway() : await updateLydia()
+        const started = kind === 'restart' ? await restartGateway() : await updateAlice()
         let nextStatus: ActionStatusResponse | null = null
 
         for (let attempt = 0; attempt < 18; attempt += 1) {
@@ -387,7 +387,7 @@ export function CommandCenterView({ initialSection, onClose, onDeleteSession, on
                           </span>
                         </div>
                         <div className="mt-1 text-[length:var(--conversation-caption-font-size)] text-(--ui-text-tertiary)">
-                          {cc.lydiaActiveSessions(status.version, status.active_sessions)}
+                          {cc.aliceActiveSessions(status.version, status.active_sessions)}
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
@@ -395,7 +395,7 @@ export function CommandCenterView({ initialSection, onClose, onDeleteSession, on
                           {cc.restartGateway}
                         </Button>
                         <Button onClick={() => void runSystemAction('update')} size="xs" variant="textStrong">
-                          {cc.updateLydia}
+                          {cc.updateAlice}
                         </Button>
                       </div>
                     </div>

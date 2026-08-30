@@ -59,7 +59,7 @@ def test_check_for_updates_invalidates_on_version_change(tmp_path, monkeypatch):
     )
 
     monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-    monkeypatch.delenv("LYDIA_REVISION", raising=False)
+    monkeypatch.delenv("ALICE_REVISION", raising=False)
     with patch("alice_cli.banner.subprocess.run") as mock_run, \
          patch("alice_cli.banner.check_via_pypi", return_value=0) as mock_pypi:
         result = banner.check_for_updates()
@@ -110,13 +110,13 @@ def test_check_for_updates_official_ssh_origin_uses_https_probe(tmp_path):
     def fake_run(cmd, **kwargs):
         calls.append(cmd)
         if cmd == ["git", "remote", "get-url", "origin"]:
-            return MagicMock(returncode=0, stdout="git@github.com:arquant-admin/NewLydia.git\n")
+            return MagicMock(returncode=0, stdout="git@github.com:arquant-admin/NewAlice.git\n")
         if cmd == ["git", "rev-parse", "HEAD"]:
             return MagicMock(returncode=0, stdout="local-sha\n")
         if cmd == [
             "git",
             "ls-remote",
-            "https://10.1.200.116:3000/arquant-admin/NewLydia.git",
+            "https://10.1.200.116:3000/arquant-admin/NewAlice.git",
             "refs/heads/main",
         ]:
             return MagicMock(returncode=0, stdout="upstream-sha\trefs/heads/main\n")
@@ -149,7 +149,7 @@ def test_check_via_local_git_shallow_clone_behind_reports_no_count(tmp_path):
     def fake_run(cmd, **kwargs):
         calls.append(cmd)
         if cmd == ["git", "remote", "get-url", "origin"]:
-            return MagicMock(returncode=0, stdout="https://10.1.200.116:3000/arquant-admin/NewLydia.git\n")
+            return MagicMock(returncode=0, stdout="https://10.1.200.116:3000/arquant-admin/NewAlice.git\n")
         if cmd == ["git", "rev-parse", "--is-shallow-repository"]:
             return MagicMock(returncode=0, stdout="true\n")
         if cmd[:2] == ["git", "fetch"]:
@@ -180,7 +180,7 @@ def test_check_via_local_git_shallow_clone_up_to_date(tmp_path):
 
     def fake_run(cmd, **kwargs):
         if cmd == ["git", "remote", "get-url", "origin"]:
-            return MagicMock(returncode=0, stdout="https://10.1.200.116:3000/arquant-admin/NewLydia.git\n")
+            return MagicMock(returncode=0, stdout="https://10.1.200.116:3000/arquant-admin/NewAlice.git\n")
         if cmd == ["git", "rev-parse", "--is-shallow-repository"]:
             return MagicMock(returncode=0, stdout="true\n")
         if cmd[:2] == ["git", "fetch"]:
@@ -207,7 +207,7 @@ def test_check_via_local_git_full_clone_keeps_exact_count(tmp_path):
 
     def fake_run(cmd, **kwargs):
         if cmd == ["git", "remote", "get-url", "origin"]:
-            return MagicMock(returncode=0, stdout="https://10.1.200.116:3000/arquant-admin/NewLydia.git\n")
+            return MagicMock(returncode=0, stdout="https://10.1.200.116:3000/arquant-admin/NewAlice.git\n")
         if cmd == ["git", "rev-parse", "--is-shallow-repository"]:
             return MagicMock(returncode=0, stdout="false\n")
         if cmd[:2] == ["git", "fetch"]:
@@ -261,7 +261,7 @@ def test_check_for_updates_docker_returns_none(tmp_path, monkeypatch):
     """Inside the Docker image, check_for_updates() must short-circuit to None.
 
     Regression: the published image excludes .git (.dockerignore) and sets no
-    LYDIA_REVISION (nix-only), so without a docker guard check_for_updates()
+    ALICE_REVISION (nix-only), so without a docker guard check_for_updates()
     falls through to check_via_pypi(), whose version-mismatch flag (1) gets
     rendered by both the Rich banner and the Ink TUI badge as a phantom
     "1 commit behind" — despite there being no git repo or commit math in the
@@ -301,7 +301,7 @@ def test_check_for_updates_non_docker_still_checks(tmp_path, monkeypatch):
     fake_banner.touch()
     monkeypatch.setattr(banner, "__file__", str(fake_banner))
     monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-    monkeypatch.delenv("LYDIA_REVISION", raising=False)
+    monkeypatch.delenv("ALICE_REVISION", raising=False)
 
     with patch("alice_cli.config.detect_install_method", return_value="pip"), \
          patch("alice_cli.banner.subprocess.run") as mock_run, \

@@ -865,7 +865,7 @@ class TestTerminalCWDIntegration:
 class TestOrphanedBranchPruning:
     """Test cleanup of orphaned alice/* and pr-* branches."""
 
-    def test_prunes_orphaned_lydia_branch(self, git_repo):
+    def test_prunes_orphaned_alice_branch(self, git_repo):
         """alice/alice-* branches with no worktree should be deleted."""
         # Create a branch that looks like a worktree branch but has no worktree
         subprocess.run(

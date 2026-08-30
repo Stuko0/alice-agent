@@ -21,11 +21,11 @@ echo "═══ Checking required API keys ═══"
 
 check_key() {
     local var="$1"
-    local kc_account="${2:-lydia}"
+    local kc_account="${2:-alice}"
     local kc_service="${3:-$1}"
-    local _lydia_env="${LYDIA_HOME:-$HOME/.lydia}/.env"
-    if grep -q "^${var}=" "$_lydia_env" 2>/dev/null && \
-       [ -n "$(grep "^${var}=" "$_lydia_env" | cut -d= -f2-)" ]; then
+    local _alice_env="${ALICE_HOME:-$HOME/.alice}/.env"
+    if grep -q "^${var}=" "$_alice_env" 2>/dev/null && \
+       [ -n "$(grep "^${var}=" "$_alice_env" | cut -d= -f2-)" ]; then
         echo "  ✓ ${var} (env)"
         return 0
     fi
@@ -34,7 +34,7 @@ check_key() {
         echo "  ✓ ${var} (Keychain ${kc_account}/${kc_service})"
         return 0
     fi
-    echo "  ✗ ${var} not set in ${_lydia_env} or Keychain (${kc_account}/${kc_service})"
+    echo "  ✗ ${var} not set in ${_alice_env} or Keychain (${kc_account}/${kc_service})"
     return 1
 }
 
@@ -50,9 +50,9 @@ mkdir -p "$WORKSPACE"/{taste,audio/{voiceover,sfx},assets,scenes,checkpoints,too
 echo "  ✓ $WORKSPACE"
 
 # ─────────────────────────────────────────────────────────────────────
-# 3. Create Lydia profiles
+# 3. Create Alice profiles
 # ─────────────────────────────────────────────────────────────────────
-echo "═══ Creating Lydia profiles ═══"
+echo "═══ Creating Alice profiles ═══"
 
 {{PROFILE_CREATE_COMMANDS}}
 
@@ -66,7 +66,7 @@ configure_profile() {
     local toolsets_json="$2"     # JSON array string, e.g. '["kanban","terminal","file"]'
     local skills_json="$3"       # JSON array string, e.g. '["ascii-video"]'
     python3 - "$profile" "$toolsets_json" "$skills_json" "$WORKSPACE" <<'PY'
-"""Patch a Lydia profile config.yaml using PyYAML so we don't depend on the
+"""Patch a Alice profile config.yaml using PyYAML so we don't depend on the
 exact default-config string format. Validates the patch took effect and exits
 non-zero if anything's off."""
 import json
@@ -83,7 +83,7 @@ profile, toolsets_json, skills_json, workspace = sys.argv[1:5]
 toolsets = json.loads(toolsets_json)
 skills = json.loads(skills_json)
 
-p = os.path.expanduser(f"~/.lydia/profiles/{profile}/config.yaml")
+p = os.path.expanduser(f"~/.alice/profiles/{profile}/config.yaml")
 if not os.path.exists(p):
     print(f"  ✗ profile config not found: {p}", file=sys.stderr)
     sys.exit(1)
@@ -98,7 +98,7 @@ cfg["skills"]["always_load"] = skills
 
 # Note: we do NOT touch cfg["approvals"] — that's a security-sensitive
 # setting (manual confirmation of tool calls). Workspace cwd is overridden
-# per-task by `--workspace dir:<path>` on `lydia kanban create`, so we
+# per-task by `--workspace dir:<path>` on `alice kanban create`, so we
 # don't need to mutate cfg["terminal"]["cwd"] either.
 
 with open(p, "w") as f:
@@ -154,7 +154,7 @@ TEAM_EOF
 # ─────────────────────────────────────────────────────────────────────
 echo "═══ Firing initial kanban task ═══"
 
-lydia kanban create "Direct production of {{TITLE}}" \
+alice kanban create "Direct production of {{TITLE}}" \
     --assignee director \
     --workspace dir:"$WORKSPACE" \
     --tenant "$TENANT" \
@@ -179,8 +179,8 @@ echo ""
 echo "═══ Setup complete ═══"
 echo ""
 echo "Monitor with:"
-echo "  lydia kanban watch --tenant $TENANT"
-echo "  lydia kanban list  --tenant $TENANT"
-echo "  lydia dashboard"
+echo "  alice kanban watch --tenant $TENANT"
+echo "  alice kanban list  --tenant $TENANT"
+echo "  alice dashboard"
 echo ""
 echo "Workspace: $WORKSPACE"

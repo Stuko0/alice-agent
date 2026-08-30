@@ -9,8 +9,8 @@
 <p align="center">
   <a href="https://alice-agent.stuko.dev/docs/"><img src="https://img.shields.io/badge/Docs-alice--agent.stuko.dev-FFD700?style=for-the-badge" alt="Documentación"></a>
   <a href="https://discord.gg/Stuko"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="https://10.1.200.116:3000/arquant-admin/NewLydia/blob/main/LICENSE"><img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="Licencia: MIT"></a>
-  <a href="https://stuko.dev"><img src="https://img.shields.io/badge/Creado%20por-Nous%20Research-blueviolet?style=for-the-badge" alt="Creado por Stuko"></a>
+  <a href="https://10.1.200.116:3000/arquant-admin/NewAlice/blob/main/LICENSE"><img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="Licencia: MIT"></a>
+  <a href="https://stuko.dev"><img src="https://img.shields.io/badge/Creado%20por-Stuko-blueviolet?style=for-the-badge" alt="Creado por Stuko"></a>
   <a href="README.md"><img src="https://img.shields.io/badge/Lang-English-blue?style=for-the-badge" alt="English"></a>
   <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/Lang-中文-red?style=for-the-badge" alt="中文"></a>
   <a href="README.ur-pk.md"><img src="https://img.shields.io/badge/Lang-اردو-green?style=for-the-badge" alt="اردو"></a>
@@ -18,7 +18,7 @@
 
 **El agente de IA con mejora continua creado por [Stuko](https://stuko.dev).** Es el único agente con un bucle de aprendizaje integrado: crea habilidades a partir de la experiencia, las mejora durante el uso, se impulsa a sí mismo a persistir el conocimiento, busca en sus propias conversaciones pasadas y construye un modelo cada vez más profundo de quién eres a lo largo de las sesiones. Ejecútalo en un VPS de $5, un clúster de GPUs o infraestructura sin servidor que cuesta casi nada cuando está inactivo. No está atado a tu laptop — habla con él desde Telegram mientras trabaja en una VM en la nube.
 
-Usa cualquier modelo que quieras — [Nous Portal](https://portal.stuko.dev), [OpenRouter](https://openrouter.ai) (más de 200 modelos), [NovitaAI](https://novita.ai), [NVIDIA NIM](https://build.nvidia.com) (Nemotron), [Xiaomi MiMo](https://platform.xiaomimimo.com), [z.ai/GLM](https://z.ai), [Kimi/Moonshot](https://platform.moonshot.ai), [MiniMax](https://www.minimax.io), [Hugging Face](https://huggingface.co), OpenAI, o tu propio endpoint. Cambia con `alice model` — sin cambios de código, sin dependencias.
+Usa cualquier modelo que quieras — [OpenRouter](https://openrouter.ai) (más de 200 modelos), [NovitaAI](https://novita.ai), [NVIDIA NIM](https://build.nvidia.com) (Nemotron), [Xiaomi MiMo](https://platform.xiaomimimo.com), [z.ai/GLM](https://z.ai), [Kimi/Moonshot](https://platform.moonshot.ai), [MiniMax](https://www.minimax.io), [Hugging Face](https://huggingface.co), OpenAI, o tu propio endpoint. Cambia con `alice model` — sin cambios de código, sin dependencias.
 
 <table>
 <tr><td><b>Una interfaz de terminal real</b></td><td>TUI completa con edición multilínea, autocompletado de comandos, historial de conversaciones, interrupción y redirección, y salida de herramientas en streaming.</td></tr>
@@ -42,7 +42,7 @@ curl -fsSL https://alice-agent.stuko.dev/install.sh | bash
 
 ### Windows (nativo, PowerShell)
 
-> **Nota:** En Windows nativo, Alice funciona sin WSL — la CLI, el gateway, la TUI y las herramientas funcionan de forma nativa. Si prefieres usar WSL2, el comando de Linux/macOS de arriba también funciona allí. ¿Encontraste un error? Por favor [crea un issue](https://10.1.200.116:3000/arquant-admin/NewLydia/issues).
+> **Nota:** En Windows nativo, Alice funciona sin WSL — la CLI, el gateway, la TUI y las herramientas funcionan de forma nativa. Si prefieres usar WSL2, el comando de Linux/macOS de arriba también funciona allí. ¿Encontraste un error? Por favor [crea un issue](https://10.1.200.116:3000/arquant-admin/NewAlice/issues).
 
 Ejecuta esto en PowerShell:
 
@@ -85,22 +85,9 @@ alice doctor       # Diagnostica cualquier problema
 
 ---
 
-## Evita la colección de claves API — Nous Portal
+Configura proveedores de modelos, conjuntos de herramientas y canales de mensajería usando `alice setup` o `alice model`. Detalles completos en la [página de documentación de Tool Gateway](https://alice-agent.stuko.dev/docs/user-guide/features/tool-gateway).
 
-Alice funciona con cualquier proveedor que quieras — eso no cambiará. Pero si prefieres no recopilar cinco claves API separadas para el modelo, búsqueda web, generación de imágenes, TTS y un navegador en la nube, **[Nous Portal](https://portal.stuko.dev)** las cubre todas bajo una sola suscripción:
-
-- **Más de 300 modelos** — elige cualquiera con `/model <nombre>`
-- **Tool Gateway** — búsqueda web (Firecrawl), generación de imágenes (FAL), texto a voz (OpenAI), navegador en la nube (Browser Use), todo enrutado a través de tu suscripción. Sin cuentas adicionales.
-
-Un comando desde una instalación nueva:
-
-```bash
-alice setup --portal
-```
-
-Esto te autentica vía OAuth, establece Nous como tu proveedor y activa el Tool Gateway. Comprueba qué está conectado en cualquier momento con `alice portal info`. Detalles completos en la [página de documentación del Tool Gateway](https://alice-agent.stuko.dev/docs/user-guide/features/tool-gateway).
-
-Puedes seguir usando tus propias claves por herramienta cuando quieras — el gateway es por backend, no todo o nada.
+Puedes usar tus propias claves por herramienta cuando quieras — la configuración de herramientas es por backend, no todo o nada.
 
 ---
 
@@ -185,7 +172,7 @@ Consulta `alice claw migrate --help` para todas las opciones, o usa la habilidad
 Inicio rápido para colaboradores — clona y comienza con `setup-alice.sh`:
 
 ```bash
-git clone https://10.1.200.116:3000/arquant-admin/NewLydia.git
+git clone https://10.1.200.116:3000/arquant-admin/NewAlice.git
 cd alice-agent
 ./setup-alice.sh     # instala uv, crea venv, instala .[all], enlaza ~/.local/bin/alice
 ./alice              # detecta automáticamente el venv, no necesitas hacer `source` primero
@@ -207,9 +194,9 @@ scripts/run_tests.sh
 
 - 💬 [Discord](https://discord.gg/Stuko)
 - 📚 [Skills Hub](https://agentskills.io)
-- 🐛 [Issues](https://10.1.200.116:3000/arquant-admin/NewLydia/issues)
+- 🐛 [Issues](https://10.1.200.116:3000/arquant-admin/NewAlice/issues)
 - 🔌 [computer-use-linux](https://github.com/avifenesh/computer-use-linux) — Servidor MCP de control de escritorio Linux para Alice y otros hosts MCP, con árboles de accesibilidad AT-SPI, entrada Wayland/X11, capturas de pantalla y targeting de ventanas del compositor.
-- 🔌 [LydiaClaw](https://github.com/AaronWong1999/lydiaclaw) — Puente WeChat comunitario: Ejecuta Alice Agent y OpenClaw en la misma cuenta de WeChat.
+- 🔌 [AliceClaw](https://github.com/AaronWong1999/aliceclaw) — Puente WeChat comunitario: Ejecuta Alice Agent y OpenClaw en la misma cuenta de WeChat.
 
 ---
 

@@ -98,14 +98,14 @@ function canImportAliceCli(pythonPath, opts = {}) {
  *
  * Used to gate the "existing `alice` on PATH" rung. Without this, a
  * stale alice.cmd shim left behind by an uninstalled pip install (or
- * a half-built venv whose `lydia` entry-point points at a deleted
+ * a half-built venv whose `alice` entry-point points at a deleted
  * Python) survives findOnPath() and gets selected as the backend.
  *
  * We intentionally avoid invoking the command with the dashboard args
  * here -- `--version` is the cheapest "is this binary alive" smoke
  * test that every alice_cli entry-point has supported since 0.1.
  *
- * @param {string} aliceCommand - Resolved absolute path to a lydia
+ * @param {string} aliceCommand - Resolved absolute path to a alice
  *   executable (or an interpreter+script wrapper).
  * @param {object} [opts]
  * @param {boolean} [opts.shell] - Whether to run through a shell. For

@@ -21,7 +21,7 @@ def test_delegation_default_toolsets_removed_from_cli_config():
     the user's ~/.alice/config.yaml over the defaults (cli.py:359-366).
     A contributor who still has the legacy key set in their own config
     would cause a false failure, and ALICE_HOME patching via conftest
-    doesn't help because cli._lydia_home is frozen at module import time
+    doesn't help because cli._alice_home is frozen at module import time
     (cli.py:76) — before any autouse fixture can fire. Source inspection
     sidesteps all of that: it tests the defaults literal directly.
     """

@@ -11,7 +11,7 @@ which handles discovery, dynamic client registration, PKCE, token exchange,
 refresh, and step-up authorization automatically.
 
 This module provides the glue:
-    - ``LydiaTokenStorage``: persists tokens/client-info to disk so they
+    - ``AliceTokenStorage``: persists tokens/client-info to disk so they
       survive across process restarts.
     - Callback server: ephemeral localhost HTTP server to capture the OAuth
       redirect with the authorization code.
@@ -240,11 +240,11 @@ def _write_json(path: Path, data: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
-# LydiaTokenStorage -- persistent token/client-info on disk
+# AliceTokenStorage -- persistent token/client-info on disk
 # ---------------------------------------------------------------------------
 
 
-class LydiaTokenStorage:
+class AliceTokenStorage:
     """Persist OAuth tokens and client registration to JSON files.
 
     File layout::
@@ -495,7 +495,7 @@ async def _redirect_handler(authorization_url: str) -> None:
             f"         ssh -N -L {_oauth_port}:127.0.0.1:{_oauth_port} <user>@<this-host>\n"
             f"       then open the URL above and let it redirect normally.\n"
             f"\n"
-            f"  See: https://alice-agent.nousresearch.com/docs/guides/oauth-over-ssh\n",
+            f"  See: https://alice-agent.stuko.dev/docs/guides/oauth-over-ssh\n",
             file=sys.stderr,
         )
 
@@ -690,7 +690,7 @@ def _paste_callback_reader(result: dict) -> None:
 
 def remove_oauth_tokens(server_name: str) -> None:
     """Delete stored OAuth tokens and client info for a server."""
-    storage = LydiaTokenStorage(server_name)
+    storage = AliceTokenStorage(server_name)
     storage.remove()
     logger.info("OAuth tokens removed for '%s'", server_name)
 
@@ -756,7 +756,7 @@ def _build_client_metadata(cfg: dict) -> "OAuthClientMetadata":
 
 
 def _maybe_preregister_client(
-    storage: "LydiaTokenStorage",
+    storage: "AliceTokenStorage",
     cfg: dict,
     client_metadata: "OAuthClientMetadata",
 ) -> None:
@@ -815,7 +815,7 @@ def build_oauth_auth(
         return None
 
     cfg = dict(oauth_config or {})  # copy — we mutate _resolved_port
-    storage = LydiaTokenStorage(server_name)
+    storage = AliceTokenStorage(server_name)
 
     if not _is_interactive() and not storage.has_cached_tokens():
         raise OAuthNonInteractiveError(

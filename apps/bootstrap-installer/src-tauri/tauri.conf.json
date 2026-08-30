@@ -36,8 +36,8 @@
     "category": "DeveloperTool",
     "shortDescription": "Alice",
     "longDescription": "Installs Alice Agent on your machine. Drives scripts/install.ps1 (Windows) and scripts/install.sh (macOS/Linux).",
-    "publisher": "Nous Research",
-    "copyright": "Copyright © 2026 Nous Research",
+    "publisher": "Stuko",
+    "copyright": "Copyright © 2026 Stuko",
     "targets": [
       "app",
       "dmg",

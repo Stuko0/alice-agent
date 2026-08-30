@@ -1,6 +1,6 @@
 name: nemo_relay
 version: "0.1.0"
-description: "Optional NeMo Relay observability for Alice. Opt in with `alice plugins enable observability/nemo_relay`; LYDIA_NEMO_RELAY_* env vars configure exports after the plugin is enabled."
+description: "Optional NeMo Relay observability for Alice. Opt in with `alice plugins enable observability/nemo_relay`; ALICE_NEMO_RELAY_* env vars configure exports after the plugin is enabled."
 author: Stuko
 hooks:
   - on_session_start

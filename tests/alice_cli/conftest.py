@@ -20,15 +20,15 @@ def all_assignees_spawnable(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def _suppress_concurrent_lydia_gate(request, monkeypatch):
-    """Default ``_detect_concurrent_lydia_instances`` to ``[]`` for every test.
+def _suppress_concurrent_alice_gate(request, monkeypatch):
+    """Default ``_detect_concurrent_alice_instances`` to ``[]`` for every test.
 
     The Windows update path now refuses to proceed when another
     ``alice.exe`` is detected (issue #26670). On a developer's Windows
     machine running the test suite via ``alice`` itself, this would
     flag the running agent as a concurrent instance and abort every
     ``cmd_update`` test. Tests that want to exercise the gate explicitly
-    re-patch ``_detect_concurrent_lydia_instances`` with their own
+    re-patch ``_detect_concurrent_alice_instances`` with their own
     return value — autouse here gives a clean default without touching
     the rest of the suite.
 
@@ -44,13 +44,13 @@ def _suppress_concurrent_lydia_gate(request, monkeypatch):
     # raising=False: under pytest's per-test spawn isolation, a concurrent
     # xdist worker importing a module that transitively touches alice_cli.main
     # can briefly expose a partially-initialized module object here — one where
-    # _detect_concurrent_lydia_instances isn't defined yet. A bare setattr
+    # _detect_concurrent_alice_instances isn't defined yet. A bare setattr
     # would raise AttributeError and error the (unrelated) test. The attribute
     # always exists once main.py finishes importing, so a no-op when it's
     # transiently absent is the correct, race-free default.
     monkeypatch.setattr(
         _cli_main,
-        "_detect_concurrent_lydia_instances",
+        "_detect_concurrent_alice_instances",
         lambda *_a, **_k: [],
         raising=False,
     )

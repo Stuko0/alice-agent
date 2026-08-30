@@ -1678,11 +1678,11 @@ class TestMatrixDeviceId:
             token="syt_test",
             extra={
                 "homeserver": "https://matrix.example.org",
-                "device_id": "LYDIA_BOT_STABLE",
+                "device_id": "ALICE_BOT_STABLE",
             },
         )
         adapter = MatrixAdapter(config)
-        assert adapter._device_id == "LYDIA_BOT_STABLE"
+        assert adapter._device_id == "ALICE_BOT_STABLE"
 
     def test_device_id_from_env(self, monkeypatch):
         monkeypatch.setenv("MATRIX_DEVICE_ID", "FROM_ENV")
@@ -1832,14 +1832,14 @@ class TestMatrixDeviceIdConfig:
     def test_device_id_in_config_extra(self, monkeypatch):
         monkeypatch.setenv("MATRIX_ACCESS_TOKEN", "syt_abc123")
         monkeypatch.setenv("MATRIX_HOMESERVER", "https://matrix.example.org")
-        monkeypatch.setenv("MATRIX_DEVICE_ID", "LYDIA_BOT")
+        monkeypatch.setenv("MATRIX_DEVICE_ID", "ALICE_BOT")
 
         from gateway.config import GatewayConfig, _apply_env_overrides
         config = GatewayConfig()
         _apply_env_overrides(config)
 
         mc = config.platforms[Platform.MATRIX]
-        assert mc.extra.get("device_id") == "LYDIA_BOT"
+        assert mc.extra.get("device_id") == "ALICE_BOT"
 
     def test_device_id_not_set_when_env_empty(self, monkeypatch):
         monkeypatch.setenv("MATRIX_ACCESS_TOKEN", "syt_abc123")

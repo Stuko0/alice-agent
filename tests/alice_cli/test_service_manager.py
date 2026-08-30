@@ -554,7 +554,7 @@ def test_s6_register_creates_service_dir_and_triggers_scan(
     # it, the supervised `gateway run` would re-enter the s6 redirect
     # in `_gateway_command_inner` and recurse. See the matching guard
     # in alice_cli/gateway.py::_gateway_command_inner.
-    assert "export LYDIA_S6_SUPERVISED_CHILD=1" in run_text
+    assert "export ALICE_S6_SUPERVISED_CHILD=1" in run_text
 
     log_run = svc_dir / "log" / "run"
     assert log_run.is_file()
@@ -843,11 +843,11 @@ def test_s6_lifecycle_persists_named_profile_desired_state(
 ) -> None:
     import json
 
-    lydia_home = tmp_path / "alice-home"
-    profile_dir = lydia_home / "profiles" / "coder"
+    alice_home = tmp_path / "alice-home"
+    profile_dir = alice_home / "profiles" / "coder"
     profile_dir.mkdir(parents=True)
     (s6_scandir / "gateway-coder").mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
     mgr = S6ServiceManager(scandir=s6_scandir)
     mgr.start("gateway-coder")
@@ -866,14 +866,14 @@ def test_s6_lifecycle_persists_default_profile_desired_state(
 ) -> None:
     import json
 
-    lydia_home = tmp_path / "alice-home"
-    lydia_home.mkdir()
+    alice_home = tmp_path / "alice-home"
+    alice_home.mkdir()
     (s6_scandir / "gateway-default").mkdir()
-    monkeypatch.setenv("ALICE_HOME", str(lydia_home / "profiles" / "coder"))
+    monkeypatch.setenv("ALICE_HOME", str(alice_home / "profiles" / "coder"))
 
     mgr = S6ServiceManager(scandir=s6_scandir)
     mgr.start("gateway-default")
-    state = json.loads((lydia_home / "gateway_state.json").read_text())
+    state = json.loads((alice_home / "gateway_state.json").read_text())
     assert state["desired_state"] == "running"
 
 

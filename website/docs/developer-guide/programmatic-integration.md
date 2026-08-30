@@ -61,7 +61,7 @@ terminal.resize         clipboard.paste         image.attach
 
 ### Pi-style RPC mapping
 
-Every command in the Pi-mono RPC spec ([issue #360](https://github.com/NousResearch/alice-agent/issues/360)) has a TUI-gateway equivalent:
+Every command in the Pi-mono RPC spec ([issue #360](https://github.com/Stuko0/alice-agent/issues/360)) has a TUI-gateway equivalent:
 
 | Pi command | Alice equivalent |
 |------------|-------------------|

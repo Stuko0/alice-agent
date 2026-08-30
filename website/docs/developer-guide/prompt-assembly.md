@@ -47,7 +47,7 @@ Here is a simplified view of what the final system prompt looks like when all la
 
 ```
 # Layer 1: Agent Identity (from ~/.alice/SOUL.md)
-You are Alice, an AI assistant created by Nous Research.
+You are Alice, an AI assistant created by Stuko.
 You are an expert software engineer and researcher.
 You value correctness, clarity, and efficiency.
 ...
@@ -174,7 +174,7 @@ When `load_soul_md()` returns content, it replaces the hardcoded `DEFAULT_AGENT_
 If `SOUL.md` doesn't exist, the system falls back to:
 
 ```
-You are Alice Agent, an intelligent AI assistant created by Nous Research.
+You are Alice Agent, an intelligent AI assistant created by Stuko.
 You are helpful, knowledgeable, and direct. You assist users with a wide
 range of tasks including answering questions, writing and editing code,
 analyzing information, creative work, and executing actions via your tools.
@@ -194,7 +194,7 @@ def build_context_files_prompt(cwd=None, skip_soul=False):
 
     # Priority: first match wins — only ONE project context loaded
     project_context = (
-        _load_lydia_md(cwd_path)       # 1. .alice.md / ALICE.md (walks to git root)
+        _load_alice_md(cwd_path)       # 1. .alice.md / ALICE.md (walks to git root)
         or _load_agents_md(cwd_path)    # 2. AGENTS.md (cwd only)
         or _load_claude_md(cwd_path)    # 3. CLAUDE.md (cwd only)
         or _load_cursorrules(cwd_path)  # 4. .cursorrules / .cursor/rules/*.mdc
@@ -280,7 +280,7 @@ Most users should treat `agent/prompt_builder.py` as implementation code, not a 
 - Project context files such as `.alice.md`, `ALICE.md`, `AGENTS.md`, `CLAUDE.md`, or `.cursorrules` — inject repo-specific working rules.
 - Skills — package reusable workflows and references without editing core prompt code.
 - Optional system prompt config / API overrides — add deployment-specific instruction text without forking Alice.
-- Ephemeral overlays such as `LYDIA_EPHEMERAL_SYSTEM_PROMPT` or prefill messages — add turn-scoped guidance that should not become part of the cached prompt prefix.
+- Ephemeral overlays such as `ALICE_EPHEMERAL_SYSTEM_PROMPT` or prefill messages — add turn-scoped guidance that should not become part of the cached prompt prefix.
 
 ### When to edit code instead
 

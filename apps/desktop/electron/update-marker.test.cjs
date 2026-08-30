@@ -21,7 +21,7 @@ const path = require('path')
 const { markerPath, isPidAlive, readLiveUpdateMarker, UPDATE_MARKER_MAX_AGE_MS } = require('./update-marker.cjs')
 
 function tmpHome(tag) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `lydia-marker-${tag}-`))
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `alice-marker-${tag}-`))
   return dir
 }
 

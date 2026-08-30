@@ -11,7 +11,7 @@ import yaml
 
 
 @pytest.fixture
-def isolated_profiles(tmp_path, monkeypatch, _isolate_lydia_home):
+def isolated_profiles(tmp_path, monkeypatch, _isolate_alice_home):
     """Isolated default home + one named profile, each with config + .env."""
     from alice_constants import get_alice_home
     from alice_cli import profiles
@@ -24,7 +24,7 @@ def isolated_profiles(tmp_path, monkeypatch, _isolate_lydia_home):
         (home / "config.yaml").write_text("{}\n", encoding="utf-8")
     (worker_home / ".env").write_text("", encoding="utf-8")
 
-    monkeypatch.setattr(profiles, "_get_default_lydia_home", lambda: default_home)
+    monkeypatch.setattr(profiles, "_get_default_alice_home", lambda: default_home)
     monkeypatch.setattr(profiles, "_get_profiles_root", lambda: profiles_root)
     return {"default": default_home, "worker_beta": worker_home}
 
@@ -310,7 +310,7 @@ class TestProfileScopedPostSetup:
 
         monkeypatch.setattr(
             web_server,
-            "_spawn_lydia_action",
+            "_spawn_alice_action",
             lambda subcommand, name: calls.append(list(subcommand)) or _FakeProc(),
         )
         monkeypatch.setattr(
@@ -338,7 +338,7 @@ class TestProfileScopedPostSetup:
 
         monkeypatch.setattr(
             web_server,
-            "_spawn_lydia_action",
+            "_spawn_alice_action",
             lambda subcommand, name: calls.append(list(subcommand)) or _FakeProc(),
         )
         monkeypatch.setattr(
@@ -366,7 +366,7 @@ class TestProfileScopedGateway:
 
         monkeypatch.setattr(
             web_server,
-            "_spawn_lydia_action",
+            "_spawn_alice_action",
             lambda subcommand, name: calls.append((list(subcommand), name)) or _FakeProc(),
         )
         web_server._ACTION_PROCS.pop("gateway-restart", None)
@@ -407,7 +407,7 @@ class TestProfileScopedGateway:
 
         assert resp.status_code == 200
         assert seen_homes[0] == str(isolated_profiles["worker_beta"])
-        assert resp.json()["lydia_home"] == str(isolated_profiles["worker_beta"])
+        assert resp.json()["alice_home"] == str(isolated_profiles["worker_beta"])
 
     def test_status_uses_runtime_pid_when_profile_pid_file_is_missing(
         self, client, isolated_profiles, monkeypatch
@@ -483,7 +483,7 @@ class TestProfileScopedTelegramOnboarding:
 
         monkeypatch.setattr(
             web_server,
-            "_spawn_lydia_action",
+            "_spawn_alice_action",
             lambda subcommand, name: calls.append((list(subcommand), name)) or _FakeProc(),
         )
         web_server._ACTION_PROCS.pop("gateway-restart", None)
@@ -515,7 +515,7 @@ class TestProfileScopedTelegramOnboarding:
 
 
 class TestProfileScopedChatPty:
-    def test_chat_argv_scopes_lydia_home(self, isolated_profiles, monkeypatch):
+    def test_chat_argv_scopes_alice_home(self, isolated_profiles, monkeypatch):
         import alice_cli.web_server as web_server
 
         monkeypatch.setattr(
@@ -527,7 +527,7 @@ class TestProfileScopedChatPty:
         assert env is not None
         assert env["ALICE_HOME"] == str(isolated_profiles["worker_beta"])
         # Scoped chat must NOT attach to the dashboard's in-memory gateway.
-        assert "LYDIA_TUI_GATEWAY_URL" not in env
+        assert "ALICE_TUI_GATEWAY_URL" not in env
 
     def test_chat_argv_unscoped_keeps_legacy_env(self, isolated_profiles, monkeypatch):
         import alice_cli.web_server as web_server

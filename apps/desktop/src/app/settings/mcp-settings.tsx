@@ -4,19 +4,19 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { getLydiaConfigRecord, type LydiaGateway, saveLydiaConfig } from '@/alice'
+import { getAliceConfigRecord, type AliceGateway, saveAliceConfig } from '@/alice'
 import { useI18n } from '@/i18n'
 import { Wrench } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { notify, notifyError } from '@/store/notifications'
 import { $activeSessionId } from '@/store/session'
-import type { LydiaConfigRecord } from '@/types/alice'
+import type { AliceConfigRecord } from '@/types/alice'
 
 import { EmptyState, LoadingState, Pill, SettingsContent } from './primitives'
 import { useDeepLinkHighlight } from './use-deep-link-highlight'
 
 interface McpSettingsProps {
-  gateway?: LydiaGateway | null
+  gateway?: AliceGateway | null
   onConfigSaved?: () => void
 }
 
@@ -28,7 +28,7 @@ const EMPTY_SERVER = {
   env: {}
 }
 
-function getServers(config: LydiaConfigRecord | null): McpServers {
+function getServers(config: AliceConfigRecord | null): McpServers {
   const raw = config?.mcp_servers
 
   return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as McpServers) : {}
@@ -47,7 +47,7 @@ export function McpSettings({ gateway, onConfigSaved }: McpSettingsProps) {
   const { t } = useI18n()
   const m = t.settings.mcp
   const activeSessionId = useStore($activeSessionId)
-  const [config, setConfig] = useState<LydiaConfigRecord | null>(null)
+  const [config, setConfig] = useState<AliceConfigRecord | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [body, setBody] = useState('')
@@ -57,7 +57,7 @@ export function McpSettings({ gateway, onConfigSaved }: McpSettingsProps) {
   useEffect(() => {
     let cancelled = false
 
-    getLydiaConfigRecord()
+    getAliceConfigRecord()
       .then(next => {
         if (cancelled) {
           return
@@ -132,7 +132,7 @@ export function McpSettings({ gateway, onConfigSaved }: McpSettingsProps) {
       nextServers[nextName] = parsed
 
       const nextConfig = { ...config, mcp_servers: nextServers }
-      await saveLydiaConfig(nextConfig)
+      await saveAliceConfig(nextConfig)
       setConfig(nextConfig)
       setSelected(nextName)
       onConfigSaved?.()
@@ -152,7 +152,7 @@ export function McpSettings({ gateway, onConfigSaved }: McpSettingsProps) {
       delete nextServers[serverName]
 
       const nextConfig = { ...config, mcp_servers: nextServers }
-      await saveLydiaConfig(nextConfig)
+      await saveAliceConfig(nextConfig)
       setConfig(nextConfig)
       setSelected(Object.keys(nextServers).sort()[0] ?? null)
       onConfigSaved?.()

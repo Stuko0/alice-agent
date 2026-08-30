@@ -13,7 +13,7 @@ When the manifest is unreachable (offline, network blocked, hosting failure), Al
 ## Live manifest URL
 
 ```
-https://alice-agent.nousresearch.com/docs/api/model-catalog.json
+https://alice-agent.stuko.dev/docs/api/model-catalog.json
 ```
 
 Published on every merge to `main` via the existing `deploy-site.yml` GitHub Pages pipeline. The source of truth lives in the repo at `website/static/api/model-catalog.json`.
@@ -68,7 +68,7 @@ Cache location: `~/.alice/cache/model_catalog.json`.
 ```yaml
 model_catalog:
   enabled: true
-  url: https://alice-agent.nousresearch.com/docs/api/model-catalog.json
+  url: https://alice-agent.stuko.dev/docs/api/model-catalog.json
   ttl_hours: 1
   providers: {}
 ```

@@ -156,7 +156,7 @@ class TestIsSkillDisabled:
         assert _is_skill_disabled("any-skill") is False
 
     @patch("alice_cli.config.load_config")
-    @patch.dict("os.environ", {"LYDIA_PLATFORM": "discord"})
+    @patch.dict("os.environ", {"ALICE_PLATFORM": "discord"})
     def test_env_var_platform(self, mock_load):
         mock_load.return_value = {"skills": {
             "platform_disabled": {"discord": ["discord-skill"]}
@@ -184,15 +184,15 @@ class TestGetDisabledSkillNames:
             "      - tg-only-skill\n"
         )
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        monkeypatch.delenv("LYDIA_PLATFORM", raising=False)
-        monkeypatch.delenv("LYDIA_SESSION_PLATFORM", raising=False)
+        monkeypatch.delenv("ALICE_PLATFORM", raising=False)
+        monkeypatch.delenv("ALICE_SESSION_PLATFORM", raising=False)
 
         from agent.skill_utils import get_disabled_skill_names
         result = get_disabled_skill_names(platform="telegram")
         assert result == {"tg-only-skill", "global-skill"}
 
     def test_session_platform_env_var(self, tmp_path, monkeypatch):
-        """LYDIA_SESSION_PLATFORM should be used when LYDIA_PLATFORM is unset."""
+        """ALICE_SESSION_PLATFORM should be used when ALICE_PLATFORM is unset."""
         config = tmp_path / "config.yaml"
         config.write_text(
             "skills:\n"
@@ -203,15 +203,15 @@ class TestGetDisabledSkillNames:
             "      - discord-skill\n"
         )
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        monkeypatch.delenv("LYDIA_PLATFORM", raising=False)
-        monkeypatch.setenv("LYDIA_SESSION_PLATFORM", "discord")
+        monkeypatch.delenv("ALICE_PLATFORM", raising=False)
+        monkeypatch.setenv("ALICE_SESSION_PLATFORM", "discord")
 
         from agent.skill_utils import get_disabled_skill_names
         result = get_disabled_skill_names()
         assert result == {"discord-skill", "global-skill"}
 
-    def test_lydia_platform_takes_precedence(self, tmp_path, monkeypatch):
-        """LYDIA_PLATFORM should win over LYDIA_SESSION_PLATFORM."""
+    def test_alice_platform_takes_precedence(self, tmp_path, monkeypatch):
+        """ALICE_PLATFORM should win over ALICE_SESSION_PLATFORM."""
         config = tmp_path / "config.yaml"
         config.write_text(
             "skills:\n"
@@ -222,8 +222,8 @@ class TestGetDisabledSkillNames:
             "      - discord-skill\n"
         )
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        monkeypatch.setenv("LYDIA_PLATFORM", "telegram")
-        monkeypatch.setenv("LYDIA_SESSION_PLATFORM", "discord")
+        monkeypatch.setenv("ALICE_PLATFORM", "telegram")
+        monkeypatch.setenv("ALICE_SESSION_PLATFORM", "discord")
 
         from agent.skill_utils import get_disabled_skill_names
         result = get_disabled_skill_names()
@@ -241,8 +241,8 @@ class TestGetDisabledSkillNames:
             "      - slack-skill\n"
         )
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        monkeypatch.setenv("LYDIA_PLATFORM", "telegram")
-        monkeypatch.setenv("LYDIA_SESSION_PLATFORM", "telegram")
+        monkeypatch.setenv("ALICE_PLATFORM", "telegram")
+        monkeypatch.setenv("ALICE_SESSION_PLATFORM", "telegram")
 
         from agent.skill_utils import get_disabled_skill_names
         result = get_disabled_skill_names(platform="slack")
@@ -260,8 +260,8 @@ class TestGetDisabledSkillNames:
             "      - tg-skill\n"
         )
         monkeypatch.setenv("ALICE_HOME", str(tmp_path))
-        monkeypatch.delenv("LYDIA_PLATFORM", raising=False)
-        monkeypatch.delenv("LYDIA_SESSION_PLATFORM", raising=False)
+        monkeypatch.delenv("ALICE_PLATFORM", raising=False)
+        monkeypatch.delenv("ALICE_SESSION_PLATFORM", raising=False)
 
         from agent.skill_utils import get_disabled_skill_names
         result = get_disabled_skill_names()

@@ -1,7 +1,7 @@
 import { type ConnectionState, type GatewayEvent, resolveGatewayWsUrl } from '@alice/shared'
 import { atom } from 'nanostores'
 
-import { LydiaGateway } from '@/alice'
+import { AliceGateway } from '@/alice'
 import { setGatewayState } from '@/store/session'
 
 // ── Multi-profile gateway routing ──────────────────────────────────────────
@@ -18,12 +18,12 @@ const normKey = (profile: string | null | undefined): string => (profile ?? '').
 
 // Read connection state through a call so TS control-flow analysis doesn't
 // narrow the getter to a constant across guards (it genuinely changes).
-const isOpen = (gateway: LydiaGateway | null): boolean => gateway?.connectionState === 'open'
+const isOpen = (gateway: AliceGateway | null): boolean => gateway?.connectionState === 'open'
 
 // The active gateway instance, exposed for inline message-stream components
 // (e.g. inline ClarifyTool, model overlays) that call gateway methods without
 // the instance threaded down through props.
-export const $gateway = atom<LydiaGateway | null>(null)
+export const $gateway = atom<AliceGateway | null>(null)
 
 interface RegistryConfig {
   onEvent: (event: GatewayEvent) => void
@@ -36,10 +36,10 @@ export function configureGatewayRegistry(cfg: RegistryConfig): void {
 }
 
 // ── Primary (window) backend ───────────────────────────────────────────────
-let primaryGateway: LydiaGateway | null = null
+let primaryGateway: AliceGateway | null = null
 let primaryProfile = 'default'
 
-export function setPrimaryGateway(gateway: LydiaGateway | null, profile = 'default'): void {
+export function setPrimaryGateway(gateway: AliceGateway | null, profile = 'default'): void {
   primaryGateway = gateway
   primaryProfile = normKey(profile)
 }
@@ -47,7 +47,7 @@ export function setPrimaryGateway(gateway: LydiaGateway | null, profile = 'defau
 // ── Secondary (pool) backends ──────────────────────────────────────────────
 interface Secondary {
   profile: string
-  gateway: LydiaGateway
+  gateway: AliceGateway
   offEvent: () => void
   offState: () => void
   reconnectTimer: ReturnType<typeof setTimeout> | null
@@ -66,7 +66,7 @@ export function isActivePrimary(): boolean {
   return activeKey === primaryProfile
 }
 
-export function activeGateway(): LydiaGateway | null {
+export function activeGateway(): AliceGateway | null {
   if (activeKey === primaryProfile) {
     return primaryGateway
   }
@@ -103,7 +103,7 @@ function clearTimer(entry: Secondary): void {
 }
 
 async function openSecondary(entry: Secondary): Promise<void> {
-  const desktop = window.lydiaDesktop
+  const desktop = window.aliceDesktop
 
   if (!desktop) {
     return
@@ -151,7 +151,7 @@ async function reconnectSecondary(entry: Secondary): Promise<void> {
 }
 
 function createSecondary(profile: string): Secondary {
-  const gateway = new LydiaGateway()
+  const gateway = new AliceGateway()
 
   const entry: Secondary = {
     profile,
@@ -216,7 +216,7 @@ export async function ensureGatewayForProfile(profile: string): Promise<void> {
 
 // Reconnect the active gateway after a transient request failure. Primary
 // reconnects are owned by use-gateway-boot, so we only drive secondaries here.
-export async function ensureActiveGatewayOpen(): Promise<LydiaGateway | null> {
+export async function ensureActiveGatewayOpen(): Promise<AliceGateway | null> {
   if (activeKey === primaryProfile) {
     return primaryGateway
   }
@@ -250,7 +250,7 @@ export function reconnectSecondaryGateways(): void {
 // Keep the idle reaper from killing a backend we still need: ping every live
 // secondary. The active one is pinged separately (touchActiveGatewayBackend).
 export function touchSecondaryGateways(): void {
-  const desktop = window.lydiaDesktop
+  const desktop = window.aliceDesktop
 
   for (const entry of secondaries.values()) {
     if (entry.wantOpen) {

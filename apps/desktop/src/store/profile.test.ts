@@ -1,7 +1,7 @@
 import { atom } from 'nanostores'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { LydiaConnection } from '@/global'
+import type { AliceConnection } from '@/global'
 
 // Keep profile.ts's side-effecting imports inert: the gateway socket layer and
 // the REST query client must not run for real in a unit test.
@@ -21,13 +21,13 @@ const { $activeGatewayProfile, ensureGatewayProfile } = await import('./profile'
 const { $connection } = await import('./session')
 const { queryClient } = await import('@/lib/query-client')
 
-const remoteConn = (over: Partial<LydiaConnection> = {}): LydiaConnection =>
-  ({ baseUrl: 'https://alice-roy.tail.ts.net', mode: 'remote', profile: 'vps-remote', ...over }) as LydiaConnection
+const remoteConn = (over: Partial<AliceConnection> = {}): AliceConnection =>
+  ({ baseUrl: 'https://alice-roy.tail.ts.net', mode: 'remote', profile: 'vps-remote', ...over }) as AliceConnection
 
-const localConn = (over: Partial<LydiaConnection> = {}): LydiaConnection =>
-  ({ baseUrl: '', mode: 'local', profile: 'default', ...over }) as LydiaConnection
+const localConn = (over: Partial<AliceConnection> = {}): AliceConnection =>
+  ({ baseUrl: '', mode: 'local', profile: 'default', ...over }) as AliceConnection
 
-const getConnection = vi.fn<(profile?: string | null) => Promise<LydiaConnection>>()
+const getConnection = vi.fn<(profile?: string | null) => Promise<AliceConnection>>()
 
 beforeEach(() => {
   getConnection.mockReset()
@@ -35,7 +35,7 @@ beforeEach(() => {
   $gateway.set({ id: 'live-socket' })
   $activeGatewayProfile.set('default')
   $connection.set(localConn())
-  vi.stubGlobal('window', { lydiaDesktop: { getConnection } })
+  vi.stubGlobal('window', { aliceDesktop: { getConnection } })
   vi.mocked(queryClient.invalidateQueries).mockClear()
   resetStarmapGraph.mockClear()
 })

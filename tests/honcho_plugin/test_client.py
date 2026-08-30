@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from alice_cli.profiles import _get_default_lydia_home
+from alice_cli.profiles import _get_default_alice_home
 
 import pytest
 
@@ -341,19 +341,19 @@ class TestResolveSessionName:
 
 
 class TestResolveConfigPath:
-    def test_prefers_lydia_home_when_exists(self, tmp_path):
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir()
-        local_cfg = lydia_home / "honcho.json"
+    def test_prefers_alice_home_when_exists(self, tmp_path):
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir()
+        local_cfg = alice_home / "honcho.json"
         local_cfg.write_text('{"apiKey": "local"}')
 
-        with patch.dict(os.environ, {"ALICE_HOME": str(lydia_home)}):
+        with patch.dict(os.environ, {"ALICE_HOME": str(alice_home)}):
             result = resolve_config_path()
         assert result == local_cfg
 
     def test_falls_back_to_default_profile_when_no_local(self, tmp_path, monkeypatch):
         # Profile mode: ALICE_HOME points at ~/.alice/profiles/<name>, so
-        # _get_default_lydia_home() must resolve back to ~/.alice — that's
+        # _get_default_alice_home() must resolve back to ~/.alice — that's
         # the bug the HOME-anchored helper fixes (vs. blindly using Path.home()).
         fake_home = tmp_path / "fakehome"
         fake_home.mkdir()
@@ -368,10 +368,10 @@ class TestResolveConfigPath:
 
         result = resolve_config_path()
 
-        assert _get_default_lydia_home() == default_home
+        assert _get_default_alice_home() == default_home
         assert result == default_cfg
 
-    def test_falls_back_to_global_without_lydia_home_env(self, tmp_path):
+    def test_falls_back_to_global_without_alice_home_env(self, tmp_path):
         fake_home = tmp_path / "fakehome"
         fake_home.mkdir()
 
@@ -384,10 +384,10 @@ class TestResolveConfigPath:
     def test_global_fallback_uses_home_at_call_time(self, tmp_path):
         fake_home = tmp_path / "fakehome"
         fake_home.mkdir()
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir()
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir()
 
-        with patch.dict(os.environ, {"ALICE_HOME": str(lydia_home)}), \
+        with patch.dict(os.environ, {"ALICE_HOME": str(alice_home)}), \
              patch.object(Path, "home", return_value=fake_home):
             assert resolve_global_config_path() == fake_home / ".honcho" / "config.json"
             assert resolve_config_path() == fake_home / ".honcho" / "config.json"
@@ -415,15 +415,15 @@ class TestResolveConfigPath:
         assert config.workspace_id == "default-ws"
 
     def test_from_global_config_uses_local_path(self, tmp_path):
-        lydia_home = tmp_path / "alice"
-        lydia_home.mkdir()
-        local_cfg = lydia_home / "honcho.json"
+        alice_home = tmp_path / "alice"
+        alice_home.mkdir()
+        local_cfg = alice_home / "honcho.json"
         local_cfg.write_text(json.dumps({
             "apiKey": "***",
             "workspace": "local-ws",
         }))
 
-        with patch.dict(os.environ, {"ALICE_HOME": str(lydia_home)}), \
+        with patch.dict(os.environ, {"ALICE_HOME": str(alice_home)}), \
              patch.object(Path, "home", return_value=tmp_path):
             config = HonchoClientConfig.from_global_config()
         assert config.api_key == "***"
@@ -432,41 +432,41 @@ class TestResolveConfigPath:
 
 class TestResolveActiveHost:
     def test_profile_host_key_uses_honcho_safe_separator(self):
-        assert profile_host_key("coder") == "lydia_coder"
+        assert profile_host_key("coder") == "alice_coder"
         assert profile_host_key("default") == "alice"
 
-    def test_default_returns_lydia(self):
+    def test_default_returns_alice(self):
         with patch.dict(os.environ, {}, clear=True):
-            os.environ.pop("LYDIA_HONCHO_HOST", None)
+            os.environ.pop("ALICE_HONCHO_HOST", None)
             os.environ.pop("ALICE_HOME", None)
             assert resolve_active_host() == "alice"
 
     def test_explicit_env_var_wins(self):
-        with patch.dict(os.environ, {"LYDIA_HONCHO_HOST": "alice.coder"}):
+        with patch.dict(os.environ, {"ALICE_HONCHO_HOST": "alice.coder"}):
             assert resolve_active_host() == "alice.coder"
 
     def test_profile_name_derives_host(self):
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("LYDIA_HONCHO_HOST", None)
+            os.environ.pop("ALICE_HONCHO_HOST", None)
             with patch("alice_cli.profiles.get_active_profile_name", return_value="coder"):
-                assert resolve_active_host() == "lydia_coder"
+                assert resolve_active_host() == "alice_coder"
 
-    def test_default_profile_returns_lydia(self):
+    def test_default_profile_returns_alice(self):
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("LYDIA_HONCHO_HOST", None)
+            os.environ.pop("ALICE_HONCHO_HOST", None)
             with patch("alice_cli.profiles.get_active_profile_name", return_value="default"):
                 assert resolve_active_host() == "alice"
 
-    def test_custom_profile_returns_lydia(self):
+    def test_custom_profile_returns_alice(self):
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("LYDIA_HONCHO_HOST", None)
+            os.environ.pop("ALICE_HONCHO_HOST", None)
             with patch("alice_cli.profiles.get_active_profile_name", return_value="custom"):
                 assert resolve_active_host() == "alice"
 
     def test_profiles_import_failure_falls_back(self):
         import sys
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("LYDIA_HONCHO_HOST", None)
+            os.environ.pop("ALICE_HONCHO_HOST", None)
             # Temporarily remove alice_cli.profiles to simulate import failure
             saved = sys.modules.get("alice_cli.profiles")
             sys.modules["alice_cli.profiles"] = None  # type: ignore
@@ -482,10 +482,10 @@ class TestResolveActiveHost:
 class TestProfileScopedConfig:
     def test_from_env_uses_profile_host(self):
         with patch.dict(os.environ, {"HONCHO_API_KEY": "key"}):
-            config = HonchoClientConfig.from_env(host="lydia_coder")
-        assert config.host == "lydia_coder"
+            config = HonchoClientConfig.from_env(host="alice_coder")
+        assert config.host == "alice_coder"
         assert config.workspace_id == "alice"  # shared workspace
-        assert config.ai_peer == "lydia_coder"
+        assert config.ai_peer == "alice_coder"
 
     def test_from_env_default_workspace_preserved_for_default_host(self):
         with patch.dict(os.environ, {"HONCHO_API_KEY": "key"}):
@@ -499,19 +499,19 @@ class TestProfileScopedConfig:
             "apiKey": "shared-key",
             "hosts": {
                 "alice": {"aiPeer": "alice", "peerName": "alice"},
-                "lydia_coder": {
-                    "aiPeer": "lydia_coder",
+                "alice_coder": {
+                    "aiPeer": "alice_coder",
                     "peerName": "alice-coder",
                     "workspace": "coder-ws",
                 },
             },
         }))
         config = HonchoClientConfig.from_global_config(
-            host="lydia_coder", config_path=config_file,
+            host="alice_coder", config_path=config_file,
         )
-        assert config.host == "lydia_coder"
+        assert config.host == "alice_coder"
         assert config.workspace_id == "coder-ws"
-        assert config.ai_peer == "lydia_coder"
+        assert config.ai_peer == "alice_coder"
         assert config.peer_name == "alice-coder"
 
     def test_from_global_config_auto_resolves_host(self, tmp_path):
@@ -519,12 +519,12 @@ class TestProfileScopedConfig:
         config_file.write_text(json.dumps({
             "apiKey": "key",
             "hosts": {
-                "lydia_dreamer": {"peerName": "dreamer-user"},
+                "alice_dreamer": {"peerName": "dreamer-user"},
             },
         }))
-        with patch("plugins.memory.honcho.client.resolve_active_host", return_value="lydia_dreamer"):
+        with patch("plugins.memory.honcho.client.resolve_active_host", return_value="alice_dreamer"):
             config = HonchoClientConfig.from_global_config(config_path=config_file)
-        assert config.host == "lydia_dreamer"
+        assert config.host == "alice_dreamer"
         assert config.peer_name == "dreamer-user"
 
     def test_from_global_config_reads_legacy_dot_profile_host_block(self, tmp_path):
@@ -536,12 +536,12 @@ class TestProfileScopedConfig:
             },
         }))
         config = HonchoClientConfig.from_global_config(
-            host="lydia_dreamer",
+            host="alice_dreamer",
             config_path=config_file,
         )
-        assert config.host == "lydia_dreamer"
+        assert config.host == "alice_dreamer"
         assert config.peer_name == "dreamer-user"
-        assert config.workspace_id == "lydia_dreamer"
+        assert config.workspace_id == "alice_dreamer"
 
 
 class TestObservationModeMigration:
@@ -635,7 +635,7 @@ class TestGetHonchoClient:
         not importlib.util.find_spec("honcho"),
         reason="honcho SDK not installed"
     )
-    def test_lydia_config_timeout_override_used_when_config_timeout_missing(self):
+    def test_alice_config_timeout_override_used_when_config_timeout_missing(self):
         fake_honcho = MagicMock(name="Honcho")
         cfg = HonchoClientConfig(
             api_key="test-key",
@@ -677,7 +677,7 @@ class TestGetHonchoClient:
         not importlib.util.find_spec("honcho"),
         reason="honcho SDK not installed"
     )
-    def test_lydia_request_timeout_alias_used(self):
+    def test_alice_request_timeout_alias_used(self):
         fake_honcho = MagicMock(name="Honcho")
         cfg = HonchoClientConfig(
             api_key="test-key",

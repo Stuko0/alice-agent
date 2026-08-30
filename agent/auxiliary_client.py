@@ -410,7 +410,7 @@ _PROVIDERS_WITHOUT_VISION: frozenset = frozenset({
 # `X-Title` is the canonical attribution header OpenRouter's dashboard
 # reads; the previous `X-OpenRouter-Title` label was not recognized there.
 _OR_HEADERS_BASE = {
-    "HTTP-Referer": "https://alice-agent.nousresearch.com",
+    "HTTP-Referer": "https://alice-agent.stuko.dev",
     "X-Title": "Alice Agent",
     "X-OpenRouter-Categories": "productivity,cli-agent",
 }

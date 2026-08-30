@@ -1649,15 +1649,15 @@ class TestGithubProviderLabeling:
 
 
 def _make_index_source(skills):
-    """Build a LydiaIndexSource pre-loaded with a fixed skill list."""
-    from tools.skills_hub import LydiaIndexSource
-    src = LydiaIndexSource(auth=GitHubAuth())
+    """Build a AliceIndexSource pre-loaded with a fixed skill list."""
+    from tools.skills_hub import AliceIndexSource
+    src = AliceIndexSource(auth=GitHubAuth())
     src._index = {"skills": skills}
     src._loaded = True
     return src
 
 
-class TestLydiaIndexSearch:
+class TestAliceIndexSearch:
     def test_search_matches_identifier_and_provider(self):
         # NVIDIA skill whose name/description does NOT contain "nvidia" — only
         # the identifier and the provider label do. The old substring-only

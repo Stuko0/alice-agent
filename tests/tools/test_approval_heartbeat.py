@@ -38,15 +38,15 @@ class TestApprovalHeartbeat:
         _clear_approval_state()
         self._saved_env = {
             k: os.environ.get(k)
-            for k in ("LYDIA_GATEWAY_SESSION", "LYDIA_YOLO_MODE",
-                      "LYDIA_SESSION_KEY")
+            for k in ("ALICE_GATEWAY_SESSION", "ALICE_YOLO_MODE",
+                      "ALICE_SESSION_KEY")
         }
-        os.environ.pop("LYDIA_YOLO_MODE", None)
-        os.environ["LYDIA_GATEWAY_SESSION"] = "1"
+        os.environ.pop("ALICE_YOLO_MODE", None)
+        os.environ["ALICE_GATEWAY_SESSION"] = "1"
         # The blocking wait path reads the session key via contextvar OR
         # os.environ fallback.  Contextvars don't propagate across threads
         # by default, so env var is the portable way to drive this in tests.
-        os.environ["LYDIA_SESSION_KEY"] = self.SESSION_KEY
+        os.environ["ALICE_SESSION_KEY"] = self.SESSION_KEY
 
     def teardown_method(self):
         for k, v in self._saved_env.items():

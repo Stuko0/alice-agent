@@ -15,7 +15,7 @@ import pytest
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_lydia_tree(root: Path) -> None:
+def _make_alice_tree(root: Path) -> None:
     """Create a realistic ~/.alice directory structure for testing."""
     (root / "config.yaml").write_text("model:\n  provider: openrouter\n")
     (root / ".env").write_text("OPENROUTER_API_KEY=sk-test-123\n")
@@ -193,12 +193,12 @@ class TestShouldExclude:
 class TestBackup:
     def test_creates_zip(self, tmp_path, monkeypatch):
         """Backup creates a valid zip containing expected files."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        _make_lydia_tree(lydia_home)
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        _make_alice_tree(alice_home)
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
-        # get_default_lydia_root needs this
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
+        # get_default_alice_root needs this
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         out_zip = tmp_path / "backup.zip"
@@ -229,11 +229,11 @@ class TestBackup:
         """SQLite staging temp files must be created on the output zip's
         filesystem (dir=out_path.parent), NOT the system /tmp default — a
         small tmpfs there silently drops large DBs from the backup (#35376)."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        _make_lydia_tree(lydia_home)
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        _make_alice_tree(alice_home)
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         out_dir = tmp_path / "external-drive"
@@ -260,14 +260,14 @@ class TestBackup:
     def test_pre_update_db_snapshots_staged_beside_output_zip(self, tmp_path, monkeypatch):
         """The pre-update/pre-migration zip path (_write_full_zip_backup) must
         also stage SQLite snapshots beside its output zip, not in /tmp."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        _make_lydia_tree(lydia_home)
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        _make_alice_tree(alice_home)
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
-        out_zip = lydia_home / "backups" / "pre-update-test.zip"
+        out_zip = alice_home / "backups" / "pre-update-test.zip"
         out_zip.parent.mkdir(parents=True, exist_ok=True)
 
         import alice_cli.backup as backup_mod
@@ -279,7 +279,7 @@ class TestBackup:
             return real_ntf(*a, **kw)
 
         monkeypatch.setattr(backup_mod.tempfile, "NamedTemporaryFile", _spy)
-        result = backup_mod._write_full_zip_backup(out_zip, lydia_home)
+        result = backup_mod._write_full_zip_backup(out_zip, alice_home)
 
         assert result is not None
         assert staged_dirs, "no SQLite snapshot was staged"
@@ -287,11 +287,11 @@ class TestBackup:
 
     def test_excludes_alice_agent(self, tmp_path, monkeypatch):
         """Backup does NOT include alice-agent/ directory."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        _make_lydia_tree(lydia_home)
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        _make_alice_tree(alice_home)
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         out_zip = tmp_path / "backup.zip"
@@ -309,19 +309,19 @@ class TestBackup:
         """A plugin venv / site-packages / pip cache under ALICE_HOME must be
         pruned by the walk, while real data (skills, config) is preserved.
         This is the regression guard for the ballooning-backup bug."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        _make_lydia_tree(lydia_home)
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        _make_alice_tree(alice_home)
 
         # Simulate the heavy regeneratable trees that ballooned the backup.
-        venv_pkg = lydia_home / "plugins" / "heavy" / ".venv" / "lib" / "site-packages" / "dep"
+        venv_pkg = alice_home / "plugins" / "heavy" / ".venv" / "lib" / "site-packages" / "dep"
         venv_pkg.mkdir(parents=True)
         (venv_pkg / "__init__.py").write_text("# dep\n")
-        pip_cache = lydia_home / ".cache" / "uv" / "wheels"
+        pip_cache = alice_home / ".cache" / "uv" / "wheels"
         pip_cache.mkdir(parents=True)
         (pip_cache / "abc.whl").write_bytes(b"\x00")
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         out_zip = tmp_path / "backup.zip"
@@ -338,18 +338,18 @@ class TestBackup:
 
     def test_includes_nested_alice_agent_in_skills(self, tmp_path, monkeypatch):
         """Backup includes skills/.../alice-agent/ but NOT root alice-agent/."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        _make_lydia_tree(lydia_home)
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        _make_alice_tree(alice_home)
 
         # Add a nested alice-agent directory inside skills (like the real layout)
-        nested = lydia_home / "skills" / "autonomous-ai-agents" / "alice-agent"
+        nested = alice_home / "skills" / "autonomous-ai-agents" / "alice-agent"
         nested.mkdir(parents=True)
         (nested / "SKILL.md").write_text("# Alice Agent Skill\n")
         (nested / "sub").mkdir()
         (nested / "sub" / "item.txt").write_text("nested content\n")
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         out_zip = tmp_path / "backup.zip"
@@ -369,11 +369,11 @@ class TestBackup:
 
     def test_excludes_pycache(self, tmp_path, monkeypatch):
         """Backup does NOT include __pycache__ dirs."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        _make_lydia_tree(lydia_home)
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        _make_alice_tree(alice_home)
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         out_zip = tmp_path / "backup.zip"
@@ -389,11 +389,11 @@ class TestBackup:
 
     def test_excludes_pid_files(self, tmp_path, monkeypatch):
         """Backup does NOT include PID files."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        _make_lydia_tree(lydia_home)
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        _make_alice_tree(alice_home)
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         out_zip = tmp_path / "backup.zip"
@@ -409,11 +409,11 @@ class TestBackup:
 
     def test_default_output_path(self, tmp_path, monkeypatch):
         """When no output path given, zip goes to ~/alice-backup-*.zip."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / "config.yaml").write_text("model: test\n")
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / "config.yaml").write_text("model: test\n")
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         args = Namespace(output=None)
@@ -427,14 +427,14 @@ class TestBackup:
 
     def test_skips_symlinked_files(self, tmp_path, monkeypatch):
         """Backup must not dereference symlinks and leak files outside ALICE_HOME."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        _make_lydia_tree(lydia_home)
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        _make_alice_tree(alice_home)
         outside = tmp_path / "outside-secret.txt"
         outside.write_text("outside secret\n")
-        _symlink_file_or_skip(lydia_home / "skills" / "outside-link.txt", outside)
+        _symlink_file_or_skip(alice_home / "skills" / "outside-link.txt", outside)
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         out_zip = tmp_path / "backup.zip"
@@ -503,9 +503,9 @@ class TestImport:
 
     def test_restores_files(self, tmp_path, monkeypatch):
         """Import extracts files into alice home."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
@@ -521,16 +521,16 @@ class TestImport:
         from alice_cli.backup import run_import
         run_import(args)
 
-        assert (lydia_home / "config.yaml").read_text() == "model:\n  provider: openrouter\n"
-        assert (lydia_home / ".env").read_text() == "OPENROUTER_API_KEY=sk-test\n"
-        assert (lydia_home / "skills" / "my-skill" / "SKILL.md").read_text() == "# My Skill\n"
-        assert (lydia_home / "profiles" / "coder" / "config.yaml").exists()
+        assert (alice_home / "config.yaml").read_text() == "model:\n  provider: openrouter\n"
+        assert (alice_home / ".env").read_text() == "OPENROUTER_API_KEY=sk-test\n"
+        assert (alice_home / "skills" / "my-skill" / "SKILL.md").read_text() == "# My Skill\n"
+        assert (alice_home / "profiles" / "coder" / "config.yaml").exists()
 
-    def test_strips_lydia_prefix(self, tmp_path, monkeypatch):
+    def test_strips_alice_prefix(self, tmp_path, monkeypatch):
         """Import strips .alice/ prefix if all entries share it."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
@@ -544,14 +544,14 @@ class TestImport:
         from alice_cli.backup import run_import
         run_import(args)
 
-        assert (lydia_home / "config.yaml").read_text() == "model: test\n"
-        assert (lydia_home / "skills" / "a" / "SKILL.md").read_text() == "# A\n"
+        assert (alice_home / "config.yaml").read_text() == "model: test\n"
+        assert (alice_home / "skills" / "a" / "SKILL.md").read_text() == "# A\n"
 
     def test_rejects_empty_zip(self, tmp_path, monkeypatch):
         """Import rejects an empty zip."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "empty.zip"
@@ -564,11 +564,11 @@ class TestImport:
         with pytest.raises(SystemExit):
             run_import(args)
 
-    def test_rejects_non_lydia_zip(self, tmp_path, monkeypatch):
+    def test_rejects_non_alice_zip(self, tmp_path, monkeypatch):
         """Import rejects a zip that doesn't look like a alice backup."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "random.zip"
@@ -585,9 +585,9 @@ class TestImport:
 
     def test_blocks_path_traversal(self, tmp_path, monkeypatch):
         """Import blocks zip entries with path traversal."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "evil.zip"
@@ -603,7 +603,7 @@ class TestImport:
         run_import(args)
 
         # config.yaml should be restored
-        assert (lydia_home / "config.yaml").exists()
+        assert (alice_home / "config.yaml").exists()
         # traversal file should NOT exist outside alice home
         assert not (tmp_path / "etc" / "passwd").exists()
 
@@ -615,14 +615,14 @@ class TestImport:
         stale/foreign state and leaves the gateway stuck "starting",
         disconnecting it from the Nous portal (NS-508). The live file wins.
         """
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         # The target (e.g. hosted container) already has its own live state.
         live_state = '{"gateway_state": "running", "desired_state": "running"}'
-        (lydia_home / "gateway_state.json").write_text(live_state)
+        (alice_home / "gateway_state.json").write_text(live_state)
 
         zip_path = tmp_path / "backup.zip"
         self._make_backup_zip(zip_path, {
@@ -637,16 +637,16 @@ class TestImport:
         run_import(args)
 
         # config.yaml is restored normally...
-        assert (lydia_home / "config.yaml").read_text() == "model: test\n"
+        assert (alice_home / "config.yaml").read_text() == "model: test\n"
         # ...but the live gateway_state.json is untouched.
-        assert (lydia_home / "gateway_state.json").read_text() == live_state
+        assert (alice_home / "gateway_state.json").read_text() == live_state
 
     def test_does_not_seed_gateway_state_when_absent(self, tmp_path, monkeypatch):
         """A backup's gateway_state.json is dropped, not written, when the
         target has none — a foreign state must never seed the reconciler."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
@@ -660,20 +660,20 @@ class TestImport:
         from alice_cli.backup import run_import
         run_import(args)
 
-        assert (lydia_home / "config.yaml").exists()
-        assert not (lydia_home / "gateway_state.json").exists()
+        assert (alice_home / "config.yaml").exists()
+        assert not (alice_home / "gateway_state.json").exists()
 
     def test_preserves_per_profile_gateway_state(self, tmp_path, monkeypatch):
         """The skip is matched by basename, so a named profile's
         gateway_state.json (profiles/<name>/gateway_state.json) is preserved
         the same way the root profile's is."""
-        lydia_home = tmp_path / ".alice"
-        (lydia_home / "profiles" / "coder").mkdir(parents=True)
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        (alice_home / "profiles" / "coder").mkdir(parents=True)
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         live_state = '{"gateway_state": "running"}'
-        (lydia_home / "profiles" / "coder" / "gateway_state.json").write_text(live_state)
+        (alice_home / "profiles" / "coder" / "gateway_state.json").write_text(live_state)
 
         zip_path = tmp_path / "backup.zip"
         self._make_backup_zip(zip_path, {
@@ -688,23 +688,23 @@ class TestImport:
         run_import(args)
 
         # Profile config is restored, but its live gateway state is preserved.
-        assert (lydia_home / "profiles" / "coder" / "config.yaml").read_text() == "model: anthropic\n"
+        assert (alice_home / "profiles" / "coder" / "config.yaml").read_text() == "model: anthropic\n"
         assert (
-            lydia_home / "profiles" / "coder" / "gateway_state.json"
+            alice_home / "profiles" / "coder" / "gateway_state.json"
         ).read_text() == live_state
 
     def test_preserves_runtime_pid_and_process_files(self, tmp_path, monkeypatch):
         """gateway.pid / cron.pid / gateway.lock / processes.json from a backup
         reference the source machine's process namespace and must never be
         written over the target's."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         # Live runtime files belonging to the target's own processes.
-        (lydia_home / "gateway.pid").write_text("4242")
-        (lydia_home / "processes.json").write_text('{"live": true}')
+        (alice_home / "gateway.pid").write_text("4242")
+        (alice_home / "processes.json").write_text('{"live": true}')
 
         zip_path = tmp_path / "backup.zip"
         self._make_backup_zip(zip_path, {
@@ -721,19 +721,19 @@ class TestImport:
         run_import(args)
 
         # Live runtime files are untouched; the backup's foreign ones never land.
-        assert (lydia_home / "gateway.pid").read_text() == "4242"
-        assert (lydia_home / "processes.json").read_text() == '{"live": true}'
+        assert (alice_home / "gateway.pid").read_text() == "4242"
+        assert (alice_home / "processes.json").read_text() == '{"live": true}'
         # cron.pid / gateway.lock had no live copy and were not seeded.
-        assert not (lydia_home / "cron.pid").exists()
-        assert not (lydia_home / "gateway.lock").exists()
+        assert not (alice_home / "cron.pid").exists()
+        assert not (alice_home / "gateway.lock").exists()
 
     def test_confirmation_prompt_abort(self, tmp_path, monkeypatch):
         """Import aborts when user says no to confirmation."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
         # Pre-existing config triggers the confirmation
-        (lydia_home / "config.yaml").write_text("existing: true\n")
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        (alice_home / "config.yaml").write_text("existing: true\n")
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
@@ -748,14 +748,14 @@ class TestImport:
             run_import(args)
 
         # Original config should be unchanged
-        assert (lydia_home / "config.yaml").read_text() == "existing: true\n"
+        assert (alice_home / "config.yaml").read_text() == "existing: true\n"
 
     def test_force_skips_confirmation(self, tmp_path, monkeypatch):
         """Import with --force skips confirmation and overwrites."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / "config.yaml").write_text("existing: true\n")
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / "config.yaml").write_text("existing: true\n")
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
@@ -768,13 +768,13 @@ class TestImport:
         from alice_cli.backup import run_import
         run_import(args)
 
-        assert (lydia_home / "config.yaml").read_text() == "model: restored\n"
+        assert (alice_home / "config.yaml").read_text() == "model: restored\n"
 
     def test_missing_file_exits(self, tmp_path, monkeypatch):
         """Import exits with error for nonexistent file."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
         args = Namespace(zipfile=str(tmp_path / "nonexistent.zip"), force=True)
 
@@ -785,9 +785,9 @@ class TestImport:
     @pytest.mark.skipif(os.name != "posix", reason="POSIX file permissions only")
     def test_restores_secret_files_with_0600_perms(self, tmp_path, monkeypatch):
         """Secret files must end up at 0600 after restore (zipfile drops mode bits)."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
@@ -805,7 +805,7 @@ class TestImport:
         run_import(args)
 
         for rel in (".env", "auth.json", "state.db", "profiles/coder/.env"):
-            mode = (lydia_home / rel).stat().st_mode & 0o777
+            mode = (alice_home / rel).stat().st_mode & 0o777
             assert mode == 0o600, f"{rel} restored with mode {oct(mode)}, expected 0o600"
 
 
@@ -819,7 +819,7 @@ class TestRoundTrip:
         # Source
         src_home = tmp_path / "source" / ".alice"
         src_home.mkdir(parents=True)
-        _make_lydia_tree(src_home)
+        _make_alice_tree(src_home)
 
         monkeypatch.setenv("ALICE_HOME", str(src_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path / "source")
@@ -921,7 +921,7 @@ class TestValidation:
             ok, reason = _validate_backup_zip(zf)
         assert not ok
 
-    def test_detect_prefix_lydia(self):
+    def test_detect_prefix_alice(self):
         """Detects .alice/ prefix wrapping all entries."""
         import io
         from alice_cli.backup import _detect_prefix
@@ -967,7 +967,7 @@ class TestValidation:
 # ---------------------------------------------------------------------------
 
 class TestBackupEdgeCases:
-    def test_nonexistent_lydia_home(self, tmp_path, monkeypatch):
+    def test_nonexistent_alice_home(self, tmp_path, monkeypatch):
         """Backup exits when alice home doesn't exist."""
         fake_home = tmp_path / "nonexistent" / ".alice"
         monkeypatch.setenv("ALICE_HOME", str(fake_home))
@@ -981,11 +981,11 @@ class TestBackupEdgeCases:
 
     def test_output_is_directory(self, tmp_path, monkeypatch):
         """When output path is a directory, zip is created inside it."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / "config.yaml").write_text("model: test\n")
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / "config.yaml").write_text("model: test\n")
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         out_dir = tmp_path / "backups"
@@ -1001,11 +1001,11 @@ class TestBackupEdgeCases:
 
     def test_output_without_zip_suffix(self, tmp_path, monkeypatch):
         """Output path without .zip gets suffix appended."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / "config.yaml").write_text("model: test\n")
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / "config.yaml").write_text("model: test\n")
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         out_path = tmp_path / "mybackup.tar"
@@ -1017,15 +1017,15 @@ class TestBackupEdgeCases:
         # Should have .tar.zip suffix
         assert (tmp_path / "mybackup.tar.zip").exists()
 
-    def test_empty_lydia_home(self, tmp_path, monkeypatch):
+    def test_empty_alice_home(self, tmp_path, monkeypatch):
         """Backup handles empty alice home (no files to back up)."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
         # Only excluded dirs, no actual files
-        (lydia_home / "__pycache__").mkdir()
-        (lydia_home / "__pycache__" / "foo.pyc").write_bytes(b"\x00")
+        (alice_home / "__pycache__").mkdir()
+        (alice_home / "__pycache__" / "foo.pyc").write_bytes(b"\x00")
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         args = Namespace(output=str(tmp_path / "out.zip"))
@@ -1038,16 +1038,16 @@ class TestBackupEdgeCases:
 
     def test_permission_error_during_backup(self, tmp_path, monkeypatch):
         """Backup handles permission errors gracefully."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / "config.yaml").write_text("model: test\n")
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / "config.yaml").write_text("model: test\n")
 
         # Create an unreadable file
-        bad_file = lydia_home / "secret.db"
+        bad_file = alice_home / "secret.db"
         bad_file.write_text("data")
         bad_file.chmod(0o000)
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         out_zip = tmp_path / "out.zip"
@@ -1065,16 +1065,16 @@ class TestBackupEdgeCases:
 
     def test_pre1980_timestamp_skipped(self, tmp_path, monkeypatch):
         """Backup skips files with pre-1980 timestamps (ZIP limitation)."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / "config.yaml").write_text("model: test\n")
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / "config.yaml").write_text("model: test\n")
 
         # Create a file with epoch timestamp (1970-01-01)
-        old_file = lydia_home / "ancient.txt"
+        old_file = alice_home / "ancient.txt"
         old_file.write_text("old data")
         os.utime(old_file, (0, 0))
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         out_zip = tmp_path / "out.zip"
@@ -1091,17 +1091,17 @@ class TestBackupEdgeCases:
             # The pre-1980 file should be skipped, not crash the backup
             assert "ancient.txt" not in names
 
-    def test_skips_output_zip_inside_lydia(self, tmp_path, monkeypatch):
+    def test_skips_output_zip_inside_alice(self, tmp_path, monkeypatch):
         """Backup skips its own output zip if it's inside alice root."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / "config.yaml").write_text("model: test\n")
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / "config.yaml").write_text("model: test\n")
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         # Output inside alice home
-        out_zip = lydia_home / "backup.zip"
+        out_zip = alice_home / "backup.zip"
         args = Namespace(output=str(out_zip))
 
         from alice_cli.backup import run_backup
@@ -1121,9 +1121,9 @@ class TestImportEdgeCases:
 
     def test_not_a_zip(self, tmp_path, monkeypatch):
         """Import rejects a non-zip file."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
 
         not_zip = tmp_path / "fake.zip"
         not_zip.write_text("this is not a zip")
@@ -1136,10 +1136,10 @@ class TestImportEdgeCases:
 
     def test_eof_during_confirmation(self, tmp_path, monkeypatch):
         """Import handles EOFError during confirmation prompt."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / "config.yaml").write_text("existing\n")
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / "config.yaml").write_text("existing\n")
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
@@ -1154,10 +1154,10 @@ class TestImportEdgeCases:
 
     def test_keyboard_interrupt_during_confirmation(self, tmp_path, monkeypatch):
         """Import handles KeyboardInterrupt during confirmation prompt."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / ".env").write_text("KEY=val\n")
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / ".env").write_text("KEY=val\n")
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
@@ -1172,13 +1172,13 @@ class TestImportEdgeCases:
 
     def test_permission_error_during_import(self, tmp_path, monkeypatch):
         """Import handles permission errors during extraction."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         # Create a read-only directory so extraction fails
-        locked_dir = lydia_home / "locked"
+        locked_dir = alice_home / "locked"
         locked_dir.mkdir()
         locked_dir.chmod(0o555)
 
@@ -1197,13 +1197,13 @@ class TestImportEdgeCases:
             locked_dir.chmod(0o755)
 
         # config.yaml should still be restored despite the error
-        assert (lydia_home / "config.yaml").exists()
+        assert (alice_home / "config.yaml").exists()
 
     def test_progress_with_many_files(self, tmp_path, monkeypatch):
         """Import shows progress with 500+ files."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "big.zip"
@@ -1218,8 +1218,8 @@ class TestImportEdgeCases:
         from alice_cli.backup import run_import
         run_import(args)
 
-        assert (lydia_home / "config.yaml").exists()
-        assert (lydia_home / "sessions" / "s0599.json").exists()
+        assert (alice_home / "config.yaml").exists()
+        assert (alice_home / "sessions" / "s0599.json").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -1234,9 +1234,9 @@ class TestProfileRestoration:
 
     def test_import_creates_profile_wrappers(self, tmp_path, monkeypatch):
         """Import auto-creates wrapper scripts for restored profiles."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         # Mock the wrapper dir to be inside tmp_path
@@ -1257,8 +1257,8 @@ class TestProfileRestoration:
         run_import(args)
 
         # Profile directories should exist
-        assert (lydia_home / "profiles" / "coder" / "config.yaml").exists()
-        assert (lydia_home / "profiles" / "researcher" / "config.yaml").exists()
+        assert (alice_home / "profiles" / "coder" / "config.yaml").exists()
+        assert (alice_home / "profiles" / "researcher" / "config.yaml").exists()
 
         # Wrapper scripts should be created
         assert (wrapper_dir / "coder").exists()
@@ -1270,9 +1270,9 @@ class TestProfileRestoration:
 
     def test_import_skips_profile_dirs_without_config(self, tmp_path, monkeypatch):
         """Import doesn't create wrappers for profile dirs without config."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         wrapper_dir = tmp_path / ".local" / "bin"
@@ -1296,9 +1296,9 @@ class TestProfileRestoration:
 
     def test_import_without_profiles_module(self, tmp_path, monkeypatch):
         """Import gracefully handles missing profiles module (fresh install)."""
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         zip_path = tmp_path / "backup.zip"
@@ -1322,7 +1322,7 @@ class TestProfileRestoration:
             run_import(args)
 
         # Files should still be restored even if wrappers can't be created
-        assert (lydia_home / "profiles" / "coder" / "config.yaml").exists()
+        assert (alice_home / "profiles" / "coder" / "config.yaml").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -1376,7 +1376,7 @@ class TestSafeCopyDb:
 
 class TestQuickSnapshot:
     @pytest.fixture
-    def lydia_home(self, tmp_path):
+    def alice_home(self, tmp_path):
         """Create a fake ALICE_HOME with critical state files."""
         home = tmp_path / ".alice"
         home.mkdir()
@@ -1398,23 +1398,23 @@ class TestQuickSnapshot:
         conn.close()
         return home
 
-    def test_creates_snapshot(self, lydia_home):
+    def test_creates_snapshot(self, alice_home):
         from alice_cli.backup import create_quick_snapshot
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
+        snap_id = create_quick_snapshot(alice_home=alice_home)
         assert snap_id is not None
-        snap_dir = lydia_home / "state-snapshots" / snap_id
+        snap_dir = alice_home / "state-snapshots" / snap_id
         assert snap_dir.is_dir()
         assert (snap_dir / "manifest.json").exists()
 
-    def test_label_in_id(self, lydia_home):
+    def test_label_in_id(self, alice_home):
         from alice_cli.backup import create_quick_snapshot
-        snap_id = create_quick_snapshot(label="before-upgrade", lydia_home=lydia_home)
+        snap_id = create_quick_snapshot(label="before-upgrade", alice_home=alice_home)
         assert "before-upgrade" in snap_id
 
-    def test_state_db_safely_copied(self, lydia_home):
+    def test_state_db_safely_copied(self, alice_home):
         from alice_cli.backup import create_quick_snapshot
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
-        db_copy = lydia_home / "state-snapshots" / snap_id / "state.db"
+        snap_id = create_quick_snapshot(alice_home=alice_home)
+        db_copy = alice_home / "state-snapshots" / snap_id / "state.db"
         assert db_copy.exists()
 
         conn = sqlite3.connect(str(db_copy))
@@ -1423,22 +1423,22 @@ class TestQuickSnapshot:
         assert len(rows) == 1
         assert rows[0] == ("s1", "hello world")
 
-    def test_copies_nested_files(self, lydia_home):
+    def test_copies_nested_files(self, alice_home):
         from alice_cli.backup import create_quick_snapshot
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
-        assert (lydia_home / "state-snapshots" / snap_id / "cron" / "jobs.json").exists()
+        snap_id = create_quick_snapshot(alice_home=alice_home)
+        assert (alice_home / "state-snapshots" / snap_id / "cron" / "jobs.json").exists()
 
-    def test_copies_channel_aliases(self, lydia_home):
+    def test_copies_channel_aliases(self, alice_home):
         from alice_cli.backup import create_quick_snapshot
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
-        copied = lydia_home / "state-snapshots" / snap_id / "channel_aliases.json"
+        snap_id = create_quick_snapshot(alice_home=alice_home)
+        copied = alice_home / "state-snapshots" / snap_id / "channel_aliases.json"
         assert copied.exists()
         assert "120363408391911677@g.us" in copied.read_text()
 
-    def test_missing_files_skipped(self, lydia_home):
+    def test_missing_files_skipped(self, alice_home):
         from alice_cli.backup import create_quick_snapshot
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
-        with open(lydia_home / "state-snapshots" / snap_id / "manifest.json") as f:
+        snap_id = create_quick_snapshot(alice_home=alice_home)
+        with open(alice_home / "state-snapshots" / snap_id / "manifest.json") as f:
             meta = json.load(f)
         # gateway_state.json etc. don't exist in fixture
         assert "gateway_state.json" not in meta["files"]
@@ -1447,99 +1447,99 @@ class TestQuickSnapshot:
         from alice_cli.backup import create_quick_snapshot
         empty = tmp_path / "empty"
         empty.mkdir()
-        assert create_quick_snapshot(lydia_home=empty) is None
+        assert create_quick_snapshot(alice_home=empty) is None
 
-    def test_list_snapshots(self, lydia_home):
+    def test_list_snapshots(self, alice_home):
         from alice_cli.backup import create_quick_snapshot, list_quick_snapshots
-        id1 = create_quick_snapshot(label="first", lydia_home=lydia_home)
-        id2 = create_quick_snapshot(label="second", lydia_home=lydia_home)
+        id1 = create_quick_snapshot(label="first", alice_home=alice_home)
+        id2 = create_quick_snapshot(label="second", alice_home=alice_home)
 
-        snaps = list_quick_snapshots(lydia_home=lydia_home)
+        snaps = list_quick_snapshots(alice_home=alice_home)
         assert len(snaps) == 2
         assert snaps[0]["id"] == id2  # most recent first
         assert snaps[1]["id"] == id1
 
-    def test_list_limit(self, lydia_home):
+    def test_list_limit(self, alice_home):
         from alice_cli.backup import create_quick_snapshot, list_quick_snapshots
         for i in range(5):
-            create_quick_snapshot(label=f"s{i}", lydia_home=lydia_home)
-        snaps = list_quick_snapshots(limit=3, lydia_home=lydia_home)
+            create_quick_snapshot(label=f"s{i}", alice_home=alice_home)
+        snaps = list_quick_snapshots(limit=3, alice_home=alice_home)
         assert len(snaps) == 3
 
-    def test_restore_config(self, lydia_home):
+    def test_restore_config(self, alice_home):
         from alice_cli.backup import create_quick_snapshot, restore_quick_snapshot
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
+        snap_id = create_quick_snapshot(alice_home=alice_home)
 
-        (lydia_home / "config.yaml").write_text("model:\n  provider: anthropic\n")
-        assert "anthropic" in (lydia_home / "config.yaml").read_text()
+        (alice_home / "config.yaml").write_text("model:\n  provider: anthropic\n")
+        assert "anthropic" in (alice_home / "config.yaml").read_text()
 
-        result = restore_quick_snapshot(snap_id, lydia_home=lydia_home)
+        result = restore_quick_snapshot(snap_id, alice_home=alice_home)
         assert result is True
-        assert "openrouter" in (lydia_home / "config.yaml").read_text()
+        assert "openrouter" in (alice_home / "config.yaml").read_text()
 
-    def test_restore_state_db(self, lydia_home):
+    def test_restore_state_db(self, alice_home):
         from alice_cli.backup import create_quick_snapshot, restore_quick_snapshot
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
+        snap_id = create_quick_snapshot(alice_home=alice_home)
 
-        conn = sqlite3.connect(str(lydia_home / "state.db"))
+        conn = sqlite3.connect(str(alice_home / "state.db"))
         conn.execute("INSERT INTO sessions VALUES ('s2', 'new')")
         conn.commit()
         conn.close()
 
-        restore_quick_snapshot(snap_id, lydia_home=lydia_home)
+        restore_quick_snapshot(snap_id, alice_home=alice_home)
 
-        conn = sqlite3.connect(str(lydia_home / "state.db"))
+        conn = sqlite3.connect(str(alice_home / "state.db"))
         rows = conn.execute("SELECT * FROM sessions").fetchall()
         conn.close()
         assert len(rows) == 1
 
-    def test_restore_nonexistent(self, lydia_home):
+    def test_restore_nonexistent(self, alice_home):
         from alice_cli.backup import restore_quick_snapshot
-        assert restore_quick_snapshot("nonexistent", lydia_home=lydia_home) is False
+        assert restore_quick_snapshot("nonexistent", alice_home=alice_home) is False
 
-    def test_auto_prune(self, lydia_home):
+    def test_auto_prune(self, alice_home):
         from alice_cli.backup import create_quick_snapshot, list_quick_snapshots, _QUICK_DEFAULT_KEEP
         for i in range(_QUICK_DEFAULT_KEEP + 5):
-            create_quick_snapshot(label=f"snap-{i:03d}", lydia_home=lydia_home)
-        snaps = list_quick_snapshots(limit=100, lydia_home=lydia_home)
+            create_quick_snapshot(label=f"snap-{i:03d}", alice_home=alice_home)
+        snaps = list_quick_snapshots(limit=100, alice_home=alice_home)
         assert len(snaps) <= _QUICK_DEFAULT_KEEP
 
-    def test_manual_prune(self, lydia_home):
+    def test_manual_prune(self, alice_home):
         from alice_cli.backup import create_quick_snapshot, prune_quick_snapshots, list_quick_snapshots
         for i in range(10):
-            create_quick_snapshot(label=f"s{i}", lydia_home=lydia_home)
-        deleted = prune_quick_snapshots(keep=3, lydia_home=lydia_home)
+            create_quick_snapshot(label=f"s{i}", alice_home=alice_home)
+        deleted = prune_quick_snapshots(keep=3, alice_home=alice_home)
         assert deleted == 7
-        assert len(list_quick_snapshots(lydia_home=lydia_home)) == 3
+        assert len(list_quick_snapshots(alice_home=alice_home)) == 3
 
-    def test_snapshot_includes_pairing_directories(self, lydia_home):
+    def test_snapshot_includes_pairing_directories(self, alice_home):
         """Pairing JSONs live outside state.db — snapshot must capture them
         recursively (generic + per-platform) so approved-user lists survive
         disasters like #15733."""
         from alice_cli.backup import create_quick_snapshot
 
         # Generic pairing store (new location)
-        (lydia_home / "platforms" / "pairing").mkdir(parents=True)
-        (lydia_home / "platforms" / "pairing" / "telegram-approved.json").write_text(
+        (alice_home / "platforms" / "pairing").mkdir(parents=True)
+        (alice_home / "platforms" / "pairing" / "telegram-approved.json").write_text(
             '{"12345": {"user_name": "alice"}}'
         )
-        (lydia_home / "platforms" / "pairing" / "discord-approved.json").write_text(
+        (alice_home / "platforms" / "pairing" / "discord-approved.json").write_text(
             '{"67890": {"user_name": "bob"}}'
         )
         # Legacy pairing store (old location)
-        (lydia_home / "pairing").mkdir()
-        (lydia_home / "pairing" / "matrix-approved.json").write_text(
+        (alice_home / "pairing").mkdir()
+        (alice_home / "pairing" / "matrix-approved.json").write_text(
             '{"@charlie:server": {"user_name": "charlie"}}'
         )
         # Feishu's separate JSON
-        (lydia_home / "feishu_comment_pairing.json").write_text(
+        (alice_home / "feishu_comment_pairing.json").write_text(
             '{"doc_abc": {"allow_from": ["user_xyz"]}}'
         )
 
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
+        snap_id = create_quick_snapshot(alice_home=alice_home)
         assert snap_id is not None
 
-        snap_dir = lydia_home / "state-snapshots" / snap_id
+        snap_dir = alice_home / "state-snapshots" / snap_id
         assert (snap_dir / "platforms" / "pairing" / "telegram-approved.json").exists()
         assert (snap_dir / "platforms" / "pairing" / "discord-approved.json").exists()
         assert (snap_dir / "pairing" / "matrix-approved.json").exists()
@@ -1553,18 +1553,18 @@ class TestQuickSnapshot:
         assert "pairing/matrix-approved.json" in files
         assert "feishu_comment_pairing.json" in files
 
-    def test_restore_recovers_pairing_data(self, lydia_home):
+    def test_restore_recovers_pairing_data(self, alice_home):
         """After restore, deleted pairing files reappear with original content."""
         from alice_cli.backup import create_quick_snapshot, restore_quick_snapshot
 
-        pairing_dir = lydia_home / "platforms" / "pairing"
+        pairing_dir = alice_home / "platforms" / "pairing"
         pairing_dir.mkdir(parents=True)
         approved = pairing_dir / "telegram-approved.json"
         approved.write_text('{"12345": {"user_name": "alice"}}')
-        feishu = lydia_home / "feishu_comment_pairing.json"
+        feishu = alice_home / "feishu_comment_pairing.json"
         feishu.write_text('{"doc_abc": {"allow_from": ["user_xyz"]}}')
 
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
+        snap_id = create_quick_snapshot(alice_home=alice_home)
         assert snap_id is not None
 
         # Simulate the disaster — user loses both pairing files.
@@ -1573,19 +1573,19 @@ class TestQuickSnapshot:
         assert not approved.exists()
         assert not feishu.exists()
 
-        assert restore_quick_snapshot(snap_id, lydia_home=lydia_home) is True
+        assert restore_quick_snapshot(snap_id, alice_home=alice_home) is True
         assert approved.exists()
         assert '"alice"' in approved.read_text()
         assert feishu.exists()
         assert '"user_xyz"' in feishu.read_text()
 
-    def test_empty_pairing_dir_does_not_fail(self, lydia_home):
+    def test_empty_pairing_dir_does_not_fail(self, alice_home):
         """An empty pairing directory should be silently skipped."""
         from alice_cli.backup import create_quick_snapshot
 
-        (lydia_home / "platforms" / "pairing").mkdir(parents=True)
+        (alice_home / "platforms" / "pairing").mkdir(parents=True)
         # Directory exists but contains no files.
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
+        snap_id = create_quick_snapshot(alice_home=alice_home)
         # Other state still present → snapshot succeeds.
         assert snap_id is not None
 
@@ -1600,7 +1600,7 @@ class TestQuickSnapshot:
     # need explicit regression tests because they validate independent
     # traversal vectors.
 
-    def test_restore_rejects_snapshot_id_traversal(self, lydia_home):
+    def test_restore_rejects_snapshot_id_traversal(self, alice_home):
         """restore_quick_snapshot must reject snapshot_id values that
         contain path separators, POSIX traversal entries, or are empty.
         These are rejected on the input string before any filesystem
@@ -1622,18 +1622,18 @@ class TestQuickSnapshot:
         ]
         for hostile in hostile_ids:
             assert restore_quick_snapshot(
-                hostile, lydia_home=lydia_home
+                hostile, alice_home=alice_home
             ) is False, f"hostile snapshot_id was not rejected: {hostile!r}"
 
-    def test_restore_rejects_manifest_rel_traversal(self, lydia_home):
+    def test_restore_rejects_manifest_rel_traversal(self, alice_home):
         """A snapshot whose manifest.json contains a rel path that escapes
         the snapshot directory (e.g. ``../../outside.txt``) must skip that
         entry rather than restoring outside ALICE_HOME."""
         from alice_cli.backup import create_quick_snapshot, restore_quick_snapshot
 
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
+        snap_id = create_quick_snapshot(alice_home=alice_home)
         assert snap_id is not None
-        snap_dir = lydia_home / "state-snapshots" / snap_id
+        snap_dir = alice_home / "state-snapshots" / snap_id
 
         # Inject a traversal entry into manifest.json AND seed the source
         # file outside the snapshot directory so a vulnerable implementation
@@ -1651,13 +1651,13 @@ class TestQuickSnapshot:
         escape_src.write_text("pwned-source")
 
         # Pre-condition: the destination must not exist before restore.
-        escape_dst = lydia_home.parent.parent / "outside.txt"
+        escape_dst = alice_home.parent.parent / "outside.txt"
         assert not escape_dst.exists()
 
         # Restore should succeed for legitimate files but skip the hostile
         # entry. We don't assert on the return value (other legitimate
         # entries may still restore); we assert on the file-system effect.
-        restore_quick_snapshot(snap_id, lydia_home=lydia_home)
+        restore_quick_snapshot(snap_id, alice_home=alice_home)
 
         assert not escape_dst.exists(), (
             f"manifest rel traversal escaped ALICE_HOME: {escape_dst} exists"
@@ -1676,7 +1676,7 @@ class TestQuickSnapshotProjectsKanban:
     """
 
     @pytest.fixture
-    def lydia_home(self, tmp_path):
+    def alice_home(self, tmp_path):
         home = tmp_path / ".alice"
         home.mkdir()
         # Minimal critical file so the snapshot is non-empty.
@@ -1702,50 +1702,50 @@ class TestQuickSnapshotProjectsKanban:
         ):
             assert name in _QUICK_STATE_FILES, name
 
-    def test_projects_db_snapshotted(self, lydia_home):
+    def test_projects_db_snapshotted(self, alice_home):
         from alice_cli.backup import create_quick_snapshot
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
-        copy = lydia_home / "state-snapshots" / snap_id / "projects.db"
+        snap_id = create_quick_snapshot(alice_home=alice_home)
+        copy = alice_home / "state-snapshots" / snap_id / "projects.db"
         assert copy.exists()
         conn = sqlite3.connect(str(copy))
         rows = conn.execute("SELECT * FROM projects").fetchall()
         conn.close()
         assert rows == [("p1", "demo")]
 
-    def test_kanban_db_snapshotted(self, lydia_home):
+    def test_kanban_db_snapshotted(self, alice_home):
         from alice_cli.backup import create_quick_snapshot
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
-        copy = lydia_home / "state-snapshots" / snap_id / "kanban.db"
+        snap_id = create_quick_snapshot(alice_home=alice_home)
+        copy = alice_home / "state-snapshots" / snap_id / "kanban.db"
         assert copy.exists()
         conn = sqlite3.connect(str(copy))
         rows = conn.execute("SELECT * FROM tasks").fetchall()
         conn.close()
         assert rows == [("t1", "todo")]
 
-    def test_restore_recreates_emptied_projects_db(self, lydia_home):
+    def test_restore_recreates_emptied_projects_db(self, alice_home):
         from alice_cli.backup import create_quick_snapshot, restore_quick_snapshot
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
+        snap_id = create_quick_snapshot(alice_home=alice_home)
 
         # Simulate the upgrade wiping the store back to an empty schema.
-        conn = sqlite3.connect(str(lydia_home / "projects.db"))
+        conn = sqlite3.connect(str(alice_home / "projects.db"))
         conn.execute("DELETE FROM projects")
         conn.commit()
         conn.close()
 
-        assert restore_quick_snapshot(snap_id, lydia_home=lydia_home) is True
-        conn = sqlite3.connect(str(lydia_home / "projects.db"))
+        assert restore_quick_snapshot(snap_id, alice_home=alice_home) is True
+        conn = sqlite3.connect(str(alice_home / "projects.db"))
         rows = conn.execute("SELECT * FROM projects").fetchall()
         conn.close()
         assert rows == [("p1", "demo")]
 
-    def test_non_default_kanban_board_snapshotted(self, lydia_home):
+    def test_non_default_kanban_board_snapshotted(self, alice_home):
         """#52889 completeness: non-default boards live at
         <root>/kanban/boards/<slug>/kanban.db, not <root>/kanban.db. The
         ``kanban/boards`` dir entry must capture them too, or multi-board
         users still lose every board except ``default`` on upgrade."""
         from alice_cli.backup import create_quick_snapshot, restore_quick_snapshot
 
-        board_dir = lydia_home / "kanban" / "boards" / "work"
+        board_dir = alice_home / "kanban" / "boards" / "work"
         board_dir.mkdir(parents=True)
         conn = sqlite3.connect(str(board_dir / "kanban.db"))
         conn.execute("CREATE TABLE tasks (id TEXT PRIMARY KEY, data TEXT)")
@@ -1753,9 +1753,9 @@ class TestQuickSnapshotProjectsKanban:
         conn.commit()
         conn.close()
 
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
+        snap_id = create_quick_snapshot(alice_home=alice_home)
         copy = (
-            lydia_home / "state-snapshots" / snap_id
+            alice_home / "state-snapshots" / snap_id
             / "kanban" / "boards" / "work" / "kanban.db"
         )
         assert copy.exists(), "non-default board kanban.db was not snapshotted"
@@ -1766,13 +1766,13 @@ class TestQuickSnapshotProjectsKanban:
         conn.commit()
         conn.close()
 
-        assert restore_quick_snapshot(snap_id, lydia_home=lydia_home) is True
+        assert restore_quick_snapshot(snap_id, alice_home=alice_home) is True
         conn = sqlite3.connect(str(board_dir / "kanban.db"))
         rows = conn.execute("SELECT * FROM tasks").fetchall()
         conn.close()
         assert rows == [("w1", "ship")]
 
-    def test_additional_per_profile_dbs_round_trip(self, lydia_home):
+    def test_additional_per_profile_dbs_round_trip(self, alice_home):
         """#52889 completeness: response_store.db (conversation history),
         memory_store.db (holographic memory) and verification_evidence.db are
         the same upgrade-wiped data-loss class as projects.db and must also be
@@ -1785,34 +1785,34 @@ class TestQuickSnapshotProjectsKanban:
             "verification_evidence.db": ("verification_events", ("v1", "passed")),
         }
         for name, (table, row) in seeded.items():
-            conn = sqlite3.connect(str(lydia_home / name))
+            conn = sqlite3.connect(str(alice_home / name))
             conn.execute(f"CREATE TABLE {table} (id TEXT PRIMARY KEY, data TEXT)")
             conn.execute(f"INSERT INTO {table} VALUES (?, ?)", row)
             conn.commit()
             conn.close()
 
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
+        snap_id = create_quick_snapshot(alice_home=alice_home)
         # Wipe every store (the upgrade failure), then restore.
         for name, (table, _row) in seeded.items():
-            conn = sqlite3.connect(str(lydia_home / name))
+            conn = sqlite3.connect(str(alice_home / name))
             conn.execute(f"DELETE FROM {table}")
             conn.commit()
             conn.close()
 
-        assert restore_quick_snapshot(snap_id, lydia_home=lydia_home) is True
+        assert restore_quick_snapshot(snap_id, alice_home=alice_home) is True
         for name, (table, row) in seeded.items():
-            conn = sqlite3.connect(str(lydia_home / name))
+            conn = sqlite3.connect(str(alice_home / name))
             rows = conn.execute(f"SELECT * FROM {table}").fetchall()
             conn.close()
             assert rows == [row], name
 
-    def test_board_workspaces_and_attachments_are_skipped(self, lydia_home):
+    def test_board_workspaces_and_attachments_are_skipped(self, alice_home):
         """#52889 W3: the kanban/boards walk must capture board DBs + metadata
         but SKIP the heavy regenerable workspaces/ and attachments/ subtrees so
         snapshots don't bloat (×20 retained)."""
         from alice_cli.backup import create_quick_snapshot
 
-        board = lydia_home / "kanban" / "boards" / "work"
+        board = alice_home / "kanban" / "boards" / "work"
         (board / "workspaces" / "scratch").mkdir(parents=True)
         (board / "attachments" / "t1").mkdir(parents=True)
         conn = sqlite3.connect(str(board / "kanban.db"))
@@ -1823,8 +1823,8 @@ class TestQuickSnapshotProjectsKanban:
         (board / "workspaces" / "scratch" / "big.bin").write_bytes(b"x" * 4096)
         (board / "attachments" / "t1" / "file.bin").write_bytes(b"y" * 4096)
 
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
-        snap = lydia_home / "state-snapshots" / snap_id / "kanban" / "boards" / "work"
+        snap_id = create_quick_snapshot(alice_home=alice_home)
+        snap = alice_home / "state-snapshots" / snap_id / "kanban" / "boards" / "work"
         # Board db + metadata captured...
         assert (snap / "kanban.db").exists()
         assert (snap / "board.json").exists()
@@ -1832,14 +1832,14 @@ class TestQuickSnapshotProjectsKanban:
         assert not (snap / "workspaces" / "scratch" / "big.bin").exists()
         assert not (snap / "attachments" / "t1" / "file.bin").exists()
 
-    def test_board_db_copied_wal_safely(self, lydia_home, monkeypatch):
+    def test_board_db_copied_wal_safely(self, alice_home, monkeypatch):
         """#52889 W2: a non-default board's .db (dir-branch) must go through the
         WAL-safe _safe_copy_db, not a raw shutil.copy2, so an open WAL doesn't
         produce an inconsistent copy."""
         import alice_cli.backup as bk
         from alice_cli.backup import create_quick_snapshot
 
-        board = lydia_home / "kanban" / "boards" / "work"
+        board = alice_home / "kanban" / "boards" / "work"
         board.mkdir(parents=True)
         conn = sqlite3.connect(str(board / "kanban.db"))
         conn.execute("PRAGMA journal_mode=WAL")
@@ -1856,10 +1856,10 @@ class TestQuickSnapshotProjectsKanban:
             return real(src, dst)
 
         monkeypatch.setattr(bk, "_safe_copy_db", _spy)
-        snap_id = create_quick_snapshot(lydia_home=lydia_home)
+        snap_id = create_quick_snapshot(alice_home=alice_home)
         # The board db was copied via _safe_copy_db (not raw copy).
         assert any(s.endswith("boards/work/kanban.db") for s in called["db"]), called["db"]
-        copy = lydia_home / "state-snapshots" / snap_id / "kanban" / "boards" / "work" / "kanban.db"
+        copy = alice_home / "state-snapshots" / snap_id / "kanban" / "boards" / "work" / "kanban.db"
         rows = sqlite3.connect(str(copy)).execute("SELECT * FROM tasks").fetchall()
         assert rows == [("w1", "ship")]
 
@@ -1869,26 +1869,26 @@ class TestPreUpdateBackup:
     runs before touching anything."""
 
     @pytest.fixture
-    def lydia_home(self, tmp_path):
+    def alice_home(self, tmp_path):
         root = tmp_path / ".alice"
         root.mkdir()
-        _make_lydia_tree(root)
+        _make_alice_tree(root)
         return root
 
-    def test_creates_backup_under_backups_dir(self, lydia_home):
+    def test_creates_backup_under_backups_dir(self, alice_home):
         from alice_cli.backup import create_pre_update_backup
-        out = create_pre_update_backup(lydia_home=lydia_home)
+        out = create_pre_update_backup(alice_home=alice_home)
         assert out is not None
         assert out.exists()
-        assert out.parent == lydia_home / "backups"
+        assert out.parent == alice_home / "backups"
         assert out.name.startswith("pre-update-")
         assert out.suffix == ".zip"
 
-    def test_backup_contents_match_full_backup(self, lydia_home):
+    def test_backup_contents_match_full_backup(self, alice_home):
         """Pre-update backup should include the same user data that
         ``alice backup`` would, and should exclude the same directories."""
         from alice_cli.backup import create_pre_update_backup
-        out = create_pre_update_backup(lydia_home=lydia_home)
+        out = create_pre_update_backup(alice_home=alice_home)
         assert out is not None
         with zipfile.ZipFile(out) as zf:
             names = set(zf.namelist())
@@ -1905,15 +1905,15 @@ class TestPreUpdateBackup:
         # pid files excluded
         assert "gateway.pid" not in names
 
-    def test_does_not_recurse_into_prior_backups(self, lydia_home):
+    def test_does_not_recurse_into_prior_backups(self, alice_home):
         """The ``backups/`` directory must be excluded so that each backup
         doesn't grow exponentially by including all prior backups."""
         from alice_cli.backup import create_pre_update_backup
         # First backup
-        out1 = create_pre_update_backup(lydia_home=lydia_home)
+        out1 = create_pre_update_backup(alice_home=alice_home)
         assert out1 is not None
         # Second backup — must not include the first
-        out2 = create_pre_update_backup(lydia_home=lydia_home)
+        out2 = create_pre_update_backup(alice_home=alice_home)
         assert out2 is not None
         with zipfile.ZipFile(out2) as zf:
             names = zf.namelist()
@@ -1922,7 +1922,7 @@ class TestPreUpdateBackup:
             f"{[n for n in names if n.startswith('backups/')]}"
         )
 
-    def test_rotation_keeps_only_n(self, lydia_home):
+    def test_rotation_keeps_only_n(self, alice_home):
         """After more than ``keep`` backups are created, older ones are
         pruned automatically."""
         import time as _t
@@ -1930,12 +1930,12 @@ class TestPreUpdateBackup:
 
         created = []
         for _ in range(5):
-            out = create_pre_update_backup(lydia_home=lydia_home, keep=3)
+            out = create_pre_update_backup(alice_home=alice_home, keep=3)
             created.append(out)
             _t.sleep(1.05)  # ensure distinct seconds in timestamp
 
         remaining = sorted(
-            p.name for p in (lydia_home / "backups").iterdir()
+            p.name for p in (alice_home / "backups").iterdir()
             if p.name.startswith("pre-update-")
         )
         assert len(remaining) == 3
@@ -1945,27 +1945,27 @@ class TestPreUpdateBackup:
         # Newest three should remain
         assert created[4].name in remaining
 
-    def test_rotation_preserves_manual_files(self, lydia_home):
+    def test_rotation_preserves_manual_files(self, alice_home):
         """Hand-dropped zips in ``backups/`` must not be touched by
         rotation — it only prunes files matching ``pre-update-*.zip``."""
         import time as _t
         from alice_cli.backup import create_pre_update_backup
 
-        (lydia_home / "backups").mkdir(exist_ok=True)
-        manual = lydia_home / "backups" / "my-manual.zip"
+        (alice_home / "backups").mkdir(exist_ok=True)
+        manual = alice_home / "backups" / "my-manual.zip"
         manual.write_bytes(b"manual backup")
 
         for _ in range(5):
-            create_pre_update_backup(lydia_home=lydia_home, keep=2)
+            create_pre_update_backup(alice_home=alice_home, keep=2)
             _t.sleep(1.05)
 
         assert manual.exists(), "Manual backup zip was incorrectly pruned"
 
     def test_returns_none_if_root_missing(self, tmp_path):
         from alice_cli.backup import create_pre_update_backup
-        assert create_pre_update_backup(lydia_home=tmp_path / "does-not-exist") is None
+        assert create_pre_update_backup(alice_home=tmp_path / "does-not-exist") is None
 
-    def test_keep_zero_does_not_delete_freshly_created_backup(self, lydia_home):
+    def test_keep_zero_does_not_delete_freshly_created_backup(self, alice_home):
         """Regression: ``backup_keep: 0`` previously triggered ``backups[0:]``
         in the pruner — wiping the just-created zip and leaving the user
         with no recovery point.  The floor (keep>=1) preserves the new file
@@ -1973,22 +1973,22 @@ class TestPreUpdateBackup:
         set ``pre_update_backup: false`` instead.
         """
         from alice_cli.backup import create_pre_update_backup
-        out = create_pre_update_backup(lydia_home=lydia_home, keep=0)
+        out = create_pre_update_backup(alice_home=alice_home, keep=0)
         assert out is not None
         assert out.exists(), (
             "keep=0 silently deleted the freshly-created backup; floor "
             "should preserve the just-written file."
         )
 
-    def test_keep_negative_does_not_delete_freshly_created_backup(self, lydia_home):
+    def test_keep_negative_does_not_delete_freshly_created_backup(self, alice_home):
         """Mirror coverage: any value <1 should be floored, not literally
         applied as a slice index."""
         from alice_cli.backup import create_pre_update_backup
-        out = create_pre_update_backup(lydia_home=lydia_home, keep=-3)
+        out = create_pre_update_backup(alice_home=alice_home, keep=-3)
         assert out is not None
         assert out.exists()
 
-    def test_keep_zero_still_prunes_older_backups(self, lydia_home):
+    def test_keep_zero_still_prunes_older_backups(self, alice_home):
         """The floor preserves the new backup but should NOT regress the
         rotation behaviour for older zips: a third call with keep=0 must
         still remove pre-existing backups beyond the (floored) limit of 1.
@@ -1996,14 +1996,14 @@ class TestPreUpdateBackup:
         import time as _t
         from alice_cli.backup import create_pre_update_backup
 
-        first = create_pre_update_backup(lydia_home=lydia_home, keep=5)
+        first = create_pre_update_backup(alice_home=alice_home, keep=5)
         _t.sleep(1.05)
-        second = create_pre_update_backup(lydia_home=lydia_home, keep=5)
+        second = create_pre_update_backup(alice_home=alice_home, keep=5)
         _t.sleep(1.05)
-        third = create_pre_update_backup(lydia_home=lydia_home, keep=0)
+        third = create_pre_update_backup(alice_home=alice_home, keep=0)
 
         remaining = {
-            p.name for p in (lydia_home / "backups").iterdir()
+            p.name for p in (alice_home / "backups").iterdir()
             if p.name.startswith("pre-update-")
         }
         assert third.name in remaining, "Floor must preserve the new backup"
@@ -2012,15 +2012,15 @@ class TestPreUpdateBackup:
             f"remaining={remaining}"
         )
 
-    def test_skips_symlinked_files(self, lydia_home, tmp_path):
+    def test_skips_symlinked_files(self, alice_home, tmp_path):
         """Pre-update backups must not dereference symlinks outside ALICE_HOME."""
         from alice_cli.backup import create_pre_update_backup
 
         outside = tmp_path / "outside-secret.txt"
         outside.write_text("outside secret\n")
-        _symlink_file_or_skip(lydia_home / "skills" / "outside-link.txt", outside)
+        _symlink_file_or_skip(alice_home / "skills" / "outside-link.txt", outside)
 
-        out = create_pre_update_backup(lydia_home=lydia_home)
+        out = create_pre_update_backup(alice_home=alice_home)
         assert out is not None
         with zipfile.ZipFile(out) as zf:
             names = zf.namelist()
@@ -2033,10 +2033,10 @@ class TestRunPreUpdateBackup:
     covers config gate, ``--no-backup`` flag, and user-facing output."""
 
     @pytest.fixture
-    def lydia_home(self, tmp_path, monkeypatch):
+    def alice_home(self, tmp_path, monkeypatch):
         root = tmp_path / ".alice"
         root.mkdir()
-        _make_lydia_tree(root)
+        _make_alice_tree(root)
         # Point ALICE_HOME at the temp dir so config + backup paths resolve here
         monkeypatch.setenv("ALICE_HOME", str(root))
         # Make Path.home() point at tmp_path for anything that uses it
@@ -2047,7 +2047,7 @@ class TestRunPreUpdateBackup:
                 del __import__("sys").modules[mod]
         return root
 
-    def test_backup_flag_creates_backup(self, lydia_home, capsys):
+    def test_backup_flag_creates_backup(self, alice_home, capsys):
         """--backup forces the pre-update backup for one run even when config is off."""
         from alice_cli.main import _run_pre_update_backup
         _run_pre_update_backup(Namespace(no_backup=False, backup=True))
@@ -2058,10 +2058,10 @@ class TestRunPreUpdateBackup:
         assert "alice import" in out
         assert "Disable:" in out
         # Actual backup was created
-        backups = list((lydia_home / "backups").glob("pre-update-*.zip"))
+        backups = list((alice_home / "backups").glob("pre-update-*.zip"))
         assert len(backups) == 1
 
-    def test_default_disabled_is_silent(self, lydia_home, capsys):
+    def test_default_disabled_is_silent(self, alice_home, capsys):
         """With the default (``pre_update_backup: false``), ``alice update``
         does NOT create a backup and stays silent — zipping a large
         ALICE_HOME can add minutes to every update. Users who want the
@@ -2071,25 +2071,25 @@ class TestRunPreUpdateBackup:
         _run_pre_update_backup(Namespace(no_backup=False, backup=False))
         out = capsys.readouterr().out
         assert out == ""
-        assert not list((lydia_home / "backups").glob("pre-update-*.zip")) \
-            if (lydia_home / "backups").exists() else True
+        assert not list((alice_home / "backups").glob("pre-update-*.zip")) \
+            if (alice_home / "backups").exists() else True
 
-    def test_no_backup_flag_skips(self, lydia_home, capsys):
+    def test_no_backup_flag_skips(self, alice_home, capsys):
         from alice_cli.main import _run_pre_update_backup
         _run_pre_update_backup(Namespace(no_backup=True, backup=False))
         out = capsys.readouterr().out
         assert "skipped (--no-backup)" in out
         assert "Creating pre-update backup" not in out
         # No backup written
-        assert not (lydia_home / "backups").exists() or not list(
-            (lydia_home / "backups").glob("pre-update-*.zip")
+        assert not (alice_home / "backups").exists() or not list(
+            (alice_home / "backups").glob("pre-update-*.zip")
         )
 
-    def test_config_enabled_creates_backup(self, lydia_home, capsys):
+    def test_config_enabled_creates_backup(self, alice_home, capsys):
         """Users who explicitly set updates.pre_update_backup: true still get
         a backup on every update — this is the opt-in legacy behavior."""
         import yaml
-        (lydia_home / "config.yaml").write_text(yaml.safe_dump({
+        (alice_home / "config.yaml").write_text(yaml.safe_dump({
             "_config_version": 22,
             "updates": {"pre_update_backup": True},
         }))
@@ -2103,14 +2103,14 @@ class TestRunPreUpdateBackup:
         out = capsys.readouterr().out
         assert "Creating pre-update backup" in out
         assert "Saved:" in out
-        backups = list((lydia_home / "backups").glob("pre-update-*.zip"))
+        backups = list((alice_home / "backups").glob("pre-update-*.zip"))
         assert len(backups) == 1
 
-    def test_config_disabled_is_silent(self, lydia_home, capsys):
+    def test_config_disabled_is_silent(self, alice_home, capsys):
         """Explicit pre_update_backup: false behaves the same as the default —
         silent no-op, no message spam."""
         import yaml
-        (lydia_home / "config.yaml").write_text(yaml.safe_dump({
+        (alice_home / "config.yaml").write_text(yaml.safe_dump({
             "_config_version": 22,
             "updates": {"pre_update_backup": False},
         }))
@@ -2124,13 +2124,13 @@ class TestRunPreUpdateBackup:
         _run_pre_update_backup(Namespace(no_backup=False, backup=False))
         out = capsys.readouterr().out
         assert out == ""
-        assert not list((lydia_home / "backups").glob("pre-update-*.zip")) \
-            if (lydia_home / "backups").exists() else True
+        assert not list((alice_home / "backups").glob("pre-update-*.zip")) \
+            if (alice_home / "backups").exists() else True
 
-    def test_cli_flag_overrides_enabled_config(self, lydia_home, capsys):
+    def test_cli_flag_overrides_enabled_config(self, alice_home, capsys):
         """--no-backup wins even when config says pre_update_backup: true."""
         import yaml
-        (lydia_home / "config.yaml").write_text(yaml.safe_dump({
+        (alice_home / "config.yaml").write_text(yaml.safe_dump({
             "_config_version": 22,
             "updates": {"pre_update_backup": True},
         }))
@@ -2154,28 +2154,28 @@ class TestPreMigrationBackup:
     ``alice claw migrate`` runs before mutating ~/.alice/."""
 
     @pytest.fixture
-    def lydia_home(self, tmp_path):
+    def alice_home(self, tmp_path):
         root = tmp_path / ".alice"
         root.mkdir()
-        _make_lydia_tree(root)
+        _make_alice_tree(root)
         return root
 
-    def test_creates_backup_under_backups_dir(self, lydia_home):
+    def test_creates_backup_under_backups_dir(self, alice_home):
         from alice_cli.backup import create_pre_migration_backup
-        out = create_pre_migration_backup(lydia_home=lydia_home)
+        out = create_pre_migration_backup(alice_home=alice_home)
         assert out is not None
         assert out.exists()
         # Shares the backups/ directory with pre-update backups so `alice
         # import` and the update-backup listing both pick them up.
-        assert out.parent == lydia_home / "backups"
+        assert out.parent == alice_home / "backups"
         assert out.name.startswith("pre-migration-")
         assert out.suffix == ".zip"
 
-    def test_backup_uses_shared_exclusion_rules(self, lydia_home):
+    def test_backup_uses_shared_exclusion_rules(self, alice_home):
         """Pre-migration backup reuses the same exclusion rules as
         ``alice backup`` / ``create_pre_update_backup`` — no drift."""
         from alice_cli.backup import create_pre_migration_backup
-        out = create_pre_migration_backup(lydia_home=lydia_home)
+        out = create_pre_migration_backup(alice_home=alice_home)
         assert out is not None
         with zipfile.ZipFile(out) as zf:
             names = set(zf.namelist())
@@ -2188,57 +2188,57 @@ class TestPreMigrationBackup:
         assert not any("__pycache__" in n for n in names)
         assert "gateway.pid" not in names
 
-    def test_restorable_with_lydia_import(self, lydia_home, tmp_path):
+    def test_restorable_with_alice_import(self, alice_home, tmp_path):
         """The zip produced by pre-migration backup must be a valid Alice
         backup — `alice import` should accept it."""
         from alice_cli.backup import create_pre_migration_backup, _validate_backup_zip
-        out = create_pre_migration_backup(lydia_home=lydia_home)
+        out = create_pre_migration_backup(alice_home=alice_home)
         assert out is not None
         with zipfile.ZipFile(out) as zf:
             valid, _reason = _validate_backup_zip(zf)
         assert valid, "pre-migration zip failed _validate_backup_zip"
 
-    def test_does_not_recurse_into_prior_backups(self, lydia_home):
+    def test_does_not_recurse_into_prior_backups(self, alice_home):
         from alice_cli.backup import create_pre_migration_backup
-        out1 = create_pre_migration_backup(lydia_home=lydia_home)
+        out1 = create_pre_migration_backup(alice_home=alice_home)
         assert out1 is not None
-        out2 = create_pre_migration_backup(lydia_home=lydia_home)
+        out2 = create_pre_migration_backup(alice_home=alice_home)
         assert out2 is not None
         with zipfile.ZipFile(out2) as zf:
             names = zf.namelist()
         assert not any(n.startswith("backups/") for n in names)
 
-    def test_rotation_keeps_only_n(self, lydia_home):
+    def test_rotation_keeps_only_n(self, alice_home):
         import time as _t
         from alice_cli.backup import create_pre_migration_backup
 
         created = []
         for _ in range(7):
-            out = create_pre_migration_backup(lydia_home=lydia_home, keep=3)
+            out = create_pre_migration_backup(alice_home=alice_home, keep=3)
             if out is not None:
                 created.append(out)
             _t.sleep(1.05)  # timestamp resolution
 
-        remaining = sorted((lydia_home / "backups").glob("pre-migration-*.zip"))
+        remaining = sorted((alice_home / "backups").glob("pre-migration-*.zip"))
         assert len(remaining) <= 3, f"expected <=3 backups retained, got {len(remaining)}"
 
-    def test_missing_lydia_home_returns_none(self, tmp_path):
+    def test_missing_alice_home_returns_none(self, tmp_path):
         """Fresh install with no ~/.alice yet — nothing to back up."""
         from alice_cli.backup import create_pre_migration_backup
         missing = tmp_path / "does-not-exist"
-        out = create_pre_migration_backup(lydia_home=missing)
+        out = create_pre_migration_backup(alice_home=missing)
         assert out is None
 
-    def test_does_not_touch_pre_update_backups(self, lydia_home):
+    def test_does_not_touch_pre_update_backups(self, alice_home):
         """Pre-migration rotation must only prune pre-migration-*.zip files,
         leaving pre-update-*.zip backups untouched."""
         from alice_cli.backup import create_pre_update_backup, create_pre_migration_backup
-        update_backup = create_pre_update_backup(lydia_home=lydia_home, keep=5)
+        update_backup = create_pre_update_backup(alice_home=alice_home, keep=5)
         assert update_backup is not None and update_backup.exists()
         # Spin up a lot of migration backups with keep=1
         import time as _t
         for _ in range(3):
-            out = create_pre_migration_backup(lydia_home=lydia_home, keep=1)
+            out = create_pre_migration_backup(alice_home=alice_home, keep=1)
             assert out is not None
             _t.sleep(1.05)
         # Update backup must still be there
@@ -2259,23 +2259,23 @@ class TestRestoreCronJobsIfEmptied:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({"jobs": jobs}))
 
-    def _make_snapshot(self, lydia_home: Path, label="pre-update"):
+    def _make_snapshot(self, alice_home: Path, label="pre-update"):
         from alice_cli.backup import create_quick_snapshot
-        return create_quick_snapshot(label=label, lydia_home=lydia_home, keep=5)
+        return create_quick_snapshot(label=label, alice_home=alice_home, keep=5)
 
     def test_restores_when_emptied_after_migration(self, tmp_path):
         from alice_cli.backup import restore_cron_jobs_if_emptied
-        lydia_home = tmp_path / ".alice"
-        jobs_path = lydia_home / "cron" / "jobs.json"
+        alice_home = tmp_path / ".alice"
+        jobs_path = alice_home / "cron" / "jobs.json"
         # Pre-update: 3 real jobs.
         self._seed_jobs(jobs_path, [{"id": "a"}, {"id": "b"}, {"id": "c"}])
-        snap_id = self._make_snapshot(lydia_home)
+        snap_id = self._make_snapshot(alice_home)
         assert snap_id
 
         # Migration silently empties the file (valid JSON, zero jobs).
         jobs_path.write_text(json.dumps({"jobs": []}))
 
-        result = restore_cron_jobs_if_emptied(snap_id, lydia_home=lydia_home)
+        result = restore_cron_jobs_if_emptied(snap_id, alice_home=alice_home)
         assert result is not None
         assert result["restored"] is True
         assert result["job_count"] == 3
@@ -2287,33 +2287,33 @@ class TestRestoreCronJobsIfEmptied:
 
     def test_noop_when_live_file_still_has_jobs(self, tmp_path):
         from alice_cli.backup import restore_cron_jobs_if_emptied
-        lydia_home = tmp_path / ".alice"
-        jobs_path = lydia_home / "cron" / "jobs.json"
+        alice_home = tmp_path / ".alice"
+        jobs_path = alice_home / "cron" / "jobs.json"
         self._seed_jobs(jobs_path, [{"id": "a"}, {"id": "b"}])
-        snap_id = self._make_snapshot(lydia_home)
+        snap_id = self._make_snapshot(alice_home)
 
         # Healthy path: file unchanged after update.
-        result = restore_cron_jobs_if_emptied(snap_id, lydia_home=lydia_home)
+        result = restore_cron_jobs_if_emptied(snap_id, alice_home=alice_home)
         assert result is None
 
     def test_restores_when_partial_job_loss(self, tmp_path):
         """Desktop scheduler overwrites jobs.json with its own small set,
         losing tool-created crons while keeping desktop-tracked ones."""
         from alice_cli.backup import restore_cron_jobs_if_emptied
-        lydia_home = tmp_path / ".alice"
-        jobs_path = lydia_home / "cron" / "jobs.json"
+        alice_home = tmp_path / ".alice"
+        jobs_path = alice_home / "cron" / "jobs.json"
         # Pre-update: 19 jobs (18 tool-created + 1 desktop watchdog).
         self._seed_jobs(
             jobs_path,
             [{"id": f"job-{i}"} for i in range(19)],
         )
-        snap_id = self._make_snapshot(lydia_home)
+        snap_id = self._make_snapshot(alice_home)
         assert snap_id
 
         # Desktop scheduler overwrites with only its own 1 job.
         jobs_path.write_text(json.dumps({"jobs": [{"id": "desktop-watchdog"}]}))
 
-        result = restore_cron_jobs_if_emptied(snap_id, lydia_home=lydia_home)
+        result = restore_cron_jobs_if_emptied(snap_id, alice_home=alice_home)
         assert result is not None
         assert result["restored"] is True
         assert result["job_count"] == 19
@@ -2324,51 +2324,51 @@ class TestRestoreCronJobsIfEmptied:
 
     def test_noop_when_snapshot_had_no_jobs(self, tmp_path):
         from alice_cli.backup import restore_cron_jobs_if_emptied
-        lydia_home = tmp_path / ".alice"
-        jobs_path = lydia_home / "cron" / "jobs.json"
+        alice_home = tmp_path / ".alice"
+        jobs_path = alice_home / "cron" / "jobs.json"
         # Pre-update genuinely had zero jobs; current is also empty.
         self._seed_jobs(jobs_path, [])
-        snap_id = self._make_snapshot(lydia_home)
+        snap_id = self._make_snapshot(alice_home)
         jobs_path.write_text(json.dumps({"jobs": []}))
 
-        result = restore_cron_jobs_if_emptied(snap_id, lydia_home=lydia_home)
+        result = restore_cron_jobs_if_emptied(snap_id, alice_home=alice_home)
         assert result is None
 
     def test_noop_when_live_file_unreadable(self, tmp_path):
         """An unparseable live file is left alone — that's a different failure
         mode the user should see, not silently overwrite."""
         from alice_cli.backup import restore_cron_jobs_if_emptied
-        lydia_home = tmp_path / ".alice"
-        jobs_path = lydia_home / "cron" / "jobs.json"
+        alice_home = tmp_path / ".alice"
+        jobs_path = alice_home / "cron" / "jobs.json"
         self._seed_jobs(jobs_path, [{"id": "a"}])
-        snap_id = self._make_snapshot(lydia_home)
+        snap_id = self._make_snapshot(alice_home)
         jobs_path.write_text("{ this is not valid json")
 
-        result = restore_cron_jobs_if_emptied(snap_id, lydia_home=lydia_home)
+        result = restore_cron_jobs_if_emptied(snap_id, alice_home=alice_home)
         assert result is None
         # File left untouched.
         assert jobs_path.read_text() == "{ this is not valid json"
 
     def test_noop_when_snapshot_id_missing(self, tmp_path):
         from alice_cli.backup import restore_cron_jobs_if_emptied
-        lydia_home = tmp_path / ".alice"
-        jobs_path = lydia_home / "cron" / "jobs.json"
+        alice_home = tmp_path / ".alice"
+        jobs_path = alice_home / "cron" / "jobs.json"
         self._seed_jobs(jobs_path, [])
-        assert restore_cron_jobs_if_emptied(None, lydia_home=lydia_home) is None
-        assert restore_cron_jobs_if_emptied("", lydia_home=lydia_home) is None
+        assert restore_cron_jobs_if_emptied(None, alice_home=alice_home) is None
+        assert restore_cron_jobs_if_emptied("", alice_home=alice_home) is None
 
     def test_restores_legacy_bare_list_snapshot_shape(self, tmp_path):
         """A legacy snapshot storing a bare JSON list (not {"jobs": [...]}) is
         still counted and restored."""
         from alice_cli.backup import restore_cron_jobs_if_emptied
-        lydia_home = tmp_path / ".alice"
-        jobs_path = lydia_home / "cron" / "jobs.json"
+        alice_home = tmp_path / ".alice"
+        jobs_path = alice_home / "cron" / "jobs.json"
         jobs_path.parent.mkdir(parents=True, exist_ok=True)
         jobs_path.write_text(json.dumps([{"id": "a"}, {"id": "b"}]))
-        snap_id = self._make_snapshot(lydia_home)
+        snap_id = self._make_snapshot(alice_home)
 
         jobs_path.write_text(json.dumps({"jobs": []}))
-        result = restore_cron_jobs_if_emptied(snap_id, lydia_home=lydia_home)
+        result = restore_cron_jobs_if_emptied(snap_id, alice_home=alice_home)
         assert result is not None
         assert result["job_count"] == 2
 
@@ -2380,17 +2380,17 @@ class TestRestoreCronJobsIfEmptied:
 # ---------------------------------------------------------------------------
 
 class TestMemoryProviderExternalPaths:
-    def _make_min_tree(self, lydia_home: Path) -> None:
-        lydia_home.mkdir(parents=True, exist_ok=True)
-        (lydia_home / "config.yaml").write_text("model:\n  provider: openrouter\n")
-        (lydia_home / ".env").write_text("OPENROUTER_API_KEY=sk-test\n")
-        (lydia_home / "state.db").write_bytes(b"x")
+    def _make_min_tree(self, alice_home: Path) -> None:
+        alice_home.mkdir(parents=True, exist_ok=True)
+        (alice_home / "config.yaml").write_text("model:\n  provider: openrouter\n")
+        (alice_home / ".env").write_text("OPENROUTER_API_KEY=sk-test\n")
+        (alice_home / "state.db").write_bytes(b"x")
 
     def test_backup_captures_external_paths_under_external_prefix(self, tmp_path, monkeypatch):
         """Provider state under ~/.honcho is archived beneath _external/,
         encoded relative to the home directory."""
-        lydia_home = tmp_path / ".alice"
-        self._make_min_tree(lydia_home)
+        alice_home = tmp_path / ".alice"
+        self._make_min_tree(alice_home)
         # External provider state living OUTSIDE ALICE_HOME.
         honcho = tmp_path / ".honcho"
         honcho.mkdir()
@@ -2398,7 +2398,7 @@ class TestMemoryProviderExternalPaths:
         (honcho / "sub").mkdir()
         (honcho / "sub" / "x.json").write_text('{"a":1}')
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         import alice_cli.backup as backup_mod
@@ -2419,13 +2419,13 @@ class TestMemoryProviderExternalPaths:
     def test_backup_skips_external_paths_outside_home(self, tmp_path, monkeypatch):
         """A declared path outside the home dir is not portable and must be
         skipped, never archived."""
-        lydia_home = tmp_path / ".alice"
-        self._make_min_tree(lydia_home)
+        alice_home = tmp_path / ".alice"
+        self._make_min_tree(alice_home)
         outside = tmp_path.parent / "outside-home-secret"
         outside.mkdir(exist_ok=True)
         (outside / "leak.json").write_text('{"secret":1}')
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         import alice_cli.backup as backup_mod
@@ -2448,8 +2448,8 @@ class TestMemoryProviderExternalPaths:
         and credential-shaped files get 0600."""
         dst_home = tmp_path / "dst"
         dst_home.mkdir()
-        lydia_home = dst_home / ".alice"
-        lydia_home.mkdir()
+        alice_home = dst_home / ".alice"
+        alice_home.mkdir()
 
         zip_path = tmp_path / "backup.zip"
         with zipfile.ZipFile(zip_path, "w") as zf:
@@ -2458,7 +2458,7 @@ class TestMemoryProviderExternalPaths:
             zf.writestr("state.db", "")
             zf.writestr("_external/.honcho/config.json", '{"peer":"bob"}')
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: dst_home)
 
         from alice_cli.backup import run_import
@@ -2470,14 +2470,14 @@ class TestMemoryProviderExternalPaths:
         # Credential-shaped file tightened.
         assert (restored.stat().st_mode & 0o777) == 0o600
         # External state did NOT leak into ALICE_HOME.
-        assert not (lydia_home / "_external").exists()
+        assert not (alice_home / "_external").exists()
 
     def test_import_blocks_external_path_traversal(self, tmp_path, monkeypatch):
         """A malicious _external/ member that escapes the home dir is blocked."""
         dst_home = tmp_path / "dst"
         dst_home.mkdir()
-        lydia_home = dst_home / ".alice"
-        lydia_home.mkdir()
+        alice_home = dst_home / ".alice"
+        alice_home.mkdir()
         sentinel = tmp_path / "PWNED"
 
         zip_path = tmp_path / "backup.zip"
@@ -2487,7 +2487,7 @@ class TestMemoryProviderExternalPaths:
             zf.writestr("state.db", "")
             zf.writestr("_external/../../PWNED", "pwned")
 
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         monkeypatch.setattr(Path, "home", lambda: dst_home)
 
         from alice_cli.backup import run_import

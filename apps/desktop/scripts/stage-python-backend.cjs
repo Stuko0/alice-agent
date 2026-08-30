@@ -4,7 +4,7 @@
  * stage-python-backend.cjs
  *
  * Downloads and stages a portable Python 3.11 distribution (python-embed)
- * with Lydia and all its Python dependencies for packaging inside the
+ * with Alice and all its Python dependencies for packaging inside the
  * Electron desktop app as an extraResource.
  *
  * Output layout:
@@ -12,7 +12,7 @@
  *     python.exe               (embeddable Python runtime)
  *     python3.dll, python311.dll, python311.zip (stdlib)
  *     python._pth              (modified to include site-packages)
- *     site-packages/           (lydia + all deps via uv pip install --target)
+ *     site-packages/           (alice + all deps via uv pip install --target)
  *     scripts/
  *       alice-serve.py         (bundled entry point)
  *
@@ -284,10 +284,10 @@ function configurePathFile() {
 }
 
 // ---------------------------------------------------------------------------
-// Install Lydia + dependencies via uv
+// Install Alice + dependencies via uv
 // ---------------------------------------------------------------------------
 function installDependencies() {
-  console.log('[stage-python-backend] installing Lydia + dependencies...')
+  console.log('[stage-python-backend] installing Alice + dependencies...')
 
   rmrf(SITE_PACKAGES)
   ensureDir(SITE_PACKAGES)
@@ -329,7 +329,7 @@ function installDependencies() {
   // We use non-editable install (no -e) so the package files are
   // actually copied into site-packages/ instead of creating a
   // .egg-link / .pth redirect.  --only-binary is NOT set because
-  // the local package (lydia-agent) must be built from source.
+  // the local package (alice-agent) must be built from source.
   const result = execSync(
     `${uvCmd} pip install --target "${installTarget}" "${REPO_ROOT}"` +
     `  --no-verify-hashes` +

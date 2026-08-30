@@ -3,8 +3,8 @@ version: "1.0.0"
 description: "Optional Langfuse observability for Alice — traces conversations, LLM calls, and tool usage. Opt-in via `alice plugins enable observability/langfuse` or `alice native → Langfuse Observability`."
 author: Stuko
 requires_env:
-  - LYDIA_LANGFUSE_PUBLIC_KEY
-  - LYDIA_LANGFUSE_SECRET_KEY
+  - ALICE_LANGFUSE_PUBLIC_KEY
+  - ALICE_LANGFUSE_SECRET_KEY
 hooks:
   - pre_api_request
   - post_api_request

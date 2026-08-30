@@ -286,9 +286,9 @@ class TestWinPtyBridgeEnv:
             [
                 sys.executable,
                 "-c",
-                "import os; print('LYDIA_PTY_TEST=' + os.environ.get('LYDIA_PTY_TEST',''))",
+                "import os; print('ALICE_PTY_TEST=' + os.environ.get('ALICE_PTY_TEST',''))",
             ],
-            env={**os.environ, "LYDIA_PTY_TEST": "pty-env-works"},
+            env={**os.environ, "ALICE_PTY_TEST": "pty-env-works"},
         )
         try:
             output = _read_until(bridge, b"pty-env-works")

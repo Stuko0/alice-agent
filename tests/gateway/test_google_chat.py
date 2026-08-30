@@ -501,7 +501,7 @@ class TestOnPubsubMessage:
         envelope = {
             "event_type": "MESSAGE",
             "sender_email": "bot@bots.example.com",
-            "sender_display_name": "LydiaBot",
+            "sender_display_name": "AliceBot",
             "sender_type": "BOT",
             "text": "reply from bot",
             "space_name": "spaces/RELAY",
@@ -663,7 +663,7 @@ class TestExtractMessagePayload:
         envelope = {
             "event_type": "MESSAGE",
             "sender_email": "bot@bots.example.com",
-            "sender_display_name": "LydiaBot",
+            "sender_display_name": "AliceBot",
             "sender_type": "BOT",
             "text": "reply from bot",
             "space_name": "spaces/RELAY",

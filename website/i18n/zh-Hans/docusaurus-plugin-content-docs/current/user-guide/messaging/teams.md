@@ -94,7 +94,7 @@ TEAMS_ALLOWED_USERS=<your-aad-object-id>
 ## 第五步：启动 Gateway
 
 ```bash
-LYDIA_UID=$(id -u) LYDIA_GID=$(id -g) docker compose up -d gateway
+ALICE_UID=$(id -u) ALICE_GID=$(id -g) docker compose up -d gateway
 ```
 
 此命令启动 gateway。默认 webhook 端口为 `3978`（可通过 `TEAMS_PORT` 覆盖）。检查运行状态：

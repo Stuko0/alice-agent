@@ -54,7 +54,7 @@ def seed_tasks(conn, kb, n, assignee="bench-worker", with_parents=False):
 
 
 def main():
-    home = tempfile.mkdtemp(prefix="lydia_bench_")
+    home = tempfile.mkdtemp(prefix="alice_bench_")
     os.environ["ALICE_HOME"] = home
     os.environ["HOME"] = home
     sys.path.insert(0, WT)

@@ -43,14 +43,14 @@ NC='\033[0m' # No Color
 BOLD='\033[1m'
 
 # Configuration
-REPO_URL_SSH="git@github.com:arquant-admin/NewLydia.git"
-REPO_URL_HTTPS="https://10.1.200.116:3000/arquant-admin/NewLydia.git"
-LYDIA_HOME="${LYDIA_HOME:-$HOME/.alice}"
+REPO_URL_SSH="git@github.com:arquant-admin/NewAlice.git"
+REPO_URL_HTTPS="https://10.1.200.116:3000/arquant-admin/NewAlice.git"
+ALICE_HOME="${ALICE_HOME:-$HOME/.alice}"
 # INSTALL_DIR is resolved AFTER arg parsing and OS detection so we can pick an
 # FHS-style layout for root installs.  Track whether the user gave us an
 # explicit directory — if so we never override it.
-if [ -n "${LYDIA_INSTALL_DIR:-}" ]; then
-    INSTALL_DIR="$LYDIA_INSTALL_DIR"
+if [ -n "${ALICE_INSTALL_DIR:-}" ]; then
+    INSTALL_DIR="$ALICE_INSTALL_DIR"
     INSTALL_DIR_EXPLICIT=true
 else
     INSTALL_DIR=""
@@ -61,7 +61,7 @@ NODE_VERSION="22"
 
 # FHS-style root install layout (set by resolve_install_layout when applicable):
 #   code at /usr/local/lib/alice-agent, command at /usr/local/bin/alice,
-#   data still at /root/.alice (LYDIA_HOME).  Matches Claude Code / Codex CLI
+#   data still at /root/.alice (ALICE_HOME).  Matches Claude Code / Codex CLI
 #   and keeps Docker bind-mounted /root/ volumes lean.
 ROOT_FHS_LAYOUT=false
 DETECTED_BROWSER_EXECUTABLE=""
@@ -143,7 +143,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --alice-home)
-            LYDIA_HOME="$2"
+            ALICE_HOME="$2"
             shift 2
             ;;
         --ensure)
@@ -164,7 +164,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --skip-setup   Skip interactive setup wizard"
             echo "  --skip-browser Skip Playwright/Chromium install (browser tools won't work)"
             echo "  --no-skills    Start with a blank slate — seed no bundled skills, and"
-            echo "                   write \$LYDIA_HOME/.no-bundled-skills so future"
+            echo "                   write \$ALICE_HOME/.no-bundled-skills so future"
             echo "                   'alice update' runs never inject bundled skills either"
             echo "  --branch NAME  Git branch to install (default: main)"
             echo "  --commit SHA   Pin checkout to a specific commit after clone/update"
@@ -176,17 +176,17 @@ while [[ $# -gt 0 ]]; do
             echo "  --dir PATH     Installation directory"
             echo "                   default (non-root):  ~/.alice/alice-agent"
             echo "                   default (root, Linux): /usr/local/lib/alice-agent"
-            echo "  --alice-home PATH  Data directory (default: ~/.alice, or \$LYDIA_HOME)"
+            echo "  --alice-home PATH  Data directory (default: ~/.alice, or \$ALICE_HOME)"
             echo "  -h, --help     Show this help"
             echo ""
             echo "Notes:"
             echo "  When running as root on Linux, Alice installs the code under"
             echo "  /usr/local/lib/alice-agent and links the command into"
             echo "  /usr/local/bin/alice (FHS layout — matches Claude Code / Codex CLI)."
-            echo "  Data, config, sessions, and logs still live in \$LYDIA_HOME"
+            echo "  Data, config, sessions, and logs still live in \$ALICE_HOME"
             echo "  (default /root/.alice).  This keeps Docker bind-mounted volumes"
             echo "  small and ensures the command is on PATH for all shells."
-            echo "  Existing installs at \$LYDIA_HOME/alice-agent are preserved in-place."
+            echo "  Existing installs at \$ALICE_HOME/alice-agent are preserved in-place."
             echo "  --ensure DEPS  Install only specified deps (comma-separated)"
             echo "                   Supported: node, browser, ripgrep, ffmpeg"
             echo "                   Does NOT clone repo or create venv"
@@ -392,25 +392,25 @@ is_termux() {
 # symlink goes.  Called after detect_os so $OS/$DISTRO are known.
 #
 # Defaults:
-#   - Non-root, any OS:       INSTALL_DIR = $LYDIA_HOME/alice-agent
+#   - Non-root, any OS:       INSTALL_DIR = $ALICE_HOME/alice-agent
 #                             command link in $HOME/.local/bin
-#   - Termux (any uid):       INSTALL_DIR = $LYDIA_HOME/alice-agent
+#   - Termux (any uid):       INSTALL_DIR = $ALICE_HOME/alice-agent
 #                             command link in $PREFIX/bin (already on PATH)
 #   - Root on Linux (new):    INSTALL_DIR = /usr/local/lib/alice-agent
 #                             command link in /usr/local/bin
 #                             (unless a legacy install already exists at
-#                              $LYDIA_HOME/alice-agent — then preserve it)
+#                              $ALICE_HOME/alice-agent — then preserve it)
 #
-# Always no-op when the user set --dir or $LYDIA_INSTALL_DIR.
+# Always no-op when the user set --dir or $ALICE_INSTALL_DIR.
 resolve_install_layout() {
     if [ "$INSTALL_DIR_EXPLICIT" = true ]; then
         log_info "Install directory: $INSTALL_DIR (explicit)"
         return 0
     fi
 
-    # Termux: package manager manages /data/data/..., keep code in LYDIA_HOME.
+    # Termux: package manager manages /data/data/..., keep code in ALICE_HOME.
     if is_termux; then
-        INSTALL_DIR="$LYDIA_HOME/alice-agent"
+        INSTALL_DIR="$ALICE_HOME/alice-agent"
         return 0
     fi
 
@@ -418,8 +418,8 @@ resolve_install_layout() {
     # macOS root installs keep the legacy layout because /usr/local/ on macOS
     # is Homebrew territory and we don't want to fight that.
     if [ "$OS" = "linux" ] && [ "$(id -u)" -eq 0 ]; then
-        if [ -d "$LYDIA_HOME/alice-agent/.git" ]; then
-            INSTALL_DIR="$LYDIA_HOME/alice-agent"
+        if [ -d "$ALICE_HOME/alice-agent/.git" ]; then
+            INSTALL_DIR="$ALICE_HOME/alice-agent"
             log_info "Existing install detected at $INSTALL_DIR — keeping legacy layout"
             log_info "  (new root installs use /usr/local/lib/alice-agent)"
             return 0
@@ -436,13 +436,13 @@ resolve_install_layout() {
         log_info "Root install on Linux — using FHS layout"
         log_info "  Code:    $INSTALL_DIR"
         log_info "  Command: /usr/local/bin/alice"
-        log_info "  Data:    $LYDIA_HOME (unchanged)"
+        log_info "  Data:    $ALICE_HOME (unchanged)"
         log_info "  uv Python: $UV_PYTHON_INSTALL_DIR (world-readable)"
         return 0
     fi
 
     # Default: non-root, non-Termux → legacy user-scoped layout.
-    INSTALL_DIR="$LYDIA_HOME/alice-agent"
+    INSTALL_DIR="$ALICE_HOME/alice-agent"
 }
 
 get_command_link_dir() {
@@ -467,7 +467,7 @@ get_command_link_display_dir() {
 
 # Point a Alice-managed Node's `npm install -g` at a directory that is on
 # PATH. npm's default global prefix for a bundled Node is the Node dir itself,
-# so global package binaries land in $LYDIA_HOME/node/bin — which is NOT on
+# so global package binaries land in $ALICE_HOME/node/bin — which is NOT on
 # PATH (only the command link dir is) and is wiped on every Node upgrade.
 # Redirecting the prefix to the link dir's parent makes global bins resolve to
 # the command link dir (node/npm/npx live there too, already on PATH) and
@@ -477,14 +477,14 @@ get_command_link_display_dir() {
 # Idempotent and a no-op when there is no Alice-managed npm, so calling it on
 # every install run repairs pre-existing installs, not just fresh ones.
 configure_managed_node_npm_prefix() {
-    [ -x "$LYDIA_HOME/node/bin/npm" ] || return 0
+    [ -x "$ALICE_HOME/node/bin/npm" ] || return 0
     local link_dir
     link_dir="$(get_command_link_dir)"
-    mkdir -p "$LYDIA_HOME/node/etc"
-    printf 'prefix=%s\n' "$(dirname "$link_dir")" > "$LYDIA_HOME/node/etc/npmrc"
+    mkdir -p "$ALICE_HOME/node/etc"
+    printf 'prefix=%s\n' "$(dirname "$link_dir")" > "$ALICE_HOME/node/etc/npmrc"
 }
 
-get_lydia_command_path() {
+get_alice_command_path() {
     local link_dir
     link_dir="$(get_command_link_dir)"
     if [ -x "$link_dir/alice" ]; then
@@ -551,11 +551,11 @@ install_uv() {
         return 0
     fi
 
-    # Alice owns its own uv at $LYDIA_HOME/bin/uv.  Always install there —
+    # Alice owns its own uv at $ALICE_HOME/bin/uv.  Always install there —
     # no PATH probing, no conda guards, no multi-location resolution chains.
     # The runtime update path (alice_cli/managed_uv.py) looks in the same
     # place, so install.sh and `alice update` stay in sync.
-    local _managed_uv="$LYDIA_HOME/bin/uv"
+    local _managed_uv="$ALICE_HOME/bin/uv"
 
     if [ -x "$_managed_uv" ]; then
         UV_CMD="$_managed_uv"
@@ -564,8 +564,8 @@ install_uv() {
         return 0
     fi
 
-    log_info "Installing managed uv into $LYDIA_HOME/bin ..."
-    mkdir -p "$LYDIA_HOME/bin"
+    log_info "Installing managed uv into $ALICE_HOME/bin ..."
+    mkdir -p "$ALICE_HOME/bin"
 
     # Two-stage: download the installer, then run it.  Piping
     # `curl | sh` masks curl failures (sh exits 0 on empty stdin)
@@ -582,8 +582,8 @@ install_uv() {
         exit 1
     fi
     # UV_UNMANAGED_INSTALL tells the astral installer to place the binary
-    # directly into $LYDIA_HOME/bin instead of ~/.local/bin.
-    if UV_UNMANAGED_INSTALL="$LYDIA_HOME/bin" sh "$_uv_installer" >>"$_uv_install_log" 2>&1; then
+    # directly into $ALICE_HOME/bin instead of ~/.local/bin.
+    if UV_UNMANAGED_INSTALL="$ALICE_HOME/bin" sh "$_uv_installer" >>"$_uv_install_log" 2>&1; then
         rm -f "$_uv_installer"
         if [ -x "$_managed_uv" ]; then
             UV_CMD="$_managed_uv"
@@ -810,9 +810,9 @@ check_node() {
     fi
 
     # Prefer a Alice-managed Node from a previous run over a too-old system one.
-    if [ -x "$LYDIA_HOME/node/bin/node" ] && node_satisfies_build "$("$LYDIA_HOME/node/bin/node" --version)"; then
-        export PATH="$LYDIA_HOME/node/bin:$PATH"
-        log_success "Node.js $("$LYDIA_HOME/node/bin/node" --version) found (Alice-managed)"
+    if [ -x "$ALICE_HOME/node/bin/node" ] && node_satisfies_build "$("$ALICE_HOME/node/bin/node" --version)"; then
+        export PATH="$ALICE_HOME/node/bin:$PATH"
+        log_success "Node.js $("$ALICE_HOME/node/bin/node" --version) found (Alice-managed)"
         HAS_NODE=true
         return 0
     fi
@@ -920,24 +920,24 @@ install_node() {
     # Place into ~/.alice/node/ and symlink binaries into the same bin dir
     # the alice command uses (get_command_link_dir): /usr/local/bin for root
     # FHS installs, $PREFIX/bin on Termux, ~/.local/bin otherwise.
-    rm -rf "$LYDIA_HOME/node"
-    mkdir -p "$LYDIA_HOME"
-    mv "$extracted_dir" "$LYDIA_HOME/node"
+    rm -rf "$ALICE_HOME/node"
+    mkdir -p "$ALICE_HOME"
+    mv "$extracted_dir" "$ALICE_HOME/node"
     rm -rf "$tmp_dir"
 
     local node_link_dir
     node_link_dir="$(get_command_link_dir)"
     mkdir -p "$node_link_dir"
-    ln -sf "$LYDIA_HOME/node/bin/node" "$node_link_dir/node"
-    ln -sf "$LYDIA_HOME/node/bin/npm"  "$node_link_dir/npm"
-    ln -sf "$LYDIA_HOME/node/bin/npx"  "$node_link_dir/npx"
+    ln -sf "$ALICE_HOME/node/bin/node" "$node_link_dir/node"
+    ln -sf "$ALICE_HOME/node/bin/npm"  "$node_link_dir/npm"
+    ln -sf "$ALICE_HOME/node/bin/npx"  "$node_link_dir/npx"
 
     configure_managed_node_npm_prefix
 
-    export PATH="$LYDIA_HOME/node/bin:$PATH"
+    export PATH="$ALICE_HOME/node/bin:$PATH"
 
     local installed_ver
-    installed_ver=$("$LYDIA_HOME/node/bin/node" --version 2>/dev/null)
+    installed_ver=$("$ALICE_HOME/node/bin/node" --version 2>/dev/null)
     log_success "Node.js $installed_ver installed to ~/.alice/node/"
     HAS_NODE=true
 }
@@ -1601,18 +1601,18 @@ setup_path() {
     log_info "Setting up alice command..."
 
     if [ "$USE_VENV" = true ]; then
-        LYDIA_BIN="$INSTALL_DIR/venv/bin/alice"
+        ALICE_BIN="$INSTALL_DIR/venv/bin/alice"
     else
-        LYDIA_BIN="$(which alice 2>/dev/null || echo "")"
-        if [ -z "$LYDIA_BIN" ]; then
+        ALICE_BIN="$(which alice 2>/dev/null || echo "")"
+        if [ -z "$ALICE_BIN" ]; then
             log_warn "alice not found on PATH after install"
             return 0
         fi
     fi
 
     # Verify the entry point script was actually generated
-    if [ ! -x "$LYDIA_BIN" ]; then
-        log_warn "alice entry point not found at $LYDIA_BIN"
+    if [ ! -x "$ALICE_BIN" ]; then
+        log_warn "alice entry point not found at $ALICE_BIN"
         log_info "This usually means the pip install didn't complete successfully."
         if [ "$DISTRO" = "termux" ]; then
             log_info "Try: cd $INSTALL_DIR && python -m pip install -e '.[termux-all]' -c constraints-termux.txt"
@@ -1631,15 +1631,15 @@ setup_path() {
     # We intentionally clear PYTHONPATH/PYTHONHOME here so inherited env vars
     # can't make this launcher import modules from another checkout.
     mkdir -p "$command_link_dir"
-    # Older installs created this path as a symlink to $LYDIA_BIN. Without
+    # Older installs created this path as a symlink to $ALICE_BIN. Without
     # the rm, `cat >` follows the symlink and overwrites the venv pip entry
-    # point with this shim — making `exec "$LYDIA_BIN"` self-recurse. (#21454)
+    # point with this shim — making `exec "$ALICE_BIN"` self-recurse. (#21454)
     rm -f "$command_link_dir/alice"
     cat > "$command_link_dir/alice" <<EOF
 #!/usr/bin/env bash
 unset PYTHONPATH
 unset PYTHONHOME
-exec "$LYDIA_BIN" "\$@"
+exec "$ALICE_BIN" "\$@"
 EOF
     chmod +x "$command_link_dir/alice"
     log_success "Installed alice launcher → $command_link_display_dir/alice"
@@ -1762,15 +1762,15 @@ copy_config_templates() {
     log_info "Setting up configuration files..."
 
     # Create ~/.alice directory structure (config at top level, code in subdir)
-    mkdir -p "$LYDIA_HOME"/{cron,sessions,logs,pairing,hooks,image_cache,audio_cache,memories,skills}
+    mkdir -p "$ALICE_HOME"/{cron,sessions,logs,pairing,hooks,image_cache,audio_cache,memories,skills}
 
     # Create .env at ~/.alice/.env (top level, easy to find)
-    if [ ! -f "$LYDIA_HOME/.env" ]; then
+    if [ ! -f "$ALICE_HOME/.env" ]; then
         if [ -f "$INSTALL_DIR/.env.example" ]; then
-            cp "$INSTALL_DIR/.env.example" "$LYDIA_HOME/.env"
+            cp "$INSTALL_DIR/.env.example" "$ALICE_HOME/.env"
             log_success "Created ~/.alice/.env from template"
         else
-            touch "$LYDIA_HOME/.env"
+            touch "$ALICE_HOME/.env"
             log_success "Created ~/.alice/.env"
         fi
     else
@@ -1779,13 +1779,13 @@ copy_config_templates() {
     # Restrict .env permissions — this file holds API keys and tokens.
     # 0600 ensures only the file owner can read/write, matching standard
     # practice for credential files (.netrc, .aws/credentials, .ssh/config).
-    chmod 600 "$LYDIA_HOME/.env"
+    chmod 600 "$ALICE_HOME/.env"
     configure_browser_env_from_system_browser
 
     # Create config.yaml at ~/.alice/config.yaml (top level, easy to find)
-    if [ ! -f "$LYDIA_HOME/config.yaml" ]; then
+    if [ ! -f "$ALICE_HOME/config.yaml" ]; then
         if [ -f "$INSTALL_DIR/cli-config.yaml.example" ]; then
-            cp "$INSTALL_DIR/cli-config.yaml.example" "$LYDIA_HOME/config.yaml"
+            cp "$INSTALL_DIR/cli-config.yaml.example" "$ALICE_HOME/config.yaml"
             log_success "Created ~/.alice/config.yaml from template"
         fi
     else
@@ -1797,8 +1797,8 @@ copy_config_templates() {
     # runtime (_ensure_default_soul_md) treats the old comment-only scaffold as
     # "never customized" and upgrades it to this text on next run, so any drift
     # here is self-healing, but keep them in sync to avoid a churn on first run.
-    if [ ! -f "$LYDIA_HOME/SOUL.md" ]; then
-        cat > "$LYDIA_HOME/SOUL.md" << 'SOUL_EOF'
+    if [ ! -f "$ALICE_HOME/SOUL.md" ]; then
+        cat > "$ALICE_HOME/SOUL.md" << 'SOUL_EOF'
 You are Alice Agent, an intelligent AI assistant created by Stuko. You are helpful, knowledgeable, and direct. You assist users with a wide range of tasks including answering questions, writing and editing code, analyzing information, creative work, and executing actions via your tools. You communicate clearly, admit uncertainty when appropriate, and prioritize being genuinely useful over being verbose unless otherwise directed below. Be targeted and efficient in your exploration and investigations.
 SOUL_EOF
         log_success "Created ~/.alice/SOUL.md (edit to customize personality)"
@@ -1814,8 +1814,8 @@ SOUL_EOF
         printf '%s\n' \
             "This profile opted out of bundled-skill seeding (installed with --no-skills)." \
             "Delete this file to re-enable sync on the next 'alice update'." \
-            > "$LYDIA_HOME/.no-bundled-skills" 2>/dev/null || true
-        log_info "Skipping bundled skills (--no-skills). Wrote $LYDIA_HOME/.no-bundled-skills"
+            > "$ALICE_HOME/.no-bundled-skills" 2>/dev/null || true
+        log_info "Skipping bundled skills (--no-skills). Wrote $ALICE_HOME/.no-bundled-skills"
         log_info "  Future 'alice update' runs will not inject bundled skills. Delete the marker to opt back in."
     else
         log_info "Syncing bundled skills to ~/.alice/skills/ ..."
@@ -1823,8 +1823,8 @@ SOUL_EOF
             log_success "Skills synced to ~/.alice/skills/"
         else
             # Fallback: simple directory copy if Python sync fails
-            if [ -d "$INSTALL_DIR/skills" ] && [ ! "$(ls -A "$LYDIA_HOME/skills/" 2>/dev/null | grep -v '.bundled_manifest')" ]; then
-                cp -r "$INSTALL_DIR/skills/"* "$LYDIA_HOME/skills/" 2>/dev/null || true
+            if [ -d "$INSTALL_DIR/skills" ] && [ ! "$(ls -A "$ALICE_HOME/skills/" 2>/dev/null | grep -v '.bundled_manifest')" ]; then
+                cp -r "$INSTALL_DIR/skills/"* "$ALICE_HOME/skills/" 2>/dev/null || true
                 log_success "Skills copied to ~/.alice/skills/"
             fi
         fi
@@ -1874,7 +1874,7 @@ strip_snap_browser_override() {
     # snap-pointing override here (and its auto-written comment) so the bundled
     # Chromium download runs and the agent stops using the broken binary. A
     # deliberately-set non-snap override is left untouched.
-    local env_file="$LYDIA_HOME/.env"
+    local env_file="$ALICE_HOME/.env"
 
     [ -f "$env_file" ] || return 0
     grep -Eq '^AGENT_BROWSER_EXECUTABLE_PATH=/snap/' "$env_file" 2>/dev/null || return 0
@@ -2082,7 +2082,7 @@ run_playwright_install() {
 }
 
 configure_browser_env_from_system_browser() {
-    local env_file="$LYDIA_HOME/.env"
+    local env_file="$ALICE_HOME/.env"
     local browser_path="${DETECTED_BROWSER_EXECUTABLE:-}"
 
     if [ -z "$browser_path" ]; then
@@ -2093,7 +2093,7 @@ configure_browser_env_from_system_browser() {
         return 0
     fi
 
-    mkdir -p "$LYDIA_HOME"
+    mkdir -p "$ALICE_HOME"
     if [ ! -f "$env_file" ]; then
         touch "$env_file"
     fi
@@ -2277,7 +2277,7 @@ run_setup_wizard() {
 
 maybe_start_gateway() {
     # Check if any messaging platform tokens were configured
-    ENV_FILE="$LYDIA_HOME/.env"
+    ENV_FILE="$ALICE_HOME/.env"
     if [ ! -f "$ENV_FILE" ]; then
         return 0
     fi
@@ -2301,7 +2301,7 @@ maybe_start_gateway() {
 
     # If WhatsApp is enabled and no session exists yet, run foreground first for QR scan
     WHATSAPP_VAL=$(grep "^WHATSAPP_ENABLED=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2-)
-    WHATSAPP_SESSION="$LYDIA_HOME/whatsapp/session/creds.json"
+    WHATSAPP_SESSION="$ALICE_HOME/whatsapp/session/creds.json"
     if [ "$WHATSAPP_VAL" = "true" ] && [ ! -f "$WHATSAPP_SESSION" ]; then
         if [ "$IS_INTERACTIVE" = true ]; then
             echo ""
@@ -2309,8 +2309,8 @@ maybe_start_gateway() {
             log_info "Running 'alice whatsapp' to pair via QR code..."
             echo ""
             if prompt_yes_no "Pair WhatsApp now?" "yes"; then
-                LYDIA_CMD="$(get_lydia_command_path)"
-                $LYDIA_CMD whatsapp || true
+                ALICE_CMD="$(get_alice_command_path)"
+                $ALICE_CMD whatsapp || true
             fi
         else
             log_info "WhatsApp pairing skipped (non-interactive). Run 'alice whatsapp' to pair."
@@ -2338,13 +2338,13 @@ maybe_start_gateway() {
     fi
 
     if [ "$should_install_gateway" = true ]; then
-        LYDIA_CMD="$(get_lydia_command_path)"
+        ALICE_CMD="$(get_alice_command_path)"
 
         if [ "$DISTRO" != "termux" ] && command -v systemctl &> /dev/null; then
             log_info "Installing systemd service..."
-            if $LYDIA_CMD gateway install 2>/dev/null; then
+            if $ALICE_CMD gateway install 2>/dev/null; then
                 log_success "Gateway service installed"
-                if $LYDIA_CMD gateway start 2>/dev/null; then
+                if $ALICE_CMD gateway start 2>/dev/null; then
                     log_success "Gateway started! Your bot is now online."
                 else
                     log_warn "Service installed but failed to start. Try: alice gateway start"
@@ -2358,7 +2358,7 @@ maybe_start_gateway() {
             else
                 log_info "systemd not available — starting gateway in background..."
             fi
-            nohup $LYDIA_CMD gateway > "$LYDIA_HOME/logs/gateway.log" 2>&1 &
+            nohup $ALICE_CMD gateway > "$ALICE_HOME/logs/gateway.log" 2>&1 &
             GATEWAY_PID=$!
             log_success "Gateway started (PID $GATEWAY_PID). Logs: ~/.alice/logs/gateway.log"
             log_info "To stop: kill $GATEWAY_PID"
@@ -2384,9 +2384,9 @@ print_success() {
     # Show file locations
     echo -e "${CYAN}${BOLD}📁 Your files:${NC}"
     echo ""
-    echo -e "   ${YELLOW}Config:${NC}    $LYDIA_HOME/config.yaml"
-    echo -e "   ${YELLOW}API Keys:${NC}  $LYDIA_HOME/.env"
-    echo -e "   ${YELLOW}Data:${NC}      $LYDIA_HOME/cron/, sessions/, logs/"
+    echo -e "   ${YELLOW}Config:${NC}    $ALICE_HOME/config.yaml"
+    echo -e "   ${YELLOW}API Keys:${NC}  $ALICE_HOME/.env"
+    echo -e "   ${YELLOW}Data:${NC}      $ALICE_HOME/cron/, sessions/, logs/"
     echo -e "   ${YELLOW}Code:${NC}      $INSTALL_DIR"
     echo ""
 
@@ -2455,9 +2455,9 @@ print_success() {
 
 ensure_browser() {
     if ! command -v node >/dev/null 2>&1; then
-        local node_bin="$LYDIA_HOME/node/bin/node"
+        local node_bin="$ALICE_HOME/node/bin/node"
         if [ -x "$node_bin" ]; then
-            export PATH="$LYDIA_HOME/node/bin:$PATH"
+            export PATH="$ALICE_HOME/node/bin:$PATH"
         else
             log_error "Node.js not found. Run with --ensure node first."
             return 1
@@ -2465,7 +2465,7 @@ ensure_browser() {
     fi
 
     local npm_bin
-    npm_bin="$(command -v npm 2>/dev/null || echo "$LYDIA_HOME/node/bin/npm")"
+    npm_bin="$(command -v npm 2>/dev/null || echo "$ALICE_HOME/node/bin/npm")"
     if [ ! -x "$npm_bin" ]; then
         log_error "npm not found"
         return 1
@@ -2476,7 +2476,7 @@ ensure_browser() {
     log_file="$(mktemp)"
     # Time-boxed (#39219): a stalled npm registry fetch here would otherwise
     # hang the installer with no progress, same class as the desktop build.
-    if ! run_with_timeout "$NODE_DEPS_TIMEOUT" "$npm_bin" install -g --prefix "$LYDIA_HOME/node" --silent --ignore-scripts \
+    if ! run_with_timeout "$NODE_DEPS_TIMEOUT" "$npm_bin" install -g --prefix "$ALICE_HOME/node" --silent --ignore-scripts \
         "agent-browser@^0.26.0" \
         "@askjo/camofox-browser@^1.5.2" \
         >"$log_file" 2>&1; then
@@ -2486,7 +2486,7 @@ ensure_browser() {
         return 1
     fi
     rm -f "$log_file"
-    export PATH="$LYDIA_HOME/node/bin:$PATH"
+    export PATH="$ALICE_HOME/node/bin:$PATH"
 
     strip_snap_browser_override
     local sys_browser
@@ -2498,7 +2498,7 @@ ensure_browser() {
     fi
 
     log_info "Installing Chromium via agent-browser install..."
-    local ab_bin="$LYDIA_HOME/node/bin/agent-browser"
+    local ab_bin="$ALICE_HOME/node/bin/agent-browser"
     if [ -x "$ab_bin" ]; then
         "$ab_bin" install 2>/dev/null || {
             log_warn "Chromium install failed. Browser tools may not work without a system browser."
@@ -2574,10 +2574,10 @@ postinstall_mode() {
         ensure_browser
     fi
 
-    LYDIA_CMD="$(command -v alice 2>/dev/null || echo "")"
-    if [ -n "$LYDIA_CMD" ]; then
+    ALICE_CMD="$(command -v alice 2>/dev/null || echo "")"
+    if [ -n "$ALICE_CMD" ]; then
         log_info "Running alice setup..."
-        "$LYDIA_CMD" setup
+        "$ALICE_CMD" setup
     else
         log_warn "alice command not found on PATH"
         log_info "Try: python -m alice_cli.main setup"
@@ -3018,7 +3018,7 @@ run_stage_body() {
             resolve_install_layout
             require_install_dir
             # Each stage runs in its own process, so the Alice-managed Node
-            # provisioned during prerequisites/node-deps (at $LYDIA_HOME/node/bin)
+            # provisioned during prerequisites/node-deps (at $ALICE_HOME/node/bin)
             # isn't on PATH here. check_node re-adds it (or installs if missing)
             # so install_desktop can find npm instead of silently skipping.
             check_node
@@ -3029,7 +3029,7 @@ run_stage_body() {
             resolve_install_layout
             print_success
             # Code-scoped stamp: write next to the install tree, not into
-            # $LYDIA_HOME. $LYDIA_HOME is a shared data dir (it can be
+            # $ALICE_HOME. $ALICE_HOME is a shared data dir (it can be
             # bind-mounted into a Docker gateway too), so a stamp there gets
             # clobbered by the container's 'docker' stamp and wrongly blocks
             # 'alice update' on this host install. See detect_install_method().
@@ -3112,8 +3112,8 @@ main() {
 
     print_success
 
-    # Code-scoped stamp: write next to the install tree, not into $LYDIA_HOME.
-    # $LYDIA_HOME is a shared data dir (it can be bind-mounted into a Docker
+    # Code-scoped stamp: write next to the install tree, not into $ALICE_HOME.
+    # $ALICE_HOME is a shared data dir (it can be bind-mounted into a Docker
     # gateway too), so a stamp there gets clobbered by the container's 'docker'
     # stamp and wrongly blocks 'alice update' on this host install.
     # See detect_install_method().

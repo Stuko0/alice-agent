@@ -108,9 +108,9 @@ alice moa delete review
 
 ## Benchmarks
 
-On LydiaBench, a two-model MoA preset — `claude-opus-4.8` aggregating over a `gpt-5.5` reference — outscores either model run on its own:
+On AliceBench, a two-model MoA preset — `claude-opus-4.8` aggregating over a `gpt-5.5` reference — outscores either model run on its own:
 
-| Model | LydiaBench score |
+| Model | AliceBench score |
 |---|---|
 | **Opus aggregator (opus-4.8 + gpt-5.5 reference) — MoA** | **0.8202** |
 | `anthropic/claude-opus-4.8` | 0.7607 |

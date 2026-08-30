@@ -10,7 +10,7 @@ const { pathToFileURL } = require('node:url')
 const { readDirForIpc } = require('./fs-read-dir.cjs')
 
 function mkTmpDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'lydia-fs-read-dir-'))
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'alice-fs-read-dir-'))
 }
 
 function fakeDirent(name, flags = {}) {

@@ -8,7 +8,7 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def _isolate_lydia(tmp_path, monkeypatch):
+def _isolate_alice(tmp_path, monkeypatch):
     monkeypatch.setenv("ALICE_HOME", str(tmp_path / ".alice"))
     (tmp_path / ".alice").mkdir(exist_ok=True)
 
@@ -16,7 +16,7 @@ def _isolate_lydia(tmp_path, monkeypatch):
 def _make_agent(monkeypatch):
     """Create a minimal AIAgent-like object with just the methods under test."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "")
-    monkeypatch.setenv("LYDIA_INFERENCE_PROVIDER", "")
+    monkeypatch.setenv("ALICE_INFERENCE_PROVIDER", "")
     # Avoid full AIAgent init — just import the class and build a stub
     import run_agent as _ra
 

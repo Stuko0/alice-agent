@@ -23,8 +23,8 @@ if command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1; then
     GH_USER=$(gh api user --jq '.login' 2>/dev/null)
 elif [ -n "$GITHUB_TOKEN" ]; then
     GH_AUTH_METHOD="curl"
-elif _lydia_env="${LYDIA_HOME:-$HOME/.alice}/.env"; [ -f "$_lydia_env" ] && grep -q "^GITHUB_TOKEN=" "$_lydia_env" 2>/dev/null; then
-    GITHUB_TOKEN=$(grep "^GITHUB_TOKEN=" "$_lydia_env" | head -1 | cut -d= -f2 | tr -d '\n\r')
+elif _alice_env="${ALICE_HOME:-$HOME/.alice}/.env"; [ -f "$_alice_env" ] && grep -q "^GITHUB_TOKEN=" "$_alice_env" 2>/dev/null; then
+    GITHUB_TOKEN=$(grep "^GITHUB_TOKEN=" "$_alice_env" | head -1 | cut -d= -f2 | tr -d '\n\r')
     if [ -n "$GITHUB_TOKEN" ]; then
         GH_AUTH_METHOD="curl"
     fi

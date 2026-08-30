@@ -18,7 +18,7 @@ def homes(tmp_path, monkeypatch):
     managed = tmp_path / "managed"
     managed.mkdir()
     monkeypatch.setenv("ALICE_HOME", str(home))
-    monkeypatch.setenv("LYDIA_MANAGED_DIR", str(managed))
+    monkeypatch.setenv("ALICE_MANAGED_DIR", str(managed))
     import alice_cli.config as cfg
     from alice_cli import managed_scope
 
@@ -31,7 +31,7 @@ def homes(tmp_path, monkeypatch):
 def _load_cli_config(home):
     """Call cli.py's standalone loader fresh.
 
-    cli.py binds ``_lydia_home = get_alice_home()`` at import time (module
+    cli.py binds ``_alice_home = get_alice_home()`` at import time (module
     singleton), so monkeypatching ALICE_HOME after import doesn't move it.
     Point the module's cached home at the test's home for the duration of the
     call. (In real use cli is imported once per process with the real home, so
@@ -39,7 +39,7 @@ def _load_cli_config(home):
     """
     import cli
 
-    cli._lydia_home = home
+    cli._alice_home = home
     return cli.load_cli_config()
 
 

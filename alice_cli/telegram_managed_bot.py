@@ -20,12 +20,12 @@ import httpx
 
 # Default pairing API base URL (Nous-hosted Cloudflare Worker).
 # Override for PoC/staging with TELEGRAM_ONBOARDING_URL.
-DEFAULT_API_URL = "https://setup.alice-agent.nousresearch.com"
+DEFAULT_API_URL = "https://setup.alice-agent.stuko.dev"
 TELEGRAM_ONBOARDING_URL_ENV = "TELEGRAM_ONBOARDING_URL"
 
 # The Nous-hosted manager bot username (without @). The backend returns the
 # actual deep link, so this is only used by local helpers/tests.
-DEFAULT_MANAGER_BOT = "LydiaSetupBot"
+DEFAULT_MANAGER_BOT = "AliceSetupBot"
 
 DEFAULT_BOT_NAME = "Alice Agent"
 DEFAULT_POLL_TIMEOUT = 180

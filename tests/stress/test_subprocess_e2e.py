@@ -33,8 +33,8 @@ def make_spawn_fn(home: str):
             "ALICE_HOME": home,
             "HOME": home,
             "PYTHONPATH": WT,
-            "LYDIA_KANBAN_TASK": task.id,
-            "LYDIA_KANBAN_WORKSPACE": workspace,
+            "ALICE_KANBAN_TASK": task.id,
+            "ALICE_KANBAN_WORKSPACE": workspace,
             "PATH": f"{os.path.dirname(PY)}:{os.environ.get('PATH','')}",
         }
         log_f = open(log_path, "ab")
@@ -52,7 +52,7 @@ def make_spawn_fn(home: str):
 
 
 def main():
-    home = tempfile.mkdtemp(prefix="lydia_e2e_")
+    home = tempfile.mkdtemp(prefix="alice_e2e_")
     os.environ["ALICE_HOME"] = home
     os.environ["HOME"] = home
     sys.path.insert(0, WT)
@@ -211,7 +211,7 @@ exec {PY} -m alice_cli.main "$@"
     print("=" * 60)
     print("C. Worker log captured to disk")
     print("=" * 60)
-    # Scenario A workers wrote to /tmp/lydia_e2e_*/worker_*.log
+    # Scenario A workers wrote to /tmp/alice_e2e_*/worker_*.log
     import glob
     logs = glob.glob(os.path.join(home, "worker_*.log"))
     print(f"  {len(logs)} worker log files")

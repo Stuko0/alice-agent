@@ -62,7 +62,7 @@ Alice 将自身注册为 MCP server，以便 Codex 能够回调获取 Codex 自�
 - **`skill_view` / `skills_list`** — 读取 Alice 的技能库。
 - **`text_to_speech`** — 通过 Alice 配置的提供商进行 TTS。
 
-当模型需要其中某个工具时，Codex 通过 stdio MCP 生成 `lydia_tools_mcp_server` 子进程，调用通过 `model_tools.handle_function_call()` 分发（与 Alice 默认运行时的代码路径相同），结果像其他 MCP 响应一样返回给 Codex。
+当模型需要其中某个工具时，Codex 通过 stdio MCP 生成 `alice_tools_mcp_server` 子进程，调用通过 `model_tools.handle_function_call()` 分发（与 Alice 默认运行时的代码路径相同），结果像其他 MCP 响应一样返回给 Codex。
 
 ### 此运行时上不可用的工具
 
@@ -91,11 +91,11 @@ Codex 运行时 worker 内可用的功能：
 - 用于 browser_*、vision、image_gen、技能、TTS 的 Alice 工具回调
 
 通过 MCP 回调同样可用的功能：
-- **`kanban_complete` / `kanban_block` / `kanban_comment` / `kanban_heartbeat`** — worker 交接工具。这些工具从环境变量中读取 `LYDIA_KANBAN_TASK`（由分发器设置），正确进行访问控制，并写入由 `LYDIA_KANBAN_DB` 固定的每个看板 SQLite 数据库。若回调中没有这些工具，此运行时上的 worker 可以完成任务但无法汇报，会一直挂起直到分发器超时。
+- **`kanban_complete` / `kanban_block` / `kanban_comment` / `kanban_heartbeat`** — worker 交接工具。这些工具从环境变量中读取 `ALICE_KANBAN_TASK`（由分发器设置），正确进行访问控制，并写入由 `ALICE_KANBAN_DB` 固定的每个看板 SQLite 数据库。若回调中没有这些工具，此运行时上的 worker 可以完成任务但无法汇报，会一直挂起直到分发器超时。
 - **`kanban_show` / `kanban_list`** — 只读看板查询，供 worker 检查自身上下文。
 - **`kanban_create` / `kanban_unblock` / `kanban_link`** — 仅限编排器的操作。供运行在 Codex 运行时上、需要分发新任务的编排器 agent 使用。
 
-Kanban 工具通过分发器设置的 `LYDIA_KANBAN_TASK` 环境变量进行访问控制——该变量会传播到 Codex 子进程（Codex 继承环境变量），再从那里传播到生成的 `alice-tools` MCP server 子进程。因此工具能看到正确的任务 id 并正确进行访问控制。对于 Codex app-server worker，当 `LYDIA_KANBAN_TASK` 存在时，Alice 还会传入精细的 app-server 沙箱覆盖配置：保持 `workspace-write` 沙箱，将**看板数据库目录以及分发器固定的所有 Kanban 路径**作为额外可写根目录添加（`LYDIA_KANBAN_WORKSPACES_ROOT`、`LYDIA_KANBAN_WORKSPACE`、旧版 `LYDIA_KANBAN_ROOT`——去重，数据库目录优先），并默认禁用网络。这避免了脆弱的 `:danger-no-sandbox` 变通方案，同时允许 `kanban_complete` / `kanban_block` 更新看板数据库，**并且**允许 worker 在数据库目录之外的工作区挂载点下写入报告/产物（例如独立驱动器上的 `/media/.../kanban-workspaces/...`——[issue #27941](https://github.com/NousResearch/alice-agent/issues/27941)）。
+Kanban 工具通过分发器设置的 `ALICE_KANBAN_TASK` 环境变量进行访问控制——该变量会传播到 Codex 子进程（Codex 继承环境变量），再从那里传播到生成的 `alice-tools` MCP server 子进程。因此工具能看到正确的任务 id 并正确进行访问控制。对于 Codex app-server worker，当 `ALICE_KANBAN_TASK` 存在时，Alice 还会传入精细的 app-server 沙箱覆盖配置：保持 `workspace-write` 沙箱，将**看板数据库目录以及分发器固定的所有 Kanban 路径**作为额外可写根目录添加（`ALICE_KANBAN_WORKSPACES_ROOT`、`ALICE_KANBAN_WORKSPACE`、旧版 `ALICE_KANBAN_ROOT`——去重，数据库目录优先），并默认禁用网络。这避免了脆弱的 `:danger-no-sandbox` 变通方案，同时允许 `kanban_complete` / `kanban_block` 更新看板数据库，**并且**允许 worker 在数据库目录之外的工作区挂载点下写入报告/产物（例如独立驱动器上的 `/media/.../kanban-workspaces/...`——[issue #27941](https://github.com/Stuko0/alice-agent/issues/27941)）。
 
 ### Cron 任务
 
@@ -349,13 +349,13 @@ Codex 的内置工具集涵盖 shell/文件操作/patch，但没有网络搜索�
 ```toml
 [mcp_servers.alice-tools]
 command = "/path/to/python"
-args = ["-m", "agent.transports.lydia_tools_mcp_server"]
-env = { ALICE_HOME = "/your/.alice", PYTHONPATH = "...", LYDIA_QUIET = "1" }
+args = ["-m", "agent.transports.alice_tools_mcp_server"]
+env = { ALICE_HOME = "/your/.alice", PYTHONPATH = "...", ALICE_QUIET = "1" }
 startup_timeout_sec = 30.0
 tool_timeout_sec = 600.0
 ```
 
-当模型调用 `web_search`（或其他暴露的 Alice 工具）时，Codex 通过 stdio 生成 `lydia_tools_mcp_server` 子进程，请求通过 `model_tools.handle_function_call()` 分发，结果像其他 MCP 响应一样投影回 Codex。
+当模型调用 `web_search`（或其他暴露的 Alice 工具）时，Codex 通过 stdio 生成 `alice_tools_mcp_server` 子进程，请求通过 `model_tools.handle_function_call()` 分发，结果像其他 MCP 响应一样投影回 Codex。
 
 **通过回调可用的工具：** `web_search`、`web_extract`、`browser_navigate`、`browser_click`、`browser_type`、`browser_press`、`browser_snapshot`、`browser_scroll`、`browser_back`、`browser_get_images`、`browser_console`、`browser_vision`、`vision_analyze`、`image_generate`、`skill_view`、`skills_list`、`text_to_speech`。
 
@@ -391,7 +391,7 @@ tool_timeout_sec = 600.0
 - **当 Codex 未跟踪变更集时，审批提示中没有内联 patch 预览。** Codex 的 `fileChange` 审批参数并不总是携带变更集。Alice 会尽可能从对应的 `item/started` 通知中缓存数据，但如果审批在事件项流式传输完成之前到达，提示会回退到 Codex 提供的 `reason`。
 - **亚秒级取消无法保证。** 流式传输中途的中断（Codex 响应时按 Ctrl+C）通过 `turn/interrupt` 发送，但如果 Codex 已经刷新了最终消息，你仍会收到该响应。
 
-如果你发现 bug，请[提交 issue](https://github.com/NousResearch/alice-agent/issues)，附上 `alice logs --since 5m` 的输出。在标题中注明 `codex-runtime` 以便于分类处理。
+如果你发现 bug，请[提交 issue](https://github.com/Stuko0/alice-agent/issues)，附上 `alice logs --since 5m` 的输出。在标题中注明 `codex-runtime` 以便于分类处理。
 
 ## 架构
 
@@ -432,10 +432,10 @@ tool_timeout_sec = 600.0
                                                         │
                                                         ▼
         ┌──────────────────────────────────────────────────────────┐
-        │  lydia_tools_mcp_server.py (subprocess on demand)        │
+        │  alice_tools_mcp_server.py (subprocess on demand)        │
         │   web_search, web_extract, browser_*, vision_analyze,    │
         │   image_generate, skill_view, skills_list, text_to_speech│
         └──────────────────────────────────────────────────────────┘
 ```
 
-有关实现细节，请参阅 [PR #24182](https://github.com/NousResearch/alice-agent/pull/24182) 和 [Codex app-server 协议 README](https://github.com/openai/codex/blob/main/codex-rs/app-server/README.md)。
+有关实现细节，请参阅 [PR #24182](https://github.com/Stuko0/alice-agent/pull/24182) 和 [Codex app-server 协议 README](https://github.com/openai/codex/blob/main/codex-rs/app-server/README.md)。

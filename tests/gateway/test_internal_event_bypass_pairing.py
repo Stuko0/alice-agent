@@ -49,7 +49,7 @@ def _build_runner(monkeypatch, tmp_path) -> GatewayRunner:
 
     import gateway.run as gateway_run
 
-    monkeypatch.setattr(gateway_run, "_lydia_home", tmp_path)
+    monkeypatch.setattr(gateway_run, "_alice_home", tmp_path)
 
     runner = GatewayRunner(GatewayConfig())
     adapter = SimpleNamespace(send=AsyncMock(), handle_message=AsyncMock())
@@ -145,7 +145,7 @@ async def test_internal_event_bypasses_authorization(monkeypatch, tmp_path):
     """An internal event should skip _is_user_authorized entirely."""
     import gateway.run as gateway_run
 
-    monkeypatch.setattr(gateway_run, "_lydia_home", tmp_path)
+    monkeypatch.setattr(gateway_run, "_alice_home", tmp_path)
     (tmp_path / "config.yaml").write_text("", encoding="utf-8")
 
     runner = GatewayRunner(GatewayConfig())
@@ -194,7 +194,7 @@ async def test_internal_event_does_not_trigger_pairing(monkeypatch, tmp_path):
     """An internal event with no user_id must not generate a pairing code."""
     import gateway.run as gateway_run
 
-    monkeypatch.setattr(gateway_run, "_lydia_home", tmp_path)
+    monkeypatch.setattr(gateway_run, "_alice_home", tmp_path)
     (tmp_path / "config.yaml").write_text("", encoding="utf-8")
 
     runner = GatewayRunner(GatewayConfig())
@@ -329,7 +329,7 @@ async def test_none_user_id_skips_pairing(monkeypatch, tmp_path):
     """A non-internal event with user_id=None should be silently dropped."""
     import gateway.run as gateway_run
 
-    monkeypatch.setattr(gateway_run, "_lydia_home", tmp_path)
+    monkeypatch.setattr(gateway_run, "_alice_home", tmp_path)
     (tmp_path / "config.yaml").write_text("", encoding="utf-8")
 
     runner = GatewayRunner(GatewayConfig())
@@ -360,7 +360,7 @@ async def test_none_user_id_does_not_generate_pairing_code(monkeypatch, tmp_path
     """A message with user_id=None must never call generate_code."""
     import gateway.run as gateway_run
 
-    monkeypatch.setattr(gateway_run, "_lydia_home", tmp_path)
+    monkeypatch.setattr(gateway_run, "_alice_home", tmp_path)
     (tmp_path / "config.yaml").write_text("", encoding="utf-8")
 
     runner = GatewayRunner(GatewayConfig())
@@ -398,7 +398,7 @@ async def test_non_internal_event_without_user_triggers_pairing(monkeypatch, tmp
     import gateway.run as gateway_run
     import gateway.pairing as pairing_mod
 
-    monkeypatch.setattr(gateway_run, "_lydia_home", tmp_path)
+    monkeypatch.setattr(gateway_run, "_alice_home", tmp_path)
     # gateway.pairing.PAIRING_DIR is a module-level constant captured at
     # import time from whichever ALICE_HOME was set then. Per-test
     # ALICE_HOME redirection in conftest doesn't retroactively move it.

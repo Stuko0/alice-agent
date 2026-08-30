@@ -69,22 +69,22 @@ def _fake_warning():
 def _setup_isolated_home(tmp_path, monkeypatch, *, warn):
     import gateway.run as gateway_run
 
-    lydia_home = tmp_path / ".alice"
-    lydia_home.mkdir()
-    cfg_path = lydia_home / "config.yaml"
+    alice_home = tmp_path / ".alice"
+    alice_home.mkdir()
+    cfg_path = alice_home / "config.yaml"
     cfg_path.write_text(
         yaml.safe_dump({"model": {"default": "old-model", "provider": "openrouter"}, "providers": {}}),
         encoding="utf-8",
     )
 
-    monkeypatch.setattr(gateway_run, "_lydia_home", lydia_home)
+    monkeypatch.setattr(gateway_run, "_alice_home", alice_home)
     monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
     monkeypatch.setattr(
         "alice_cli.model_switch.switch_model",
         lambda **kw: _fake_switch_result(),
     )
-    monkeypatch.setattr("alice_constants.get_alice_home", lambda: lydia_home)
-    monkeypatch.setattr("alice_cli.config.get_alice_home", lambda: lydia_home)
+    monkeypatch.setattr("alice_constants.get_alice_home", lambda: alice_home)
+    monkeypatch.setattr("alice_cli.config.get_alice_home", lambda: alice_home)
     monkeypatch.setattr(
         "alice_cli.model_cost_guard.expensive_model_warning",
         (lambda *a, **kw: _fake_warning()) if warn else (lambda *a, **kw: None),

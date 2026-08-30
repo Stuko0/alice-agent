@@ -723,9 +723,9 @@ class TestConfigDrivenPolicy:
     def test_policy_loaded_from_yaml(self, tmp_path, monkeypatch):
         from agent.plugin_llm import _resolve_trust_policy
 
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / "config.yaml").write_text(
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / "config.yaml").write_text(
             """
 plugins:
   entries:
@@ -741,7 +741,7 @@ plugins:
 """,
             encoding="utf-8",
         )
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         from alice_cli import config as _config_mod
         _config_mod._config_cache = None  # type: ignore[attr-defined]
 
@@ -757,10 +757,10 @@ plugins:
     def test_missing_plugin_entry_yields_default_deny(self, tmp_path, monkeypatch):
         from agent.plugin_llm import _resolve_trust_policy
 
-        lydia_home = tmp_path / ".alice"
-        lydia_home.mkdir()
-        (lydia_home / "config.yaml").write_text("plugins: {}\n", encoding="utf-8")
-        monkeypatch.setenv("ALICE_HOME", str(lydia_home))
+        alice_home = tmp_path / ".alice"
+        alice_home.mkdir()
+        (alice_home / "config.yaml").write_text("plugins: {}\n", encoding="utf-8")
+        monkeypatch.setenv("ALICE_HOME", str(alice_home))
         from alice_cli import config as _config_mod
         _config_mod._config_cache = None  # type: ignore[attr-defined]
 

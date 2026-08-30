@@ -29,7 +29,7 @@ alice [global-options] <command> [subcommand/options]
 | `--pass-session-id` | Include the session ID in the agent's system prompt. |
 | `--ignore-user-config` | Ignore `~/.alice/config.yaml` and fall back to built-in defaults. Credentials in `.env` are still loaded. |
 | `--ignore-rules` | Skip auto-injection of `AGENTS.md`, `SOUL.md`, `.cursorrules`, memory, and preloaded skills. |
-| `--tui` | Launch the [TUI](../user-guide/tui.md) instead of the classic CLI. Equivalent to `LYDIA_TUI=1`. Always wins over `display.interface`. |
+| `--tui` | Launch the [TUI](../user-guide/tui.md) instead of the classic CLI. Equivalent to `ALICE_TUI=1`. Always wins over `display.interface`. |
 | `--cli` | Force the classic prompt_toolkit REPL. Use this to override `display.interface: tui` for a single invocation. |
 | `--dev` | With `--tui`: run the TypeScript sources directly via `tsx` instead of the prebuilt bundle (for TUI contributors). |
 
@@ -150,13 +150,13 @@ Per-run overrides (no mutation to `~/.alice/config.yaml`):
 
 | Flag | Equivalent env var | Purpose |
 |---|---|---|
-| `-m` / `--model <model>` | `LYDIA_INFERENCE_MODEL` | Override the model for this run |
+| `-m` / `--model <model>` | `ALICE_INFERENCE_MODEL` | Override the model for this run |
 | `--provider <provider>` | _(none)_ | Override the provider for this run |
 
 ```bash
 alice -z "…" --provider openrouter --model openai/gpt-5.5
 # or:
-LYDIA_INFERENCE_MODEL=anthropic/claude-sonnet-4.6 alice -z "…"
+ALICE_INFERENCE_MODEL=anthropic/claude-sonnet-4.6 alice -z "…"
 ```
 
 Same agent, same tools, same skills — just strips every interactive / cosmetic layer. If you need tool output in the transcript too, use `alice chat -q` instead; `-z` is explicitly for "I only want the final answer".
@@ -238,7 +238,7 @@ Options:
 | Option | Description |
 |--------|-------------|
 | `--all` | On `start` / `restart` / `stop`: act on **every profile's** gateway, not just the active `ALICE_HOME`. Useful if you run multiple profiles side-by-side and want to restart them all after `alice update`. |
-| `--no-supervise` | On `run`: inside the s6-overlay Docker image, opt out of auto-supervision and use pre-s6 foreground semantics — gateway runs as the container's main process with no auto-restart. No-op outside the s6 image. Equivalent to setting `LYDIA_GATEWAY_NO_SUPERVISE=1`. |
+| `--no-supervise` | On `run`: inside the s6-overlay Docker image, opt out of auto-supervision and use pre-s6 foreground semantics — gateway runs as the container's main process with no auto-restart. No-op outside the s6 image. Equivalent to setting `ALICE_GATEWAY_NO_SUPERVISE=1`. |
 
 `alice gateway enroll` accepts `--token`, `--connector-url`, `--gateway-id`, and `--wake-url`. It exchanges the enrollment token with the connector and writes the resulting `GATEWAY_RELAY_ID`, `GATEWAY_RELAY_SECRET`, `GATEWAY_RELAY_DELIVERY_KEY`, optional `GATEWAY_RELAY_URL`, and (when `--wake-url` is given) `GATEWAY_RELAY_WAKE_URL` values to the active profile's `.env`.
 
@@ -316,7 +316,7 @@ Inspect Nous Portal auth, Tool Gateway routing, and reach the subscription page.
 | Subcommand | Description |
 |------------|-------------|
 | `status` (default) | Portal auth state + per-tool Tool Gateway routing summary. Also shown when no subcommand is given. |
-| `open` | Open `portal.nousresearch.com/manage-subscription` in your default browser. |
+| `open` | Open `stuko.dev/manage-subscription` in your default browser. |
 | `tools` | List every Tool Gateway partner (Firecrawl, FAL, OpenAI TTS, Browser Use, Modal) and which are routed via Nous. |
 
 For configuration of the gateway itself, see [Tool Gateway](../user-guide/features/tool-gateway.md). For the one-shot setup path, see `alice setup --portal` above.
@@ -563,9 +563,9 @@ Multi-profile, multi-project collaboration board. Each install can host many boa
 
 | Flag | Purpose |
 |------|---------|
-| `--board <slug>` | Operate on a specific board. Defaults to the current board (set via `alice kanban boards switch`, the `LYDIA_KANBAN_BOARD` env var, or `default`). |
+| `--board <slug>` | Operate on a specific board. Defaults to the current board (set via `alice kanban boards switch`, the `ALICE_KANBAN_BOARD` env var, or `default`). |
 
-**This is the human / scripting surface.** Agent workers spawned by the dispatcher drive the board through a dedicated `kanban_*` [toolset](/user-guide/features/kanban#how-workers-interact-with-the-board) (`kanban_show`, `kanban_complete`, `kanban_block`, `kanban_create`, `kanban_link`, `kanban_comment`, `kanban_heartbeat`; orchestrator profiles also get `kanban_list` and `kanban_unblock`) instead of shelling to `alice kanban`. Workers have `LYDIA_KANBAN_BOARD` pinned in their env so they physically cannot see other boards.
+**This is the human / scripting surface.** Agent workers spawned by the dispatcher drive the board through a dedicated `kanban_*` [toolset](/user-guide/features/kanban#how-workers-interact-with-the-board) (`kanban_show`, `kanban_complete`, `kanban_block`, `kanban_create`, `kanban_link`, `kanban_comment`, `kanban_heartbeat`; orchestrator profiles also get `kanban_list` and `kanban_unblock`) instead of shelling to `alice kanban`. Workers have `ALICE_KANBAN_BOARD` pinned in their env so they physically cannot see other boards.
 
 | Action | Purpose |
 |--------|---------|
@@ -612,7 +612,7 @@ alice kanban boards rm atm10-server
 alice kanban boards rm atm10-server --delete
 ```
 
-Board resolution order (highest precedence first): `--board <slug>` flag → `LYDIA_KANBAN_BOARD` env var → `~/.alice/kanban/current` file → `default`.
+Board resolution order (highest precedence first): `--board <slug>` flag → `ALICE_KANBAN_BOARD` env var → `~/.alice/kanban/current` file → `default`.
 
 All actions are also available as a slash command in the gateway (`/kanban …`), with the same argument surface — including `boards` subcommands and the `--board` flag.
 
@@ -720,7 +720,7 @@ os:               Linux 6.14.0-37-generic x86_64
 python:           3.11.14
 openai_sdk:       2.24.0
 profile:          default
-lydia_home:      ~/.alice
+alice_home:      ~/.alice
 model:            anthropic/claude-opus-4.6
 provider:         openrouter
 terminal:         local
@@ -1456,13 +1456,13 @@ Launch the web dashboard — a browser-based UI for managing configuration, API 
 
 ### `alice dashboard register`
 
-Register this install as a self-hosted dashboard with your Nous Portal account. Creates an OAuth client, writes `LYDIA_DASHBOARD_OAUTH_CLIENT_ID` into `~/.alice/.env`, and prints how to engage the login gate. Requires being logged in (`alice setup`).
+Register this install as a self-hosted dashboard with your Nous Portal account. Creates an OAuth client, writes `ALICE_DASHBOARD_OAUTH_CLIENT_ID` into `~/.alice/.env`, and prints how to engage the login gate. Requires being logged in (`alice setup`).
 
 | Option | Description |
 |--------|-------------|
 | `--name` | Human-readable label for the dashboard (default: auto-generated). |
 | `--redirect-uri` | Public HTTPS OAuth redirect URI (e.g. `https://alice.example.com/auth/callback`). Omit for localhost-only use. |
-| `--portal-url` | Override the Nous Portal base URL for registration (default: the portal you logged into). Also settable via `LYDIA_DASHBOARD_PORTAL_URL`. |
+| `--portal-url` | Override the Nous Portal base URL for registration (default: the portal you logged into). Also settable via `ALICE_DASHBOARD_PORTAL_URL`. |
 
 ```bash
 # Default — opens browser to http://127.0.0.1:9119

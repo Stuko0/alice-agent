@@ -16,7 +16,7 @@ from trajectory_compressor import (
 )
 
 
-def test_import_loads_env_from_lydia_home(tmp_path, monkeypatch):
+def test_import_loads_env_from_alice_home(tmp_path, monkeypatch):
     home = tmp_path / ".alice"
     home.mkdir()
     (home / ".env").write_text("OPENROUTER_API_KEY=from-alice-home\n", encoding="utf-8")

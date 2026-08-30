@@ -1,6 +1,6 @@
 """Regression tests for the config.yaml → env var bridge in gateway/run.py.
 
-Guards against the 60-vs-500 bug where a stale `.env LYDIA_MAX_ITERATIONS=60`
+Guards against the 60-vs-500 bug where a stale `.env ALICE_MAX_ITERATIONS=60`
 entry silently shadowed `agent.max_turns: 500` in config.yaml because the
 bridge used `if X not in os.environ` guards. After PR#18413 the bridge
 treats config.yaml as authoritative and unconditionally overwrites .env
@@ -21,7 +21,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
-def _run_gateway_import(lydia_home: Path, initial_env: dict[str, str]) -> dict[str, str]:
+def _run_gateway_import(alice_home: Path, initial_env: dict[str, str]) -> dict[str, str]:
     """Import gateway.run in a clean subprocess and return the post-import env.
 
     The bridge runs at module-import time, so simply importing is enough
@@ -41,13 +41,13 @@ def _run_gateway_import(lydia_home: Path, initial_env: dict[str, str]) -> dict[s
             sys.exit(2)
 
         for k in (
-            "LYDIA_MAX_ITERATIONS",
-            "LYDIA_AGENT_TIMEOUT",
-            "LYDIA_AGENT_TIMEOUT_WARNING",
-            "LYDIA_GATEWAY_BUSY_INPUT_MODE",
-            "LYDIA_GATEWAY_BUSY_TEXT_MODE",
-            "LYDIA_GATEWAY_PLATFORM_CONNECT_TIMEOUT",
-            "LYDIA_TIMEZONE",
+            "ALICE_MAX_ITERATIONS",
+            "ALICE_AGENT_TIMEOUT",
+            "ALICE_AGENT_TIMEOUT_WARNING",
+            "ALICE_GATEWAY_BUSY_INPUT_MODE",
+            "ALICE_GATEWAY_BUSY_TEXT_MODE",
+            "ALICE_GATEWAY_PLATFORM_CONNECT_TIMEOUT",
+            "ALICE_TIMEZONE",
         ):
             v = os.environ.get(k)
             if v is not None:
@@ -55,7 +55,7 @@ def _run_gateway_import(lydia_home: Path, initial_env: dict[str, str]) -> dict[s
         """
     )
     env = dict(initial_env)
-    env["ALICE_HOME"] = str(lydia_home)
+    env["ALICE_HOME"] = str(alice_home)
     # Keep PATH / PYTHONPATH so venv imports resolve.
     for k in ("PATH", "PYTHONPATH", "VIRTUAL_ENV", "HOME"):
         if k in os.environ and k not in env:
@@ -102,104 +102,104 @@ def _write_env(home: Path, entries: dict[str, str]) -> None:
 
 
 @pytest.fixture
-def lydia_home(tmp_path: Path) -> Path:
+def alice_home(tmp_path: Path) -> Path:
     home = tmp_path / ".alice"
     home.mkdir()
     return home
 
 
-def test_config_max_turns_wins_over_stale_env(lydia_home: Path) -> None:
+def test_config_max_turns_wins_over_stale_env(alice_home: Path) -> None:
     """Regression: config.yaml:agent.max_turns=500 must beat .env=60."""
-    _write_config(lydia_home, agent_cfg={"max_turns": 500})
-    _write_env(lydia_home, {"LYDIA_MAX_ITERATIONS": "60"})
+    _write_config(alice_home, agent_cfg={"max_turns": 500})
+    _write_env(alice_home, {"ALICE_MAX_ITERATIONS": "60"})
 
-    env = _run_gateway_import(lydia_home, initial_env={})
+    env = _run_gateway_import(alice_home, initial_env={})
 
-    assert env.get("LYDIA_MAX_ITERATIONS") == "500", (
-        f"expected config.yaml max_turns=500 to win; got {env.get('LYDIA_MAX_ITERATIONS')!r}. "
+    assert env.get("ALICE_MAX_ITERATIONS") == "500", (
+        f"expected config.yaml max_turns=500 to win; got {env.get('ALICE_MAX_ITERATIONS')!r}. "
         "Stale .env value is shadowing config — the bridge lost its override."
     )
 
 
-def test_config_gateway_timeout_wins_over_stale_env(lydia_home: Path) -> None:
+def test_config_gateway_timeout_wins_over_stale_env(alice_home: Path) -> None:
     """Every agent.* bridge key must be config-authoritative, not .env-authoritative."""
-    _write_config(lydia_home, agent_cfg={
+    _write_config(alice_home, agent_cfg={
         "gateway_timeout": 1800,
         "gateway_timeout_warning": 900,
     })
-    _write_env(lydia_home, {
-        "LYDIA_AGENT_TIMEOUT": "60",
-        "LYDIA_AGENT_TIMEOUT_WARNING": "30",
+    _write_env(alice_home, {
+        "ALICE_AGENT_TIMEOUT": "60",
+        "ALICE_AGENT_TIMEOUT_WARNING": "30",
     })
 
-    env = _run_gateway_import(lydia_home, initial_env={})
+    env = _run_gateway_import(alice_home, initial_env={})
 
-    assert env.get("LYDIA_AGENT_TIMEOUT") == "1800"
-    assert env.get("LYDIA_AGENT_TIMEOUT_WARNING") == "900"
-
-
-def test_config_display_busy_input_mode_wins_over_stale_env(lydia_home: Path) -> None:
-    _write_config(lydia_home, display_cfg={"busy_input_mode": "interrupt"})
-    _write_env(lydia_home, {"LYDIA_GATEWAY_BUSY_INPUT_MODE": "queue"})
-
-    env = _run_gateway_import(lydia_home, initial_env={})
-
-    assert env.get("LYDIA_GATEWAY_BUSY_INPUT_MODE") == "interrupt"
+    assert env.get("ALICE_AGENT_TIMEOUT") == "1800"
+    assert env.get("ALICE_AGENT_TIMEOUT_WARNING") == "900"
 
 
-def test_config_display_busy_text_mode_wins_over_stale_env(lydia_home: Path) -> None:
-    _write_config(lydia_home, display_cfg={"busy_text_mode": "queue"})
-    _write_env(lydia_home, {"LYDIA_GATEWAY_BUSY_TEXT_MODE": "interrupt"})
+def test_config_display_busy_input_mode_wins_over_stale_env(alice_home: Path) -> None:
+    _write_config(alice_home, display_cfg={"busy_input_mode": "interrupt"})
+    _write_env(alice_home, {"ALICE_GATEWAY_BUSY_INPUT_MODE": "queue"})
 
-    env = _run_gateway_import(lydia_home, initial_env={})
+    env = _run_gateway_import(alice_home, initial_env={})
 
-    assert env.get("LYDIA_GATEWAY_BUSY_TEXT_MODE") == "queue"
-
-
-def test_config_timezone_wins_over_stale_env(lydia_home: Path) -> None:
-    _write_config(lydia_home, timezone="America/Los_Angeles")
-    _write_env(lydia_home, {"LYDIA_TIMEZONE": "UTC"})
-
-    env = _run_gateway_import(lydia_home, initial_env={})
-
-    assert env.get("LYDIA_TIMEZONE") == "America/Los_Angeles"
+    assert env.get("ALICE_GATEWAY_BUSY_INPUT_MODE") == "interrupt"
 
 
-def test_env_value_survives_when_config_omits_key(lydia_home: Path) -> None:
+def test_config_display_busy_text_mode_wins_over_stale_env(alice_home: Path) -> None:
+    _write_config(alice_home, display_cfg={"busy_text_mode": "queue"})
+    _write_env(alice_home, {"ALICE_GATEWAY_BUSY_TEXT_MODE": "interrupt"})
+
+    env = _run_gateway_import(alice_home, initial_env={})
+
+    assert env.get("ALICE_GATEWAY_BUSY_TEXT_MODE") == "queue"
+
+
+def test_config_timezone_wins_over_stale_env(alice_home: Path) -> None:
+    _write_config(alice_home, timezone="America/Los_Angeles")
+    _write_env(alice_home, {"ALICE_TIMEZONE": "UTC"})
+
+    env = _run_gateway_import(alice_home, initial_env={})
+
+    assert env.get("ALICE_TIMEZONE") == "America/Los_Angeles"
+
+
+def test_env_value_survives_when_config_omits_key(alice_home: Path) -> None:
     """If config.yaml doesn't set max_turns, .env value must still pass through.
 
     The bridge only overwrites when the config key is present — an absent
     config key should NOT clobber the .env value.
     """
-    _write_config(lydia_home, agent_cfg={})  # no max_turns
-    _write_env(lydia_home, {"LYDIA_MAX_ITERATIONS": "123"})
+    _write_config(alice_home, agent_cfg={})  # no max_turns
+    _write_env(alice_home, {"ALICE_MAX_ITERATIONS": "123"})
 
-    env = _run_gateway_import(lydia_home, initial_env={})
+    env = _run_gateway_import(alice_home, initial_env={})
 
-    assert env.get("LYDIA_MAX_ITERATIONS") == "123"
+    assert env.get("ALICE_MAX_ITERATIONS") == "123"
 
 
-def test_config_platform_connect_timeout_supplies_env_when_unset(lydia_home: Path) -> None:
+def test_config_platform_connect_timeout_supplies_env_when_unset(alice_home: Path) -> None:
     """config.yaml:gateway.platform_connect_timeout supplies the env var when
     it isn't already set (#19776 — config surface for the Discord connect
     timeout, replacing the undocumented env-var-only workaround)."""
-    _write_config(lydia_home, gateway_cfg={"platform_connect_timeout": 90})
+    _write_config(alice_home, gateway_cfg={"platform_connect_timeout": 90})
 
-    env = _run_gateway_import(lydia_home, initial_env={})
+    env = _run_gateway_import(alice_home, initial_env={})
 
-    assert env.get("LYDIA_GATEWAY_PLATFORM_CONNECT_TIMEOUT") == "90"
+    assert env.get("ALICE_GATEWAY_PLATFORM_CONNECT_TIMEOUT") == "90"
 
 
-def test_env_platform_connect_timeout_wins_over_config(lydia_home: Path) -> None:
+def test_env_platform_connect_timeout_wins_over_config(alice_home: Path) -> None:
     """Unlike the agent.*/display.*/timezone bridges (config-authoritative),
-    LYDIA_GATEWAY_PLATFORM_CONNECT_TIMEOUT is the manual-override escape hatch:
+    ALICE_GATEWAY_PLATFORM_CONNECT_TIMEOUT is the manual-override escape hatch:
     an explicitly-set env var WINS over config.yaml. This divergence is
     intentional (#19776) — the env var is the operator's emergency knob."""
-    _write_config(lydia_home, gateway_cfg={"platform_connect_timeout": 90})
+    _write_config(alice_home, gateway_cfg={"platform_connect_timeout": 90})
 
     env = _run_gateway_import(
-        lydia_home,
-        initial_env={"LYDIA_GATEWAY_PLATFORM_CONNECT_TIMEOUT": "120"},
+        alice_home,
+        initial_env={"ALICE_GATEWAY_PLATFORM_CONNECT_TIMEOUT": "120"},
     )
 
-    assert env.get("LYDIA_GATEWAY_PLATFORM_CONNECT_TIMEOUT") == "120"
+    assert env.get("ALICE_GATEWAY_PLATFORM_CONNECT_TIMEOUT") == "120"

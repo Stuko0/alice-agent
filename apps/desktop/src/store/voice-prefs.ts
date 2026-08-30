@@ -1,6 +1,6 @@
 import { atom } from 'nanostores'
 
-import { getLydiaConfigRecord, saveLydiaConfig } from '@/alice'
+import { getAliceConfigRecord, saveAliceConfig } from '@/alice'
 
 // "Read replies aloud" — mirrors the canonical `voice.auto_tts` config key (also
 // in Settings → Voice, honored by the messaging gateway) so the composer toggle
@@ -27,10 +27,10 @@ export async function setAutoSpeakReplies(enabled: boolean): Promise<void> {
   $autoSpeakReplies.set(enabled)
 
   try {
-    const record = await getLydiaConfigRecord()
+    const record = await getAliceConfigRecord()
     const voice = record.voice && typeof record.voice === 'object' ? (record.voice as Record<string, unknown>) : {}
 
-    await saveLydiaConfig({ ...record, voice: { ...voice, auto_tts: enabled } })
+    await saveAliceConfig({ ...record, voice: { ...voice, auto_tts: enabled } })
   } catch (error) {
     $autoSpeakReplies.set(previous)
     throw error
