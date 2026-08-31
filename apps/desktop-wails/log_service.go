@@ -33,15 +33,22 @@ func (ls *LogService) GetRecentLogs(maxLines int) ([]string, error) {
 	}
 
 	lines := strings.Split(string(data), "\n")
-	if len(lines) > maxLines {
-		lines = lines[len(lines)-maxLines:]
-	}
 
-	var result []string
+	// Drop blank lines first so a trailing newline doesn't eat a slot of the
+	// requested tail window.
+	var nonEmpty []string
 	for _, line := range lines {
 		if strings.TrimSpace(line) != "" {
-			result = append(result, line+"\n")
+			nonEmpty = append(nonEmpty, line)
 		}
+	}
+	if len(nonEmpty) > maxLines {
+		nonEmpty = nonEmpty[len(nonEmpty)-maxLines:]
+	}
+
+	result := make([]string, 0, len(nonEmpty))
+	for _, line := range nonEmpty {
+		result = append(result, line+"\n")
 	}
 	return result, nil
 }

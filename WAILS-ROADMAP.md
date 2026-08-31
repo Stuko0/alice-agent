@@ -72,21 +72,37 @@ El terminal integrado en Windows usa pipes (sin resize). Migrar a ConPTY
 (`github.com/UserExistsError/conpty` o `microsoft/go-winio`) para resize y
 ANSI correctos. Hoy degrada a no-interactivo.
 
-### 9. E2E del shell Wails
+### 9. E2E del shell Wails — ✅ HECHO (2026-08-31)
 El side Electron tiene suites `node --test` (~300 tests). El Go necesita:
-- Tests unitarios de servicios (PythonManager, FSService, PTYService, GitService).
-- Test E2E de boot: `WaitForHealthy` → WS conectado → overlay desaparece
-  (hay scripts y el diagnóstico del skill para esto).
-- `scripts/endpoint-parity-check.sh` ya cubre el bridge — correrlo en CI.
+- ✅ Tests unitarios de servicios: `python_manager_test.go` (token, resolver de
+  project root, venv/site-packages, PYTHONPATH/PATH, port announce timeout y
+  parser), `connection_service_test.go` (persist/reload, IsRemote,
+  ProbeRemote con httptest), `git_service_test.go` (repo git real temp:
+  root/branch/branches/status/commits/rev-parse/remote/worktrees/diff/revert),
+  `log_service_test.go` (logs dir + tail con recorte correcto), `pty_service_test.go`
+  (spawn bash real, echo, resize, dispose). ~49 tests total.
+- ✅ E2E de boot: `TestStartGatewayBootE2E` arranca el backend real con un
+  python falso que anuncia puerto → watchPort parsea → IsHealthy → WaitForHealthy →
+  GetBackendPIDs → StopGateway. Además idempotencia de StartGateway y timeout.
+- ✅ `scripts/endpoint-parity-check.sh` ahora vive en `apps/desktop/scripts/` y
+  corre en CI (job `desktop-parity` en typecheck.yml). 70/70 top-level +
+  11/11 git.review.
+- Bonus: fix real de `LogService.GetRecentLogs` — el truncado a la cola se hacía
+  ANTES de filtrar líneas vacías, así un newline final comía un slot del máximo
+  pedido y se perdía una línea. Ahora filtra primero y recorta después.
 
-### 10. Firma Authenticode en CI (Windows)
+### 10. Firma Authenticode en CI (Windows) — ⏳ PENDIENTE
 El `alice-desktop.exe` publicado por `wails-build` no está firmado. Firma con
 el certificado existente para evitar SmartScreen. (Linux/macOS: AppImage/deb
-y notarización cuando haya target macOS.)
+y notarización cuando haya target macOS.) Requiere credenciales de firma.
 
-### 11. Distribución Linux del binario Wails
-Hoy solo existe build manual (`build.sh`). Empaquetar AppImage/deb/rpm del
-binario Wails para el `alice desktop` instalado por el usuario.
+### 11. Distribución Linux del binario Wails — ✅ HECHO (2026-08-31)
+Empaquetado native nfpm en `wails.json` (`linux.deb/rpm/apk`: icon, maintainer,
+deps GTK/webkit2gtk, recommends `alice`). `build.sh deb|rpm|apk` invoca
+`wails build -package <fmt>`. AppImage vía `scripts/package-appimage.sh`
+(ensambla AppDir + .desktop + icon, usa appimagetool descargado on-demand).
+`build.sh appimage` lo encadena tras el build. Verificado el ensamblado del
+AppDir end-to-end con un appimagetool falso.
 
 ## P3 — Estratégico
 

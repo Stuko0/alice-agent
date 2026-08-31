@@ -15,9 +15,40 @@
   "info": {
     "companyName": "Stuko",
     "productName": "Alice Agent Desktop",
-    "productVersion": "0.21.0",
+    "productVersion": "0.22.0",
     "copyright": "Copyright © 2026 Stuko",
     "comments": "Native Wails v2 Desktop Shell for Alice Agent"
+  },
+  "linux": {
+    "icon": "../desktop/assets/icon.png",
+    "deb": {
+      "maintainer": "Stuko <avplaying@gmail.com>",
+      "homepage": "https://github.com/Stuko0/alice-agent",
+      "description": "Native Wails v2 Desktop Shell for Alice Agent",
+      "section": "utils",
+      "priority": "optional",
+      "depends": [
+        "libgtk-3-0",
+        "libwebkit2gtk-4.0-37"
+      ],
+      "recommends": ["alice"]
+    },
+    "rpm": {
+      "license": "MIT",
+      "group": "Applications/System",
+      "depends": [
+        "gtk3",
+        "webkit2gtk40"
+      ],
+      "recommends": ["alice"]
+    },
+    "apk": {
+      "maintainer": "Stuko <avplaying@gmail.com>",
+      "depends": [
+        "gtk3",
+        "webkit2gtk-4.0"
+      ]
+    }
   },
   "windows": {
     "icon": "../desktop/assets/icon.ico"
