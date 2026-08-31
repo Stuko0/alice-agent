@@ -15,6 +15,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // ProxyApiRequest represents an API request to proxy to the Python backend
@@ -43,6 +44,8 @@ func main() {
 	logService := NewLogService()
 	ptyService := NewPTYService()
 	updateService := NewUpdateService()
+	connectionService := NewConnectionService(pm.aliceHome)
+	app.ConnectionService = connectionService
 
 	err := wails.Run(&options.App{
 		Title:  "Alice Agent Desktop",
@@ -54,8 +57,30 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 27, B: 27, A: 1},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)
+			// Single-instance: if another desktop holds the socket, forward any
+			// alice:// deep link to it and exit.
+			ln, primary := acquireSingleInstance(pm.aliceHome)
+			if !primary {
+				if url := deepLinkArg(os.Args[1:]); url != "" {
+					forwardDeepLink(pm.aliceHome, url)
+				}
+				os.Exit(0)
+			}
+			serveDeepLink(ln, ctx)
+			if url := deepLinkArg(os.Args[1:]); url != "" {
+				wailsruntime.EventsEmit(ctx, "alice:deep-link", url)
+			}
 			updateService.SetContext(ctx, pm.ResolveProjectRoot())
-			pm.StartGateway()
+			fsService.SetContext(ctx)
+			connectionService.SetContext(ctx)
+			restoreWindowState(ctx, pm.aliceHome)
+			if !connectionService.IsRemote() {
+				pm.StartGateway()
+			}
+		},
+		OnShutdown: func(ctx context.Context) {
+			saveWindowState(ctx, pm.aliceHome)
+			app.shutdown(ctx)
 		},
 		Bind: []interface{}{
 			app,
@@ -65,6 +90,7 @@ func main() {
 			logService,
 			ptyService,
 			updateService,
+			connectionService,
 		},
 	})
 
@@ -75,11 +101,12 @@ func main() {
 
 // App struct
 type App struct {
-	PythonManager *PythonManager
-	GitService    *GitService
-	FSService     *FSService
-	LogService    *LogService
-	PTYService    *PTYService
+	PythonManager    *PythonManager
+	GitService       *GitService
+	FSService        *FSService
+	LogService       *LogService
+	PTYService       *PTYService
+	ConnectionService *ConnectionService
 }
 
 // NewApp creates a new App application struct
@@ -139,6 +166,29 @@ func (a *App) RestartGateway() error {
 	return a.PythonManager.StartGateway()
 }
 
+// GetConnectionInfo returns the connection info the renderer uses to reach the
+// backend. In remote (lite client) mode this points at the configured remote
+// `alice serve` instead of the local gateway.
+func (a *App) GetConnectionInfo() ConnectionInfo {
+	if a.ConnectionService != nil && a.ConnectionService.IsRemote() {
+		cfg := a.ConnectionService.Get()
+		base := strings.TrimRight(cfg.RemoteURL, "/")
+		authMode := cfg.RemoteAuthMode
+		if authMode == "" {
+			authMode = "token"
+		}
+		return ConnectionInfo{
+			BaseURL:      base,
+			WSURL:        base + "/api/ws?token=" + cfg.RemoteToken,
+			Token:        cfg.RemoteToken,
+			AuthMode:     authMode,
+			Mode:         "remote",
+			IsFullscreen: false,
+		}
+	}
+	return a.PythonManager.GetConnectionInfo()
+}
+
 // RevealLogs opens the logs directory in the OS file manager
 func (a *App) RevealLogs() error {
 	return a.LogService.RevealLogs()
@@ -190,8 +240,14 @@ func (a *App) OpenExternal(url string) error {
 }
 
 // ProxyApi forwards an API request to the Python backend and returns the result.
-// This avoids WebKit CORS/origin issues when calling Python directly from the browser.
+// This avoids WebKit CORS/origin issues when calling Python directly from the
+// browser. In remote mode it forwards to the configured remote `alice serve`
+// with its session token instead of the local backend.
 func (a *App) ProxyApi(req ProxyApiRequest) (*ProxyApiResponse, error) {
+	if a.ConnectionService != nil && a.ConnectionService.IsRemote() {
+		return a.proxyToRemote(req)
+	}
+
 	pm := a.PythonManager
 	pm.mu.Lock()
 	port := pm.port
@@ -205,11 +261,26 @@ func (a *App) ProxyApi(req ProxyApiRequest) (*ProxyApiResponse, error) {
 	url := fmt.Sprintf("http://127.0.0.1:%d%s", port, req.Path)
 	log.Printf("[Proxy] %s %s", req.Method, url)
 
-	var bodyReader io.Reader
-	if len(req.Body) > 0 {
-		bodyReader = strings.NewReader(req.Body)
+	return a.doProxy(req.Method, url, token, req.Body)
+}
+
+// proxyToRemote forwards a request to the configured remote backend.
+func (a *App) proxyToRemote(req ProxyApiRequest) (*ProxyApiResponse, error) {
+	cfg := a.ConnectionService.Get()
+	url := strings.TrimRight(cfg.RemoteURL, "/") + req.Path
+	log.Printf("[Proxy][remote] %s %s", req.Method, url)
+	return a.doProxy(req.Method, url, cfg.RemoteToken, req.Body)
+}
+
+func (a *App) doProxy(method, url, token, body string) (*ProxyApiResponse, error) {
+	if method == "" {
+		method = "GET"
 	}
-	httpReq, err := http.NewRequest(req.Method, url, bodyReader)
+	var bodyReader io.Reader
+	if len(body) > 0 {
+		bodyReader = strings.NewReader(body)
+	}
+	httpReq, err := http.NewRequest(method, url, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -227,16 +298,16 @@ func (a *App) ProxyApi(req ProxyApiRequest) (*ProxyApiResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
-	log.Printf("[Proxy] Response: status=%d body_len=%d body_preview=%.100s", resp.StatusCode, len(body), string(body))
+	log.Printf("[Proxy] Response: status=%d body_len=%d body_preview=%.100s", resp.StatusCode, len(respBody), string(respBody))
 
 	return &ProxyApiResponse{
 		Status: resp.StatusCode,
-		Body:   string(body),
+		Body:   string(respBody),
 	}, nil
 }
 

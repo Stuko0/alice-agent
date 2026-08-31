@@ -15,6 +15,7 @@ import * as FSService from './wailsjs/go/main/FSService';
 import * as LogService from './wailsjs/go/main/LogService';
 import * as PTYService from './wailsjs/go/main/PTYService';
 import * as UpdateService from './wailsjs/go/main/UpdateService';
+import * as ConnectionService from './wailsjs/go/main/ConnectionService';
 
 export function isWailsEnvironment(): boolean {
   return typeof window !== 'undefined' && typeof (window as any).wails?.Call?.ByName === 'function'
@@ -87,26 +88,47 @@ export function initWailsBridge(): void {
         await waitForWailsRuntime(30000);
       }
       
-      wailLog('[Wails] Calling WaitForHealthy...');
-      const healthy = await PythonManager.WaitForHealthy(120);
-      wailLog(`[Wails] WaitForHealthy=${healthy}`);
-      if (!healthy) {
-        console.error('[Wails] Backend did not become healthy within timeout');
-      }
-      const info = await PythonManager.GetConnectionInfo();
-      wailLog(`[Wails] GetConnectionInfo: ${JSON.stringify(info)}`);
-      if (info) {
-        return {
-          baseUrl: info.baseUrl || 'http://127.0.0.1:18789',
-          isFullscreen: !!info.isFullscreen,
-          mode: info.mode || 'local',
-          authMode: info.authMode || 'token',
-          nativeOverlayWidth: info.nativeOverlayWidth || 0,
-          token: info.token || '',
-          wsUrl: info.wsUrl || (info.token ? `ws://127.0.0.1:18789/api/ws?token=${info.token}` : 'http://127.0.0.1:18789/api/ws'),
-          logs: [],
-          windowButtonPosition: null,
-        };
+      wailLog('[Wails] Calling GetConnectionInfo...');
+      // Remote (lite client) mode has no local backend to wait on; App's
+      // remote-aware accessor returns the configured remote immediately.
+      const remote = await ConnectionService.IsRemote();
+      if (remote) {
+        const info = await App.GetConnectionInfo();
+        wailLog(`[Wails] remote GetConnectionInfo: ${JSON.stringify(info)}`);
+        if (info) {
+          return {
+            baseUrl: info.baseUrl || '',
+            isFullscreen: !!info.isFullscreen,
+            mode: info.mode || 'remote',
+            authMode: info.authMode || 'token',
+            nativeOverlayWidth: info.nativeOverlayWidth || 0,
+            token: info.token || '',
+            wsUrl: info.wsUrl || (info.token ? `${info.baseUrl}/api/ws?token=${info.token}` : `${info.baseUrl}/api/ws`),
+            logs: [],
+            windowButtonPosition: null,
+          };
+        }
+      } else {
+        const healthy = await PythonManager.WaitForHealthy(120);
+        wailLog(`[Wails] WaitForHealthy=${healthy}`);
+        if (!healthy) {
+          console.error('[Wails] Backend did not become healthy within timeout');
+        }
+        const info = await App.GetConnectionInfo();
+        wailLog(`[Wails] GetConnectionInfo: ${JSON.stringify(info)}`);
+        if (info) {
+          return {
+            baseUrl: info.baseUrl || 'http://127.0.0.1:18789',
+            isFullscreen: !!info.isFullscreen,
+            mode: info.mode || 'local',
+            authMode: info.authMode || 'token',
+            nativeOverlayWidth: info.nativeOverlayWidth || 0,
+            token: info.token || '',
+            wsUrl: info.wsUrl || (info.token ? `ws://127.0.0.1:18789/api/ws?token=${info.token}` : 'http://127.0.0.1:18789/api/ws'),
+            logs: [],
+            windowButtonPosition: null,
+          };
+        }
       }
     } catch (err) {
       console.error('[Wails] Failed to get connection info:', err);
@@ -613,7 +635,18 @@ export function initWailsBridge(): void {
     onFocusSession: () => () => {},
     onNotificationAction: () => () => {},
     onPowerResume: () => () => {},
-    onDeepLink: () => () => {},
+    onDeepLink: (listener) => {
+      // Relay alice:// deep links delivered by the Go shell (single-instance
+      // socket) to the renderer. Subscribe via the Wails runtime events API.
+      const runtimeObj = typeof window !== 'undefined' ? (window as any).runtime : undefined;
+      if (runtimeObj?.EventsOn) {
+        runtimeObj.EventsOn('alice:deep-link', (payload: unknown) => {
+          try { listener(payload as string) } catch {}
+        });
+        return () => { try { runtimeObj.EventsOff('alice:deep-link') } catch {} };
+      }
+      return () => {};
+    },
     signalDeepLinkReady: async () => ({ ok: true }),
     getBootstrapState: async () => ({
       active: false,

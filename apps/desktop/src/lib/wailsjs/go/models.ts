@@ -191,4 +191,44 @@ export namespace main {
 	    }
 	}
 
+
+	export class ConnectionConfig {
+	    mode: string;
+	    remoteUrl: string;
+	    remoteToken: string;
+	    remoteAuthMode: string;
+	    profile: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ConnectionConfig(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mode = source["mode"];
+	        this.remoteUrl = source["remoteUrl"];
+	        this.remoteToken = source["remoteToken"];
+	        this.remoteAuthMode = source["remoteAuthMode"];
+	        this.profile = source["profile"];
+	    }
+	}
+	export class ProbeResult {
+	    reachable: boolean;
+	    authMode: string;
+	    version: string;
+	    error: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ProbeResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.reachable = source["reachable"];
+	        this.authMode = source["authMode"];
+	        this.version = source["version"];
+	        this.error = source["error"];
+	    }
+	}
+
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -8,12 +9,22 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-type FSService struct{}
+type FSService struct {
+	ctx context.Context
+}
 
 func NewFSService() *FSService {
 	return &FSService{}
+}
+
+// SetContext stores the Wails app context so the bound methods can use the
+// native runtime dialogs. Called from OnStartup.
+func (fs *FSService) SetContext(ctx context.Context) {
+	fs.ctx = ctx
 }
 
 func (fs *FSService) ReadDir(dirPath string) ([]map[string]interface{}, error) {
@@ -172,7 +183,40 @@ func psEscape(s string) string {
 // osascript on macOS, PowerShell + WinForms on Windows) and returns the chosen
 // paths. A user cancel returns an empty slice, not an error — cancel is a
 // normal outcome, not a failure.
+//
+// Single-path selection uses the Wails runtime dialog (no subprocess); the
+// subprocess pickers remain for multi-select (Wails v2.15 has no multi-select
+// dialog) and as a fallback when the runtime context isn't available.
 func (fs *FSService) SelectPaths(options SelectPathsRequest) ([]string, error) {
+	if !options.Multiple && fs.ctx != nil {
+		if options.Directories {
+			dir, err := wailsruntime.OpenDirectoryDialog(fs.ctx, wailsruntime.OpenDialogOptions{
+				Title:               options.Title,
+				DefaultDirectory:    options.DefaultPath,
+				CanCreateDirectories: true,
+			})
+			if err != nil {
+				return []string{}, nil
+			}
+			if dir == "" {
+				return []string{}, nil // user cancelled
+			}
+			return []string{dir}, nil
+		}
+		file, err := wailsruntime.OpenFileDialog(fs.ctx, wailsruntime.OpenDialogOptions{
+			Title:               options.Title,
+			DefaultDirectory:    options.DefaultPath,
+			CanCreateDirectories: true,
+		})
+		if err != nil {
+			return []string{}, nil
+		}
+		if file == "" {
+			return []string{}, nil // user cancelled
+		}
+		return []string{file}, nil
+	}
+
 	var args []string
 	switch runtime.GOOS {
 	case "darwin":

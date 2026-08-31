@@ -6,6 +6,10 @@ export function GetAliceHome() {
   return window['go']['main']['App']['GetAliceHome']();
 }
 
+export function GetConnectionInfo() {
+  return window['go']['main']['App']['GetConnectionInfo']();
+}
+
 export function GetRecentLogs(arg1) {
   return window['go']['main']['App']['GetRecentLogs'](arg1);
 }
@@ -36,32 +40,4 @@ export function ReadFileText(arg1) {
 
 export function RenamePath(arg1, arg2) {
   return window['go']['main']['App']['RenamePath'](arg1, arg2);
-}
-
-export function RestartGateway() {
-  return window['go']['main']['App']['RestartGateway']();
-}
-
-export function RevealLogs() {
-  return window['go']['main']['App']['RevealLogs']();
-}
-
-export function RevealPath(arg1) {
-  return window['go']['main']['App']['RevealPath'](arg1);
-}
-
-export function TrashPath(arg1) {
-  return window['go']['main']['App']['TrashPath'](arg1);
-}
-
-export function WriteErrorLog(arg1) {
-  return window['go']['main']['App']['WriteErrorLog'](arg1);
-}
-
-export function WriteFrontendLog(arg1) {
-  return window['go']['main']['App']['WriteFrontendLog'](arg1);
-}
-
-export function WriteTextFile(arg1, arg2) {
-  return window['go']['main']['App']['WriteTextFile'](arg1, arg2);
 }

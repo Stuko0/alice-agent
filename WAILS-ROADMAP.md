@@ -33,32 +33,37 @@ por completo y saque partido de lo que un shell nativo Go ofrece.
 
 ## P1 — Paridad de producto con Electron
 
-### 3. Remote gateway (`ConnectionService`)
-Conectarse a un `alice serve` remoto: ProxyApi routing + URL WS remota.
-Hoy el bridge solo soporta backend local (`127.0.0.1`). Es lo que permite el
-modo "lite client" (GUI sin agente local).
+### 3. Remote gateway (`ConnectionService`) — ✅ HECHO (2026-08-31)
+`apps/desktop-wails/connection_service.go`: persiste `~/.alice/desktop-connection.json`
+(`{mode, remoteUrl, remoteToken, remoteAuthMode, profile}`), `ProbeRemote`
+(probe server-side de `GET <url>/api/status`, evita CORS del renderer) e
+`IsRemote`. `App.ProxyApi` rutea al remoto con `X-Alice-Session-Token`;
+`App.GetConnectionInfo()` devuelve el remoto; en modo remoto NO se levanta el
+backend local. Bridge: `fetchConnectionInfo` usa `ConnectionService.IsRemote` +
+`App.GetConnectionInfo`. (Falta la UI de configuración del remoto en el
+frontend — el contrato Go/bridge está listo.)
 
-### 4. Deep links (`alice://`)
-Electron registra el protocolo `alice` (NSIS/plist). Wails v2 no lo maneja
-nativo: hay que registrar el protocolo en Windows (registro) / macOS
-(LSSetDefaultHandlerForURLScheme) / Linux (xdg-mime) y pasar la URL al
-frontend. Incluye single-instance lock para rutear el link a la ventana activa.
+### 4. Deep links + single-instance — ✅ HECHO (2026-08-31)
+`apps/desktop-wails/deeplink.go` (POSIX): socket unix en
+`~/.alice/desktop.sock`. Primer instancia = primary (sirve deep links vía
+evento `alice:deep-link`); segunda instancia reenvía el `alice://` y sale.
+Arranque con `alice://...` en argv → evento al frontend. Bridge `onDeepLink`
+suscrito. Windows: stub no-op (single-instance + registro de protocolo son
+follow-up).
 
-### 5. Tray + notificaciones
-- Tray: Wails v2 no trae systray; integrar `getlantern/systray` (o migrar a
-  v3 que lo trae nativo). Menú rápido: nuevo chat, gateway on/off, quit.
-- Notificaciones: `go-toast` ya está en go.mod (Windows) — wire a los eventos
-  de gateway (mensaje recibido con la ventana minimizada).
+### 5. Tray + notificaciones — ⏳ PENDIENTE
+Tray requiere `getlantern/systray` (loop propio, riesgo con el mainloop de
+Wails) o migrar a v3. Notificaciones vía `go-toast` (ya en go.mod) cuando haya
+un trigger. No implementado aún.
 
-### 6. Menús nativos + dialogs vía runtime
-- Reemplazar los probes PowerShell/zenity/kdialog de `fs_service.go` por
-  `runtime.OpenFileDialog/SaveFileDialog/MessageDialog` (menos subprocesos,
-  mejor integración).
-- Menú de aplicación nativo (Wails v2 `runtime.Menu`).
+### 6. Menús nativos + dialogs vía runtime — ✅ HECHO (2026-08-31)
+`fs_service.go`: `SelectPaths` usa `runtime.OpenFileDialog`/`OpenDirectoryDialog`
+para selección única/directorio (sin subproceso). Multi-select conserva los
+pickers PowerShell/zenity/osascript (Wails v2.15 no tiene dialog multi).
 
-### 7. Persistencia de estado de ventana
-Guardar/restaurar tamaño+posición (y maximizado) por perfil. Electron ya lo
-hace (`window-state`); el shell Go no.
+### 7. Persistencia de estado de ventana — ✅ HECHO (2026-08-31)
+`apps/desktop-wails/window_state.go`: restaura tamaño/posición/maximizado en
+OnStartup y los persiste en OnShutdown a `~/.alice/desktop-window.json`.
 
 ## P2 — Calidad y experiencia
 
