@@ -168,6 +168,18 @@ func (pm *PythonManager) findPythonForRoot(root string) string {
 		}
 	}
 
+	// Bundled Python embed shipped beside the executable (POSIX layout:
+	// resources/python/bin/python3). Windows already handles the
+	// resources/python/python.exe layout in the branches above.
+	if runtime.GOOS != "windows" {
+		if exe, err := os.Executable(); err == nil {
+			bundled := filepath.Join(filepath.Dir(exe), "resources", "python", "bin", "python3")
+			if _, err := os.Stat(bundled); err == nil {
+				return bundled
+			}
+		}
+	}
+
 	// PATH lookup
 	for _, name := range []string{"python3", "python"} {
 		if path, err := exec.LookPath(name); err == nil {
@@ -206,8 +218,9 @@ func (pm *PythonManager) getVenvSitePackages(venvRoot string) []string {
 		}
 	}
 
-	// Fallback: try common versions
-	for _, ver := range []string{"3.13", "3.12", "3.11", "3.10"} {
+	// Fallback: try common versions (keep newer majors ahead of older ones so a
+	// current standalone bundle without pyvenv.cfg still resolves).
+	for _, ver := range []string{"3.15", "3.14", "3.13", "3.12", "3.11", "3.10"} {
 		sitePackages := filepath.Join(venvRoot, "lib", "python"+ver, "site-packages")
 		if info, err := os.Stat(sitePackages); err == nil && info.IsDir() {
 			return []string{sitePackages}
@@ -288,6 +301,17 @@ func (pm *PythonManager) findVenvRoot(projectRoot string) string {
 	for _, venv := range commonVenvs {
 		if _, err := os.Stat(venv); err == nil {
 			return venv
+		}
+	}
+
+	// Bundled Python embed beside the executable (POSIX dir layout). Windows
+	// already handles resources/python in the branch above.
+	if runtime.GOOS != "windows" {
+		if exe, err := os.Executable(); err == nil {
+			bundled := filepath.Join(filepath.Dir(exe), "resources", "python")
+			if _, err := os.Stat(bundled); err == nil {
+				return bundled
+			}
 		}
 	}
 

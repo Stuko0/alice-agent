@@ -92,6 +92,17 @@ func TestJoinPathsDedupes(t *testing.T) {
 	}
 }
 
+// helper pinHome makes both buildBackendEnv tests hermetic: it points HOME and
+// ALICE_HOME at temp dirs so findVenvRoot cannot discover the developer's real
+// ~/Projects/venv-alice (which exists on dev machines and would leak its
+// site-packages into PYTHONPATH[0]).
+func pinHome(t *testing.T) *PythonManager {
+	t.Helper()
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("ALICE_HOME", filepath.Join(t.TempDir(), ".alice"))
+	return &PythonManager{aliceHome: filepath.Join(t.TempDir(), ".alice")}
+}
+
 func TestBuildBackendEnv(t *testing.T) {
 	root := t.TempDir()
 	venv := filepath.Join(root, ".venv")
@@ -100,7 +111,7 @@ func TestBuildBackendEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Confirm the venv is detected and site-packages is computed.
-	pm := &PythonManager{aliceHome: filepath.Join(t.TempDir(), ".alice")}
+	pm := pinHome(t)
 	root2 := pm.findVenvRoot(root)
 	if root2 != venv {
 		t.Fatalf("findVenvRoot() = %q, want %q", root2, venv)
@@ -131,7 +142,7 @@ func TestBuildBackendEnv(t *testing.T) {
 
 func TestBuildBackendEnvEmptyVenv(t *testing.T) {
 	root := t.TempDir() // no .venv anywhere
-	pm := &PythonManager{aliceHome: filepath.Join(t.TempDir(), ".alice")}
+	pm := pinHome(t)
 	env := pm.buildBackendEnv(root)
 	pyPath := env["PYTHONPATH"]
 	entries := strings.Split(pyPath, string(os.PathListSeparator))

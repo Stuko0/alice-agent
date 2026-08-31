@@ -160,3 +160,6 @@ docs/plans/
 # Local scratch — never commit logs or ad-hoc plans
 .logs/
 .plans/
+
+# pip build artifacts at the repo root (from `pip install .`)
+/build/

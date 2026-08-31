@@ -112,11 +112,24 @@ v3 trae tray nativo, menus, single-instance, mejor webview (webkitgtk-6.0).
 cuando las distros lo tengan. La arquitectura actual (servicios Go + bridge)
 está preparada: solo cambiaría `main.go` + runtime.
 
-### 13. Backend embebido en el binario
-Hoy el Go spawna `alice serve` (venv + PYTHONPATH). Opción a futuro: embeber
-el Python (embed bundle + site-packages) como extraResource del binario Wails
-— elimina la dependencia del venv del sistema y acerca el instalador a
-"un solo archivo". Costo alto (tamaño); evaluar después del UpdateService.
+### 13. Backend embebido en el binario — ✅ PRUEBA DE CONCEPTO (2026-08-31)
+Hoy el Go spawna `alice serve` (venv + PYTHONPATH). Embeber el Python (embed
+bundle + site-packages) como recurso del binario elimina la dependencia del venv
+del sistema. Costo alto (tamaño ~210MB); evaluar antes de habilitar por defecto.
+- ✅ Detección del bundle embebido en `python_manager.go` (POSIX
+  `resources/python/bin/python3` + `resources/python` en `findPythonForRoot` /
+  `findVenvRoot`, espejando el layout Windows ya existente).
+- ✅ `getVenvSitePackages` fallback ampliado a 3.14/3.15 (antes solo hasta 3.13).
+- ✅ `scripts/bundle-python.sh`: provisiona CPython self-contained
+  (python-build-standalone vía uv) e instala alice-agent + deps con `pip
+  install --break-system-packages .` → `resources/python`.
+- ✅ **Verificado end-to-end**: bundle relocatable (sys.prefix se re-ancla al
+  mover), layout coincide con los fallbacks, `import alice_cli` OK (v0.22.0), y
+  el backend embebido arrancó `alice serve` y respondió `/api/status` → HTTP 200.
+  Tamaño ~210MB; `build/bin` está git-ignored (no se commitea).
+- ⏳ Siguiente: integrar el bundle en el empaquetado P2-11 (deb/rpm/AppImage),
+  decidir caché de wheels del `.venv` activo para acelerar el build, y un
+  switch config para preferir el bundle vs. el venv del sistema.
 
 ### 14. Telemetría de uso local
 Métricas locales (boot time, WS reconnect, errores de bridge) a
