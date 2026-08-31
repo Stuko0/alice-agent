@@ -75,6 +75,10 @@ apps/desktop-wails/build/
 apps/desktop-wails/frontend/dist/
 apps/desktop-wails/bin/
 
+# Local scratch — never commit logs or ad-hoc plans
+.logs/
+.plans/
+
 # Web UI assets — synced from @nous-research/ui at build time via
 # `npm run sync-assets` (see web/package.json).
 web/public/fonts/
