@@ -156,3 +156,7 @@ GRAPH_REPORT.md
 
 # Local plans (not for repo)
 docs/plans/
+
+# Local scratch — never commit logs or ad-hoc plans
+.logs/
+.plans/
