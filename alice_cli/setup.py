@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 
-_DOCS_BASE = "https://alice-agent.nousresearch.com/docs"
+_DOCS_BASE = "https://alice-agent.stuko.dev/docs"
 
 
 def _model_config_dict(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -1941,7 +1941,7 @@ def _setup_webhooks():
     print_warning("   internet. For security, run the gateway in a sandboxed environment")
     print_warning("   (Docker, VM, etc.) to limit blast radius from prompt injection.")
     print()
-    print_info("   Full guide: https://alice-agent.nousresearch.com/docs/user-guide/messaging/webhooks/")
+    print_info("   Full guide: https://alice-agent.stuko.dev/docs/user-guide/messaging/webhooks/")
     print()
 
     port = prompt("Webhook port (default 8644)")
@@ -1968,7 +1968,7 @@ def _setup_webhooks():
     print_info("      http://your-server:8644/webhooks/<route-name>")
     print()
     print_info("   Route configuration guide:")
-    print_info("   https://alice-agent.nousresearch.com/docs/user-guide/messaging/webhooks/#configuring-routes")
+    print_info("   https://alice-agent.stuko.dev/docs/user-guide/messaging/webhooks/#configuring-routes")
     print()
     print_info("   Open config in your editor:  alice config edit")
     print_info("   Open config in your editor:  alice config edit")
@@ -2706,87 +2706,9 @@ SETUP_SECTIONS = [
 
 
 def _run_portal_one_shot(config: dict) -> None:
-    """One-shot Nous Portal setup — OAuth + model pick + provider + Tool Gateway.
-
-    Wired into ``alice setup --portal`` and ``alice portal``. This is the
-    Nous-Portal slice of the first-time quick setup, collapsed into a single
-    shareable command so a brand-new user goes from zero to a fully working
-    Alice session — model selected, provider set, and web/image/tts/browser
-    tools routed via their Portal sub — without being told to run
-    ``alice setup`` and hunt for the quick-setup option.
-
-    The login + model selection + provider switch + Tool Gateway opt-in are all
-    delegated to ``_model_flow_nous`` — the exact same flow quick setup uses
-    (``_run_first_time_quick_setup``) and the same one ``alice model`` runs
-    when you pick Nous. Routing through it (instead of hand-rolling the auth +
-    provider write here) means ``alice portal`` always offers a model picker,
-    and there is a single source of truth for the Nous onboarding steps.
-    """
-    from alice_cli.config import load_config
-
-    print()
-    print(
-        color(
-            "┌─────────────────────────────────────────────────────────┐",
-            Colors.MAGENTA,
-        )
-    )
-    print(color("│     ✦ Alice Setup — Nous Portal (one-shot)             │", Colors.MAGENTA))
-    print(
-        color(
-            "└─────────────────────────────────────────────────────────┘",
-            Colors.MAGENTA,
-        )
-    )
-    print()
-    print_info("  One subscription, 300+ models, plus the Tool Gateway:")
-    print_info("    web search, image generation, TTS, browser automation")
-    print_info("    — all routed through your Nous Portal sub.")
-    print()
-    print_info("  Sign up: https://portal.nousresearch.com/manage-subscription")
-    print()
-
-    # _model_flow_nous handles BOTH the logged-out path (device-code OAuth,
-    # which selects a model internally) and the already-logged-in path (curated
-    # Nous model picker), then offers the Tool Gateway opt-in and sets
-    # provider=nous via the login/model save. This is the same routine quick
-    # setup calls, so `alice portal` == quick setup's Nous step.
-    try:
-        from alice_cli.main import _model_flow_nous
-
-        _model_flow_nous(config)
-    except (KeyboardInterrupt, EOFError, SystemExit):
-        # _login_nous raises SystemExit(130)/(1) on cancel/failure; the
-        # logged-out path inside _model_flow_nous catches it, but the
-        # expired-session re-login path only catches Exception, so a
-        # SystemExit there would otherwise escape and kill the whole CLI.
-        # Treat all of these as a graceful cancel/abort for the portal flow.
-        print()
-        print_info("  Setup cancelled.")
-        print_info("  You can retry later with `alice portal`.")
-        return
-    except Exception as exc:
-        logger.debug("_model_flow_nous error during `alice portal`: %s", exc)
-        print()
-        print_error(f"  Nous Portal setup encountered an error: {exc}")
-        print_info("  You can retry later with `alice portal`.")
-        return
-
-    # Re-sync the in-memory config from disk — _model_flow_nous (and the
-    # underlying login/model save) write via their own load/save cycle, so any
-    # later save_config(config) by a caller must not clobber those values.
-    try:
-        _refreshed = load_config()
-        if isinstance(_refreshed, dict):
-            config.clear()
-            config.update(_refreshed)
-    except Exception:
-        pass
-
-    print()
-    print_success("Portal setup complete.")
-    print_info("  Run `alice portal info` to inspect routing.")
-    print_info("  Run `alice` to start chatting.")
+    """Legacy portal setup entry point."""
+    print_info("Portal setup is no longer available.")
+    print_info("Use `alice setup` to configure models and providers.")
 
 
 def run_setup_wizard(args):
@@ -3048,7 +2970,6 @@ def _run_first_time_quick_setup(config: dict, alice_home, is_existing: bool):
         ("copilot-acp", "GitHub Copilot — free with GitHub account (requires Copilot CLI)"),
         ("xai-oauth", "xAI Grok — OAuth login (SuperGrok / Premium+)"),
         ("openai-codex", "OpenAI OAuth (ChatGPT)"),
-        ("nous", "Nous Portal"),
         ("_api_key", "Bring your own API key (Anthropic, OpenAI, Google, DeepSeek...)"),
     ]
     provider_ids = [p[0] for p in providers]
@@ -3069,17 +2990,6 @@ def _run_first_time_quick_setup(config: dict, alice_home, is_existing: bool):
         _model_flow(config, run_picker=True)
     elif selected_id == "omniroute":
         _model_flow_omniroute(config)
-    elif selected_id == "nous":
-        try:
-            from alice_cli.main import _model_flow_nous
-            _model_flow_nous(config)
-        except (KeyboardInterrupt, EOFError):
-            print()
-            print_info("Nous Portal setup cancelled.")
-        except Exception as exc:
-            logger.debug("_model_flow_nous error during quick setup: %s", exc)
-            print_warning(f"Nous Portal setup encountered an error: {exc}")
-            print_info("You can try again later with: alice model")
     elif selected_id == "xai-oauth":
         try:
             from alice_cli.main import _model_flow_xai_oauth

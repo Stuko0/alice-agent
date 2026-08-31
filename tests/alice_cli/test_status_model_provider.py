@@ -2,8 +2,7 @@
 
 from types import SimpleNamespace
 
-from alice_cli.nous_account import NousPaidServiceAccessInfo, NousPortalAccountInfo
-from alice_cli.nous_subscription import NousFeatureState, NousSubscriptionFeatures
+from alice_cli.nous_account import NousPortalAccountInfo
 
 
 def _patch_common_status_deps(monkeypatch, status_mod, tmp_path, *, openai_base_url=""):
@@ -64,8 +63,9 @@ def test_show_status_displays_legacy_string_model_and_custom_endpoint(monkeypatc
     assert "Provider:     Custom endpoint" in out
 
 
-def test_show_status_reports_managed_nous_features(monkeypatch, capsys, tmp_path):
-    monkeypatch.setattr("alice_cli.status.managed_nous_tools_enabled", lambda: True)
+def test_show_status_omits_nous_tool_gateway_section_when_disabled(monkeypatch, capsys, tmp_path):
+    # The Nous integration is removed: the managed-tools section must not render
+    # even when the configured provider is the (removed) Nous Portal.
     from alice_cli import status as status_mod
 
     _patch_common_status_deps(monkeypatch, status_mod, tmp_path)
@@ -78,32 +78,12 @@ def test_show_status_reports_managed_nous_features(monkeypatch, capsys, tmp_path
     monkeypatch.setattr(status_mod, "resolve_requested_provider", lambda requested=None: "nous", raising=False)
     monkeypatch.setattr(status_mod, "resolve_provider", lambda requested=None, **kwargs: "nous", raising=False)
     monkeypatch.setattr(status_mod, "provider_label", lambda provider: "Nous Portal", raising=False)
-    monkeypatch.setattr(
-        status_mod,
-        "get_nous_subscription_features",
-        lambda config: NousSubscriptionFeatures(
-            subscribed=True,
-            nous_auth_present=True,
-            provider_is_nous=True,
-            features={
-                "web": NousFeatureState("web", "Web tools", True, True, True, True, False, True, "firecrawl"),
-                "image_gen": NousFeatureState("image_gen", "Image generation", True, True, True, True, False, True, "Nous Subscription"),
-                "video_gen": NousFeatureState("video_gen", "Video generation", False, False, False, False, False, False, ""),
-                "tts": NousFeatureState("tts", "OpenAI TTS", True, True, True, True, False, True, "OpenAI TTS"),
-                "stt": NousFeatureState("stt", "Speech-to-text", True, True, True, True, False, True, "OpenAI Whisper"),
-                "browser": NousFeatureState("browser", "Browser automation", True, True, True, True, False, True, "Browser Use"),
-                "modal": NousFeatureState("modal", "Modal execution", False, True, False, False, False, True, "local"),
-            },
-        ),
-        raising=False,
-    )
 
     status_mod.show_status(SimpleNamespace(all=False, deep=False))
 
     out = capsys.readouterr().out
-    assert "Nous Tool Gateway" in out
-    assert "Browser automation" in out
-    assert "active via Nous subscription" in out
+    assert "Nous Tool Gateway" not in out
+    assert "active via Nous subscription" not in out
 
 
 def test_show_status_hides_nous_subscription_section_when_feature_flag_is_off(monkeypatch, capsys, tmp_path):
@@ -127,8 +107,9 @@ def test_show_status_hides_nous_subscription_section_when_feature_flag_is_off(mo
     assert "Nous Tool Gateway" not in out
 
 
-def test_show_status_reports_exhausted_nous_credits(monkeypatch, capsys, tmp_path):
-    monkeypatch.setattr("alice_cli.status.managed_nous_tools_enabled", lambda: False)
+def test_show_status_omits_nous_credits_banner_when_disabled(monkeypatch, capsys, tmp_path):
+    # The Nous integration is removed: no credits-exhausted billing banner may
+    # appear, even with a (stale) nous auth state on disk.
     from alice_cli import status as status_mod
     import alice_cli.auth as auth_mod
 
@@ -148,22 +129,7 @@ def test_show_status_reports_exhausted_nous_credits(monkeypatch, capsys, tmp_pat
     monkeypatch.setattr(
         status_mod,
         "get_nous_portal_account_info",
-        lambda: NousPortalAccountInfo(
-            logged_in=True,
-            source="account_api",
-            fresh=True,
-            paid_service_access=False,
-            portal_base_url="https://portal.example.test",
-            paid_service_access_info=NousPaidServiceAccessInfo(
-                allowed=False,
-                reason="no_usable_credits",
-                has_active_subscription=True,
-                active_subscription_is_paid=True,
-                subscription_credits_remaining=0,
-                purchased_credits_remaining=0,
-                total_usable_credits=0,
-            ),
-        ),
+        lambda: NousPortalAccountInfo(),  # stub default: not logged in
         raising=False,
     )
     monkeypatch.setattr(status_mod, "load_config", lambda: {"model": {"provider": "nous"}}, raising=False)
@@ -174,9 +140,9 @@ def test_show_status_reports_exhausted_nous_credits(monkeypatch, capsys, tmp_pat
     status_mod.show_status(SimpleNamespace(all=False, deep=False))
 
     out = capsys.readouterr().out
-    assert "Nous Tool Gateway" in out
-    assert "credits are exhausted" in out
-    assert "https://portal.example.test/billing" in out
+    assert "Nous Tool Gateway" not in out
+    assert "credits are exhausted" not in out
+    assert "https://portal.example.test/billing" not in out
     assert "free-tier Nous account" not in out
 
 

@@ -260,15 +260,6 @@ class TestChatCompletionsBuildKwargs:
         assert kw["extra_body"]["plugins"] == [
             {"id": "pareto-router", "min_coding_score": 0.8}
         ]
-
-    def test_nous_tags(self, transport):
-        from agent.portal_tags import nous_portal_tags
-        from providers import get_provider_profile
-        profile = get_provider_profile("nous")
-        msgs = [{"role": "user", "content": "Hi"}]
-        kw = transport.build_kwargs(model="gpt-4o", messages=msgs, provider_profile=profile)
-        assert kw["extra_body"]["tags"] == nous_portal_tags()
-
     def test_reasoning_default(self, transport):
         msgs = [{"role": "user", "content": "Hi"}]
         kw = transport.build_kwargs(
@@ -276,20 +267,6 @@ class TestChatCompletionsBuildKwargs:
             supports_reasoning=True,
         )
         assert kw["extra_body"]["reasoning"] == {"enabled": True, "effort": "medium"}
-
-    def test_nous_omits_disabled_reasoning(self, transport):
-        from providers import get_provider_profile
-        profile = get_provider_profile("nous")
-        msgs = [{"role": "user", "content": "Hi"}]
-        kw = transport.build_kwargs(
-            model="gpt-4o", messages=msgs,
-            provider_profile=profile,
-            supports_reasoning=True,
-            reasoning_config={"enabled": False},
-        )
-        # Nous rejects enabled=false; reasoning omitted entirely
-        assert "reasoning" not in kw.get("extra_body", {})
-
     def test_ollama_num_ctx(self, transport):
         from providers import get_provider_profile
         profile = get_provider_profile("custom")
@@ -1017,30 +994,3 @@ class TestChatCompletionsGeminiNativeExtraBodyStrip:
         )
         eb = kw.get("extra_body")
         assert not eb or "tags" not in eb
-
-    def test_tags_preserved_on_nous_endpoint(self, transport):
-        kw = transport.build_kwargs(
-            "alice-3-405b",
-            [{"role": "user", "content": "hi"}],
-            None,
-            provider_profile=self._nous_profile(),
-            base_url="https://inference.nousresearch.com/v1",
-            session_id="s1",
-            max_tokens=None,
-        )
-        eb = kw.get("extra_body")
-        assert eb and "tags" in eb
-
-    def test_tags_pass_through_on_gemini_openai_compat(self, transport):
-        # /openai compat endpoint is not "native" — unchanged behavior.
-        kw = transport.build_kwargs(
-            "anthropic/claude-sonnet-4.6",
-            [{"role": "user", "content": "hi"}],
-            None,
-            provider_profile=self._nous_profile(),
-            base_url="https://generativelanguage.googleapis.com/v1beta/openai",
-            session_id="s1",
-            max_tokens=None,
-        )
-        eb = kw.get("extra_body")
-        assert eb and "tags" in eb

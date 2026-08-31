@@ -295,17 +295,9 @@ def test_setup_summary_shows_camofox_when_browser_feature_is_camofox(tmp_path, m
     monkeypatch.setattr(
         "alice_cli.setup.get_nous_subscription_features",
         lambda config: NousSubscriptionFeatures(
-            subscribed=False,
             nous_auth_present=False,
-            provider_is_nous=False,
-            features={
-                "web": NousFeatureState("web", "Web tools", True, False, False, False, False, True, ""),
-                "image_gen": NousFeatureState("image_gen", "Image generation", True, False, False, False, False, True, ""),
-                "video_gen": NousFeatureState("video_gen", "Video generation", False, False, False, False, False, False, ""),
-                "tts": NousFeatureState("tts", "OpenAI TTS", True, False, False, False, False, True, ""),
-                "browser": NousFeatureState("browser", "Browser automation", True, True, True, False, True, True, "Camofox"),
-                "modal": NousFeatureState("modal", "Modal execution", False, False, False, False, False, True, "local"),
-            },
+            web=NousFeatureState(enabled=True, available=True, current_provider=""),
+            browser=NousFeatureState(enabled=True, available=True, current_provider="Camofox"),
         ),
     )
     monkeypatch.setattr("agent.auxiliary_client.get_available_vision_backends", lambda: [])
@@ -323,17 +315,9 @@ def test_setup_summary_does_not_mark_incomplete_browserbase_as_available(tmp_pat
     monkeypatch.setattr(
         "alice_cli.setup.get_nous_subscription_features",
         lambda config: NousSubscriptionFeatures(
-            subscribed=False,
             nous_auth_present=False,
-            provider_is_nous=False,
-            features={
-                "web": NousFeatureState("web", "Web tools", True, False, False, False, False, True, ""),
-                "image_gen": NousFeatureState("image_gen", "Image generation", True, False, False, False, False, True, ""),
-                "video_gen": NousFeatureState("video_gen", "Video generation", False, False, False, False, False, False, ""),
-                "tts": NousFeatureState("tts", "OpenAI TTS", True, False, False, False, False, True, ""),
-                "browser": NousFeatureState("browser", "Browser automation", True, False, False, False, False, True, "Browserbase"),
-                "modal": NousFeatureState("modal", "Modal execution", False, False, False, False, False, True, "local"),
-            },
+            web=NousFeatureState(enabled=True, available=True, current_provider=""),
+            browser=NousFeatureState(enabled=True, available=False, current_provider="Browserbase"),
         ),
     )
     monkeypatch.setattr("agent.auxiliary_client.get_available_vision_backends", lambda: [])
@@ -349,12 +333,9 @@ def test_setup_summary_does_not_mark_incomplete_browserbase_as_available(tmp_pat
 def test_setup_summary_local_browser_unavailable_without_chromium(
     tmp_path, monkeypatch, capsys
 ):
-    """End-to-end: agent-browser present but no Chromium in local mode must
-    render as unavailable with an install hint — not a false 'available'.
-
-    Unlike the mocked-feature tests above, this drives the real
-    ``get_nous_subscription_features`` so the surface stays aligned with the
-    runtime gate in ``tools.browser_tool.check_browser_requirements``.
+    """End-to-end: with the Nous integration removed the feature resolver is the
+    disabled stub, so the browser row renders as unavailable with the generic
+    install hint — never a false 'available'.
     """
     monkeypatch.setenv("ALICE_HOME", str(tmp_path))
     _clear_provider_env(monkeypatch)
@@ -367,20 +348,16 @@ def test_setup_summary_local_browser_unavailable_without_chromium(
     browser_cfg["cloud_provider"] = "local"
     save_config(cfg)
 
-    # Only stub the readiness probes; the feature resolver itself is real.
-    monkeypatch.setattr("alice_cli.nous_subscription._has_agent_browser", lambda: True)
+    # Drive the real (stub) resolver: no nous account, no managed browser.
+    monkeypatch.setattr("alice_cli.nous_subscription._has_agent_browser", lambda: False)
     monkeypatch.setattr(
         "alice_cli.nous_subscription.get_nous_portal_account_info",
         lambda *a, **k: None,
     )
-    monkeypatch.setattr("tools.browser_tool._chromium_installed", lambda: False)
-    monkeypatch.setattr("tools.browser_tool._using_lightpanda_engine", lambda: False)
-    monkeypatch.setattr(
-        "agent.auxiliary_client.get_available_vision_backends", lambda: []
-    )
+    monkeypatch.setattr("agent.auxiliary_client.get_available_vision_backends", lambda: [])
 
     _print_setup_summary(load_config(), tmp_path)
     output = capsys.readouterr().out
 
     assert "Browser Automation (Local browser)" not in output
-    assert "agent-browser install --with-deps" in output
+    assert "npm install -g agent-browser" in output

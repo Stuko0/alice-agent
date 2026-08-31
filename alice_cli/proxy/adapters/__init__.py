@@ -8,13 +8,14 @@ token. See :class:`UpstreamAdapter` for the contract.
 from typing import Dict, Type
 
 from alice_cli.proxy.adapters.base import UpstreamAdapter
-from alice_cli.proxy.adapters.nous_portal import NousPortalAdapter
 from alice_cli.proxy.adapters.xai import XAIGrokAdapter
 
 # Registry of available adapter classes keyed by provider name as used on
 # the ``alice proxy start --provider <name>`` CLI flag.
+# NOTE: the Nous Portal adapter was removed with the nous integration; the
+# stub module (nous_portal.py) remains importable so legacy imports don't
+# break, but ``nous`` is deliberately NOT a registered upstream anymore.
 ADAPTERS: Dict[str, Type[UpstreamAdapter]] = {
-    "nous": NousPortalAdapter,
     "xai": XAIGrokAdapter,
 }
 

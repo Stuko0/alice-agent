@@ -26,9 +26,9 @@ import webbrowser
 from alice_cli.colors import Colors, color
 from alice_cli.config import load_config
 
-DEFAULT_PORTAL_URL = "https://portal.nousresearch.com"
-SUBSCRIPTION_URL = "https://portal.nousresearch.com/manage-subscription"
-DOCS_URL = "https://alice-agent.nousresearch.com/docs/user-guide/features/tool-gateway"
+DEFAULT_PORTAL_URL = "https://stuko.dev"
+SUBSCRIPTION_URL = "https://stuko.dev/manage-subscription"
+DOCS_URL = "https://alice-agent.stuko.dev/docs/user-guide/features/tool-gateway"
 
 
 def _cmd_status(args) -> int:

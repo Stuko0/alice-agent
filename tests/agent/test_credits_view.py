@@ -15,7 +15,7 @@ import pytest
 
 import agent.account_usage as account_usage
 from agent.account_usage import CreditsView, build_credits_view
-from alice_cli.nous_account import NousPortalAccountInfo, NousPaidServiceAccessInfo
+from alice_cli.nous_account import NousPortalAccountInfo
 
 
 def _account(**kwargs) -> NousPortalAccountInfo:
@@ -50,72 +50,6 @@ def test_view_logged_out_when_no_token(monkeypatch):
     monkeypatch.setattr("alice_cli.auth.get_provider_auth_state", lambda provider: {})
     view = build_credits_view()
     assert view == CreditsView(logged_in=False)
-
-
-def test_view_built_with_org_pinned_url_and_identity(_logged_in_account):
-    _logged_in_account(
-        _account(
-            org_slug="acme",
-            org_name="Acme Inc",
-            email="alice@example.test",
-            paid_service_access=True,
-            paid_service_access_info=NousPaidServiceAccessInfo(
-                purchased_credits_remaining=30.0,
-                total_usable_credits=30.0,
-            ),
-            subscription=None,
-        )
-    )
-
-    view = build_credits_view()
-
-    assert view.logged_in is True
-    assert view.topup_url == "https://portal.example.test/orgs/acme/billing?topup=open"
-    assert view.identity_line == "Topping up as alice@example.test / org Acme Inc"
-    assert view.depleted is False
-    # Balance lines carry the magnitudes but NOT the /usage affordance lines.
-    blob = "\n".join(view.balance_lines)
-    assert "Top-up credits: $30.00" in blob
-    assert "Top up:" not in blob  # the trailing /usage affordance is stripped
-    assert "(or run" not in blob
-
-
-def test_view_depleted_flag(_logged_in_account):
-    _logged_in_account(
-        _account(
-            org_slug="acme",
-            email="alice@example.test",
-            paid_service_access=False,
-            paid_service_access_info=NousPaidServiceAccessInfo(
-                total_usable_credits=0.0,
-            ),
-            subscription=None,
-        )
-    )
-
-    view = build_credits_view()
-    assert view.depleted is True
-
-
-def test_view_falls_back_to_legacy_url_when_slug_null(_logged_in_account):
-    _logged_in_account(
-        _account(
-            org_slug=None,
-            email="alice@example.test",
-            paid_service_access=True,
-            paid_service_access_info=NousPaidServiceAccessInfo(
-                purchased_credits_remaining=5.0,
-                total_usable_credits=5.0,
-            ),
-            subscription=None,
-        )
-    )
-
-    view = build_credits_view()
-    assert view.topup_url == "https://portal.example.test/billing?topup=open"
-    assert "/orgs/" not in view.topup_url
-
-
 def test_view_fetch_failure_is_logged_out(monkeypatch):
     monkeypatch.setattr(
         "alice_cli.auth.get_provider_auth_state",

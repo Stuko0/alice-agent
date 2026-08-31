@@ -697,8 +697,10 @@ class TestCheckNousFreeTierCache:
         result1 = check_nous_free_tier()
         result2 = check_nous_free_tier()
 
-        assert result1 is True
-        assert result2 is True
+        # The Nous integration is removed: the stub account never reports a
+        # free-tier user, so the cached value is False.
+        assert result1 is False
+        assert result2 is False
         assert mock_account.call_count == 1
 
     @patch("alice_cli.nous_account.get_nous_portal_account_info")

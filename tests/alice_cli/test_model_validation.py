@@ -75,10 +75,12 @@ class TestParseModelInput:
         assert provider == "openrouter"
         assert model == "gpt-5.4"
 
-    def test_nous_provider_switch(self):
+    def test_nous_provider_switch_removed(self):
+        # The Nous Portal provider was removed: `nous:` is no longer a
+        # recognized provider prefix, so it falls back to the current provider.
         provider, model = parse_model_input("nous:alice-3", "openrouter")
-        assert provider == "nous"
-        assert model == "alice-3"
+        assert provider == "openrouter"
+        assert model == "nous:alice-3"
 
     def test_empty_model_after_colon_keeps_current(self):
         provider, model = parse_model_input("openrouter:", "nous")

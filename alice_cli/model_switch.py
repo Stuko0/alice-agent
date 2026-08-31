@@ -611,10 +611,11 @@ def _resolve_alias_fallback(
 ) -> Optional[tuple[str, str, str]]:
     """Try to resolve an alias on the user's authenticated providers.
 
-    Falls back to ``("openrouter", "nous")`` only when no authenticated
+    Falls back to ``("openrouter",)`` only when no authenticated
     providers are supplied (backwards compat for non-interactive callers).
+    ``nous`` was removed from the fallback with the Nous Portal integration.
     """
-    providers = authenticated_providers or ("openrouter", "nous")
+    providers = authenticated_providers or ("openrouter",)
     for provider in providers:
         result = resolve_alias(raw_input, provider)
         if result is not None:
