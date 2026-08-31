@@ -14,6 +14,7 @@ import * as GitService from './wailsjs/go/main/GitService';
 import * as FSService from './wailsjs/go/main/FSService';
 import * as LogService from './wailsjs/go/main/LogService';
 import * as PTYService from './wailsjs/go/main/PTYService';
+import * as UpdateService from './wailsjs/go/main/UpdateService';
 
 export function isWailsEnvironment(): boolean {
   return typeof window !== 'undefined' && typeof (window as any).wails?.Call?.ByName === 'function'
@@ -628,19 +629,31 @@ export function initWailsBridge(): void {
     repairBootstrap: async () => ({ ok: true }),
     cancelBootstrap: async () => ({ ok: true, cancelled: false }),
     onBootstrapEvent: () => () => {},
-    getVersion: async () => ({
-      appVersion: '0.17.0',
-      electronVersion: 'wails-v2',
-      nodeVersion: 'go1.26',
-      platform: 'linux',
-      aliceRoot: '',
-    }),
+    getVersion: async () => UpdateService.GetVersion(),
     updates: {
-      check: async () => ({ supported: true, updateAvailable: false }),
-      apply: async () => ({ ok: true }),
-      getBranch: async () => ({ branch: 'main' }),
-      setBranch: async (name) => ({ branch: name }),
-      onProgress: () => () => {},
+      check: async () => UpdateService.Check(),
+      apply: async (opts) => UpdateService.Apply(opts || {}),
+      getBranch: async () => UpdateService.GetBranch(),
+      setBranch: async (name) => UpdateService.SetBranch(name),
+      onProgress: (listener) => {
+        // Wails v2 runtime events: subscribe to the Go-emitted progress stream.
+        // Falls back to a no-op when the runtime isn't ready yet (renderer
+        // boot), matching the preload's subscribe-and-return-unsubscribe shape.
+        const runtimeObj = typeof window !== 'undefined' ? (window as any).runtime : undefined;
+        if (runtimeObj?.EventsOn) {
+          runtimeObj.EventsOn('alice:updates:progress', (payload: unknown) => {
+            try {
+              listener(payload as any);
+            } catch {}
+          });
+          return () => {
+            try {
+              runtimeObj.EventsOff('alice:updates:progress');
+            } catch {}
+          };
+        }
+        return () => {};
+      },
     },
     uninstall: {
       summary: async () => ({

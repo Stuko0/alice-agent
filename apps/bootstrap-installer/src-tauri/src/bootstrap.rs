@@ -170,17 +170,15 @@ pub async fn launch_alice_desktop(
     let install_root = PathBuf::from(install_root);
     let exe_path = resolve_alice_desktop_exe(&install_root).ok_or_else(|| {
         format!(
-            "Couldn't find a built Alice desktop (checked the Wails binary at \
-             {} and the legacy Electron app under {}). The desktop build step \
-             may have been skipped or failed. Run `Alice desktop` from a \
-             terminal to build and launch it.",
+            "Couldn't find a built Alice desktop (expected the Wails binary at \
+             {}). The desktop build step may have been skipped or failed. Run \
+             `Alice desktop` from a terminal to build and launch it.",
             install_root
                 .join("apps")
                 .join("desktop-wails")
                 .join("build")
                 .join("bin")
-                .display(),
-            install_root.join("apps").join("desktop").join("release").display()
+                .display()
         )
     })?;
 
@@ -215,9 +213,8 @@ pub async fn launch_alice_desktop(
 }
 
 /// Walks the well-known desktop binary paths under `install_root`. The Wails
-/// shell (the default runtime) is resolved first; the electron-builder
-/// unpacked-app paths remain as the legacy fallback until the Electron
-/// pipeline is deprecated.
+/// shell (the default runtime) is the only supported desktop binary — the
+/// Electron fallback was removed with the Electron deprecation.
 pub(crate) fn resolve_alice_desktop_exe(install_root: &std::path::Path) -> Option<PathBuf> {
     let exe_name = if cfg!(target_os = "windows") {
         "alice-desktop.exe"
@@ -233,25 +230,20 @@ pub(crate) fn resolve_alice_desktop_exe(install_root: &std::path::Path) -> Optio
     if wails_bin.exists() {
         return Some(wails_bin);
     }
-
-    let release_dir = install_root.join("apps").join("desktop").join("release");
-    let candidates: &[(&str, &str)] = if cfg!(target_os = "windows") {
-        &[
-            ("win-unpacked", "Alice.exe"),
-            ("win-arm64-unpacked", "Alice.exe"),
-        ]
-    } else if cfg!(target_os = "macos") {
-        &[
-            ("mac/Alice.app/Contents/MacOS", "Alice"),
-            ("mac-arm64/Alice.app/Contents/MacOS", "Alice"),
-        ]
-    } else {
-        &[("linux-unpacked", "alice")]
-    };
-    for (subdir, exe) in candidates {
-        let p = release_dir.join(subdir).join(exe);
-        if p.exists() {
-            return Some(p);
+    // macOS: wails v2 ships a .app bundle; resolve the executable inside it.
+    #[cfg(target_os = "macos")]
+    {
+        let app_bundle = install_root
+            .join("apps")
+            .join("desktop-wails")
+            .join("build")
+            .join("bin")
+            .join("alice-desktop.app");
+        if app_bundle.is_dir() {
+            let inner = app_bundle.join("Contents").join("MacOS").join("alice-desktop");
+            if inner.exists() {
+                return Some(inner);
+            }
         }
     }
     None
@@ -860,34 +852,6 @@ mod tests {
         base
     }
 
-    // Build a fake built-desktop release tree at the platform's expected path
-    // and return (install_root, expected_app_bundle_or_exe).
-    fn make_release_tree(install_root: &Path) -> PathBuf {
-        let release = install_root.join("apps").join("desktop").join("release");
-        if cfg!(target_os = "macos") {
-            let macos_dir = release
-                .join("mac-arm64")
-                .join("Alice.app")
-                .join("Contents")
-                .join("MacOS");
-            std::fs::create_dir_all(&macos_dir).unwrap();
-            std::fs::write(macos_dir.join("Alice"), b"#!/bin/sh\n").unwrap();
-            macos_dir.parent().unwrap().parent().unwrap().to_path_buf() // .../Alice.app
-        } else if cfg!(target_os = "windows") {
-            let dir = release.join("win-unpacked");
-            std::fs::create_dir_all(&dir).unwrap();
-            let exe = dir.join("Alice.exe");
-            std::fs::write(&exe, b"stub").unwrap();
-            exe
-        } else {
-            let dir = release.join("linux-unpacked");
-            std::fs::create_dir_all(&dir).unwrap();
-            let exe = dir.join("alice");
-            std::fs::write(&exe, b"stub").unwrap();
-            exe
-        }
-    }
-
     // The relaunch / install target is derived from the rebuilt desktop app.
     // On macOS this MUST resolve to the .app bundle (what `open` relaunches and
     // what the updater ditto's over /Applications/Alice.app). A regression in
@@ -895,7 +859,7 @@ mod tests {
     #[test]
     fn resolve_alice_desktop_app_finds_built_bundle() {
         let root = unique_tmp_dir("app-ok");
-        let expected = make_release_tree(&root);
+        let expected = make_wails_tree(&root);
 
         let resolved = resolve_alice_desktop_app(&root)
             .expect("should resolve the freshly-built desktop app");
@@ -927,7 +891,8 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
     }
 
-    // Build a fake Wails binary tree (apps/desktop-wails/build/bin/<exe>).
+    // Build a fake Wails binary tree (apps/desktop-wails/build/bin/<exe>, or a
+    // .app bundle on macOS).
     fn make_wails_tree(install_root: &Path) -> PathBuf {
         let bin_dir = install_root
             .join("apps")
@@ -935,6 +900,12 @@ mod tests {
             .join("build")
             .join("bin");
         std::fs::create_dir_all(&bin_dir).unwrap();
+        if cfg!(target_os = "macos") {
+            let macos_dir = bin_dir.join("alice-desktop.app").join("Contents").join("MacOS");
+            std::fs::create_dir_all(&macos_dir).unwrap();
+            std::fs::write(macos_dir.join("alice-desktop"), b"stub").unwrap();
+            return bin_dir.join("alice-desktop.app");
+        }
         let exe_name = if cfg!(target_os = "windows") {
             "alice-desktop.exe"
         } else {
@@ -946,27 +917,13 @@ mod tests {
     }
 
     #[test]
-    fn resolve_alice_desktop_exe_prefers_wails_over_electron() {
-        let root = unique_tmp_dir("exe-wails-first");
-        // Both the Wails binary and the legacy Electron app exist: the Wails
-        // shell is the default runtime, so it MUST win.
+    fn resolve_alice_desktop_exe_finds_wails_binary() {
+        let root = unique_tmp_dir("exe-wails");
         let wails_exe = make_wails_tree(&root);
-        let _electron_exe = make_release_tree(&root);
 
         let resolved = resolve_alice_desktop_exe(&root)
             .expect("should resolve the Wails binary when present");
         assert_eq!(resolved, wails_exe);
-        let _ = std::fs::remove_dir_all(&root);
-    }
-
-    #[test]
-    fn resolve_alice_desktop_exe_falls_back_to_electron() {
-        let root = unique_tmp_dir("exe-electron-fallback");
-        let electron_exe = make_release_tree(&root);
-
-        let resolved = resolve_alice_desktop_exe(&root)
-            .expect("should fall back to the Electron app when no Wails binary");
-        assert_eq!(resolved, electron_exe);
         let _ = std::fs::remove_dir_all(&root);
     }
 

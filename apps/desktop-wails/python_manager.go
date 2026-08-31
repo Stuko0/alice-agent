@@ -505,6 +505,18 @@ func (pm *PythonManager) tryParsePort(line string) {
 	close(pm.portReady)
 }
 
+// GetBackendPIDs returns the PIDs of the live backend process(es) managed by
+// this desktop instance. Used for ALICE_DESKTOP_CHILD_PID so `alice update`'s
+// stale-backend reaper spares them mid-update.
+func (pm *PythonManager) GetBackendPIDs() []int {
+	activeCmdMu.Lock()
+	defer activeCmdMu.Unlock()
+	if activeCmd != nil && activeCmd.Process != nil {
+		return []int{activeCmd.Process.Pid}
+	}
+	return nil
+}
+
 func (pm *PythonManager) StopGateway() error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()

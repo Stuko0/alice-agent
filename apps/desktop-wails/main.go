@@ -42,6 +42,7 @@ func main() {
 	fsService := NewFSService()
 	logService := NewLogService()
 	ptyService := NewPTYService()
+	updateService := NewUpdateService()
 
 	err := wails.Run(&options.App{
 		Title:  "Alice Agent Desktop",
@@ -53,6 +54,7 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 27, B: 27, A: 1},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)
+			updateService.SetContext(ctx, pm.ResolveProjectRoot())
 			pm.StartGateway()
 		},
 		Bind: []interface{}{
@@ -62,6 +64,7 @@ func main() {
 			fsService,
 			logService,
 			ptyService,
+			updateService,
 		},
 	})
 
@@ -87,6 +90,18 @@ func NewApp() *App {
 		FSService:     NewFSService(),
 		LogService:    NewLogService(),
 		PTYService:    NewPTYService(),
+	}
+}
+
+// NewUpdateService builds the self-update service, wired to the shared
+// PythonManager for the project root + backend PID sparing.
+func NewUpdateService() *UpdateService {
+	pm := NewPythonManager()
+	return &UpdateService{
+		aliceHome: pm.aliceHome,
+		backendPID: func() []int {
+			return pm.GetBackendPIDs()
+		},
 	}
 }
 

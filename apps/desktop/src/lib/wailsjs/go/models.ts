@@ -93,5 +93,102 @@ export namespace main {
 	    }
 	}
 
-}
 
+	export class UpdateStatus {
+	    supported: boolean;
+	    branch: string;
+	    currentBranch: string;
+	    behind: number;
+	    currentSha: string;
+	    targetSha: string;
+	    commits: Array<any>;
+	    dirty: boolean;
+	    updateAvailable: boolean;
+	    error: string;
+	    reason: string;
+	    message: string;
+	    aliceRoot: string;
+	    fetchedAt: number;
+
+	    static createFrom(source: any = {}) {
+	        return new UpdateStatus(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.supported = source["supported"];
+	        this.branch = source["branch"];
+	        this.currentBranch = source["currentBranch"];
+	        this.behind = source["behind"];
+	        this.currentSha = source["currentSha"];
+	        this.targetSha = source["targetSha"];
+	        this.commits = source["commits"];
+	        this.dirty = source["dirty"];
+	        this.updateAvailable = source["updateAvailable"];
+	        this.error = source["error"];
+	        this.reason = source["reason"];
+	        this.message = source["message"];
+	        this.aliceRoot = source["aliceRoot"];
+	        this.fetchedAt = source["fetchedAt"];
+	    }
+	}
+	export class UpdateApplyOptions {
+	    branch: string;
+
+	    static createFrom(source: any = {}) {
+	        return new UpdateApplyOptions(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.branch = source["branch"];
+	    }
+	}
+	export class UpdateApplyResult {
+	    ok: boolean;
+	    manual: boolean;
+	    command: string;
+	    guiSkew: boolean;
+	    manualRestart: boolean;
+	    handedOff: boolean;
+	    error: string;
+	    message: string;
+
+	    static createFrom(source: any = {}) {
+	        return new UpdateApplyResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.manual = source["manual"];
+	        this.command = source["command"];
+	        this.guiSkew = source["guiSkew"];
+	        this.manualRestart = source["manualRestart"];
+	        this.handedOff = source["handedOff"];
+	        this.error = source["error"];
+	        this.message = source["message"];
+	    }
+	}
+	export class DesktopVersionInfo {
+	    appVersion: string;
+	    electronVersion: string;
+	    nodeVersion: string;
+	    platform: string;
+	    aliceRoot: string;
+
+	    static createFrom(source: any = {}) {
+	        return new DesktopVersionInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.appVersion = source["appVersion"];
+	        this.electronVersion = source["electronVersion"];
+	        this.nodeVersion = source["nodeVersion"];
+	        this.platform = source["platform"];
+	        this.aliceRoot = source["aliceRoot"];
+	    }
+	}
+
+}

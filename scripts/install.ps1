@@ -43,16 +43,13 @@ param(
 
     # --- Desktop GUI build (opt-in) ---
     # When set, install.ps1 includes Stage-Desktop in the manifest and
-    # builds apps/desktop into a launchable Alice.exe.
+    # produces a launchable Wails desktop binary
+    # (apps/desktop-wails/build/bin/alice-desktop.exe).
     #
     # Why opt-in:
     #   * Alice-Setup.exe (the signed Tauri bootstrap installer) passes
     #     -IncludeDesktop so a user who installed via the GUI ends up
     #     with a launchable desktop binary.
-    #   * The Electron desktop's own bootstrap-runner.cjs runs install.ps1
-    #     from inside an already-launched Alice.exe; if THAT recursively
-    #     built apps/desktop it would try to overwrite the live Alice.exe
-    #     on disk and fail. The recursive path omits the flag.
     #   * The canonical CLI one-liner (irm | iex) omits the flag too;
     #     terminal users don't need a desktop binary built for them, and
     #     `alice desktop` already builds on demand.
@@ -2367,131 +2364,12 @@ function Install-NodeDeps {
     }
 }
 
-# Clear the cached Electron download + any half-written unpacked output so the
-# next `npm run pack` re-downloads and re-stages from scratch. A corrupt zip in
-# the per-user Electron download cache - most often a partial download resumed
-# into the same file, leaving concatenated junk - makes electron-builder's
-# `app-builder unpack-electron` extract a tree MISSING the electron binary, so
-# the final `electron` -> `Alice` rename dies with ENOENT and every re-run
-# repeats the broken extraction forever.
-#
-# We deliberately do not validate the zip ourselves: the common
-# prepended/concatenated-junk corruption slips past naive checks, so a
-# self-rolled gate would skip the real-world case. We unconditionally drop the
-# cached electron-*.zip (loose copy and any @electron/get hash-subdir copy) plus
-# the stale unpacked dir, then let the caller retry once - @electron/get
-# re-downloads with its own SHASUM verification, the real source of truth.
-#
-# Returns the removed paths. Best-effort: never throws.
-function Clear-ElectronBuildCache {
-    param([string]$DesktopDir)
-    $removed = @()
-
-    # Per-user Electron download cache dirs, honoring the overrides @electron/get
-    # respects, then the Windows default (%LOCALAPPDATA%\electron\Cache).
-    $cacheDirs = @()
-    if ($env:electron_config_cache) { $cacheDirs += $env:electron_config_cache }
-    if ($env:ELECTRON_CACHE)        { $cacheDirs += $env:ELECTRON_CACHE }
-    if ($env:LOCALAPPDATA)          { $cacheDirs += (Join-Path $env:LOCALAPPDATA 'electron\Cache') }
-    $cacheDirs += (Join-Path $HOME 'AppData\Local\electron\Cache')
-
-    foreach ($dir in $cacheDirs) {
-        if (-not (Test-Path -LiteralPath $dir)) { continue }
-        # Recurse: the bad copy may be the top-level zip OR a copy inside an
-        # @electron/get hash subdir.
-        $removed += @(Get-ChildItem -LiteralPath $dir -Recurse -Filter 'electron-*.zip' -File -ErrorAction SilentlyContinue | ForEach-Object {
-            try { Remove-Item -LiteralPath $_.FullName -Force -ErrorAction Stop; $_.FullName } catch { }
-        })
-    }
-
-    # A half-written unpacked dir from an interrupted prior pack poisons the
-    # rename even after the zip is fixed (win-unpacked / win-arm64-unpacked).
-    $releaseDir = Join-Path $DesktopDir 'release'
-    if (Test-Path -LiteralPath $releaseDir) {
-        $removed += @(Get-ChildItem -LiteralPath $releaseDir -Directory -Filter '*-unpacked' -ErrorAction SilentlyContinue | ForEach-Object {
-            try { Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction Stop; $_.FullName } catch { }
-        })
-    }
-
-    return $removed
-}
-
-# Last-resort Electron mirror after GitHub download fails (#47266).
-$script:DesktopElectronFallbackMirror = "https://npmmirror.com/mirrors/electron/"
-
-# Electron package dir — workspace-local nest first, then root hoist.
-function Get-ElectronDir {
-    param([string]$InstallDir)
-    $desktopLocal = Join-Path $InstallDir 'apps\desktop\node_modules\electron'
-    if (Test-Path -LiteralPath $desktopLocal) { return $desktopLocal }
-    return (Join-Path $InstallDir 'node_modules\electron')
-}
-
-# True when dist/ holds a usable Electron binary (#38673 / run-electron-builder.cjs).
-function Test-ElectronDist {
-    param([string]$InstallDir)
-    $electronDir = Get-ElectronDir -InstallDir $InstallDir
-    $distExe = Join-Path $electronDir 'dist\electron.exe'
-    return (Test-Path -LiteralPath $distExe)
-}
-
-# Best-effort: run electron/install.js to populate dist/ (optional mirror).
-function Restore-ElectronDist {
-    param([string]$InstallDir, [string]$Mirror)
-    if (Test-ElectronDist -InstallDir $InstallDir) { return $true }
-
-    $electronDir = Get-ElectronDir -InstallDir $InstallDir
-    $distExe = Join-Path $electronDir 'dist\electron.exe'
-    $installer = Join-Path $electronDir 'install.js'
-    if (-not (Test-Path -LiteralPath $installer)) { return $false }
-    $node = Get-Command node -ErrorAction SilentlyContinue
-    if (-not $node) { return $false }
-
-    $distDir = Join-Path $electronDir 'dist'
-    if (Test-Path -LiteralPath $distDir) {
-        Remove-Item -LiteralPath $distDir -Recurse -Force -ErrorAction SilentlyContinue
-    }
-    Remove-Item -LiteralPath (Join-Path $electronDir 'path.txt') -Force -ErrorAction SilentlyContinue
-
-    $prevMirror = $env:ELECTRON_MIRROR
-    if ($Mirror) { $env:ELECTRON_MIRROR = $Mirror }
-    try {
-        # Out-Host so the downloader's progress shows on the console WITHOUT
-        # leaking into this function's return value (PowerShell returns every
-        # object left on the output stream, so a bare pipe here would make the
-        # boolean below ambiguous).
-        & $node.Source $installer 2>&1 | ForEach-Object { "$_" } | Out-Host
-    } catch {
-    } finally {
-        $env:ELECTRON_MIRROR = $prevMirror
-    }
-    return (Test-Path -LiteralPath $distExe)
-}
-
-function Test-ElectronPkgStagedMissingDist {
-    param([string]$InstallDir)
-    $electronDir = Get-ElectronDir -InstallDir $InstallDir
-    return (
-        (Test-Path -LiteralPath (Join-Path $electronDir 'package.json')) -and
-        (Test-Path -LiteralPath (Join-Path $electronDir 'install.js')) -and
-        (-not (Test-ElectronDist -InstallDir $InstallDir))
-    )
-}
-
-function Try-RestoreElectronDist {
-    param([string]$InstallDir)
-    if (Restore-ElectronDist -InstallDir $InstallDir) { return $true }
-    if ($env:ELECTRON_MIRROR) { return $false }
-    return Restore-ElectronDist -InstallDir $InstallDir -Mirror $script:DesktopElectronFallbackMirror
-}
-
 function Install-Desktop {
     # Produce a launchable Alice desktop binary. Priority:
     #   1. Prebuilt Wails binary downloaded from the GitHub release (fast, no
     #      toolchain; only available when the checkout sits exactly on a tag)
     #   2. Local Wails build (Go + wails CLI + mingw-w64 GCC present) via
     #      apps/desktop-wails/build.ps1
-    #   3. Legacy Electron build (npm ci + npm run pack -> Alice.exe)
     # The Tauri bootstrap installer's launch_alice_desktop command resolves
     # the binary; Start-Menu/Desktop shortcuts always point at whichever
     # binary won.
@@ -2550,197 +2428,14 @@ function Install-Desktop {
         return
     }
 
-    # --- 3. Legacy Electron build (last resort) -------------------------------
-    Write-Warn "Falling back to the legacy Electron desktop build..."
-    # 1. Workspace-level install so apps/desktop's deps (Electron, Vite,
-    # node-pty prebuilds, etc.) actually land in node_modules. This is
-    # the SAME `npm install` Install-NodeDeps does for browser tools,
-    # but at the root rather than the browser-tools workspace, so all
-    # apps/* workspaces resolve.
-    Write-Info "Installing desktop workspace dependencies (this includes Electron ~150MB, takes 1-3min)..."
-    Push-Location $InstallDir
-    $prevEAP = $ErrorActionPreference
-    try {
-        $ErrorActionPreference = "Continue"
-        # Drop --silent so npm emits its full progress + error trail.
-        # When this fails on a non-dev box (e.g. native-module build
-        # without VS Build Tools, ETARGET on a transitive, etc.), the
-        # actual reason needs to reach the Tauri installer's log; with
-        # --silent it was completely suppressed and the user just saw
-        # "exit 1" with no actionable detail.
-        #
-        # The streaming sink in bootstrap.rs's run_install_script
-        # captures every stdout/stderr line as it's emitted, so we don't
-        # need a side TEMP log file — the installer's bootstrap log
-        # IS the artifact a support engineer reads.
-        #
-        # Prefer `npm ci`: it wipes node_modules and reinstalls from the
-        # lockfile, always producing a complete tree. Bare `npm install`
-        # can report "up to date" against a stale
-        # node_modules\.package-lock.json marker while node_modules is
-        # actually empty (Windows workspace-hoisting flake), leaving
-        # tsc/typescript unresolved so `npm run pack`'s `tsc -b` dies with
-        # no obvious cause. Fall back to `npm install` only if `npm ci`
-        # fails (lockfile out of sync / very old npm without ci).
-        #
-        # Tee the merged output into $npmOut while still emitting every line
-        # live. We don't need a side log file (the bootstrap streaming sink
-        # is the artifact), but on failure we scan $npmOut for the TLS-trust
-        # signature so corporate-proxy users get the NODE_EXTRA_CA_CERTS hint
-        # instead of an opaque "exit 1" (issue #38016).
-        & $npmExe ci 2>&1 | ForEach-Object { "$_" } | Tee-Object -Variable npmOut
-        $code = $LASTEXITCODE
-        if ($code -ne 0) {
-            Write-Info "  npm ci failed (exit $code) -- retrying with npm install..."
-            & $npmExe install 2>&1 | ForEach-Object { "$_" } | Tee-Object -Variable npmOut
-            $code = $LASTEXITCODE
-        }
-        $ErrorActionPreference = $prevEAP
-        if ($code -ne 0) {
-            if (Test-ElectronPkgStagedMissingDist -InstallDir $InstallDir) {
-                Write-Warn "Desktop dependency install failed with a missing Electron dist; attempting self-heal..."
-                Try-RestoreElectronDist -InstallDir $InstallDir | Out-Null
-            } else {
-                Show-NpmCertHint ($npmOut -join "`n") | Out-Null
-                throw "desktop workspace npm install failed (exit $code) -- see lines above for cause"
-            }
-        } else {
-            Write-Success "Desktop workspace dependencies installed"
-        }
-    } catch {
-        if ($prevEAP) { $ErrorActionPreference = $prevEAP }
-        Pop-Location
-        throw
-    }
-    Pop-Location
-
-    # 2. Build apps/desktop. `npm run pack` runs:
-    #      assert-root-install + write-build-stamp + stage-native-deps +
-    #      tsc -b + vite build + electron-builder --dir
-    # The --dir mode produces an unpacked Alice.exe in
-    # apps/desktop/release/win-unpacked/ without bundling NSIS/MSI;
-    # we don't need a distributable installer artifact, just a
-    # launchable binary the Tauri installer can spawn.
-    #
-    # CSC_IDENTITY_AUTO_DISCOVERY=false tells electron-builder we are
-    # NOT signing the output. Combined with signAndEditExecutable=false in
-    # apps/desktop/package.json's build.win block, electron-builder never
-    # invokes signtool and therefore never fetches/extracts winCodeSign
-    # (whose macOS symlinks crash 7-Zip on non-admin Windows — a dead end we
-    # are NOT trying to work around). The Alice icon + product name are
-    # stamped onto Alice.exe by our own rcedit step (Set-DesktopExeIdentity)
-    # AFTER this build, completely decoupled from electron-builder signing.
-    #
-    # WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD explicitly cleared as
-    # belt-and-suspenders: if the user's environment has them set
-    # for some other tool, electron-builder would still try to sign.
-    Write-Info "Building desktop app (this takes 1-3 minutes)..."
-    $buildLog = "$env:TEMP\alice-desktop-build-$(Get-Random).log"
-    Push-Location $desktopDir
-    $prevEAP = $ErrorActionPreference
-    $prevCSCAuto = $env:CSC_IDENTITY_AUTO_DISCOVERY
-    $prevWinCscLink = $env:WIN_CSC_LINK
-    $prevWinCscKeyPassword = $env:WIN_CSC_KEY_PASSWORD
-    try {
-        $ErrorActionPreference = "Continue"
-        $env:CSC_IDENTITY_AUTO_DISCOVERY = "false"
-        $env:WIN_CSC_LINK = ""
-        $env:WIN_CSC_KEY_PASSWORD = ""
-        & $npmExe run pack 2>&1 | ForEach-Object { "$_" } | Tee-Object -FilePath $buildLog
-        $code = $LASTEXITCODE
-        if ($code -ne 0) {
-            $purged = @()
-            $restored = $false
-            if (-not (Test-ElectronDist -InstallDir $InstallDir)) {
-                $purged = @(Clear-ElectronBuildCache -DesktopDir $desktopDir)
-                $restored = Restore-ElectronDist -InstallDir $InstallDir
-            }
-            if ($restored) {
-                Write-Warn "Desktop build failed - refreshed the Electron download, retrying once:"
-                foreach ($p in $purged) { Write-Info "  - $p" }
-                & $npmExe run pack 2>&1 | ForEach-Object { "$_" } | Tee-Object -FilePath $buildLog
-                $code = $LASTEXITCODE
-            }
-        }
-        if ($code -ne 0 -and -not $env:ELECTRON_MIRROR) {
-            $mirror = $script:DesktopElectronFallbackMirror
-            Write-Warn "Desktop build still failing - the Electron download from GitHub looks blocked."
-            Write-Warn "Re-downloading Electron via a public mirror ($mirror), then rebuilding:"
-            Write-Info "  (set ELECTRON_MIRROR yourself to use a different/trusted mirror)"
-            if (-not (Test-ElectronDist -InstallDir $InstallDir)) {
-                Restore-ElectronDist -InstallDir $InstallDir -Mirror $mirror | Out-Null
-            }
-            $prevMirror = $env:ELECTRON_MIRROR
-            $env:ELECTRON_MIRROR = $mirror
-            try {
-                & $npmExe run pack 2>&1 | ForEach-Object { "$_" } | Tee-Object -FilePath $buildLog
-                $code = $LASTEXITCODE
-            } finally {
-                $env:ELECTRON_MIRROR = $prevMirror
-            }
-        }
-        $ErrorActionPreference = $prevEAP
-        if ($code -ne 0) {
-            $errText = Get-Content $buildLog -Raw -ErrorAction SilentlyContinue
-            if ($errText) {
-                $snippet = if ($errText.Length -gt 1800) { $errText.Substring(0, 1800) + "..." } else { $errText }
-                Write-Info "  desktop build output:"
-                foreach ($line in $snippet -split "`n") { Write-Host "    $line" -ForegroundColor DarkGray }
-                Write-Info "  Full log: $buildLog"
-            }
-            throw "apps/desktop build failed (exit $code)"
-        }
-        Write-Success "Desktop app built"
-        Remove-Item -Force $buildLog -ErrorAction SilentlyContinue
-    } catch {
-        if ($prevEAP) { $ErrorActionPreference = $prevEAP }
-        Pop-Location
-        throw
-    } finally {
-        # Restore env to whatever the caller had — don't leak our
-        # signing-off override into anything install.ps1 invokes later
-        # (Stage-PlatformSdks, etc.).
-        $env:CSC_IDENTITY_AUTO_DISCOVERY = $prevCSCAuto
-        $env:WIN_CSC_LINK = $prevWinCscLink
-        $env:WIN_CSC_KEY_PASSWORD = $prevWinCscKeyPassword
-    }
-    Pop-Location
-
-    # 3. Sanity-check the produced binary. Probe both arches so this works
-    # on x64 and arm64 build machines.
-    $exeCandidates = @(
-        "$desktopDir\release\win-unpacked\Alice.exe",
-        "$desktopDir\release\win-arm64-unpacked\Alice.exe"
-    )
-    $found = $false
-    $desktopExe = $null
-    foreach ($cand in $exeCandidates) {
-        if (Test-Path $cand) {
-            Write-Success "Desktop ready: $cand"
-            $desktopExe = $cand
-            $found = $true
-            break
-        }
-    }
-    if (-not $found) {
-        throw "Desktop build completed but no Alice.exe was found under $desktopDir\release\*-unpacked\"
-    }
-
-    # 3b. The Alice icon + identity are stamped onto Alice.exe by the
-    #     electron-builder `afterPack` hook (apps/desktop/scripts/after-pack.cjs)
-    #     during `npm run pack` above — for every build, so the installer's
-    #     --update rebuild stays branded too. No separate stamp step needed here.
-    #     electron-builder's own rcedit step stays disabled (signAndEditExecutable
-    #     =false) because enabling it drags in signtool -> winCodeSign -> the
-    #     unfixable symlink crash; the afterPack hook runs rcedit directly.
-
-    # 4. Create Start Menu + Desktop shortcuts pointing DIRECTLY at the packed
-    #    Alice.exe. We deliberately do NOT point them at `alice desktop`: that
-    #    command rebuilds (npm install + electron-builder) on every launch,
-    #    which would cost minutes each time. The packed exe is the consumer —
-    #    launching it directly is instant, and updates flow through the
-    #    installer's --update path (which rebuilds once, then relaunches).
-    New-DesktopShortcuts -TargetExe $desktopExe
+    # --- 3. No Wails binary available -----------------------------------------
+    # Neither the prebuilt download nor a local Go toolchain produced a Wails
+    # binary. The legacy Electron fallback was removed with the Electron
+    # deprecation — surface an actionable message instead of building a shell
+    # we no longer ship.
+    Write-Warn "Could not build the Wails desktop app (prebuilt download and local Go toolchain both failed)."
+    Write-Info "  Install Go + mingw-w64 and re-run the installer, or launch it later with: alice desktop"
+    $script:_StageSkippedReason = "Wails desktop build unavailable"
 }
 
 # Get-DesktopWailsReleaseTag resolves the exact tag the checkout sits on.

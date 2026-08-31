@@ -133,6 +133,14 @@ To launch via the CLI, simply run `alice desktop`. By default it installs worksp
 Node dependencies, builds the **Wails** desktop binary (`apps/desktop-wails/`), then
 launches it. The legacy Electron shell is still available via `--electron`.
 
+:::note
+**Electron is end-of-life on Windows.** Since Alice 0.19.0 the desktop
+self-update runs inside the Wails shell (`UpdateService`), the electron-builder
+NSIS/MSI installer pipeline is deprecated, and the Windows installer
+(Alice-Setup.exe) only produces/launches the Wails binary. The `--electron`
+flag remains only as a temporary escape hatch for source checkouts.
+::: 
+
 | Flag                 | Description                                                                               |
 | -------------------- | ----------------------------------------------------------------------------------------- |
 | `--wails`            | Launch the Wails Go shell (this is the default; the flag exists for explicitness)         |
@@ -286,7 +294,8 @@ Build installers:
 
 ```bash
 npm run dist:mac     # DMG + zip
-npm run dist:win     # NSIS + MSI
+# npm run dist:win* was removed — the Windows desktop ships as the Wails
+# binary (see build-desktop-windows.yml wails-build job)
 npm run dist:linux   # AppImage + deb + rpm
 npm run pack         # unpacked app under release/ (no installer)
 ```
