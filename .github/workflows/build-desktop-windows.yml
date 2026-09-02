@@ -62,7 +62,7 @@ jobs:
           cache-dependency-path: apps/desktop-wails/go.sum
 
       - name: Install mingw-w64 GCC (Wails v2 links CGO on Windows)
-        uses: egor-tensin/setup-mingw@v2  # v2.2.0
+        uses: egor-tensin/setup-mingw@41b837e47d7f85214629d255b9c4bc3fcbe9fd63 # v3.0
         with:
           platform: x64
 
