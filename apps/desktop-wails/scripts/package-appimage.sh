@@ -15,7 +15,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 BIN="${1:-$(pwd)/build/bin/alice-desktop}"
-VERSION="${2:-0.23.0}"
+VERSION="${2:-0.23.1}"
 ARCH=$(uname -m)
 case "$ARCH" in
   x86_64) APPIMAGE_ARCH="x86_64" ;;
