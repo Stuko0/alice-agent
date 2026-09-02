@@ -34,6 +34,7 @@ concurrency:
   group: build-desktop-${{ github.ref }}
   cancel-in-progress: true
 
+jobs:
   wails-build:
     name: Build Wails desktop binary
     runs-on: windows-latest
