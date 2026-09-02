@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://alice-agent.stuko.dev/en/docs/"><img src="https://img.shields.io/badge/Docs-alice--agent.stuko.dev-FFD700?style=for-the-badge" alt="Documentation"></a>
   <a href="https://discord.gg/Stuko"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="https://10.1.200.116:3000/arquant-admin/NewAlice/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://github.com/Stuko0/alice-agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
   <a href="https://stuko.dev"><img src="https://img.shields.io/badge/Built%20by-Stuko0-blueviolet?style=for-the-badge" alt="Built by Stuko"></a>
   <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/Lang-中文-red?style=for-the-badge" alt="中文"></a>
   <a href="README.ur-pk.md"><img src="https://img.shields.io/badge/Lang-اردو-green?style=for-the-badge" alt="اردو"></a>
@@ -18,7 +18,7 @@
 
 **The self-improving AI agent built by [Stuko](https://stuko.dev).** It's the only agent with a built-in learning loop — it creates skills from experience, improves them during use, nudges itself to persist knowledge, searches its own past conversations, and builds a deepening model of who you are across sessions. Run it on a $5 VPS, a GPU cluster, or serverless infrastructure that costs nearly nothing when idle. It's not tied to your laptop — talk to it from Telegram while it works on a cloud VM.
 
-Use any model you want — OpenRouter, OpenAI, your own endpoint, and [many others](https://alice-agent.stuko.dev/en/docs/integrations/providers). Switch with `alice model` — no code changes, no lock-in.
+Use any model you want — OpenRouter, OpenAI, your own endpoint, and [many others](https://alice-agent.stuko.dev/en/docs/). Switch with `alice model` — no code changes, no lock-in.
 
 <table>
 <tr><td><b>A real terminal interface</b></td><td>Full TUI with multiline editing, slash-command autocomplete, conversation history, interrupt-and-redirect, and streaming tool output.</td></tr>
@@ -54,7 +54,7 @@ The installer handles everything: uv, Python 3.11, Node.js, ripgrep, ffmpeg, **a
 
 If you already have Git installed, the installer detects it and uses that instead. Otherwise a ~45MB MinGit download is all you need — it won't touch or interfere with any system Git.
 
-> **Android / Termux:** The tested manual path is documented in the [Termux guide](https://alice-agent.stuko.dev/en/docs/getting-started/termux). On Termux, Alice installs a curated `.[termux]` extra because the full `.[all]` extra currently pulls Android-incompatible voice dependencies.
+> **Android / Termux:** The tested manual path is documented in the [full docs](https://alice-agent.stuko.dev/en/docs/). On Termux, Alice installs a curated `.[termux]` extra because the full `.[all]` extra currently pulls Android-incompatible voice dependencies.
 >
 > **Windows:** Native Windows is fully supported — the PowerShell one-liner above installs everything. If you'd rather use WSL2, the Linux command works there too. Native Windows install lives under `%LOCALAPPDATA%\alice`; WSL2 installs under `~/.alice` as on Linux.
 
@@ -120,7 +120,7 @@ alice doctor       # Diagnose any issues
 
 ---
 
-Configure model providers, toolsets, and messaging channels using `alice setup` or `alice model`. Full details on the [Tool Gateway docs page](https://alice-agent.stuko.dev/en/docs/user-guide/features/tool-gateway).
+Configure model providers, toolsets, and messaging channels using `alice setup` or `alice model`. Full details on the [docs](https://alice-agent.stuko.dev/en/docs/).
 
 You can bring your own keys per-tool whenever you want — tool configuration is per-backend, not all-or-nothing.
 
@@ -142,7 +142,7 @@ Alice has two entry points: start the terminal UI with `alice`, or run the gatew
 | Interrupt current work         | `Ctrl+C` or send a new message                | `/stop` or send a new message                                                    |
 | Platform-specific status       | `/platforms`                                  | `/status`, `/sethome`                                                            |
 
-For the full command lists, see the [CLI guide](https://alice-agent.stuko.dev/en/docs/user-guide/cli) and the [Messaging Gateway guide](https://alice-agent.stuko.dev/en/docs/user-guide/messaging).
+For the full command lists, see the [CLI docs](https://alice-agent.stuko.dev/en/docs/) and the [Messaging Gateway guide](https://alice-agent.stuko.dev/en/docs/).
 
 ---
 
@@ -152,21 +152,21 @@ All documentation lives at **[alice-agent.stuko.dev/en/docs](https://alice-agent
 
 | Section                                                                                             | What's Covered                                             |
 | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| [Quickstart](https://alice-agent.stuko.dev/en/docs/getting-started/quickstart)                 | Install → setup → first conversation in 2 minutes          |
-| [CLI Usage](https://alice-agent.stuko.dev/en/docs/user-guide/cli)                              | Commands, keybindings, personalities, sessions             |
-| [Configuration](https://alice-agent.stuko.dev/en/docs/user-guide/configuration)                | Config file, providers, models, all options                |
-| [Messaging Gateway](https://alice-agent.stuko.dev/en/docs/user-guide/messaging)                | Telegram, Discord, Slack, WhatsApp, Signal, Home Assistant |
-| [Security](https://alice-agent.stuko.dev/en/docs/user-guide/security)                          | Command approval, DM pairing, container isolation          |
-| [Tools & Toolsets](https://alice-agent.stuko.dev/en/docs/user-guide/features/tools)            | 40+ tools, toolset system, terminal backends               |
-| [Skills System](https://alice-agent.stuko.dev/en/docs/user-guide/features/skills)              | Procedural memory, Skills Hub, creating skills             |
-| [Memory](https://alice-agent.stuko.dev/en/docs/user-guide/features/memory)                     | Persistent memory, user profiles, best practices           |
-| [MCP Integration](https://alice-agent.stuko.dev/en/docs/user-guide/features/mcp)               | Connect any MCP server for extended capabilities           |
-| [Cron Scheduling](https://alice-agent.stuko.dev/en/docs/user-guide/features/cron)              | Scheduled tasks with platform delivery                     |
-| [Context Files](https://alice-agent.stuko.dev/en/docs/user-guide/features/context-files)       | Project context that shapes every conversation             |
-| [Architecture](https://alice-agent.stuko.dev/en/docs/developer-guide/architecture)             | Project structure, agent loop, key classes                 |
-| [Contributing](https://alice-agent.stuko.dev/en/docs/developer-guide/contributing)             | Development setup, PR process, code style                  |
-| [CLI Reference](https://alice-agent.stuko.dev/en/docs/reference/cli-commands)                  | All commands and flags                                     |
-| [Environment Variables](https://alice-agent.stuko.dev/en/docs/reference/environment-variables) | Complete env var reference                                 |
+| [Quickstart](https://alice-agent.stuko.dev/en/docs/)                 | Install → setup → first conversation in 2 minutes          |
+| [CLI Usage](https://alice-agent.stuko.dev/en/docs/)                  | Commands, keybindings, personalities, sessions             |
+| [Configuration](https://alice-agent.stuko.dev/en/docs/)              | Config file, providers, models, all options                |
+| [Messaging Gateway](https://alice-agent.stuko.dev/en/docs/)          | Telegram, Discord, Slack, WhatsApp, Signal, Home Assistant |
+| [Security](https://alice-agent.stuko.dev/en/docs/)                   | Command approval, DM pairing, container isolation          |
+| [Tools & Toolsets](https://alice-agent.stuko.dev/en/docs/)           | 40+ tools, toolset system, terminal backends               |
+| [Skills System](https://alice-agent.stuko.dev/en/docs/)              | Procedural memory, Skills Hub, creating skills             |
+| [Memory](https://alice-agent.stuko.dev/en/docs/)                     | Persistent memory, user profiles, best practices           |
+| [MCP Integration](https://alice-agent.stuko.dev/en/docs/)            | Connect any MCP server for extended capabilities           |
+| [Cron Scheduling](https://alice-agent.stuko.dev/en/docs/)            | Scheduled tasks with platform delivery                     |
+| [Context Files](https://alice-agent.stuko.dev/en/docs/)              | Project context that shapes every conversation             |
+| [Architecture](https://alice-agent.stuko.dev/en/docs/)               | Project structure, agent loop, key classes                 |
+| [Contributing](https://alice-agent.stuko.dev/en/docs/)               | Development setup, PR process, code style                  |
+| [CLI Reference](https://alice-agent.stuko.dev/en/docs/)              | All commands and flags                                     |
+| [Environment Variables](https://alice-agent.stuko.dev/en/docs/)      | Complete env var reference                                 |
 
 ---
 
