@@ -24,6 +24,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import textwrap
 import time
 from pathlib import Path
@@ -34,7 +35,10 @@ import pytest
 # Both tests share the same handoff file: the leaker writes here, the
 # verifier reads here. We park it in $TMPDIR with a unique-per-run name
 # so concurrent invocations of the suite don't clobber each other.
-_HANDOFF_DIR = Path(os.environ.get("TMPDIR", "/tmp")) / "alice-isolation-probe"
+# tempfile.gettempdir() honors TMPDIR/TMP/TEMP on every platform; a
+# hardcoded "/tmp" fallback breaks collection on Windows (WinError 3,
+# "\tmp" on the current drive doesn't exist).
+_HANDOFF_DIR = Path(os.environ.get("TMPDIR") or tempfile.gettempdir()) / "alice-isolation-probe"
 _HANDOFF_DIR.mkdir(exist_ok=True)
 
 
@@ -214,6 +218,9 @@ def _make_probe_dir(tmp_path: Path) -> Path:
 def _run_runner(probe_dir: Path, *extra: str) -> subprocess.CompletedProcess:
     repo_root = Path(__file__).resolve().parent.parent
     runner = repo_root / "scripts" / "run_tests_parallel.py"
+    # encoding="utf-8": the runner reconfigures its own stdout to UTF-8 on
+    # every platform; a bare text=True would decode with the Windows ANSI
+    # code page (cp1252) and mangle the ✓ glyphs the assertions look for.
     return subprocess.run(
         [sys.executable, str(runner), "--paths", str(probe_dir),
          "-j", "1", "--file-timeout", "30", *extra],
@@ -221,6 +228,8 @@ def _run_runner(probe_dir: Path, *extra: str) -> subprocess.CompletedProcess:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=60,
     )
 
@@ -271,7 +280,7 @@ def test_positional_path_not_treated_as_flag(tmp_path: Path) -> None:
         [sys.executable, str(runner), str(probe_dir), "-j", "1",
          "--file-timeout", "30", "-q"],
         cwd=repo_root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        text=True, timeout=60,
+        text=True, encoding="utf-8", errors="replace", timeout=60,
     )
     assert proc.returncode == 0, proc.stdout
     # Discovery found the probe file (2 tests), proving the positional path

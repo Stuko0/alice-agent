@@ -7030,7 +7030,7 @@ def _xai_oauth_exchange_code_for_tokens(
         raise AuthError(
             "xAI token exchange refused locally: PKCE code_verifier is empty. "
             "This is a bug in Alice — please report at "
-            "https://10.1.200.116:3000/arquant-admin/NewAlice/issues/26990.",
+            "https://github.com/Stuko0/alice-agent/issues/26990.",
             provider="xai-oauth",
             code="xai_pkce_verifier_missing",
         )

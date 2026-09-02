@@ -1,7 +1,9 @@
 """Shared SKILL.md preprocessing helpers."""
 
 import logging
+import os
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -62,6 +64,50 @@ def substitute_template_vars(
     return _SKILL_TEMPLATE_RE.sub(_replace, content)
 
 
+def _find_windows_bash() -> str | None:
+    """Locate bash.exe on Windows even when Git's bin dir is not on PATH.
+
+    SSH sessions and service contexts often lack the Git PATH entries an
+    interactive shell has, so probe the usual Git-for-Windows install
+    locations directly before giving up on bash.
+    """
+    candidates = []
+    program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+    program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
+    local_appdata = os.environ.get("LOCALAPPDATA", "")
+    if program_files:
+        candidates.append(Path(program_files) / "Git" / "bin" / "bash.exe")
+        candidates.append(Path(program_files) / "Git" / "usr" / "bin" / "bash.exe")
+    if program_files_x86:
+        candidates.append(Path(program_files_x86) / "Git" / "bin" / "bash.exe")
+    if local_appdata:
+        candidates.append(Path(local_appdata) / "Programs" / "Git" / "bin" / "bash.exe")
+    for candidate in candidates:
+        try:
+            if candidate.is_file():
+                return str(candidate)
+        except OSError:
+            continue
+    return None
+
+
+def _inline_shell_command(command: str) -> list[str]:
+    """Build the argv that runs an inline-shell snippet.
+
+    Prefer bash (the snippets are written for POSIX sh: ``$(...)``,
+    ``pwd``, ``sleep``, pipes). Git-for-Windows ships bash.exe; it is on
+    PATH in interactive shells and locatable via the standard install dirs
+    otherwise. Without bash we fall back to cmd.exe so trivial snippets
+    (``echo``) still expand, at the cost of POSIX-isms.
+    """
+    bash = shutil.which("bash") or (_find_windows_bash() if IS_WINDOWS else None)
+    if bash:
+        return [bash, "-c", command]
+    if IS_WINDOWS:
+        return ["cmd", "/d", "/s", "/c", command]
+    return ["sh", "-c", command]
+
+
 def run_inline_shell(command: str, cwd: Path | None, timeout: int) -> str:
     """Execute a single inline-shell snippet and return its stdout (trimmed).
 
@@ -71,7 +117,7 @@ def run_inline_shell(command: str, cwd: Path | None, timeout: int) -> str:
     _popen_kwargs = {"creationflags": windows_hide_flags()} if IS_WINDOWS else {}
     try:
         completed = subprocess.run(
-            ["bash", "-c", command],
+            _inline_shell_command(command),
             cwd=str(cwd) if cwd else None,
             capture_output=True,
             text=True,

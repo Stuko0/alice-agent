@@ -43,8 +43,8 @@ NC='\033[0m' # No Color
 BOLD='\033[1m'
 
 # Configuration
-REPO_URL_SSH="git@github.com:arquant-admin/NewAlice.git"
-REPO_URL_HTTPS="https://10.1.200.116:3000/arquant-admin/NewAlice.git"
+REPO_URL_SSH="git@github.com:Stuko0/alice-agent.git"
+REPO_URL_HTTPS="https://github.com/Stuko0/alice-agent.git"
 ALICE_HOME="${ALICE_HOME:-$HOME/.alice}"
 # INSTALL_DIR is resolved AFTER arg parsing and OS detection so we can pick an
 # FHS-style layout for root installs.  Track whether the user gave us an

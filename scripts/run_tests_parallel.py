@@ -592,6 +592,16 @@ def _slice_files(
 
 
 def main() -> int:
+    # Windows consoles default to a legacy code page (cp1252) that cannot
+    # encode the ✓/✗ glyphs used in progress output; the resulting
+    # UnicodeEncodeError fires inside Future callbacks and kills the run.
+    # Reconfigure the streams to UTF-8 before anything prints.
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,

@@ -103,8 +103,13 @@ class TestSaveUrlImage:
         assert path.exists()
         assert path.read_bytes() == PNG_1PX
         # The cache directory must be under ALICE_HOME — gateway cleanup
-        # relies on this being the canonical location.
-        assert "cache/images" in str(path)
+        # relies on this being the canonical location. Compare path parts,
+        # not the raw string, so backslash-separated Windows paths match too.
+        parts = path.parts
+        assert any(
+            parts[i] == "cache" and parts[i + 1] == "images"
+            for i in range(len(parts) - 1)
+        )
         assert path.suffix == ".png"
 
     def test_extension_inferred_from_content_type(self, http_server):

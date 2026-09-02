@@ -6368,7 +6368,7 @@ def _update_via_zip(args):
         )
         sys.exit(1)
     zip_url = (
-        f"https://10.1.200.116:3000/arquant-admin/NewAlice/archive/refs/heads/{branch}.zip"
+        f"https://github.com/Stuko0/alice-agent/archive/refs/heads/{branch}.zip"
     )
 
     print("→ Downloading latest version...")
@@ -6776,12 +6776,17 @@ def _discard_stashed_changes(
 # =========================================================================
 
 OFFICIAL_REPO_URLS = {
+    "https://github.com/Stuko0/alice-agent.git",
+    "git@github.com:Stuko0/alice-agent.git",
+    "https://github.com/Stuko0/alice-agent",
+    "git@github.com:Stuko0/alice-agent",
+    # Legacy Gitea URLs (back-compat for existing forks)
     "https://10.1.200.116:3000/arquant-admin/NewAlice.git",
     "git@github.com:arquant-admin/NewAlice.git",
     "https://10.1.200.116:3000/arquant-admin/NewAlice",
     "git@github.com:arquant-admin/NewAlice",
 }
-OFFICIAL_REPO_URL = "https://10.1.200.116:3000/arquant-admin/NewAlice.git"
+OFFICIAL_REPO_URL = "https://github.com/Stuko0/alice-agent.git"
 SKIP_UPSTREAM_PROMPT_FILE = ".skip_upstream_prompt"
 
 
@@ -6929,7 +6934,7 @@ def _sync_with_upstream_if_needed(git_cmd: list[str], cwd: Path) -> None:
             print("→ Adding upstream remote...")
             if _add_upstream_remote(git_cmd, cwd):
                 print(
-                    "  ✓ Added upstream: https://10.1.200.116:3000/arquant-admin/NewAlice.git"
+                    "  ✓ Added upstream: https://github.com/Stuko0/alice-agent.git"
                 )
                 has_upstream = True
             else:
@@ -6937,7 +6942,7 @@ def _sync_with_upstream_if_needed(git_cmd: list[str], cwd: Path) -> None:
                 return
         else:
             print(
-                "  Skipped. Run 'git remote add upstream https://10.1.200.116:3000/arquant-admin/NewAlice.git' to add later."
+                "  Skipped. Run 'git remote add upstream https://github.com/Stuko0/alice-agent.git' to add later."
             )
             _mark_skip_upstream_prompt()
             return

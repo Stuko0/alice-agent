@@ -111,6 +111,7 @@ import logging
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -415,6 +416,57 @@ def _parse_single_entry(
 _TOP_LEVEL_PAYLOAD_KEYS = {"tool_name", "args", "session_id", "parent_session_id"}
 
 
+def _shebang_interpreter(argv: list[str]) -> Optional[list[str]]:
+    """Return an interpreter argv when argv[0] is a shebang script Windows
+    can't execute natively.
+
+    POSIX systems honor ``#!/usr/bin/env bash`` at the kernel level; Windows
+    raises FileNotFoundError. Detect a text file whose first line is a
+    shebang and return the interpreter argv that should run it (resolved
+    against PATH and the usual Git-for-Windows install dirs). Returns
+    ``None`` when the target is a native executable or no interpreter is
+    found, leaving the original behavior in place.
+    """
+    if not argv:
+        return None
+    target = argv[0]
+    if os.path.isdir(target) or not os.path.isfile(target):
+        return None
+    try:
+        with open(target, "r", encoding="utf-8", errors="replace") as fh:
+            first = fh.readline()
+    except OSError:
+        return None
+    if not first.startswith("#!"):
+        return None
+    shebang = first[2:].strip()
+    parts = shlex.split(shebang)
+    if not parts:
+        return None
+    # ``#!/usr/bin/env bash`` → interpreter is bash; ``#!/usr/bin/env -S x``
+    # → first non-flag token after env.
+    if parts[0] == "env":
+        rest = [p for p in parts[1:] if not p.startswith("-")]
+        if not rest:
+            return None
+        parts = rest
+    interp = parts[0]
+    resolved: Optional[str] = None
+    if os.path.sep in interp or (os.path.altsep and os.path.altsep in interp):
+        if os.path.isfile(interp):
+            resolved = interp
+    else:
+        resolved = shutil.which(interp)
+        if resolved is None and IS_WINDOWS:
+            from agent.skill_preprocessing import _find_windows_bash
+
+            if interp in ("bash", "sh", "dash", "ksh", "zsh"):
+                resolved = _find_windows_bash()
+    if resolved is None:
+        return None
+    return [resolved, *parts[1:], target, *argv[1:]]
+
+
 def _spawn(spec: ShellHookSpec, stdin_json: str) -> Dict[str, Any]:
     """Run ``spec.command`` as a subprocess with ``stdin_json`` on stdin.
 
@@ -441,6 +493,26 @@ def _spawn(spec: ShellHookSpec, stdin_json: str) -> Dict[str, Any]:
     if not argv:
         result["error"] = "empty command"
         return result
+
+    # POSIX-mode shlex eats backslashes, so a Windows path like
+    # ``C:\Users\x\hook.sh`` tokenizes to ``C:Usersxhook.sh``. Re-tokenize
+    # with unescaping disabled on Windows and strip the quotes shlex keeps.
+    if IS_WINDOWS:
+        try:
+            raw_tokens = shlex.split(os.path.expanduser(spec.command), posix=False)
+        except ValueError:
+            raw_tokens = []
+        stripped = [t.strip("\"'") for t in raw_tokens if t.strip("\"'")]
+        if stripped:
+            argv = stripped
+
+    # On Windows a ``#!/usr/bin/env bash`` script can't be exec'd directly —
+    # resolve the interpreter from the shebang and run the script through it.
+    # On POSIX the kernel already handles shebangs; skip the extra work.
+    if IS_WINDOWS:
+        resolved_argv = _shebang_interpreter(argv)
+        if resolved_argv is not None:
+            argv = resolved_argv
 
     t0 = time.monotonic()
     _popen_kwargs = {"creationflags": windows_hide_flags()} if IS_WINDOWS else {}

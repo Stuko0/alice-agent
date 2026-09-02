@@ -13,9 +13,19 @@ Fix: _search_files (find) and _search_with_grep both now exclude hidden
 directories, matching ripgrep's default behavior.
 """
 
+import shutil
 import subprocess
+import sys
 
 import pytest
+
+# `find` / `grep` are POSIX utilities; on Windows they don't exist (or are
+# shadowed by incompatible aliases), so the shell-out tests are skipped.
+# The crash at collection time on Windows used to come from the `which rg`
+# probe — subprocess.run(["which", ...]) raises WinError 2 because there
+# is no `which` binary. shutil.which() probes PATH portably and
+# sys.platform needs no subprocess at all.
+_IS_POSIX = sys.platform != "win32"
 
 
 @pytest.fixture
@@ -44,6 +54,7 @@ def searchable_tree(tmp_path):
 class TestFindExcludesHiddenDirs:
     """_search_files uses find, which should exclude hidden directories."""
 
+    @pytest.mark.skipif(not _IS_POSIX, reason="find is a POSIX utility")
     def test_find_skips_hub_cache_files(self, searchable_tree):
         """find should not return files from .hub/ directory."""
         cmd = (
@@ -53,6 +64,7 @@ class TestFindExcludesHiddenDirs:
         assert "catalog.json" not in result.stdout
         assert ".hub" not in result.stdout
 
+    @pytest.mark.skipif(not _IS_POSIX, reason="find is a POSIX utility")
     def test_find_skips_git_internals(self, searchable_tree):
         """find should not return files from .git/ directory."""
         cmd = (
@@ -62,6 +74,7 @@ class TestFindExcludesHiddenDirs:
         assert "pack-abc.idx" not in result.stdout
         assert ".git" not in result.stdout
 
+    @pytest.mark.skipif(not _IS_POSIX, reason="find is a POSIX utility")
     def test_find_still_returns_visible_files(self, searchable_tree):
         """find should still return files from visible directories."""
         cmd = (
@@ -74,6 +87,7 @@ class TestFindExcludesHiddenDirs:
 class TestGrepExcludesHiddenDirs:
     """_search_with_grep should exclude hidden directories."""
 
+    @pytest.mark.skipif(not _IS_POSIX, reason="grep is a POSIX utility")
     def test_grep_skips_hub_cache(self, searchable_tree):
         """grep --exclude-dir should skip .hub/ directory."""
         cmd = (
@@ -84,6 +98,7 @@ class TestGrepExcludesHiddenDirs:
         assert ".hub" not in result.stdout
         assert "catalog.json" not in result.stdout
 
+    @pytest.mark.skipif(not _IS_POSIX, reason="grep is a POSIX utility")
     def test_grep_still_finds_visible_content(self, searchable_tree):
         """grep should still find content in visible directories."""
         cmd = (
@@ -97,7 +112,7 @@ class TestRipgrepAlreadyExcludesHidden:
     """Verify ripgrep's default behavior is to skip hidden directories."""
 
     @pytest.mark.skipif(
-        subprocess.run(["which", "rg"], capture_output=True).returncode != 0,
+        shutil.which("rg") is None,
         reason="ripgrep not installed",
     )
     def test_rg_skips_hub_by_default(self, searchable_tree):
@@ -110,7 +125,7 @@ class TestRipgrepAlreadyExcludesHidden:
         assert "catalog.json" not in result.stdout
 
     @pytest.mark.skipif(
-        subprocess.run(["which", "rg"], capture_output=True).returncode != 0,
+        shutil.which("rg") is None,
         reason="ripgrep not installed",
     )
     def test_rg_finds_visible_content(self, searchable_tree):

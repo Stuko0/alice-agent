@@ -332,6 +332,11 @@ async def test_blocks_sensitive_home_and_alice_paths(tmp_path: Path, monkeypatch
     from agent.context_references import preprocess_context_references_async
 
     monkeypatch.setenv("HOME", str(tmp_path))
+    # Windows expanduser() prefers USERPROFILE over HOME; POSIX uses HOME.
+    # Mock both so the sensitive-path guard resolves the fake home on every
+    # platform (with only HOME set, Windows resolves the real
+    # C:\Users\<user> and the .ssh key is not blocked).
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     monkeypatch.setenv("ALICE_HOME", str(tmp_path / ".alice"))
 
     alice_env = tmp_path / ".alice" / ".env"

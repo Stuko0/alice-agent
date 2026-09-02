@@ -8,6 +8,7 @@ blocks completion, and never upgrades targeted checks into "repo green".
 from __future__ import annotations
 
 import json
+import os
 import re
 import shlex
 import sqlite3
@@ -131,8 +132,23 @@ def _split_segment_tokens(command: str) -> list[list[str]]:
             tokens = shlex.split(segment)
         except ValueError:
             continue
-        if tokens:
-            segments.append(tokens)
+        if not tokens:
+            continue
+        # POSIX-mode shlex eats backslashes: on Windows a script path like
+        # ``C:\Users\x\alice-ad-hoc-...py`` tokenizes to ``C:Usersx...``,
+        # which no path check downstream can recognize. Retry with posix
+        # unescaping disabled and strip the quotes shlex keeps in that mode;
+        # on non-Windows there are no backslash separators to lose.
+        if os.name == "nt":
+            try:
+                raw = shlex.split(segment, posix=False)
+            except ValueError:
+                raw = []
+            stripped = [t.strip("\"'") for t in raw if t.strip("\"'")]
+            if stripped:
+                segments.append(stripped)
+                continue
+        segments.append(tokens)
     return segments
 
 

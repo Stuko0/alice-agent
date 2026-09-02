@@ -130,7 +130,7 @@ _UPDATE_CHECK_CACHE_SECONDS = 6 * 3600
 # (e.g. nix-built alice — no local git history to count against).
 UPDATE_AVAILABLE_NO_COUNT = -1
 
-_UPSTREAM_REPO_URL = "https://10.1.200.116:3000/arquant-admin/NewAlice.git"
+_UPSTREAM_REPO_URL = "https://github.com/Stuko0/alice-agent.git"
 _OFFICIAL_REPO_CANONICAL = "github.com/stuk0o/alice-agent"
 
 
@@ -486,7 +486,7 @@ def get_git_banner_state(repo_dir: Optional[Path] = None) -> Optional[dict]:
     return {"upstream": upstream, "local": local, "ahead": max(ahead, 0)}
 
 
-_RELEASE_URL_BASE = "https://10.1.200.116:3000/arquant-admin/NewAlice/releases/tag"
+_RELEASE_URL_BASE = "https://github.com/Stuko0/alice-agent/releases/tag"
 _latest_release_cache: Optional[tuple] = None  # (tag, url) once resolved
 
 

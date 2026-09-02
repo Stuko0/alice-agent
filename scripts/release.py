@@ -2094,7 +2094,7 @@ def get_pr_number(subject: str) -> str | None:
     return None
 
 
-def generate_changelog(commits, tag_name, semver, repo_url="https://10.1.200.116:3000/arquant-admin/NewAlice",
+def generate_changelog(commits, tag_name, semver, repo_url="https://github.com/Stuko0/alice-agent",
                        prev_tag=None, first_release=False):
     """Generate markdown changelog from categorized commits."""
     lines = []

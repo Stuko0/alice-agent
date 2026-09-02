@@ -13,7 +13,7 @@ import urllib.request
 
 DEFAULT_UA = (
     "alice-osint-investigation/0.2 "
-    "(+https://10.1.200.116:3000/arquant-admin/NewAlice; "
+    "(+https://github.com/Stuko0/alice-agent; "
     "set ALICE_OSINT_UA env var to identify yourself per "
     "Wikimedia / SEC fair-use guidance)"
 )

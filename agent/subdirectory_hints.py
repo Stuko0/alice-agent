@@ -153,18 +153,34 @@ class SubdirectoryHintTracker:
             tokens = shlex.split(cmd)
         except ValueError:
             tokens = cmd.split()
+        # shlex in posix mode eats backslashes: ``C:\\Users\\x`` comes back
+        # as ``C:Usersx``. On Windows a command string can carry either
+        # separator, so retry without posix-mode unescaping and keep the
+        # backslashed token too.
+        win_tokens: list[str] = []
+        if os.name == "nt":
+            try:
+                win_tokens = shlex.split(cmd, posix=False)
+            except ValueError:
+                win_tokens = []
+        else:
+            win_tokens = []
 
-        for token in tokens:
+        for token in (*tokens, *win_tokens):
+            if not token:
+                continue
             # Skip flags
             if token.startswith("-"):
                 continue
-            # Must look like a path (contains / or .)
-            if "/" not in token and "." not in token:
+            # Strip the quotes shlex keeps in posix=False mode.
+            bare = token.strip("\"'")
+            # Must look like a path (contains a separator or a dot).
+            if "/" not in bare and "\\" not in bare and "." not in bare:
                 continue
             # Skip URLs
-            if token.startswith(("http://", "https://", "git@")):
+            if bare.startswith(("http://", "https://", "git@")):
                 continue
-            self._add_path_candidate(token, candidates)
+            self._add_path_candidate(bare, candidates)
 
     def _is_valid_subdir(self, path: Path) -> bool:
         """Check if path is a valid directory to scan for hints.
