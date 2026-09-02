@@ -6,6 +6,10 @@ export function GetAliceHome() {
   return window['go']['main']['App']['GetAliceHome']();
 }
 
+export function GetConnectionInfo() {
+  return window['go']['main']['App']['GetConnectionInfo']();
+}
+
 export function GetRecentLogs(arg1) {
   return window['go']['main']['App']['GetRecentLogs'](arg1);
 }

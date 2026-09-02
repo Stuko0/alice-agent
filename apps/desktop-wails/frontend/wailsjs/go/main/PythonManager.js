@@ -6,6 +6,10 @@ export function GetAliceHome() {
   return window['go']['main']['PythonManager']['GetAliceHome']();
 }
 
+export function GetBackendPIDs() {
+  return window['go']['main']['PythonManager']['GetBackendPIDs']();
+}
+
 export function GetConnectionInfo() {
   return window['go']['main']['PythonManager']['GetConnectionInfo']();
 }

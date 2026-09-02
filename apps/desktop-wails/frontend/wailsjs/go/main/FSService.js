@@ -42,6 +42,10 @@ export function SelectPaths(arg1) {
   return window['go']['main']['FSService']['SelectPaths'](arg1);
 }
 
+export function SetContext(arg1) {
+  return window['go']['main']['FSService']['SetContext'](arg1);
+}
+
 export function TrashPath(arg1) {
   return window['go']['main']['FSService']['TrashPath'](arg1);
 }

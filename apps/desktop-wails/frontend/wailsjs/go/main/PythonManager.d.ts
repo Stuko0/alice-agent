@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function GetAliceHome():Promise<string>;
 
+export function GetBackendPIDs():Promise<Array<number>>;
+
 export function GetConnectionInfo():Promise<main.ConnectionInfo>;
 
 export function GetSessionToken():Promise<string>;
