@@ -14,7 +14,25 @@ const config: Config = {
   projectName: 'alice-agent',
 
   onBrokenLinks: 'warn',
-
+  scripts: [
+    '/structured-data.js',
+  ],
+  headTags: [
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'manifest',
+        href: '/docs/site.webmanifest',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'theme-color',
+        content: '#f0c040',
+      },
+    },
+  ],
   markdown: {
     mermaid: true,
     hooks: {
@@ -122,11 +140,17 @@ const config: Config = {
         docs: {
           routeBasePath: '/',  // Docs at the root of /docs/
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://10.1.200.116:3000/arquant-admin/NewAlice/edit/main/website/',
+          editUrl: 'https://github.com/Stuko0/alice-agent/edit/main/website/',
         },
         blog: false,
         theme: {
           customCss: './src/css/custom.css',
+        },
+        sitemap: {
+          changefreq: 'weekly',
+          priority: 0.7,
+          ignorePatterns: ['/tags/**'],
+          filename: 'sitemap.xml',
         },
       } satisfies Preset.Options,
     ],
@@ -134,6 +158,21 @@ const config: Config = {
 
   themeConfig: {
     image: 'img/alice-agent-banner.png',
+    metadata: [
+      { name: 'keywords', content: 'AI agent, autonomous coding, AI assistant, open source, CLI, terminal, code generation, self-improving' },
+      { name: 'description', content: 'Alice Agent is a self-improving AI agent that runs across CLI, messaging platforms, desktop, and web. Open source with skills, plugins, and memory.' },
+      { property: 'og:title', content: 'Alice Agent - The Self-Improving AI Agent' },
+      { property: 'og:description', content: 'Open source AI agent with skills, plugins, memory, and multi-platform support. Runs in CLI, Telegram, Discord, desktop, and web.' },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:url', content: 'https://alice-agent.stuko.dev' },
+      { property: 'og:image', content: 'https://alice-agent.stuko.dev/docs/img/alice-agent-banner.png' },
+      { property: 'og:site_name', content: 'Alice Agent' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: 'Alice Agent - The Self-Improving AI Agent' },
+      { name: 'twitter:description', content: 'Open source AI agent with skills, plugins, memory, and multi-platform support.' },
+      { name: 'twitter:image', content: 'https://alice-agent.stuko.dev/docs/img/alice-agent-banner.png' },
+      { name: 'robots', content: 'index, follow, max-image-preview:large, max-snippet:-1' },
+    ],
     colorMode: {
       defaultMode: 'dark',
       respectPrefersColorScheme: true,
@@ -177,7 +216,7 @@ const config: Config = {
           position: 'right',
         },
         {
-          href: 'https://10.1.200.116:3000/arquant-admin/NewAlice',
+          href: 'https://github.com/Stuko0/alice-agent',
           label: 'GitHub',
           position: 'right',
         },
@@ -204,7 +243,7 @@ const config: Config = {
           title: 'Community',
           items: [
             { label: 'Discord', href: 'https://discord.gg/Stuko' },
-            { label: 'GitHub Issues', href: 'https://10.1.200.116:3000/arquant-admin/NewAlice/issues' },
+            { label: 'GitHub Issues', href: 'https://github.com/Stuko0/alice-agent/issues' },
             { label: 'Skills Hub', href: 'https://agentskills.io' },
           ],
         },
@@ -212,7 +251,7 @@ const config: Config = {
           title: 'More',
           items: [
             { label: 'Desktop Download', href: 'https://alice-agent.stuko.dev/' },
-            { label: 'GitHub', href: 'https://10.1.200.116:3000/arquant-admin/NewAlice' },
+            { label: 'GitHub', href: 'https://github.com/Stuko0/alice-agent' },
             { label: 'Stuko', href: 'https://stuko.dev' },
           ],
         },

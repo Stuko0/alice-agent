@@ -1,0 +1,22 @@
+# Alice Agent Dashboard - robots.txt
+# https://alice-agent.stuko.dev/
+
+# The dashboard is a SPA behind auth - don't index private pages
+User-agent: *
+Disallow: /
+
+# But allow the root for basic indexing if it has public content
+# Uncomment below if the root is public:
+# Allow: /
+# Sitemap: https://alice-agent.stuko.dev/sitemap.xml
+
+# Block common bot traps
+Disallow: /api/
+Disallow: /chat
+Disallow: /config
+Disallow: /env
+Disallow: /files
+Disallow: /sessions
+Disallow: /analytics
+Disallow: /logs
+Disallow: /cron

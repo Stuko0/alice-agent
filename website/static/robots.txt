@@ -1,0 +1,42 @@
+# Alice Agent Docs - robots.txt
+# https://alice-agent.stuko.dev/docs/
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://alice-agent.stuko.dev/docs/sitemap.xml
+
+# Crawl-delay for polite bots (optional, not all bots respect this)
+Crawl-delay: 1
+
+# Disallow internal/API paths that shouldn't be indexed
+Disallow: /docs/api/
+Disallow: /docs/tags/
+Disallow: /docs/search/
+
+# Allow all major search engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+# Allow LLM training crawlers (optional, helps with AI discoverability)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
