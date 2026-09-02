@@ -54,7 +54,7 @@ try {
     Copy-Item (Join-Path $WailsDir "frontend/wailsjs/go/models.ts") (Join-Path $distDst "assets/wailsjs/go/") -Force -ErrorAction SilentlyContinue
 
     Write-Host "=== Building Wails binary ==="
-    & wails build -windowsarch amd64
+    & wails build -platform windows/amd64
     if ($LASTEXITCODE -ne 0) { throw "wails build failed (exit $LASTEXITCODE)" }
 
     Write-Host "=== Done ==="
