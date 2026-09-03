@@ -2,7 +2,7 @@
   "name": "alice",
   "productName": "Alice",
   "private": true,
-  "version": "0.23.2",
+  "version": "0.23.3",
   "description": "Native desktop shell for Alice Agent.",
   "author": "Arquant",
   "type": "module",
