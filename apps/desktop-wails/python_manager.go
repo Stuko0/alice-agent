@@ -56,6 +56,11 @@ type PythonManager struct {
 	bootPhase    string
 	bootMessage  string
 	bootProgress int
+	// Terminal boot failure (no usable python, backend died pre-announce…).
+	// Read by GetBootProgress so a renderer that mounts AFTER the failure —
+	// or one that missed the `alice:backend:exit` event race — still sees it
+	// on its first poll instead of an idle 100% loader.
+	bootError string
 	// Set by StopGateway so the stdout watcher does not emit a spurious
 	// `alice:backend:exit` for an intentional shutdown.
 	stopping bool
@@ -136,13 +141,39 @@ func (pm *PythonManager) GetBootProgress() BootProgress {
 	defer pm.mu.Unlock()
 
 	return BootProgress{
-		Error:     "",
+		Error:     pm.bootError,
 		FakeMode:  false,
 		Message:   pm.bootMessage,
 		Phase:     pm.bootPhase,
 		Progress:  pm.bootProgress,
 		Running:   pm.running && pm.port == 0,
 		Timestamp: time.Now().UnixMilli(),
+	}
+}
+
+// recordBootError stores a terminal boot failure in the snapshot under the
+// lock and best-effort emits it to the renderer. Safe to call from any
+// goroutine; mirrors setBootStep's monotonic rule (an error always wins).
+func (pm *PythonManager) recordBootError(reason string) {
+	pm.mu.Lock()
+	pm.bootError = reason
+	pm.bootPhase = "backend.failed"
+	pm.bootMessage = reason
+	pm.bootProgress = 100
+	pm.running = false
+	ctx := pm.ctx
+	pm.mu.Unlock()
+
+	if ctx != nil {
+		wailsruntime.EventsEmit(ctx, "alice:boot-progress", BootProgress{
+			Error:     reason,
+			FakeMode:  false,
+			Message:   reason,
+			Phase:     "backend.failed",
+			Progress:  100,
+			Running:   false,
+			Timestamp: time.Now().UnixMilli(),
+		})
 	}
 }
 
@@ -168,6 +199,15 @@ func (pm *PythonManager) emitBackendExit(reason string) {
 	wailsruntime.EventsEmit(contextWithCtx(pm), "alice:backend:exit", map[string]interface{}{
 		"reason": message,
 	})
+
+	// Persist the failure: a renderer that mounts after this (or misses the
+	// event race entirely) must still see the error on its first
+	// GetBootProgress poll instead of an idle "Starting Alice" loader.
+	pm.mu.Lock()
+	if pm.bootError == "" {
+		pm.bootError = message
+	}
+	pm.mu.Unlock()
 
 	pm.setBootStep("backend.exited", message, 100, false, message)
 }
@@ -248,6 +288,32 @@ func (pm *PythonManager) ResolveProjectRoot() string {
 		}
 	}
 
+	// 2.5 Managed-install layout on Windows: %LOCALAPPDATA%\alice\alice-agent
+	// (what `alice update`/the installer maintains). A double-clicked exe has
+	// no alice cwd, so without this the walk falls through to C:\ and every
+	// python resolution below goes sideways.
+	if runtime.GOOS == "windows" {
+		if la := os.Getenv("LOCALAPPDATA"); la != "" {
+			candidate := filepath.Join(la, "alice", "alice-agent")
+			if _, err := os.Stat(filepath.Join(candidate, "alice_cli", "main.py")); err == nil {
+				return candidate
+			}
+			// Older layout without the inner alice-agent dir
+			candidate = filepath.Join(la, "alice")
+			if _, err := os.Stat(filepath.Join(candidate, "alice_cli", "main.py")); err == nil {
+				return candidate
+			}
+		}
+		// The exe beside an alice checkout (the documented source layout):
+		// C:\alice\alice-desktop.exe -> C:\alice
+		if exe, err := os.Executable(); err == nil {
+			exeDir := filepath.Dir(exe)
+			if _, err := os.Stat(filepath.Join(exeDir, "alice_cli", "main.py")); err == nil {
+				return exeDir
+			}
+		}
+	}
+
 	// 3. Fallback: assume we're in apps/desktop-wails and go up two levels
 	return filepath.Clean(filepath.Join(execDir, "..", ".."))
 }
@@ -324,14 +390,46 @@ func (pm *PythonManager) findPythonForRoot(root string) string {
 		}
 	}
 
-	// PATH lookup
+	// PATH lookup — but only when the project root actually carries the CLI.
+	// Without this guard a bare `LookPath("python3")` on a stock Windows box
+	// resolves to the Microsoft Store alias stub
+	// (%LOCALAPPDATA%\Microsoft\WindowsApps\python3.exe) — a zero-byte
+	// reparse-point executable that prints "Python was not found" and exits.
+	// Spawning it as the backend produces the eternal "Starting Alice 100%"
+	// boot hang: the stub dies before announcing a port, so the renderer
+	// connects to ws://127.0.0.1:0 forever.
+	rootHasCli, _ := os.Stat(filepath.Join(root, "alice_cli", "main.py"))
+	if rootHasCli == nil {
+		return "" // no credible python — caller must surface an actionable error
+	}
 	for _, name := range []string{"python3", "python"} {
-		if path, err := exec.LookPath(name); err == nil {
+		if path, err := exec.LookPath(name); err == nil && !isStorePythonStub(path) {
 			return path
 		}
 	}
 
-	return "python3"
+	return ""
+}
+
+// isStorePythonStub reports whether the given path is the Microsoft Store
+// "app execution alias" — a reparse point that opens the Store instead of
+// running Python. Detected by path (WindowsApps dir) because running it to
+// probe would pop the Store UI on the user's desktop. No-op off Windows:
+// the alias only exists there.
+func isStorePythonStub(path string) bool {
+	if runtime.GOOS != "windows" {
+		return false
+	}
+	return isStorePythonStubPath(path)
+}
+
+// isStorePythonStubPath is the pure path-shape check (case-insensitive,
+// slash-agnostic — handles both `\` and `/` separators so tests can pin the
+// Windows shape from any OS).
+func isStorePythonStubPath(path string) bool {
+	p := strings.ToLower(path)
+	p = strings.ReplaceAll(p, "/", `\`)
+	return strings.Contains(p, `\microsoft\windowsapps\`)
 }
 
 // getVenvSitePackages returns the site-packages path for a venv
@@ -499,6 +597,13 @@ func wailsDebugLogPath() string {
 // fully-buffered by default, so the `port=NNNN` announcement line can sit in
 // the buffer past every deadline and the GUI stays on "Starting Alice".
 func cmdEnvForBackend(pm *PythonManager, projectRoot string, backendEnv map[string]string) []string {
+	return cmdEnvForBackendWithDist(pm, projectRoot, backendEnv, filepath.Join(projectRoot, "apps", "desktop", "dist"))
+}
+
+// cmdEnvForBackendWithDist is cmdEnvForBackend with an explicit web-dist path.
+// An empty webDist omits ALICE_WEB_DIST entirely (the backend then falls back
+// to its bundled web_dist — or fail-fasts with its own actionable message).
+func cmdEnvForBackendWithDist(pm *PythonManager, projectRoot string, backendEnv map[string]string, webDist string) []string {
 	envMap := make(map[string]string)
 	for _, e := range os.Environ() {
 		if idx := bytes.IndexByte([]byte(e), '='); idx > 0 {
@@ -511,7 +616,11 @@ func cmdEnvForBackend(pm *PythonManager, projectRoot string, backendEnv map[stri
 
 	envMap["ALICE_HOME"] = pm.aliceHome
 	envMap["ALICE_DESKTOP"] = "1"
-	envMap["ALICE_WEB_DIST"] = filepath.Join(projectRoot, "apps", "desktop", "dist")
+	if webDist != "" {
+		envMap["ALICE_WEB_DIST"] = webDist
+	} else {
+		delete(envMap, "ALICE_WEB_DIST")
+	}
 	envMap["ALICE_DASHBOARD_SESSION_TOKEN"] = pm.sessionToken
 	envMap["PYTHONUNBUFFERED"] = "1"
 	envMap["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -560,6 +669,26 @@ func (pm *PythonManager) StartGateway() error {
 		fmt.Fprintf(debugFile, "[Wails] pythonPath=%s, projectRoot=%s\n", pythonPath, projectRoot)
 	}
 
+	// No credible Python runtime → fail the boot loudly instead of spawning a
+	// broken interpreter that dies silently before announcing a port (the
+	// Microsoft Store python3.exe stub being the canonical case: it prints
+	// "Python was not found" and exits, leaving the GUI on "Starting Alice
+	// 100%" connected to ws://127.0.0.1:0 forever). Store an actionable
+	// message in the boot snapshot; the renderer's error screen shows it.
+	if pythonPath == "" {
+		pm.mu.Unlock()
+		reason := "No usable Python runtime was found for the Alice backend. " +
+			"Install Python 3.10+ from python.org (or create a venv with it), " +
+			"then set ALICE_DESKTOP_PYTHON or run `alice desktop-setup`. " +
+			"(Windows note: the Microsoft Store 'python3.exe' alias does not count.)"
+		if debugFile != nil {
+			fmt.Fprintf(debugFile, "[Wails] %s\n", reason)
+		}
+		log.Printf("[Wails] %s", reason)
+		pm.recordBootError(reason)
+		return fmt.Errorf("%s", reason)
+	}
+
 	// Verify the project root has alice_cli/main.py
 	if _, err := os.Stat(filepath.Join(projectRoot, "alice_cli", "main.py")); err != nil {
 		if debugFile != nil {
@@ -567,8 +696,24 @@ func (pm *PythonManager) StartGateway() error {
 		}
 	}
 
+	// ALICE_WEB_DIST must point at a REAL built frontend: the backend
+	// (web_server.py) fail-fasts when index.html is missing, and a source
+	// checkout without `npm run build` has none. The Wails binary embeds the
+	// entire frontend (go:embed frontend/dist) — extract it to the expected
+	// path so the desktop works on fresh checkouts/managed installs without a
+	// Node toolchain. Best-effort: on failure leave the env unset and let the
+	// backend's own error surface.
 	webDist := filepath.Join(projectRoot, "apps", "desktop", "dist")
-	_ = os.MkdirAll(filepath.Join(webDist, "assets"), 0755)
+	if _, err := os.Stat(filepath.Join(webDist, "index.html")); err != nil {
+		if err := extractEmbeddedFrontend(webDist); err != nil {
+			if debugFile != nil {
+				fmt.Fprintf(debugFile, "[Wails] could not extract embedded frontend to %s: %v\n", webDist, err)
+			}
+			webDist = "" // don't pass a dead ALICE_WEB_DIST
+		} else if debugFile != nil {
+			fmt.Fprintf(debugFile, "[Wails] extracted embedded frontend to %s\n", webDist)
+		}
+	}
 
 	// Build environment like Electron does
 	backendEnv := pm.buildBackendEnv(projectRoot)
@@ -589,7 +734,7 @@ func (pm *PythonManager) StartGateway() error {
 		defer cancelProbe()
 		probe := exec.CommandContext(probeCtx, python, "-m", "alice_cli.main", "serve", "--help")
 		probe.Dir = root
-		probe.Env = cmdEnvForBackend(pm, projectRoot, backendEnv)
+		probe.Env = cmdEnvForBackendWithDist(pm, projectRoot, backendEnv, webDist)
 		probe.Stdout = io.Discard
 		probe.Stderr = io.Discard
 		return probe.Run() == nil
@@ -620,7 +765,12 @@ func (pm *PythonManager) StartGateway() error {
 
 	// Backend env: current env + venv PYTHONPATH/PATH + Alice desktop vars
 	// (incl. PYTHONUNBUFFERED=1 so the port announcement is never buffered).
-	cmd.Env = cmdEnvForBackend(pm, projectRoot, backendEnv)
+	cmd.Env = cmdEnvForBackendWithDist(pm, projectRoot, backendEnv, webDist)
+
+	// Hide the child's console window on Windows (see setChildHiddenWindow —
+	// without it the backend python spawns a NEW maximized console covering
+	// the GUI). No-op on POSIX.
+	setChildHiddenWindow(cmd)
 
 	logsDir := filepath.Join(pm.aliceHome, "logs")
 	_ = os.MkdirAll(logsDir, 0755)

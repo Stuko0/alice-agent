@@ -109,8 +109,12 @@ export function initWailsBridge(): void {
           };
         }
       } else {
-        const healthy = await PythonManager.WaitForHealthy(120);
-        wailLog(`[Wails] WaitForHealthy=${healthy}`);
+        // 30s, not 120: the announce lands in ~4-15s on a cold start. A
+        // 120s window outlives the renderer's 90s boot watchdog, producing
+        // the error-then-resurrect sequence (watchdog fires at 90s, Step 1
+        // still resolves at ~120s, the loader comes back and hangs at 95%).
+        const healthy = await PythonManager.WaitForHealthy(30)
+        wailLog(`[Wails] WaitForHealthy=${healthy}`)
         if (!healthy) {
           console.error('[Wails] Backend did not become healthy within timeout');
         }

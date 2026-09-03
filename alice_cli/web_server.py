@@ -116,6 +116,20 @@ except ImportError:
         )
 
 WEB_DIST = Path(os.environ["ALICE_WEB_DIST"]) if "ALICE_WEB_DIST" in os.environ else Path(__file__).parent / "web_dist"
+
+# Desktop-spawned backends (the Wails shell passes ALICE_WEB_DIST) must not
+# boot into a 404-serving zombie: a stale/missing dist leaves the GUI's
+# WebSocket gateway alive while every page load fails, which surfaces as the
+# opaque "Starting Alice" hang instead of an actionable error. Fail fast,
+# before the port announcement, so the shell's stdout watcher captures the
+# reason and the boot-error screen shows it.
+if os.environ.get("ALICE_DESKTOP") == "1" and not (WEB_DIST / "index.html").exists():
+    raise SystemExit(
+        f"ALICE_WEB_DIST points to a directory without an index.html: {WEB_DIST}\n"
+        f"Build the desktop frontend first (apps/desktop: npm run build) or "
+        f"unset ALICE_WEB_DIST to fall back to the bundled web_dist."
+    )
+
 _log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -391,6 +405,18 @@ _LOOPBACK_HOST_VALUES: frozenset = frozenset({
     "localhost", "127.0.0.1", "::1",
 })
 
+# Wails v2 serves the embedded renderer from http://wails.localhost, so its
+# WebView2 sends `Origin: http://wails.localhost` on WebSocket upgrades. That
+# is the desktop shell's own asset server — not a rebinding attack — but the
+# loopback Host/Origin guard above rejects it (wails.localhost != localhost),
+# closing every WS with 4403 and leaving the GUI on "Starting Alice". The
+# Electron shell dodged this via its non-web file:// origin, which the guard
+# deliberately passes. Accept the Wails origin only when the backend was
+# spawned by a desktop shell (ALICE_DESKTOP=1 is set by the shell process —
+# a remote attacker can't set our env). This is exactly the packaged-shell
+# carve-out the file:// branch already makes for Electron.
+_DESKTOP_SHELL_ORIGINS: frozenset = frozenset({"wails.localhost"})
+
 
 def should_require_auth(host: str, allow_public: bool = False) -> bool:
     """Return True iff the dashboard auth gate must be active.
@@ -452,7 +478,16 @@ def _is_accepted_host(host_header: str, bound_host: str) -> bool:
     # Loopback bind: accept the loopback names
     bound_lc = bound_host.lower()
     if bound_lc in _LOOPBACK_HOST_VALUES:
-        return host_only in _LOOPBACK_HOST_VALUES
+        if host_only in _LOOPBACK_HOST_VALUES:
+            return True
+        # Desktop-shell origins (Wails' WebView2 asset server) on a
+        # shell-spawned backend: the renderer's Origin/Host is the shell's
+        # own http://wails.localhost, not the backend's bind. Only honored
+        # when ALICE_DESKTOP=1 — that env is set by the desktop shell when
+        # spawning this process; a remote attacker cannot set it.
+        if os.environ.get("ALICE_DESKTOP") == "1" and host_only in _DESKTOP_SHELL_ORIGINS:
+            return True
+        return False
 
     # Explicit non-loopback bind: require exact host match
     return host_only == bound_lc

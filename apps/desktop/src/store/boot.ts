@@ -30,6 +30,16 @@ function clampProgress(value: number) {
 
 export function applyDesktopBootProgress(progress: DesktopBootProgress) {
   const current = $desktopBoot.get()
+
+  // A failed boot is terminal until an explicit retry (renderer reload /
+  // user action). Late-arriving progress events from an in-flight boot()
+  // promise used to overwrite the error with `error: null` and resurrect the
+  // loader at 95% — exactly the reported "the error disappears and it climbs
+  // back to 95% and stays there" sequence.
+  if (current.error && current.phase === 'renderer.error') {
+    return
+  }
+
   const nextProgress = clampProgress(progress.progress)
   const mergedProgress = progress.running ? Math.max(current.progress, nextProgress) : nextProgress
 

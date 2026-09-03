@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -69,15 +70,64 @@ func TestFindPythonForRootOverride(t *testing.T) {
 
 func TestFindPythonForRootDefault(t *testing.T) {
 	t.Setenv("ALICE_DESKTOP_PYTHON", "")
-	pm := &PythonManager{aliceHome: filepath.Join(t.TempDir(), ".alice")}
-	got := pm.findPythonForRoot(t.TempDir())
-	if got == "" {
-		t.Fatal("findPythonForRoot() returned empty; expected PATH fallback")
+	// Pin HOME: the commonVenvs probe looks at $HOME/Projects/venv-alice etc.
+	// and would find the DEVELOPER's real venv, breaking hermeticity (exactly
+	// what happened on the machine that wrote this test).
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if runtime.GOOS == "windows" {
+		t.Setenv("USERPROFILE", home)
 	}
-	// The last-resort default is "python3"; PATH resolution usually finds a
-	// real python3, but either way it must be non-empty.
-	if !strings.HasSuffix(got, "python3") && !strings.HasSuffix(got, "python") {
-		t.Fatalf("unexpected default python %q", got)
+	pm := &PythonManager{aliceHome: filepath.Join(home, ".alice")}
+	// A root WITHOUT alice_cli/main.py must yield "" (no PATH fallback): the
+	// MS Store python3.exe stub on Windows resolves via PATH, spawns, prints
+	// "Python was not found", and dies pre-announcement — the eternal
+	// "Starting Alice 100%" boot hang. The caller (StartGateway) turns the
+	// empty result into an actionable boot error instead of a broken spawn.
+	got := pm.findPythonForRoot(t.TempDir())
+	if got != "" {
+		t.Fatalf("findPythonForRoot() = %q, want empty for a root without the CLI", got)
+	}
+}
+
+func TestFindPythonForRootPathFallbackOnlyWithCli(t *testing.T) {
+	t.Setenv("ALICE_DESKTOP_PYTHON", "")
+	pm := &PythonManager{aliceHome: filepath.Join(t.TempDir(), ".alice")}
+	// A root WITH the CLI may fall back to PATH (a real python is credible
+	// there). On the CI/dev hosts python3 exists, so the result is either a
+	// real path or "" — never the bare "python3" string the pre-fix code
+	// returned (which spawned a nonexistent interpreter).
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "alice_cli"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "alice_cli", "main.py"), []byte("# stub\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := pm.findPythonForRoot(root)
+	if got == "python3" || got == "python" {
+		t.Fatalf("findPythonForRoot() returned the bare name %q — must be a resolved path or empty", got)
+	}
+}
+
+func TestIsStorePythonStub(t *testing.T) {
+	// Pins the pure path-shape detector (isStorePythonStubPath) so the check
+	// is testable from any OS; the OS guard in isStorePythonStub only gates
+	// its use in the live PATH lookup.
+	if !isStorePythonStubPath(`C:\Users\u\AppData\Local\Microsoft\WindowsApps\python3.exe`) {
+		t.Fatal("WindowsApps path must be detected as the Store stub")
+	}
+	if !isStorePythonStubPath(`C:\Users\U\AppData\Local\MICROSOFT\WindowsApps\Python.exe`) {
+		t.Fatal("detection must be case-insensitive")
+	}
+	if !isStorePythonStubPath("C:/Users/u/AppData/Local/Microsoft/WindowsApps/python3.exe") {
+		t.Fatal("detection must be separator-agnostic")
+	}
+	if isStorePythonStubPath(`C:\Python313\python.exe`) {
+		t.Fatal("a real install must not be flagged")
+	}
+	if isStorePythonStubPath("/usr/bin/python3") {
+		t.Fatal("POSIX paths are never Store stubs")
 	}
 }
 

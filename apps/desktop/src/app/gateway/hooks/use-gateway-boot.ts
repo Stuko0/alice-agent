@@ -249,6 +249,26 @@ export function useGatewayBoot({
     // Secondary (background-profile) sockets funnel into the same handler.
     configureGatewayRegistry({ onEvent: event => callbacksRef.current.handleGatewayEvent(event) })
 
+    // Boot watchdog: gateway.connect() to a dead endpoint (e.g. the backend
+    // died before announcing a port and the renderer got ws://127.0.0.1:0)
+    // can hang forever with no error and no event — the user stares at
+    // "Starting Alice" at 100% indefinitely. If the WS isn't open and the
+    // boot hasn't completed within the window, surface a diagnostic error
+    // instead of the eternal loader. (Declared after `gateway` because
+    // gatewayOpen() closes over it.)
+    const BOOT_WATCHDOG_MS = 90_000
+    const bootWatchdog = setTimeout(() => {
+      if (cancelled || bootCompleted || gatewayOpen()) {
+        return
+      }
+      const detail =
+        'The desktop backend did not finish starting. It may be missing a usable ' +
+        'Python runtime or died before opening its gateway. Check the boot log ' +
+        '(%TEMP%\\wails-debug.log on Windows) and ~/.alice/logs/agent.log.'
+      try { (window as any)?.go?.main?.App?.WriteFrontendLog?.('[Boot] WATCHDOG: gateway never connected') } catch {}
+      failDesktopBoot(detail)
+    }, BOOT_WATCHDOG_MS)
+
     const offState = gateway.onState(st => {
       // Mirror to the composer only while the primary is the active profile —
       // a background secondary reconnect mustn't flip the foreground state.
@@ -370,6 +390,18 @@ export function useGatewayBoot({
         log('[Boot] Step 2: resolving WS URL...')
         const wsUrl = await resolveGatewayWsUrl(desktop, conn)
         log('[Boot] Step 2 OK: wsUrl=' + wsUrl)
+        // A "port 0" WS URL means the backend never announced its port —
+        // the Go shell hands out ws://127.0.0.1:0 before/instead of a real
+        // announcement (canonical case: the spawned python died instantly,
+        // e.g. the MS Store python3.exe stub). Connecting to port 0 hangs
+        // forever; fail fast with an actionable message instead.
+        if (/:0\/api\/ws/.test(wsUrl)) {
+          throw new Error(
+            'The backend started but never announced its port (ws URL is ' + wsUrl +
+            '). The Python backend process likely died at startup. Check ' +
+            '%TEMP%\\wails-debug.log and ~/.alice/logs/agent.log.'
+          )
+        }
         log('[Boot] Step 3: connecting WS...')
         await gateway.connect(wsUrl)
         log('[Boot] Step 3 OK: WS connected!')
@@ -443,6 +475,7 @@ export function useGatewayBoot({
           // Non-fatal: continue boot without sessions loaded
         })
         log('[Boot] Step 6 DONE (or timed out)')
+        clearTimeout(bootWatchdog)
         completeDesktopBoot()
         bootCompleted = true
         log('[Boot] COMPLETE!')
@@ -463,6 +496,7 @@ export function useGatewayBoot({
 
     return () => {
       cancelled = true
+      clearTimeout(bootWatchdog)
       clearReconnectTimer()
       clearInterval(keepaliveTimer)
       offWorking()
