@@ -224,7 +224,17 @@ export function useGatewayBoot({
     const offBootProgress = desktop.onBootProgress(payload => applyDesktopBootProgress(payload))
     void desktop
       .getBootProgress()
-      .then(snapshot => applyDesktopBootProgress(snapshot))
+      .then(snapshot => {
+        // Surface a backend that already died before this hook mounted: the
+        // Go shell stores the exit reason in the boot snapshot, so a late
+        // renderer (reload after crash, dev attach) shows the error instead
+        // of an idle "Starting Alice" bar.
+        if (snapshot?.error) {
+          failDesktopBoot(snapshot.error)
+          return
+        }
+        applyDesktopBootProgress(snapshot)
+      })
       .catch(() => undefined)
 
     setDesktopBootStep({

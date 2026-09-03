@@ -1,5 +1,29 @@
 export namespace main {
 	
+	export class BootProgress {
+	    error: string;
+	    fakeMode: boolean;
+	    message: string;
+	    phase: string;
+	    progress: number;
+	    running: boolean;
+	    timestamp: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new BootProgress(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.error = source["error"];
+	        this.fakeMode = source["fakeMode"];
+	        this.message = source["message"];
+	        this.phase = source["phase"];
+	        this.progress = source["progress"];
+	        this.running = source["running"];
+	        this.timestamp = source["timestamp"];
+	    }
+	}
 	export class ConnectionConfig {
 	    mode: string;
 	    remoteUrl: string;

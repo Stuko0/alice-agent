@@ -17,3 +17,7 @@ export function ProbeRemote(arg1, arg2) {
 export function Set(arg1) {
   return window['go']['main']['ConnectionService']['Set'](arg1);
 }
+
+export function SetContext(arg1) {
+  return window['go']['main']['ConnectionService']['SetContext'](arg1);
+}

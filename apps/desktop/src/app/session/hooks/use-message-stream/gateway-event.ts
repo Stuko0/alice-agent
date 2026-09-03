@@ -108,8 +108,17 @@ export function useGatewayEventHandler(deps: GatewayEventDeps) {
         return
       } else if (event.type === 'session.info') {
         // Apply session-scoped fields when the event targets the active
-        // session, OR when it's a global broadcast and we have no session.
-        const apply = explicitSid ? isActiveEvent : !activeSessionIdRef.current
+        // session, OR when it's a global broadcast and we have no session,
+        // OR when a broadcast carries the runtime id we just switched to.
+        // The third case is the switch-race hole: the backend emits
+        // session.info keyed by the NEW runtime id right after a resume, but
+        // before the renderer's activeSessionIdRef picks it up the event
+        // looks like a broadcast; dropping it left the workspace scope
+        // (right sidebar project tree) on the previous session's cwd.
+        const matchesActiveRuntime =
+          !!activeSessionIdRef.current &&
+          (event.session_id ?? payload?.session_id) === activeSessionIdRef.current
+        const apply = explicitSid ? isActiveEvent : (!activeSessionIdRef.current || matchesActiveRuntime)
         const statePatch = sessionInfoStatePatch(payload)
         const hasStatePatch = hasSessionInfoStatePatch(statePatch)
         const modelChanged = typeof payload?.model === 'string'

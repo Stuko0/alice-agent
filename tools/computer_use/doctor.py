@@ -213,6 +213,95 @@ def _print_text_report(report: Dict[str, Any], color: bool) -> None:
     _ = schema  # acknowledge field for forward-compat readers
 
 
+def _wayland_window_probe(binary: str) -> Optional[Dict[str, Any]]:
+    """Post-report probe: can the driver actually enumerate a real window?
+
+    health_report's checks cover binaries, display-server connections, and
+    a11y buses — all of which pass on a pure-Wayland host because XWayland
+    itself is a valid X11 client. But computer_use needs real app windows
+    to be X11 clients, which on Wayland they are not: list_windows returns
+    only the compositor's anchor pseudo-window (null pid, ~10x10). Detect
+    that signature and return a synthetic failed check; return None when
+    enumeration looks healthy (or the probe itself can't run — never let a
+    probe failure fail an otherwise diagnostic command).
+    """
+    # Only meaningful on Linux; macOS/Windows don't have the Wayland split.
+    if sys.platform != "linux":
+        return None
+    try:
+        from tools.computer_use.cua_backend import _is_wayland_placeholder_enum
+
+        proc = subprocess.Popen(
+            [binary, "mcp"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+            env=_cua_child_env(),
+        )
+        try:
+            proc.stdin.write(json.dumps({
+                "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {},
+            }) + "\n")
+            proc.stdin.flush()
+            if not proc.stdout.readline():
+                return None
+            proc.stdin.write(json.dumps({
+                "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                "params": {"name": "list_windows", "arguments": {}},
+            }) + "\n")
+            proc.stdin.flush()
+            call_line = proc.stdout.readline()
+        finally:
+            try:
+                proc.stdin.close()
+            except Exception:
+                pass
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+
+        if not call_line:
+            return None
+        resp = json.loads(call_line)
+        if "error" in resp:
+            return None
+        windows = ((resp.get("result") or {}).get("structuredContent") or {}).get("windows") or []
+        if not _is_wayland_placeholder_enum(windows):
+            return None
+
+        title = windows[0].get("title", "")
+        return {
+            "name": "linux-wayland-window-enum",
+            "status": "fail",
+            "message": (
+                f"Pure-Wayland session: window enumeration sees only the "
+                f"compositor's XWayland anchor ({title!r}, 10x10, no pid). "
+                f"No native Wayland app window is an X11 client, so "
+                f"computer_use cannot capture or drive any real window."
+            ),
+            "hint": (
+                "Relaunch the target app under XWayland "
+                "(GDK_BACKEND=x11 for GTK apps, --ozone-platform=x11 "
+                "for Electron/Chromium), or log into an X11 session. "
+                "Wayland-native support is tracked upstream in cua-driver."
+            ),
+            "data": {
+                "XDG_SESSION_TYPE": os.environ.get("XDG_SESSION_TYPE", "(unset)"),
+                "WAYLAND_DISPLAY": os.environ.get("WAYLAND_DISPLAY", "(unset)"),
+                "DISPLAY": os.environ.get("DISPLAY", "(unset)"),
+            },
+        }
+    except Exception:
+        # Diagnostic command: never fail because the probe hiccupped.
+        return None
+
+
 def run_doctor(
     driver_cmd: Optional[str] = None,
     *,
@@ -256,6 +345,21 @@ def run_doctor(
     except RuntimeError as e:
         print(f"cua-driver health_report failed: {e}", file=sys.stderr)
         return 2
+
+    # Driver checks pass on a pure-Wayland host (X11 connection up, AT-SPI
+    # reachable) while window enumeration sees nothing real — the XWayland
+    # anchor only. `health_report` doesn't probe that, so doctor does: spawn
+    # a session, call list_windows, and downgrade the verdict when the
+    # signature is the compositor placeholder. This is the "doctor said OK
+    # but every capture was blank" gap.
+    wayland_block = _wayland_window_probe(binary)
+    if wayland_block is not None:
+        report.setdefault("checks", []).append(wayland_block)
+        report["overall"] = "failed"
+        if json_output:
+            # JSON consumers (tests, scripts) see the synthesized check like
+            # any driver-emitted one; the text path renders it below.
+            pass
 
     if json_output:
         json.dump(report, sys.stdout, indent=2, sort_keys=True)

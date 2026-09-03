@@ -167,15 +167,30 @@ export function initWailsBridge(): void {
       onState: () => () => {},
       onControl: () => () => {},
     },
-    getBootProgress: async () => ({
-      error: null,
-      fakeMode: false,
-      message: 'Ready',
-      phase: 'ready',
-      progress: 100,
-      running: true,
-      timestamp: Date.now(),
-    }),
+    getBootProgress: async () => {
+      try {
+        const snapshot = await PythonManager.GetBootProgress();
+        return {
+          error: snapshot?.error || null,
+          fakeMode: !!snapshot?.fakeMode,
+          message: snapshot?.message || 'Starting Alice',
+          phase: snapshot?.phase || 'backend.boot',
+          progress: typeof snapshot?.progress === 'number' ? snapshot.progress : 0,
+          running: snapshot?.running !== false,
+          timestamp: snapshot?.timestamp || Date.now(),
+        };
+      } catch {
+        return {
+          error: null,
+          fakeMode: false,
+          message: 'Starting Alice',
+          phase: 'backend.boot',
+          progress: 0,
+          running: true,
+          timestamp: Date.now(),
+        };
+      }
+    },
     getConnectionConfig: async () => ({
       envOverride: false,
       mode: 'local',
@@ -336,7 +351,32 @@ export function initWailsBridge(): void {
       }
     },
     fetchLinkTitle: async () => '',
-    sanitizeWorkspaceCwd: async (cwd) => ({ cwd: cwd || '', sanitized: false }),
+    sanitizeWorkspaceCwd: async (cwd) => {
+      // The backend spawns the agent in its recorded cwd; a deleted worktree
+      // or a remote-only path doesn't exist on this machine. Fall back to the
+      // home dir (packaged installs default there) so the project tree has a
+      // readable root instead of erroring forever.
+      try {
+        const sanitized = (cwd || '').trim();
+        if (!sanitized) {
+          return { cwd: cwd || '', sanitized: false };
+        }
+        // Ask the Go shell whether the path is a readable local directory.
+        const readable = await FSService.ReadDir(sanitized)
+          .then(() => true)
+          .catch(() => false);
+        if (readable) {
+          return { cwd: sanitized, sanitized: false };
+        }
+        const homeDir = await App.GetAliceHome().catch(() => '');
+        if (homeDir) {
+          return { cwd: homeDir, sanitized: true };
+        }
+        return { cwd: sanitized, sanitized: false };
+      } catch {
+        return { cwd: cwd || '', sanitized: false };
+      }
+    },
     settings: {
       getDefaultProjectDir: async () => ({ defaultLabel: 'Default', dir: null, resolvedCwd: '' }),
       pickDefaultProjectDir: async () => ({ canceled: false, dir: null }),
@@ -623,8 +663,43 @@ export function initWailsBridge(): void {
       onExit: (_id, _callback) => () => {},
     },
     onPreviewFileChanged: () => () => {},
-    onBackendExit: () => () => {},
-    onBootProgress: () => () => {},
+    // ── Backend lifecycle — Go-emitted Wails runtime events ────────────
+    // The Go shell emits `alice:backend:exit` when the spawned Python
+    // backend dies before/after announcing its port, and `alice:boot-progress`
+    // for spawn/announce milestones. Both flow through the Wails v2 events
+    // API; without these, a dead backend left the loader at "Starting Alice"
+    // forever with no error and no retry.
+    onBackendExit: (listener) => {
+      const runtimeObj = typeof window !== 'undefined' ? (window as any).runtime : undefined;
+      if (runtimeObj?.EventsOn) {
+        runtimeObj.EventsOn('alice:backend:exit', (payload: unknown) => {
+          try {
+            const reason = typeof payload === 'string' ? payload : ((payload as any)?.reason ?? '');
+            listener(reason);
+          } catch {}
+        });
+        return () => {
+          try { runtimeObj.EventsOff('alice:backend:exit'); } catch {}
+        };
+      }
+      return () => {};
+    },
+    onBootProgress: (listener) => {
+      const runtimeObj = typeof window !== 'undefined' ? (window as any).runtime : undefined;
+      if (runtimeObj?.EventsOn) {
+        runtimeObj.EventsOn('alice:boot-progress', (payload: unknown) => {
+          try {
+            if (payload && typeof payload === 'object') {
+              listener(payload as any);
+            }
+          } catch {}
+        });
+        return () => {
+          try { runtimeObj.EventsOff('alice:boot-progress'); } catch {}
+        };
+      }
+      return () => {};
+    },
     // ── Window / shell event subscriptions ──────────────────────────────
     // Wails v2 has no multi-window shell; these are no-op stubs so the
     // renderer's optional-chained subscriptions stay inert instead of

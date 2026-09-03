@@ -323,7 +323,13 @@ export function applyRuntimeInfo(info: SessionRuntimeInfo | undefined): SessionR
   return sessionState
 }
 
-export function applyStoredSessionPreviewRuntimeInfo(stored: { model?: null | string } | undefined) {
+export function applyStoredSessionPreviewRuntimeInfo(
+  stored: {
+    cwd?: null | string
+    git_branch?: null | string
+    model?: null | string
+  } | undefined
+) {
   setCurrentModel(stored?.model || '')
   setCurrentProvider('')
   setCurrentReasoningEffort('')
@@ -331,6 +337,13 @@ export function applyStoredSessionPreviewRuntimeInfo(stored: { model?: null | st
   setCurrentFastMode(false)
   setYoloActive(false)
   setCurrentPersonality('')
+  // Paint the stored workspace immediately on a cold resume so the right
+  // sidebar's project tree swaps in the same frame as the transcript loader,
+  // not seconds later when the live session.info lands. A missing cwd means
+  // a detached chat — clear any previous session's scope. applyRuntimeInfo
+  // re-syncs the authoritative live value once the resume RPC resolves.
+  setCurrentCwd(stored?.cwd?.trim() || '')
+  setCurrentBranch(stored?.git_branch?.trim() || '')
 }
 
 // A "session genuinely doesn't exist" failure (deleted, or an id from a wiped /

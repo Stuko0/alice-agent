@@ -6,6 +6,14 @@ export function GetAliceHome() {
   return window['go']['main']['PythonManager']['GetAliceHome']();
 }
 
+export function GetBackendPIDs() {
+  return window['go']['main']['PythonManager']['GetBackendPIDs']();
+}
+
+export function GetBootProgress() {
+  return window['go']['main']['PythonManager']['GetBootProgress']();
+}
+
 export function GetConnectionInfo() {
   return window['go']['main']['PythonManager']['GetConnectionInfo']();
 }
@@ -20,6 +28,10 @@ export function IsHealthy() {
 
 export function ResolveProjectRoot() {
   return window['go']['main']['PythonManager']['ResolveProjectRoot']();
+}
+
+export function SetContext(arg1) {
+  return window['go']['main']['PythonManager']['SetContext'](arg1);
 }
 
 export function StartGateway() {

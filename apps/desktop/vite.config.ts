@@ -49,6 +49,15 @@ export default defineConfig({
     // cosmetic "chunk larger than 500 kB" nag stays quiet, while still acting
     // as a regression alarm if the bundle balloons well past today's size.
     chunkSizeWarningLimit: 25000,
+    // Vite's default for outDirs inside the project root is to empty them,
+    // but this build is ALSO driven from desktop-wails/build.sh (npm run
+    // build → cp -r dist) and by managed installs whose checkout predates a
+    // dist cleanup. Stale hashed chunks from every previous build then ride
+    // along into go:embed (all:frontend/dist) — the 940-file dist with two
+    // generations of language chunks (772K + 768K emacs-lisp, 762K + 612K
+    // cpp) came from exactly this. Pin the emptying so every build starts
+    // from zero regardless of who invokes it.
+    emptyOutDir: true,
     rolldownOptions: {
       output: {
         codeSplitting: true

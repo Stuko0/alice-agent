@@ -21,3 +21,7 @@ export function GetVersion() {
 export function SetBranch(arg1) {
   return window['go']['main']['UpdateService']['SetBranch'](arg1);
 }
+
+export function SetContext(arg1, arg2) {
+  return window['go']['main']['UpdateService']['SetContext'](arg1, arg2);
+}

@@ -76,6 +76,16 @@ interface UseSessionListActionsArgs {
  *  wires into the sidebar and refresh effects. */
 export function useSessionListActions({ profileScope }: UseSessionListActionsArgs) {
   const refreshSessionsRequestRef = useRef(0)
+  // In-flight dedup + freshness window. refreshSessions is invoked from the
+  // boot sequence, every gateway (re)connect, the /:sid route effect, message
+  // completion, and cron/message actions — rapid session switches fire it
+  // repeatedly. Each call is 4 backend round-trips (recents + cron sessions +
+  // cron jobs + messaging) plus a full sidebar re-render; coalescing the
+  // overlapping calls into one and skipping a refresh younger than 2s keeps
+  // switch latency flat without staleness that a user could notice.
+  const inflightPromiseRef = useRef<Promise<void> | null>(null)
+  const lastCompletedAtRef = useRef(0)
+  const REFRESH_FRESH_MS = 2_000
 
   // Cron-job sessions as their own list (latest N). Independent of the recents
   // page so the two never compete for slots. Cheap + bounded. Kept (even though
@@ -153,62 +163,90 @@ export function useSessionListActions({ profileScope }: UseSessionListActionsArg
   }, [])
 
   const refreshSessions = useCallback(async () => {
-    const log = (msg: string) => {
-      console.log(msg)
-      try { window['go']?.main?.App?.WriteFrontendLog?.(msg) } catch {}
-    }
-    log('[RefreshSessions] START')
-    const requestId = refreshSessionsRequestRef.current + 1
-    refreshSessionsRequestRef.current = requestId
-    setSessionsLoading(true)
-
-    try {
-      const limit = $sessionsLimit.get()
-      log('[RefreshSessions] limit: ' + limit)
-
-      // Require at least one message so abandoned/empty "Untitled" drafts (one
-      // was created per TUI/desktop launch before the lazy-create fix) don't
-      // clutter the sidebar.
-      // Unified cross-profile list (served read-only off each profile's
-      // state.db; no per-profile backend is spawned). Single-profile users get
-      // the same rows tagged profile="default". Cron sessions are excluded here
-      // and fetched separately (refreshCronSessions) so the scheduler's
-      // always-newest rows can't consume the recents page budget.
-      // Scope the fetch to the active profile (not always 'all') so a profile
-      // with few recent sessions isn't windowed out of the cross-profile
-      // recency page — the empty-history-on-profile-switch bug.
-      const sessionProfile = profileScope === ALL_PROFILES ? 'all' : profileScope
-      log('[RefreshSessions] calling listAllProfileSessions, profile: ' + sessionProfile)
-
-      const result = await listAllProfileSessions(limit, 1, 'exclude', 'recent', sessionProfile, {
-        excludeSources: SIDEBAR_EXCLUDED_SOURCES
-      })
-      log('[RefreshSessions] listAllProfileSessions OK, sessions: ' + result.sessions?.length)
-
-      if (refreshSessionsRequestRef.current === requestId) {
-        log('[RefreshSessions] merging sessions...')
-        setSessions(prev => mergeSessionPage(prev, result.sessions, sessionsToKeep()))
-        setSessionsTotal(typeof result.total === 'number' ? result.total : result.sessions.length)
-        setSessionProfileTotals(result.profile_totals ?? {})
-        log('[RefreshSessions] merge OK')
+    // Coalesce concurrent callers into the single in-flight promise, and skip
+    // entirely when the last completed refresh is younger than the freshness
+    // window. Both guards are re-checked at call time so a queued burst (boot
+    // + reconnect + route effect within the same tick) still lands exactly one
+    // real fetch. Boot's 8s timeout awaits the same shared promise.
+    const run = async () => {
+      const log = (msg: string) => {
+        console.log(msg)
+        try { window['go']?.main?.App?.WriteFrontendLog?.(msg) } catch {}
       }
-    } finally {
-      if (refreshSessionsRequestRef.current === requestId) {
-        setSessionsLoading(false)
+      log('[RefreshSessions] START')
+      const requestId = refreshSessionsRequestRef.current + 1
+      refreshSessionsRequestRef.current = requestId
+      setSessionsLoading(true)
+
+      try {
+        const limit = $sessionsLimit.get()
+        log('[RefreshSessions] limit: ' + limit)
+
+        // Require at least one message so abandoned/empty "Untitled" drafts (one
+        // was created per TUI/desktop launch before the lazy-create fix) don't
+        // clutter the sidebar.
+        // Unified cross-profile list (served read-only off each profile's
+        // state.db; no per-profile backend is spawned). Single-profile users get
+        // the same rows tagged profile="default". Cron sessions are excluded here
+        // and fetched separately (refreshCronSessions) so the scheduler's
+        // always-newest rows can't consume the recents page budget.
+        // Scope the fetch to the active profile (not always 'all') so a profile
+        // with few recent sessions isn't windowed out of the cross-profile
+        // recency page — the empty-history-on-profile-switch bug.
+        const sessionProfile = profileScope === ALL_PROFILES ? 'all' : profileScope
+        log('[RefreshSessions] calling listAllProfileSessions, profile: ' + sessionProfile)
+
+        const result = await listAllProfileSessions(limit, 1, 'exclude', 'recent', sessionProfile, {
+          excludeSources: SIDEBAR_EXCLUDED_SOURCES
+        })
+        log('[RefreshSessions] listAllProfileSessions OK, sessions: ' + result.sessions?.length)
+
+        if (refreshSessionsRequestRef.current === requestId) {
+          log('[RefreshSessions] merging sessions...')
+          setSessions(prev => mergeSessionPage(prev, result.sessions, sessionsToKeep()))
+          setSessionsTotal(typeof result.total === 'number' ? result.total : result.sessions.length)
+          setSessionProfileTotals(result.profile_totals ?? {})
+          log('[RefreshSessions] merge OK')
+        }
+      } finally {
+        if (refreshSessionsRequestRef.current === requestId) {
+          setSessionsLoading(false)
+        }
       }
+
+      log('[RefreshSessions] refreshing cron sessions...')
+      void refreshCronSessions()
+      log('[RefreshSessions] refreshing cron jobs...')
+      void refreshCronJobs()
+      log('[RefreshSessions] refreshing messaging sessions...')
+      void refreshMessagingSessions()
+      log('[RefreshSessions] END')
+      lastCompletedAtRef.current = Date.now()
+      inflightPromiseRef.current = null
     }
 
-    log('[RefreshSessions] refreshing cron sessions...')
-    void refreshCronSessions()
-    log('[RefreshSessions] refreshing cron jobs...')
-    void refreshCronJobs()
-    log('[RefreshSessions] refreshing messaging sessions...')
-    void refreshMessagingSessions()
-    log('[RefreshSessions] END')
+    // A loadMore paging fetch must bypass the freshness window (the user
+    // explicitly asked for the next page) but may still share the in-flight
+    // promise when one exists. $sessionsLimit changes between the two reads.
+    if (inflightPromiseRef.current) {
+      return inflightPromiseRef.current
+    }
+
+    if (Date.now() - lastCompletedAtRef.current < REFRESH_FRESH_MS) {
+      return
+    }
+
+    const promise = run()
+    inflightPromiseRef.current = promise
+    return promise
   }, [profileScope, refreshCronSessions, refreshCronJobs, refreshMessagingSessions])
 
   const loadMoreSessions = useCallback(async () => {
+    // Paging is an explicit user action: reset the freshness window so the
+    // fetch runs even if a refresh just completed (the bumped limit must
+    // reach the backend this call, not be swallowed by the 2s dedup).
     bumpSessionsLimit()
+    lastCompletedAtRef.current = 0
     await refreshSessions()
   }, [refreshSessions])
 

@@ -100,6 +100,61 @@ _DESKTOP_WINDOW_NAMES = (
     "finder", "desktop", "dock",              # macOS desktop / shell
 )
 
+# Pure-Wayland signature: the compositor's XWayland anchor is the ONLY window
+# the X11 backend can see. It reports a null pid, a ~10x10 bounds at (0,0), and
+# a title naming the compositor/session (e.g. "Hyprland :D", "sway", "wayland").
+# Compositor configs can in principle give the anchor a different title, so
+# also treat "a single null-pid window" as the signature when it's tiny.
+_WAYLAND_PLACEHOLDER_TITLES = ("hyprland", "sway", "wayland", "river", "niri", "labwc")
+
+# cua-driver's own visual cursor overlay — a fullscreen X client the driver
+# spawns for operator feedback. It appears in list_windows on every host (not
+# just Wayland) and must never count as a "real app window": it has no pid,
+# and on pure-Wayland hosts it's exactly what masks the anchor-only signature.
+_CUA_OVERLAY_PREFIX = "cua.agentcursoroverlay"
+
+
+def _is_wayland_placeholder_enum(raw_windows: List[Dict[str, Any]]) -> bool:
+    """True when a list_windows result is pure-Wayland's empty enumeration.
+
+    The X11/XWayland backend on a Wayland session surfaces only pseudo
+    windows: the compositor's XWayland anchor (null pid, ~10x10 at the
+    origin, compositor-named title) plus the driver's own cursor-overlay
+    surface. No real application window is an X11 client, which means
+    computer_use is inoperable — versus a healthy X11 desktop where windows
+    carry pids and real bounds.
+
+    Signature: after dropping the driver's overlay window, every remaining
+    window has a null pid (real apps always have one) AND there is at most
+    one such window, which is tiny or compositor-named. False-positive risk:
+    a hypothetical real app that is ~10x10 at the origin with pid null —
+    not a real configuration. False-negative risk: none on X11 (pids are
+    always present there).
+    """
+    real = [
+        w for w in raw_windows
+        if not str(w.get("title") or "").lower().startswith(_CUA_OVERLAY_PREFIX)
+    ]
+    if not real:
+        # Only the driver's own overlay: either Wayland-with-no-anchor or a
+        # probe artifact. Treat as the placeholder case — nothing drivable.
+        return True
+    if any(w.get("pid") is not None for w in real):
+        return False
+    if len(real) > 1:
+        return False
+    w = real[0]
+    bounds = w.get("bounds") or {}
+    width = bounds.get("width") or w.get("width") or 0
+    height = bounds.get("height") or w.get("height") or 0
+    title = str(w.get("title") or "").lower()
+    compositor_named = any(name in title for name in _WAYLAND_PLACEHOLDER_TITLES)
+    tiny_at_origin = width <= 16 and height <= 16
+    # Compositor-named OR tiny anchor: both are the anchor's signature. The
+    # title check catches a renamed anchor; the size check catches an unnamed
+    # one ("", e.g. some wlroots compositors) as long as it stays tiny.
+    return compositor_named or tiny_at_origin
+
 
 # Env var cua-driver reads to gate its anonymous usage telemetry (PostHog).
 # Setting it to "0" disables telemetry; absence => the binary's own default
@@ -1028,10 +1083,33 @@ class CuaDriverBackend(ComputerUseBackend):
             {"on_screen_only": True, "session": self._session_id},
         )
         raw_windows = (lw_out.get("structuredContent") or {}).get("windows") or []
+
+        # Wayland placeholder guard: on a pure-Wayland session the X11/XWayland
+        # backend enumerates exactly one pseudo-window — the compositor's
+        # XWayland anchor (e.g. "Hyprland :D"), 10x10 at (0,0) with pid null.
+        # Capturing it yields a blank screenshot and an empty AX tree, i.e.
+        # computer_use appears to "work" but every action misses. Detect the
+        # signature (single window, pid null, ~10x10) and fail fast with an
+        # actionable message instead of returning a useless capture.
+        if _is_wayland_placeholder_enum(raw_windows):
+            raise RuntimeError(
+                "cua-driver's Linux backend enumerates windows over X11/XWayland; "
+                "this is a pure-Wayland session and no app windows are X11 clients "
+                "(only the compositor's XWayland anchor window was found). "
+                "computer_use cannot see or drive native Wayland windows here. "
+                "Workarounds: run the target app under XWayland "
+                "(GDK_BACKEND=x11 / --ozone-platform=x11), or use an X11/Xorg "
+                "session. Run `alice computer-use doctor` for details."
+            )
+
         windows = [
             {
                 "app_name": w.get("app_name", ""),
-                "pid": int(w["pid"]),
+                # Wayland sessions report pid:null for the compositor anchor;
+                # macOS/Windows always carry a pid. Tolerate the null so the
+                # enumeration path doesn't crash before the placeholder guard
+                # above can produce its actionable message.
+                "pid": int(w["pid"]) if w.get("pid") is not None else -1,
                 "window_id": int(w["window_id"]),
                 "off_screen": not w.get("is_on_screen", True),
                 "title": w.get("title", ""),

@@ -10,6 +10,8 @@ import {
   $messages,
   noteSessionActivity,
   onSessionWatchdogClear,
+  setCurrentBranch,
+  setCurrentCwd,
   setCurrentFastMode,
   setCurrentModel,
   setCurrentPersonality,
@@ -63,6 +65,15 @@ function syncRuntimeMetadataToView(state: ClientSessionState) {
   setCurrentFastMode(state.fast ?? false)
   setYoloActive(state.yolo ?? false)
   setCurrentPersonality(state.personality ?? '')
+  // Workspace scope is part of the per-session runtime identity. Applying it
+  // here (idempotent — same value on heartbeats) makes the project tree
+  // follow a warm-cache repaint on session switch. Without it the fast-path
+  // painted the transcript but left the previous session's cwd (or none) in
+  // `$currentCwd`, so the right sidebar's file tree stayed empty/stale until
+  // a session.info event happened to arrive — which a live-reuse resume never
+  // emits. Empty-string cwd means a genuinely detached chat and still clears.
+  setCurrentCwd(state.cwd ?? '')
+  setCurrentBranch(state.branch ?? '')
 }
 
 export function useSessionStateCache({

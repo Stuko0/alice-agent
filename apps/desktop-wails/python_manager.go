@@ -18,6 +18,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 var portRe = regexp.MustCompile(`\bport[=:]\s*(\d{4,5})\b`)
@@ -45,6 +47,33 @@ type PythonManager struct {
 	port         int
 	sessionToken string
 	portReady    chan struct{}
+	// Wails app context for runtime event emission (nil until SetContext).
+	// Events are best-effort: a nil ctx (headless tests, early startup) just
+	// skips the emit, the state is still observable via GetBootProgress.
+	ctx context.Context
+	// Current boot snapshot, mirrored to the renderer as `alice:boot-progress`
+	// events + polled via GetBootProgress.
+	bootPhase    string
+	bootMessage  string
+	bootProgress int
+	// Set by StopGateway so the stdout watcher does not emit a spurious
+	// `alice:backend:exit` for an intentional shutdown.
+	stopping bool
+	// Ring buffer tail of the backend's stderr for error reporting.
+	stderrMu    sync.Mutex
+	stderrTail  []byte
+}
+
+// BootProgress mirrors the renderer's DesktopBootProgress contract
+// (apps/desktop/src/global.d.ts). Timestamp is epoch milliseconds.
+type BootProgress struct {
+	Error     string `json:"error"`
+	FakeMode  bool   `json:"fakeMode"`
+	Message   string `json:"message"`
+	Phase     string `json:"phase"`
+	Progress  int    `json:"progress"`
+	Running   bool   `json:"running"`
+	Timestamp int64  `json:"timestamp"`
 }
 
 // activeCmd stores the running backend process (package-level to avoid Wails serialization issues)
@@ -59,6 +88,121 @@ func generateToken() string {
 		return fmt.Sprintf("token_%d", time.Now().UnixNano())
 	}
 	return hex.EncodeToString(b)
+}
+
+// SetContext stores the Wails runtime context for event emission. Call from
+// OnStartup before StartGateway so boot-progress events reach the renderer.
+func (pm *PythonManager) SetContext(ctx context.Context) {
+	pm.mu.Lock()
+	pm.ctx = ctx
+	pm.mu.Unlock()
+}
+
+// setBootStep updates the boot snapshot under the lock and best-effort emits
+// `alice:boot-progress` to the renderer. Monotonic: the progress value only
+// moves forward while running (the renderer also clamps).
+func (pm *PythonManager) setBootStep(phase, message string, progress int, running bool, errMsg string) {
+	pm.mu.Lock()
+	if progress < pm.bootProgress && running && errMsg == "" {
+		progress = pm.bootProgress
+	}
+	pm.bootPhase = phase
+	pm.bootMessage = message
+	pm.bootProgress = progress
+	ctx := pm.ctx
+	pm.mu.Unlock()
+
+	if ctx == nil {
+		return
+	}
+
+	payload := BootProgress{
+		Error:     errMsg,
+		FakeMode:  false,
+		Message:   message,
+		Phase:     phase,
+		Progress:  progress,
+		Running:   running,
+		Timestamp: time.Now().UnixMilli(),
+	}
+
+	wailsruntime.EventsEmit(ctx, "alice:boot-progress", payload)
+}
+
+// GetBootProgress returns the current boot snapshot for the renderer's
+// initial poll (before any event lands).
+func (pm *PythonManager) GetBootProgress() BootProgress {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
+	return BootProgress{
+		Error:     "",
+		FakeMode:  false,
+		Message:   pm.bootMessage,
+		Phase:     pm.bootPhase,
+		Progress:  pm.bootProgress,
+		Running:   pm.running && pm.port == 0,
+		Timestamp: time.Now().UnixMilli(),
+	}
+}
+
+// emitBackendExit reports an unexpected backend death to the renderer and
+// stores the failure in the boot snapshot. Intentional StopGateway shutdowns
+// set `stopping` first and do not reach here.
+func (pm *PythonManager) emitBackendExit(reason string) {
+	pm.mu.Lock()
+	stopping := pm.stopping
+	pm.mu.Unlock()
+
+	if stopping {
+		return
+	}
+
+	tail := pm.stderrTailText()
+
+	message := reason
+	if tail != "" {
+		message = fmt.Sprintf("%s — stderr tail: %s", reason, tail)
+	}
+
+	wailsruntime.EventsEmit(contextWithCtx(pm), "alice:backend:exit", map[string]interface{}{
+		"reason": message,
+	})
+
+	pm.setBootStep("backend.exited", message, 100, false, message)
+}
+
+// stderrTailText returns up to the last 2 KB of captured stderr, lock-guarded.
+func (pm *PythonManager) stderrTailText() string {
+	pm.stderrMu.Lock()
+	defer pm.stderrMu.Unlock()
+
+	const max = 2048
+
+	if len(pm.stderrTail) > max {
+		return string(pm.stderrTail[len(pm.stderrTail)-max:])
+	}
+
+	return string(pm.stderrTail)
+}
+
+// appendStderrLine adds one stderr line to the bounded tail ring.
+func (pm *PythonManager) appendStderrLine(line string) {
+	pm.stderrMu.Lock()
+	defer pm.stderrMu.Unlock()
+
+	pm.stderrTail = append(pm.stderrTail, []byte(line)...)
+	if len(pm.stderrTail) > 16*1024 {
+		pm.stderrTail = pm.stderrTail[len(pm.stderrTail)-8*1024:]
+	}
+}
+
+// contextWithCtx returns the stored Wails context or nil.
+func contextWithCtx(pm *PythonManager) context.Context {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
+	return pm.ctx
 }
 
 func NewPythonManager() *PythonManager {
@@ -349,6 +493,36 @@ func wailsDebugLogPath() string {
 	return filepath.Join(os.TempDir(), "wails-debug.log")
 }
 
+// cmdEnvForBackend builds the backend process environment: the current env
+// overridden with the venv-aware PYTHONPATH/PATH plus Alice desktop vars.
+// PYTHONUNBUFFERED=1 is load-bearing on Windows: stdout to a pipe is
+// fully-buffered by default, so the `port=NNNN` announcement line can sit in
+// the buffer past every deadline and the GUI stays on "Starting Alice".
+func cmdEnvForBackend(pm *PythonManager, projectRoot string, backendEnv map[string]string) []string {
+	envMap := make(map[string]string)
+	for _, e := range os.Environ() {
+		if idx := bytes.IndexByte([]byte(e), '='); idx > 0 {
+			envMap[string(e[:idx])] = string(e[idx+1:])
+		}
+	}
+	for k, v := range backendEnv {
+		envMap[k] = v
+	}
+
+	envMap["ALICE_HOME"] = pm.aliceHome
+	envMap["ALICE_DESKTOP"] = "1"
+	envMap["ALICE_WEB_DIST"] = filepath.Join(projectRoot, "apps", "desktop", "dist")
+	envMap["ALICE_DASHBOARD_SESSION_TOKEN"] = pm.sessionToken
+	envMap["PYTHONUNBUFFERED"] = "1"
+	envMap["PYTHONDONTWRITEBYTECODE"] = "1"
+
+	env := make([]string, 0, len(envMap))
+	for k, v := range envMap {
+		env = append(env, k+"="+v)
+	}
+	return env
+}
+
 func (pm *PythonManager) StartGateway() error {
 	// Write to a debug file to trace execution
 	debugFile, _ := os.OpenFile(wailsDebugLogPath(), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
@@ -399,34 +573,54 @@ func (pm *PythonManager) StartGateway() error {
 	// Build environment like Electron does
 	backendEnv := pm.buildBackendEnv(projectRoot)
 
+	// backendSupportsServe probes whether the resolved runtime registers the
+	// `serve` subcommand. `serve` is newer than `dashboard`; a managed install
+	// or PATH `alice` that predates it makes argparse exit(2) instantly
+	// ("unrecognized arguments"), the backend dies before announcing a port,
+	// and the old GUI just sat on "Starting Alice" forever. Mirrors the
+	// Electron shell's backendSupportsServe guard.
+	backendSupportsServe := func(python, root string) bool {
+		// Bounded context: 15s for a cold interpreter on a spinning disk /
+		// AV-scanned Windows install to import alice_cli. Without the bound,
+		// a broken runtime that ignores `--help` and starts serving (e.g. a
+		// stub python) makes probe.Run() block forever — exactly the hang
+		// TestStartGatewayBootE2E caught.
+		probeCtx, cancelProbe := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancelProbe()
+		probe := exec.CommandContext(probeCtx, python, "-m", "alice_cli.main", "serve", "--help")
+		probe.Dir = root
+		probe.Env = cmdEnvForBackend(pm, projectRoot, backendEnv)
+		probe.Stdout = io.Discard
+		probe.Stderr = io.Discard
+		return probe.Run() == nil
+	}
+
+	serveArgs := []string{"-m", "alice_cli.main", "serve", "--host", "127.0.0.1", "--port", "0"}
+	if !backendSupportsServe(pythonPath, projectRoot) {
+		if debugFile != nil {
+			fmt.Fprintf(debugFile, "[Wails] runtime has no `serve`; falling back to legacy `dashboard --no-open`\n")
+		}
+		log.Printf("[Wails] runtime has no `serve`; falling back to legacy `dashboard --no-open`")
+		serveArgs = []string{"-m", "alice_cli.main", "dashboard", "--no-open", "--host", "127.0.0.1", "--port", "0"}
+	}
+
+	// Boot snapshot update — inline under the already-held pm.mu. setBootStep()
+	// takes pm.mu itself, so calling it mid-critical-section would self-deadlock
+	// (StartGateway holds the lock from the started-flag check through spawn).
+	// Mirror its monotonic clamp; the event emission happens after Unlock below.
+	pm.bootPhase = "backend.spawn"
+	pm.bootMessage = "Starting Alice backend"
+	pm.bootProgress = 20
+	spawnCtx := pm.ctx
+
 	// Use context.Background() so the backend doesn't get killed when the startup context is cancelled
 	bgCtx := context.Background()
-	cmd := exec.CommandContext(bgCtx, pythonPath, "-m", "alice_cli.main", "serve", "--host", "127.0.0.1", "--port", "0")
+	cmd := exec.CommandContext(bgCtx, pythonPath, serveArgs...)
 	cmd.Dir = projectRoot
 
-	// Merge with current env, overriding with backend-specific values
-	env := os.Environ()
-	envMap := make(map[string]string)
-	for _, e := range env {
-		if idx := bytes.IndexByte([]byte(e), '='); idx > 0 {
-			envMap[string(e[:idx])] = string(e[idx+1:])
-		}
-	}
-	for k, v := range backendEnv {
-		envMap[k] = v
-	}
-	// Add Alice-specific env vars
-	envMap["ALICE_HOME"] = pm.aliceHome
-	envMap["ALICE_DESKTOP"] = "1"
-	envMap["ALICE_WEB_DIST"] = webDist
-	envMap["ALICE_DASHBOARD_SESSION_TOKEN"] = pm.sessionToken
-
-	// Rebuild env slice
-	env = nil
-	for k, v := range envMap {
-		env = append(env, k+"="+v)
-	}
-	cmd.Env = env
+	// Backend env: current env + venv PYTHONPATH/PATH + Alice desktop vars
+	// (incl. PYTHONUNBUFFERED=1 so the port announcement is never buffered).
+	cmd.Env = cmdEnvForBackend(pm, projectRoot, backendEnv)
 
 	logsDir := filepath.Join(pm.aliceHome, "logs")
 	_ = os.MkdirAll(logsDir, 0755)
@@ -449,19 +643,39 @@ func (pm *PythonManager) StartGateway() error {
 		}
 		return fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
-	cmd.Stderr = logFile
+	// Tee stderr to the log file AND an in-memory tail so a dead backend's
+	// last words reach the boot-error UI instead of being buried in agent.log.
+	stderrWriter := io.MultiWriter(logFile, &stderrTailWriter{pm: pm})
+	cmd.Stderr = stderrWriter
 
 	pm.portReady = make(chan struct{})
+	pm.mu.Unlock()
+
+	// Boot-progress event for the spawn step — emitted after Unlock because
+	// EventsEmit dispatches to the renderer and must never run under pm.mu.
+	if spawnCtx != nil {
+		wailsruntime.EventsEmit(spawnCtx, "alice:boot-progress", BootProgress{
+			FakeMode:  false,
+			Message:   "Starting Alice backend",
+			Phase:     "backend.spawn",
+			Progress: 20,
+			Running:   true,
+			Timestamp: time.Now().UnixMilli(),
+		})
+	}
 
 	if debugFile != nil {
 		fmt.Fprintf(debugFile, "[Wails] Spawning backend process: %s %v\n", pythonPath, cmd.Args)
 	}
 	if err := cmd.Start(); err != nil {
+		pm.mu.Lock()
+		pm.running = false
 		pm.mu.Unlock()
 		logFile.Close()
 		if debugFile != nil {
 			fmt.Fprintf(debugFile, "[Wails] Failed to start backend: %v\n", err)
 		}
+		pm.setBootStep("backend.spawn_failed", fmt.Sprintf("Failed to start backend: %v", err), 100, false, err.Error())
 		return fmt.Errorf("failed to start python backend: %w", err)
 	}
 
@@ -469,6 +683,7 @@ func (pm *PythonManager) StartGateway() error {
 	activeCmd = cmd
 	activeCmdMu.Unlock()
 
+	pm.mu.Lock()
 	pm.running = true
 	pm.mu.Unlock()
 
@@ -476,12 +691,25 @@ func (pm *PythonManager) StartGateway() error {
 		fmt.Fprintf(debugFile, "[Wails] Backend started, PID=%d\n", cmd.Process.Pid)
 	}
 
-	go pm.watchPort(stdout, logFile)
+	go pm.watchPort(stdout, logFile, cmd)
 
 	return nil
 }
 
-func (pm *PythonManager) watchPort(stdout io.ReadCloser, logFile *os.File) {
+// stderrTailWriter is an io.Writer that appends complete lines to the
+// PythonManager's bounded stderr tail (rendered on a backend-exit error).
+type stderrTailWriter struct {
+	pm *PythonManager
+}
+
+func (w *stderrTailWriter) Write(p []byte) (int, error) {
+	if len(p) > 0 {
+		w.pm.appendStderrLine(string(p))
+	}
+	return len(p), nil
+}
+
+func (pm *PythonManager) watchPort(stdout io.ReadCloser, logFile *os.File, cmd *exec.Cmd) {
 	defer stdout.Close()
 	defer logFile.Close()
 
@@ -505,6 +733,33 @@ func (pm *PythonManager) watchPort(stdout io.ReadCloser, logFile *os.File) {
 		}
 		if err != nil {
 			log.Printf("[Wails] Backend stdout read error: %v", err)
+
+			// EOF means the backend exited. If it never announced a port,
+			// that's the "Starting Alice" forever bug: surface it.
+			pm.mu.Lock()
+			neverAnnounced := pm.port == 0
+			stopping := pm.stopping
+			pm.mu.Unlock()
+
+			if neverAnnounced && !stopping {
+				exitCode := -1
+				if err == io.EOF {
+					// Reap the process to get its real exit code. Safe here:
+					// reads from the StdoutPipe are complete (EOF reached).
+					_ = cmd.Wait()
+					if cmd.ProcessState != nil {
+						exitCode = cmd.ProcessState.ExitCode()
+					}
+				}
+
+				reason := fmt.Sprintf(
+					"Alice backend exited before announcing its port (exit code %d)",
+					exitCode,
+				)
+				log.Printf("[Wails] %s", reason)
+				pm.emitBackendExit(reason)
+			}
+
 			return
 		}
 	}
@@ -527,6 +782,9 @@ func (pm *PythonManager) tryParsePort(line string) {
 	pm.port = p
 	log.Printf("[Wails] Backend announced port=%d", p)
 	close(pm.portReady)
+	// Move the boot bar to "connecting" once the port lands; the renderer's
+	// gateway.connect + handshake steps take it the rest of the way.
+	go pm.setBootStep("backend.ready", fmt.Sprintf("Backend ready on port %d", p), 60, true, "")
 }
 
 // GetBackendPIDs returns the PIDs of the live backend process(es) managed by
@@ -543,9 +801,10 @@ func (pm *PythonManager) GetBackendPIDs() []int {
 
 func (pm *PythonManager) StopGateway() error {
 	pm.mu.Lock()
-	defer pm.mu.Unlock()
+	pm.stopping = true
 
 	if !pm.running {
+		pm.mu.Unlock()
 		return nil
 	}
 
@@ -559,6 +818,7 @@ func (pm *PythonManager) StopGateway() error {
 
 	if cmd == nil || cmd.Process == nil {
 		pm.running = false
+		pm.mu.Unlock()
 		return nil
 	}
 
@@ -570,6 +830,7 @@ func (pm *PythonManager) StopGateway() error {
 	}
 
 	pm.running = false
+	pm.mu.Unlock()
 	return err
 }
 

@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function GetAliceHome():Promise<string>;
 
+export function GetConnectionInfo():Promise<main.ConnectionInfo>;
+
 export function GetRecentLogs(arg1:number):Promise<Array<string>>;
 
 export function IsGatewayHealthy():Promise<boolean>;

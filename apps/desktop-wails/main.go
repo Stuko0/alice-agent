@@ -43,7 +43,7 @@ func main() {
 	fsService := NewFSService()
 	logService := NewLogService()
 	ptyService := NewPTYService()
-	updateService := NewUpdateService()
+	updateService := NewUpdateService(pm)
 	connectionService := NewConnectionService(pm.aliceHome)
 	app.ConnectionService = connectionService
 
@@ -57,6 +57,9 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 27, B: 27, A: 1},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)
+			// Wire the runtime context BEFORE StartGateway so boot-progress
+			// and backend-exit events emitted during spawn reach the renderer.
+			pm.SetContext(ctx)
 			// Single-instance: if another desktop holds the socket, forward any
 			// alice:// deep link to it and exit.
 			ln, primary := acquireSingleInstance(pm.aliceHome)
@@ -121,9 +124,10 @@ func NewApp() *App {
 }
 
 // NewUpdateService builds the self-update service, wired to the shared
-// PythonManager for the project root + backend PID sparing.
-func NewUpdateService() *UpdateService {
-	pm := NewPythonManager()
+// PythonManager for the project root + backend PID sparing. Pass the SAME
+// manager the app uses — a second instance would track stale backend PIDs
+// and double-resolve the project root independently.
+func NewUpdateService(pm *PythonManager) *UpdateService {
 	return &UpdateService{
 		aliceHome: pm.aliceHome,
 		backendPID: func() []int {
