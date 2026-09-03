@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "alice-agent"
-version = "0.23.1"
+version = "0.23.2"
 description = "Alice — AI agent fork for Arquant, based on Alice Agent"
 readme = "README.md"
 # Upper bound is load-bearing, not cosmetic. uv resolves the project's
