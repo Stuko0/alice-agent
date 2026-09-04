@@ -59,7 +59,7 @@ fi
 # skip when the env var is set or when uv is absent.
 if [ "${ALICE_SKIP_PYTHON_BUNDLE:-0}" != "1" ] && command -v uv >/dev/null 2>&1; then
   echo "=== Bundling embedded Python backend ==="
-  ./scripts/bundle-python.sh 3.14 "build/bin/resources/python" || \
+  ./scripts/bundle-python.sh "build/bin/resources/python" || \
     echo "!! python bundle failed (build continues; desktop needs a system venv)"
 fi
 

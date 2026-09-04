@@ -11,8 +11,8 @@
 # project and its deps installed into Lib\site-packages.
 #
 # Usage:
-#   .\bundle-python.ps1 [[-PythonVersion 3.14] [-Dest <dir>] [-SkipInstall]]
-#     PythonVersion  default 3.14
+#   .\bundle-python.ps1 [[-PythonVersion 3.13] [-Dest <dir>] [-SkipInstall]]
+#     PythonVersion  default 3.13
 #     Dest           default <repo>/apps/desktop-wails/build/bin/resources/python
 #     -SkipInstall   only stage the CPython layout (no pip install of alice) —
 #                    used for a quick layout-smoke in CI before the slow install
@@ -25,7 +25,7 @@
 # release artifact instead of rebuilding it on the user's machine.
 
 param(
-    [string]$PythonVersion = "3.14",
+    [string]$PythonVersion = "3.13",
     [string]$Dest = "",
     [switch]$SkipInstall
 )

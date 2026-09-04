@@ -12,7 +12,9 @@
 #
 # Usage:
 #   ./bundle-python.sh [python-version] [dest]
-#     python-version  default 3.14 (must match what alice supports)
+#     python-version  default 3.13 (must be a version whose native wheels —
+#                     e.g. pywinpty's PyO3 build — support; 3.13 avoids the
+#                     3.14 PyO3 ceiling on Windows)
 #     dest            default build/bin/resources/python
 #
 # Requires: uv (provisions the standalone CPython). The project+deps install
@@ -23,7 +25,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
-PYVER="${1:-3.14}"
+PYVER="${1:-3.13}"
 DEST="${2:-$SCRIPT_DIR/../build/bin/resources/python}"
 
 command -v uv >/dev/null 2>&1 || { echo "uv not found (needed to provision the standalone CPython)" >&2; exit 1; }

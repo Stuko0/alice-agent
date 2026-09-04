@@ -70,7 +70,7 @@ try {
     # for the prebuilt-download path, so this only matters for local builds.
     if ($env:ALICE_SKIP_PYTHON_BUNDLE -ne "1" -and (Get-Command uv -ErrorAction SilentlyContinue)) {
         Write-Host "=== Bundling embedded Python backend ==="
-        & ./scripts/bundle-python.ps1 -PythonVersion 3.14 -Dest (Join-Path $WailsDir "build\bin\resources\python")
+        & ./scripts/bundle-python.ps1 -Dest (Join-Path $WailsDir "build\bin\resources\python")
         if ($LASTEXITCODE -ne 0) {
             Write-Warn "!! python bundle failed (build continues; desktop needs a system venv)"
         }
