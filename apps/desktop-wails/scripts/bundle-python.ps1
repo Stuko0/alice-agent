@@ -96,15 +96,24 @@ try {
     }
 
     # 5. Package a distributable tar.gz of the bundle beside it (for the
-    #    Windows installer release artifact). Use ABSOLUTE paths — on Windows
-    #    pwsh's Push-Location does not change the native tar.exe cwd, so a
-    #    relative -C "resources" fails with "could not chdir". tar.exe is
-    #    available on Win10 1803+.
+    #    Windows installer release artifact).
+    #    Windows bsdtar (tar.exe) chokes on `-C <abs windows path>` with
+    #    backslashes ("Couldn't visit directory"). Fix: change the PROCESS cwd
+    #    via .NET SetCurrentDirectory (Push-Location only changes pwsh's
+    #    location provider, NOT the OS cwd native children inherit), then pass
+    #    the relative name "resources". Produces <...>\build\bin\python.tar.gz
+    #    containing resources/python/... (what install.ps1 extracts).
     $BundleParent = Split-Path -Parent $Dest          # ...\build\bin
     $tgzPath = Join-Path $BundleParent "python.tar.gz"
-    Write-Host "packaging $tgzPath ..."
-    & tar -czf $tgzPath -C $BundleParent "resources"
-    if ($LASTEXITCODE -ne 0) { throw "tar packaging failed (exit $LASTEXITCODE)" }
+    $prevCwd = [System.IO.Directory]::GetCurrentDirectory()
+    try {
+        [System.IO.Directory]::SetCurrentDirectory($BundleParent)
+        Write-Host "packaging $tgzPath ..."
+        & tar -czf $tgzPath "resources"
+        if ($LASTEXITCODE -ne 0) { throw "tar packaging failed (exit $LASTEXITCODE)" }
+    } finally {
+        [System.IO.Directory]::SetCurrentDirectory($prevCwd)
+    }
 
     Write-Host "bundle ready: $Dest"
     Write-Host "  python: $PyExe"
