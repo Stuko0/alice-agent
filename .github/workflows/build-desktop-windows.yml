@@ -96,14 +96,14 @@ jobs:
 
       - name: Verify embedded Python bundle exists
         # bundle-python.ps1 (invoked by build.ps1) emits
-        # build/bin/resources/python.tar.gz (the distributable backend bundle)
-        # and the unpacked resources/python beside the exe. Installer needs it.
+        # build/bin/resources.zip (the distributable backend bundle) and the
+        # unpacked resources/python beside the exe. Installer needs the zip.
         run: |
-          $tgz = 'apps/desktop-wails/build/bin/resources/python.tar.gz'
-          if (-not (Test-Path $tgz)) { throw "Python bundle not found at $tgz" }
+          $zip = 'apps/desktop-wails/build/bin/resources.zip'
+          if (-not (Test-Path $zip)) { throw "Python bundle zip not found at $zip" }
           $py = 'apps/desktop-wails/build/bin/resources/python/python.exe'
           if (-not (Test-Path $py)) { throw "Unpacked bundle python.exe missing at $py" }
-          Write-Host "✅ Python bundle: $((Resolve-Path $tgz).Path) ($('{0:N1}' -f ((Get-Item $tgz).Length / 1MB)) MB)"
+          Write-Host "✅ Python bundle: $((Resolve-Path $zip).Path) ($('{0:N1}' -f ((Get-Item $zip).Length / 1MB)) MB)"
         shell: pwsh
 
       - name: Write SHA-256 checksums
@@ -112,11 +112,11 @@ jobs:
         # Install-DesktopWailsPrebuilt).
         run: |
           $bin = 'apps/desktop-wails/build/bin/alice-desktop.exe'
-          $tgz = 'apps/desktop-wails/build/bin/resources/python.tar.gz'
+          $zip = 'apps/desktop-wails/build/bin/resources.zip'
           $hash = (Get-FileHash $bin -Algorithm SHA256).Hash.ToLower()
           "$hash  alice-desktop.exe" | Out-File -FilePath "$bin.sha256" -Encoding ascii
-          $thash = (Get-FileHash $tgz -Algorithm SHA256).Hash.ToLower()
-          "$thash  python.tar.gz" | Out-File -FilePath "$tgz.sha256" -Encoding ascii
+          $zhash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$zhash  resources.zip" | Out-File -FilePath "$zip.sha256" -Encoding ascii
         shell: pwsh
 
       - name: Upload Wails binary artifact
@@ -134,8 +134,8 @@ jobs:
         with:
           name: alice-desktop-python-bundle-windows-${{ github.ref_name }}
           path: |
-            apps/desktop-wails/build/bin/resources/python.tar.gz
-            apps/desktop-wails/build/bin/resources/python.tar.gz.sha256
+            apps/desktop-wails/build/bin/resources.zip
+            apps/desktop-wails/build/bin/resources.zip.sha256
           if-no-files-found: error
           retention-days: 90
 
@@ -146,8 +146,8 @@ jobs:
           files: |
             apps/desktop-wails/build/bin/alice-desktop.exe
             apps/desktop-wails/build/bin/alice-desktop.exe.sha256
-            apps/desktop-wails/build/bin/resources/python.tar.gz
-            apps/desktop-wails/build/bin/resources/python.tar.gz.sha256
+            apps/desktop-wails/build/bin/resources.zip
+            apps/desktop-wails/build/bin/resources.zip.sha256
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

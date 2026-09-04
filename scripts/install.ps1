@@ -2449,7 +2449,7 @@ function Get-DesktopWailsReleaseTag {
 }
 
 # Install-DesktopWailsPrebuilt downloads alice-desktop.exe + its SHA-256
-# checksum AND the embedded python bundle (resources/python.tar.gz + sha256)
+# checksum AND the embedded python bundle (resources.zip + sha256)
 # from the GitHub release for the exact checkout tag. Returns the binary path
 # on success, $null on any failure (caller falls back).
 function Install-DesktopWailsPrebuilt {
@@ -2488,7 +2488,7 @@ function Install-DesktopWailsPrebuilt {
         Move-Item -Force $exeTmp $exePath
 
         # --- Download + extract the embedded python bundle beside the exe. ---
-        # The bundle (resources/python.tar.gz) carries a self-contained Python
+        # The bundle (resources.zip) carries a self-contained Python
         # backend so a machine without any Python still runs the desktop. If it
         # is missing/ko on the release, degrade gracefully: the backend falls
         # back to a system venv / ALICE_DESKTOP_PYTHON.
@@ -2505,26 +2505,26 @@ function Install-DesktopWailsPrebuilt {
     }
 }
 
-# Install-PythonBundlePrebuilt downloads resources/python.tar.gz + its SHA-256
+# Install-PythonBundlePrebuilt downloads resources.zip + its SHA-256 checksum
 # from the release and extracts it to <wails-dir>/build/bin/resources/python
 # (beside alice-desktop.exe), which is exactly where the Go backend falls back
 # to (python_manager.go: findPythonForRoot → resources/python/python.exe).
 function Install-PythonBundlePrebuilt {
     param([string]$Tag, [string]$Repo, [string]$BinDir, [string]$WailsDir)
-    $tgzUrl = "$Repo/releases/download/$Tag/resources/python.tar.gz"
-    $sumUrl = "$tgzUrl.sha256"
-    $tgzTmp = Join-Path $env:TEMP "alice-python-bundle-$Tag.tar.gz"
-    $sumTmp = "$tgzTmp.sha256"
+    $zipUrl = "$Repo/releases/download/$Tag/resources.zip"
+    $sumUrl = "$zipUrl.sha256"
+    $zipTmp = Join-Path $env:TEMP "alice-python-bundle-$Tag.zip"
+    $sumTmp = "$zipTmp.sha256"
     New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
     try {
-        Invoke-WebRequest -Uri $tgzUrl -OutFile $tgzTmp -UseBasicParsing
+        Invoke-WebRequest -Uri $zipUrl -OutFile $zipTmp -UseBasicParsing
         try {
             Invoke-WebRequest -Uri $sumUrl -OutFile $sumTmp -UseBasicParsing
             $expected = ((Get-Content $sumTmp -Raw).Trim() -split '\s+')[0]
-            $actual = (Get-FileHash $tgzTmp -Algorithm SHA256).Hash.ToLower()
+            $actual = (Get-FileHash $zipTmp -Algorithm SHA256).Hash.ToLower()
             if ($expected -and $expected.ToLower() -ne $actual) {
                 Write-Warn "Embedded python bundle SHA256 mismatch (expected $expected, got $actual) — refusing it"
-                Remove-Item $tgzTmp -Force -ErrorAction SilentlyContinue
+                Remove-Item $zipTmp -Force -ErrorAction SilentlyContinue
                 throw "python bundle sha256 mismatch"
             }
             Write-Success "Embedded python bundle verified (SHA256 ok)"
@@ -2532,17 +2532,16 @@ function Install-PythonBundlePrebuilt {
             if ($_ -like "*sha256 mismatch*") { throw }
             Write-Warn "Could not fetch/verify the bundle checksum — using the downloaded bundle without verification"
         }
-        # Extract to <wails-dir>/build/bin/resources/python. The tgz contains
-        # resources/python/... (created by bundle-python.ps1/.sh).
+        # Extract to <wails-dir>/build/bin. The zip contains resources/python/...
+        # (created by bundle-python.ps1 via Compress-Archive).
         $extractDir = Join-Path $WailsDir "build\bin"
-        & tar -xzf $tgzTmp -C $extractDir
-        if ($LASTEXITCODE -ne 0) { throw "tar extraction failed (exit $LASTEXITCODE)" }
+        Expand-Archive -Path $zipTmp -DestinationPath $extractDir -Force
         $pyExe = Join-Path $extractDir "resources\python\python.exe"
         if (-not (Test-Path $pyExe)) { throw "no python.exe after extraction at $pyExe" }
         Write-Success "Embedded python backend ready at $pyExe"
-        Remove-Item $tgzTmp -Force -ErrorAction SilentlyContinue
+        Remove-Item $zipTmp -Force -ErrorAction SilentlyContinue
     } catch {
-        Remove-Item $tgzTmp -Force -ErrorAction SilentlyContinue
+        Remove-Item $zipTmp -Force -ErrorAction SilentlyContinue
         throw
     }
 }

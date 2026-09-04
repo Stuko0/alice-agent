@@ -20,9 +20,9 @@
 # Requires: uv on PATH (provisions the standalone CPython). The project+deps
 # install pulls from PyPI and takes several minutes — run in the background.
 #
-# Also emits, beside the bundle, a `resources/python.tar.gz` containing the
-# bundle so the installer (scripts/install.ps1) can ship it as a downloadable
-# release artifact instead of rebuilding it on the user's machine.
+# Also emits, beside the bundle, a `resources.zip` containing the bundle so the
+# Windows installer (scripts/install.ps1) can ship it as a downloadable release
+# artifact instead of rebuilding it on the user's machine.
 
 param(
     [string]$PythonVersion = "3.13",
@@ -95,29 +95,23 @@ try {
         }
     }
 
-    # 5. Package a distributable tar.gz of the bundle beside it (for the
-    #    Windows installer release artifact).
-    #    Windows bsdtar (tar.exe) chokes on `-C <abs windows path>` with
-    #    backslashes ("Couldn't visit directory"). Fix: change the PROCESS cwd
-    #    via .NET SetCurrentDirectory (Push-Location only changes pwsh's
-    #    location provider, NOT the OS cwd native children inherit), then pass
-    #    the relative name "resources". Produces <...>\build\bin\python.tar.gz
-    #    containing resources/python/... (what install.ps1 extracts).
+    # 5. Package a distributable .zip of the bundle beside it (for the Windows
+    #    installer release artifact). Uses .NET Compress-Archive (no bsdtar),
+    #    which is deterministic with Windows paths. Windows bsdtar (tar.exe)
+    #    fails on the python bundle ("Couldn't visit directory") regardless of
+    #    cwd handling, so we avoid tar entirely. Produces
+    #    <...>\build\bin\resources.zip containing resources/python/...
+    #    (what install.ps1 extracts). The POSIX build keeps using tar.gz for
+    #    its own local/AppImage use.
     $BundleParent = Split-Path -Parent $Dest          # ...\build\bin
-    $tgzPath = Join-Path $BundleParent "python.tar.gz"
-    $prevCwd = [System.IO.Directory]::GetCurrentDirectory()
-    try {
-        [System.IO.Directory]::SetCurrentDirectory($BundleParent)
-        Write-Host "packaging $tgzPath ..."
-        & tar -czf $tgzPath "resources"
-        if ($LASTEXITCODE -ne 0) { throw "tar packaging failed (exit $LASTEXITCODE)" }
-    } finally {
-        [System.IO.Directory]::SetCurrentDirectory($prevCwd)
-    }
+    $zipPath = Join-Path $BundleParent "resources.zip"
+    Write-Host "packaging $zipPath ..."
+    Compress-Archive -Path (Join-Path $BundleParent "resources") -DestinationPath $zipPath -CompressionLevel Fastest -Force
+    if (-not (Test-Path $zipPath)) { throw "zip packaging failed: no $zipPath produced" }
 
     Write-Host "bundle ready: $Dest"
     Write-Host "  python: $PyExe"
-    Write-Host "  distributable: $tgzPath"
+    Write-Host "  distributable: $zipPath"
     $size = (Get-Item $Dest).Length
     Write-Host ("  size: {0:N1} MB" -f ($size / 1MB))
 } finally {
