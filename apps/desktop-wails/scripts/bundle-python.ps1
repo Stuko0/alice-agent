@@ -96,18 +96,19 @@ try {
     }
 
     # 5. Package a distributable tar.gz of the bundle beside it (for the
-    #    Windows installer release artifact). tar is available on Win10 1803+.
-    Write-Host "packaging resources/python.tar.gz ..."
-    Push-Location (Split-Path -Parent $Dest)
-    try {
-        & tar -czf "python.tar.gz" -C "resources" "python"
-        if ($LASTEXITCODE -ne 0) { throw "tar packaging failed" }
-    } finally {
-        Pop-Location
-    }
+    #    Windows installer release artifact). Use ABSOLUTE paths — on Windows
+    #    pwsh's Push-Location does not change the native tar.exe cwd, so a
+    #    relative -C "resources" fails with "could not chdir". tar.exe is
+    #    available on Win10 1803+.
+    $BundleParent = Split-Path -Parent $Dest          # ...\build\bin
+    $tgzPath = Join-Path $BundleParent "python.tar.gz"
+    Write-Host "packaging $tgzPath ..."
+    & tar -czf $tgzPath -C $BundleParent "resources"
+    if ($LASTEXITCODE -ne 0) { throw "tar packaging failed (exit $LASTEXITCODE)" }
 
     Write-Host "bundle ready: $Dest"
     Write-Host "  python: $PyExe"
+    Write-Host "  distributable: $tgzPath"
     $size = (Get-Item $Dest).Length
     Write-Host ("  size: {0:N1} MB" -f ($size / 1MB))
 } finally {
