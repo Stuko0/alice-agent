@@ -97,16 +97,21 @@ try {
 
     # 5. Package a distributable .zip of the bundle beside it (for the Windows
     #    installer release artifact). Uses .NET Compress-Archive (no bsdtar),
-    #    which is deterministic with Windows paths. Windows bsdtar (tar.exe)
-    #    fails on the python bundle ("Couldn't visit directory") regardless of
-    #    cwd handling, so we avoid tar entirely. Produces
-    #    <...>\build\bin\resources.zip containing resources/python/...
-    #    (what install.ps1 extracts). The POSIX build keeps using tar.gz for
-    #    its own local/AppImage use.
-    $BundleParent = Split-Path -Parent $Dest          # ...\build\bin
-    $zipPath = Join-Path $BundleParent "resources.zip"
+    #    deterministic with Windows paths. Structure on disk:
+    #      $Dest          = ...\build\bin\resources\python
+    #      $resourcesDir  = ...\build\bin\resources        (parent of $Dest)
+    #      $container     = ...\build\bin                  (parent of resources)
+    #    We compress $resourcesDir into $container\resources.zip — so the zip
+    #    contains resources/python/... and install.ps1 extracts it to
+    #    ...\build\bin → ...\build\bin\resources\python\python.exe.
+    #    NOTE the earlier bug: Split-Path -Parent $Dest is ...\resources, not
+    #    ...\build\bin — that off-by-one made every tar/zip target
+    #    ...\resources\resources (didn't exist) → "Couldn't visit directory".
+    $resourcesDir = Split-Path -Parent $Dest          # ...\build\bin\resources
+    $container = Split-Path -Parent $resourcesDir      # ...\build\bin
+    $zipPath = Join-Path $container "resources.zip"    # ...\build\bin\resources.zip
     Write-Host "packaging $zipPath ..."
-    Compress-Archive -Path (Join-Path $BundleParent "resources") -DestinationPath $zipPath -CompressionLevel Fastest -Force
+    Compress-Archive -Path $resourcesDir -DestinationPath $zipPath -CompressionLevel Fastest -Force
     if (-not (Test-Path $zipPath)) { throw "zip packaging failed: no $zipPath produced" }
 
     Write-Host "bundle ready: $Dest"
