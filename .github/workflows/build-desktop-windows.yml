@@ -61,6 +61,11 @@ jobs:
           go-version: '1.25.x'
           cache-dependency-path: apps/desktop-wails/go.sum
 
+      - name: Install uv (for embedded Python bundle)
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # 8.2.0
+        with:
+          version: 'latest'
+
       - name: Install mingw-w64 GCC (Wails v2 links CGO on Windows)
         uses: egor-tensin/setup-mingw@41b837e47d7f85214629d255b9c4bc3fcbe9fd63 # v3.0
         with:
@@ -89,13 +94,29 @@ jobs:
           Write-Host "✅ Wails binary: $((Resolve-Path $bin).Path) ($('{0:N0}' -f (Get-Item $bin).Length) bytes)"
         shell: pwsh
 
-      - name: Write SHA-256 checksum
-        # The Tauri bootstrap installer verifies this before installing the
-        # binary (scripts/install.ps1 → Install-DesktopWailsPrebuilt).
+      - name: Verify embedded Python bundle exists
+        # bundle-python.ps1 (invoked by build.ps1) emits
+        # build/bin/resources/python.tar.gz (the distributable backend bundle)
+        # and the unpacked resources/python beside the exe. Installer needs it.
+        run: |
+          $tgz = 'apps/desktop-wails/build/bin/resources/python.tar.gz'
+          if (-not (Test-Path $tgz)) { throw "Python bundle not found at $tgz" }
+          $py = 'apps/desktop-wails/build/bin/resources/python/python.exe'
+          if (-not (Test-Path $py)) { throw "Unpacked bundle python.exe missing at $py" }
+          Write-Host "✅ Python bundle: $((Resolve-Path $tgz).Path) ($('{0:N1}' -f ((Get-Item $tgz).Length / 1MB)) MB)"
+        shell: pwsh
+
+      - name: Write SHA-256 checksums
+        # The Tauri bootstrap installer verifies these before installing the
+        # binary + python bundle (scripts/install.ps1 →
+        # Install-DesktopWailsPrebuilt).
         run: |
           $bin = 'apps/desktop-wails/build/bin/alice-desktop.exe'
+          $tgz = 'apps/desktop-wails/build/bin/resources/python.tar.gz'
           $hash = (Get-FileHash $bin -Algorithm SHA256).Hash.ToLower()
           "$hash  alice-desktop.exe" | Out-File -FilePath "$bin.sha256" -Encoding ascii
+          $thash = (Get-FileHash $tgz -Algorithm SHA256).Hash.ToLower()
+          "$thash  python.tar.gz" | Out-File -FilePath "$tgz.sha256" -Encoding ascii
         shell: pwsh
 
       - name: Upload Wails binary artifact
@@ -108,6 +129,16 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+      - name: Upload embedded Python bundle artifact
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: alice-desktop-python-bundle-windows-${{ github.ref_name }}
+          path: |
+            apps/desktop-wails/build/bin/resources/python.tar.gz
+            apps/desktop-wails/build/bin/resources/python.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Upload to release (on tag push only)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2  # v2.2.1
@@ -115,6 +146,8 @@ jobs:
           files: |
             apps/desktop-wails/build/bin/alice-desktop.exe
             apps/desktop-wails/build/bin/alice-desktop.exe.sha256
+            apps/desktop-wails/build/bin/resources/python.tar.gz
+            apps/desktop-wails/build/bin/resources/python.tar.gz.sha256
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

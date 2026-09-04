@@ -2449,8 +2449,9 @@ function Get-DesktopWailsReleaseTag {
 }
 
 # Install-DesktopWailsPrebuilt downloads alice-desktop.exe + its SHA-256
-# checksum from the GitHub release for the exact checkout tag. Returns the
-# binary path on success, $null on any failure (caller falls back).
+# checksum AND the embedded python bundle (resources/python.tar.gz + sha256)
+# from the GitHub release for the exact checkout tag. Returns the binary path
+# on success, $null on any failure (caller falls back).
 function Install-DesktopWailsPrebuilt {
     param([string]$WailsDir)
     $tag = Get-DesktopWailsReleaseTag
@@ -2485,11 +2486,64 @@ function Install-DesktopWailsPrebuilt {
             Write-Warn "Could not fetch/verify the checksum — using the downloaded binary without verification"
         }
         Move-Item -Force $exeTmp $exePath
+
+        # --- Download + extract the embedded python bundle beside the exe. ---
+        # The bundle (resources/python.tar.gz) carries a self-contained Python
+        # backend so a machine without any Python still runs the desktop. If it
+        # is missing/ko on the release, degrade gracefully: the backend falls
+        # back to a system venv / ALICE_DESKTOP_PYTHON.
+        try {
+            Install-PythonBundlePrebuilt -Tag $tag -Repo $repo -BinDir $binDir -WailsDir $WailsDir
+        } catch {
+            Write-Warn "Embedded Python bundle unavailable ($($_.Exception.Message)); desktop will need a system Python"
+        }
         return $exePath
     } catch {
         Write-Warn "Prebuilt Wails download failed: $($_.Exception.Message)"
         Remove-Item $exeTmp -Force -ErrorAction SilentlyContinue
         return $null
+    }
+}
+
+# Install-PythonBundlePrebuilt downloads resources/python.tar.gz + its SHA-256
+# from the release and extracts it to <wails-dir>/build/bin/resources/python
+# (beside alice-desktop.exe), which is exactly where the Go backend falls back
+# to (python_manager.go: findPythonForRoot → resources/python/python.exe).
+function Install-PythonBundlePrebuilt {
+    param([string]$Tag, [string]$Repo, [string]$BinDir, [string]$WailsDir)
+    $tgzUrl = "$Repo/releases/download/$Tag/resources/python.tar.gz"
+    $sumUrl = "$tgzUrl.sha256"
+    $tgzTmp = Join-Path $env:TEMP "alice-python-bundle-$Tag.tar.gz"
+    $sumTmp = "$tgzTmp.sha256"
+    New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
+    try {
+        Invoke-WebRequest -Uri $tgzUrl -OutFile $tgzTmp -UseBasicParsing
+        try {
+            Invoke-WebRequest -Uri $sumUrl -OutFile $sumTmp -UseBasicParsing
+            $expected = ((Get-Content $sumTmp -Raw).Trim() -split '\s+')[0]
+            $actual = (Get-FileHash $tgzTmp -Algorithm SHA256).Hash.ToLower()
+            if ($expected -and $expected.ToLower() -ne $actual) {
+                Write-Warn "Embedded python bundle SHA256 mismatch (expected $expected, got $actual) — refusing it"
+                Remove-Item $tgzTmp -Force -ErrorAction SilentlyContinue
+                throw "python bundle sha256 mismatch"
+            }
+            Write-Success "Embedded python bundle verified (SHA256 ok)"
+        } catch {
+            if ($_ -like "*sha256 mismatch*") { throw }
+            Write-Warn "Could not fetch/verify the bundle checksum — using the downloaded bundle without verification"
+        }
+        # Extract to <wails-dir>/build/bin/resources/python. The tgz contains
+        # resources/python/... (created by bundle-python.ps1/.sh).
+        $extractDir = Join-Path $WailsDir "build\bin"
+        & tar -xzf $tgzTmp -C $extractDir
+        if ($LASTEXITCODE -ne 0) { throw "tar extraction failed (exit $LASTEXITCODE)" }
+        $pyExe = Join-Path $extractDir "resources\python\python.exe"
+        if (-not (Test-Path $pyExe)) { throw "no python.exe after extraction at $pyExe" }
+        Write-Success "Embedded python backend ready at $pyExe"
+        Remove-Item $tgzTmp -Force -ErrorAction SilentlyContinue
+    } catch {
+        Remove-Item $tgzTmp -Force -ErrorAction SilentlyContinue
+        throw
     }
 }
 

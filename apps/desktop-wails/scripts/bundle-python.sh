@@ -58,6 +58,14 @@ echo "installing alice-agent (+deps) into $DEST ... (this pulls from PyPI)" >&2
 echo "smoke test: importing alice_cli from the bundle ..." >&2
 ALICE_HOME="$(mktemp -d)" "$DEST/bin/python3" -c "import alice_cli; print('alice_cli OK, version', alice_cli.__version__)"
 
+# 5. Package a distributable tar.gz of the bundle beside it, so installers can
+#    ship it as a release artifact instead of rebuilding it on the user's
+#    machine. Produces <parent>/python.tar.gz (contains resources/python/...).
+BUNDLE_PARENT="$(dirname "$DEST")"
+echo "packaging $BUNDLE_PARENT/python.tar.gz ..." >&2
+tar -czf "$BUNDLE_PARENT/python.tar.gz" -C "$BUNDLE_PARENT" python
+
 echo "bundle ready: $DEST"
 echo "  python: $DEST/bin/python3"
+echo "  distributable: $BUNDLE_PARENT/python.tar.gz"
 du -sh "$DEST" 2>/dev/null || true

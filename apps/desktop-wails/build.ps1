@@ -1,14 +1,21 @@
 # Build script for the Alice Wails desktop app (Windows).
 # Mirrors build.sh: generates bindings, builds the React frontend, copies the
-# assets into the Wails tree, then builds the Go shell.
+# assets into the Wails tree, then builds the Go shell. By default it also
+# bundles a self-contained Python backend beside the binary (resources/python)
+# so the desktop does not depend on a system venv. Set the env var
+# ALICE_SKIP_PYTHON_BUNDLE=1 to skip (the backend then falls back to a system
+# venv or the prebuilt bundle that install.ps1 placed there).
 #
 # Prerequisites (installed by CI / the installer's local-build fallback):
 #   - Go toolchain (go.mod requires go 1.25)
 #   - wails CLI:  go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
 #   - mingw-w64 GCC on PATH (Wails v2 links CGO on Windows)
 #   - Node.js/npm (>= 20.19)
+#   - uv on PATH (only for the embedded python bundle; optional)
 #
 # Produces: apps/desktop-wails/build/bin/alice-desktop.exe
+#   + apps/desktop-wails/build/bin/resources/python/ (embedded backend)
+#   + apps/desktop-wails/build/bin/resources/python.tar.gz (distributable)
 
 $ErrorActionPreference = "Stop"
 
@@ -56,6 +63,20 @@ try {
     Write-Host "=== Building Wails binary ==="
     & wails build -platform windows/amd64
     if ($LASTEXITCODE -ne 0) { throw "wails build failed (exit $LASTEXITCODE)" }
+
+    # Bundle a self-contained Python backend beside the binary so the desktop
+    # does not depend on a system venv. Takes minutes (PyPI pull); best-effort
+    # (never fails the build). tools/install.ps1 places a prebuilt bundle here
+    # for the prebuilt-download path, so this only matters for local builds.
+    if ($env:ALICE_SKIP_PYTHON_BUNDLE -ne "1" -and (Get-Command uv -ErrorAction SilentlyContinue)) {
+        Write-Host "=== Bundling embedded Python backend ==="
+        & ./scripts/bundle-python.ps1 -PythonVersion 3.14 -Dest (Join-Path $WailsDir "build\bin\resources\python")
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn "!! python bundle failed (build continues; desktop needs a system venv)"
+        }
+    } else {
+        Write-Host "=== Skipping embedded Python backend (uv absent or ALICE_SKIP_PYTHON_BUNDLE=1) ==="
+    }
 
     Write-Host "=== Done ==="
     Write-Host "Binary: $(Join-Path $WailsDir 'build/bin/alice-desktop.exe')"

@@ -6,6 +6,11 @@
 #   ./build.sh                 # binary only -> build/bin/alice-desktop
 #   ./build.sh deb|rpm|apk     # binary + native package via Wails/nfpm
 #   ./build.sh appimage        # binary + AppImage via scripts/package-appimage.sh
+#
+# By default it also bundles a self-contained Python backend beside the binary
+# (build/bin/resources/python) so the desktop does not depend on a system venv.
+# Set ALICE_SKIP_PYTHON_BUNDLE=1 to skip (faster local iteration; the backend
+# then falls back to a system venv).
 
 set -e
 
@@ -47,6 +52,15 @@ elif [ "$PACKAGE" == "appimage" ]; then
   ./scripts/package-appimage.sh
 else
   wails build
+fi
+
+# Bundle a self-contained Python backend beside the binary (resources/python)
+# so the desktop does not depend on a system venv. Takes minutes (PyPI pull);
+# skip when the env var is set or when uv is absent.
+if [ "${ALICE_SKIP_PYTHON_BUNDLE:-0}" != "1" ] && command -v uv >/dev/null 2>&1; then
+  echo "=== Bundling embedded Python backend ==="
+  ./scripts/bundle-python.sh 3.14 "build/bin/resources/python" || \
+    echo "!! python bundle failed (build continues; desktop needs a system venv)"
 fi
 
 echo "=== Done ==="
