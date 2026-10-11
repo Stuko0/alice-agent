@@ -165,8 +165,12 @@ export function GatewayConnectingOverlay() {
   return (
     <div
       className={cn(
-        'fixed inset-0 z-[1200] grid place-items-center bg-(--ui-chat-surface-background) transition-opacity duration-500 ease-out',
-        overlayHidden ? 'pointer-events-none opacity-0' : 'opacity-100'
+        // Informational full-screen layer with no controls of its own: it must
+        // never intercept pointer events, or clicks aimed at the Welcome /
+        // Settings close buttons underneath are swallowed for the whole boot
+        // and the ~1.2s exit choreography.
+        'pointer-events-none fixed inset-0 z-[1200] grid place-items-center bg-(--ui-chat-surface-background) transition-opacity duration-500 ease-out',
+        overlayHidden ? 'opacity-0' : 'opacity-100'
       )}
     >
       <style>{'@keyframes gco-cursor { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }'}</style>

@@ -149,4 +149,20 @@ describe('connecting overlay vs recovery surface', () => {
     expect(screen.getByText(/use local gateway/i)).toBeTruthy()
     expect(isConnectingShown()).toBe(false)
   })
+
+  it('never intercepts pointer events, even while fully shown', () => {
+    // Repro for the "modal close buttons need many clicks" report: the
+    // connecting overlay is a full-screen informational layer (z-1200) with
+    // no controls of its own, yet it used to swallow every pointer event
+    // while visible — including clicks aimed at the Welcome/Settings close
+    // buttons underneath during boot or the ~1.2s exit choreography.
+    setGatewayState('closed')
+    $desktopBoot.set({ ...$desktopBoot.get(), running: true, visible: true, progress: 40 })
+
+    const { container } = render(<GatewayConnectingOverlay />)
+
+    expect(isConnectingShown()).toBe(true)
+    const layer = container.firstElementChild as HTMLElement
+    expect(layer.className).toContain('pointer-events-none')
+  })
 })
