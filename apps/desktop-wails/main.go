@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/wailsapp/wails/v2"
@@ -276,10 +277,65 @@ func (a *App) proxyToRemote(req ProxyApiRequest) (*ProxyApiResponse, error) {
 	return a.doProxy(req.Method, url, cfg.RemoteToken, req.Body)
 }
 
+// proxyClient is shared by every proxied request so connections are pooled
+// across sessions instead of re-established per call.
+var proxyClient = &http.Client{Timeout: 30 * time.Second}
+
+// proxyInFlight coalesces identical in-flight GETs. Several session composers
+// poll the same endpoints (e.g. model.options); concurrent duplicates wait on
+// one upstream call instead of each hitting the backend.
+var proxyInFlight = newInflightGroup()
+
+type inflightCall struct {
+	done chan struct{}
+	resp *ProxyApiResponse
+	err  error
+}
+
+type inflightGroup struct {
+	mu    sync.Mutex
+	calls map[string]*inflightCall
+}
+
+func newInflightGroup() *inflightGroup {
+	return &inflightGroup{calls: make(map[string]*inflightCall)}
+}
+
+// do runs fn once per key among concurrent callers and shares its result.
+func (g *inflightGroup) do(key string, fn func() (*ProxyApiResponse, error)) (*ProxyApiResponse, error) {
+	g.mu.Lock()
+	if c, ok := g.calls[key]; ok {
+		g.mu.Unlock()
+		<-c.done
+		return c.resp, c.err
+	}
+	c := &inflightCall{done: make(chan struct{})}
+	g.calls[key] = c
+	g.mu.Unlock()
+
+	c.resp, c.err = fn()
+
+	g.mu.Lock()
+	delete(g.calls, key)
+	g.mu.Unlock()
+	close(c.done)
+	return c.resp, c.err
+}
+
 func (a *App) doProxy(method, url, token, body string) (*ProxyApiResponse, error) {
 	if method == "" {
 		method = "GET"
 	}
+	if method == http.MethodGet {
+		// Token is part of the key: a response must never cross session tokens.
+		return proxyInFlight.do(method+" "+url+" "+token, func() (*ProxyApiResponse, error) {
+			return a.doProxyOnce(method, url, token, body)
+		})
+	}
+	return a.doProxyOnce(method, url, token, body)
+}
+
+func (a *App) doProxyOnce(method, url, token, body string) (*ProxyApiResponse, error) {
 	var bodyReader io.Reader
 	if len(body) > 0 {
 		bodyReader = strings.NewReader(body)
@@ -294,7 +350,7 @@ func (a *App) doProxy(method, url, token, body string) (*ProxyApiResponse, error
 		httpReq.Header.Set("X-Alice-Session-Token", token)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := proxyClient
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		log.Printf("[Proxy] ERROR: %v", err)

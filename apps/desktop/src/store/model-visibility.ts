@@ -138,14 +138,24 @@ export function resolveVisibleKeys(stored: Set<string> | null, providers: readon
 
   const next = new Set(stored)
 
+  // One pass over the stored keys instead of one pass per provider: the
+  // previous per-provider scan made every toggle O(providers × stored keys).
+  const customizedSlugs = new Set<string>()
+
+  for (const key of stored) {
+    if (isProviderSentinel(key)) {
+      continue
+    }
+
+    const separator = key.indexOf('::')
+
+    if (separator !== -1) {
+      customizedSlugs.add(key.slice(0, separator))
+    }
+  }
+
   for (const provider of providers) {
-    const providerPrefix = `${provider.slug}::`
-
-    const hasStoredProvider = [...stored].some(key => key.startsWith(providerPrefix) && !isProviderSentinel(key))
-
-    const hasSentinel = stored.has(emptyProviderSentinelKey(provider.slug))
-
-    if (hasStoredProvider || hasSentinel) {
+    if (customizedSlugs.has(provider.slug) || stored.has(emptyProviderSentinelKey(provider.slug))) {
       continue
     }
 
