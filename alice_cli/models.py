@@ -3518,18 +3518,54 @@ def probe_api_models(
     }
 
 
+# In-process cache for custom endpoint /models probes. The model picker lists
+# every custom endpoint on each open; without this each open paid one network
+# round trip per endpoint even when nothing had changed. Keyed by endpoint URL
+# and a credential fingerprint (never the raw key). Successful results live for
+# the full TTL; failures are cached briefly so a dead endpoint does not cost a
+# full timeout on every open, and recover quickly once it is back.
+_MODELS_ENDPOINT_CACHE_TTL: int = 3600  # seconds (1 hour, same as provider cache)
+_MODELS_ENDPOINT_NEGATIVE_TTL: int = 300  # seconds (5 minutes)
+_MODELS_ENDPOINT_CACHE: dict[tuple[str, str, str], tuple[Optional[list[str]], float]] = {}
+
+
+def _endpoint_cache_key(api_key: Optional[str], base_url: Optional[str], api_mode: Optional[str]) -> tuple[str, str, str]:
+    import hashlib
+
+    key_hash = hashlib.sha256((api_key or "").encode("utf-8")).hexdigest()[:16]
+    return ((base_url or "").strip().rstrip("/").lower(), key_hash, api_mode or "")
+
+
 def fetch_api_models(
     api_key: Optional[str],
     base_url: Optional[str],
     timeout: float = 5.0,
     api_mode: Optional[str] = None,
+    refresh: bool = False,
 ) -> Optional[list[str]]:
     """Fetch the list of available model IDs from the provider's ``/models`` endpoint.
 
     Returns a list of model ID strings, or ``None`` if the endpoint could not
-    be reached (network error, timeout, auth failure, etc.).
+    be reached (network error, timeout, auth failure, etc.). Successful results
+    are cached for ``_MODELS_ENDPOINT_CACHE_TTL`` seconds and failures for
+    ``_MODELS_ENDPOINT_NEGATIVE_TTL``; ``refresh=True`` bypasses the cache.
     """
-    return probe_api_models(api_key, base_url, timeout=timeout, api_mode=api_mode).get("models")
+    key = _endpoint_cache_key(api_key, base_url, api_mode)
+    now = time.time()
+
+    if not refresh:
+        cached = _MODELS_ENDPOINT_CACHE.get(key)
+        if cached is not None:
+            cached_models, cached_at = cached
+            ttl = _MODELS_ENDPOINT_CACHE_TTL if cached_models else _MODELS_ENDPOINT_NEGATIVE_TTL
+            if now - cached_at < ttl:
+                return list(cached_models) if cached_models else None
+
+    models_found = probe_api_models(api_key, base_url, timeout=timeout, api_mode=api_mode).get("models")
+
+    _MODELS_ENDPOINT_CACHE[key] = (list(models_found) if models_found is not None else None, now)
+
+    return models_found
 
 
 # ---------------------------------------------------------------------------
