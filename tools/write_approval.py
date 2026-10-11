@@ -409,6 +409,9 @@ def skill_gist(action: str, name: str, *, content: str = "",
         return f"patch '{name}' {target} (+{added}/-{removed} lines)"
     if action == "write_file":
         return f"write {file_path} in '{name}'"
+    if action == "add_lesson":
+        preview = " ".join(str(content or "").split())[:120]
+        return f"lesson for '{name}' — {preview}" if preview else f"lesson for '{name}'"
     if action == "remove_file":
         return f"remove {file_path} from '{name}'"
     if action == "delete":

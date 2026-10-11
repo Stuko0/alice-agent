@@ -1,0 +1,29 @@
+{
+  "name": "smooth-session-one-off",
+  "prompt": "skill_review",
+  "note": "The anti-over-write control. A skill that worked and a one-off request with no new technique must produce an effectiveness signal and NO library edit. This is the fixture that catches a prompt drifting back toward 'a pass that does nothing is a missed opportunity'.",
+  "skills": {
+    "log-triage": "---\nname: log-triage\ndescription: Triage an application log by error fingerprint.\n---\n\n# Log Triage\n\n## Procedure\n\n1. Locate the log with `search_files`.\n2. Group lines by error fingerprint.\n3. Report distinct fingerprints with counts.\n\n## Verification\n\nThe counts sum to the number of error lines found.\n"
+  },
+  "transcript": [
+    {
+      "role": "user",
+      "content": "cuántos errores distintos hay en el log de hoy"
+    },
+    {
+      "role": "assistant",
+      "content": "Usé la skill log-triage. 3 fingerprints distintos sobre 812 líneas de error: timeout (640), 401 (140), 500 (32)."
+    },
+    {
+      "role": "user",
+      "content": "perfecto, gracias"
+    }
+  ],
+  "expect": {
+    "must_not_write": ["log-triage"],
+    "must_not_create": true,
+    "outcomes": {
+      "log-triage": "helped"
+    }
+  }
+}

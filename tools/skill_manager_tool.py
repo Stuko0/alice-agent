@@ -18,6 +18,8 @@ Actions:
   delete     -- Remove a user skill entirely
   write_file -- Add/overwrite a supporting file (reference, template, script, asset)
   remove_file-- Remove a supporting file from a user skill
+  record_outcome -- Log whether a skill helped or hurt when it was used
+                    (effectiveness telemetry; changes no skill content)
 
 Directory layout for user skills:
     ~/.alice/skills/
@@ -39,6 +41,7 @@ import re
 import shutil
 import tempfile
 import contextvars as _ctxvars
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -394,7 +397,7 @@ def _background_review_read_before_write_guard(
 
 
 def _background_review_preflight(action: str, name: str) -> Optional[Dict[str, Any]]:
-    if action not in {"edit", "patch", "delete", "write_file", "remove_file"}:
+    if action not in {"edit", "patch", "delete", "write_file", "remove_file", "add_lesson"}:
         return None
     existing = _find_skill(name)
     if not existing:
@@ -894,6 +897,127 @@ def _edit_skill(name: str, content: str) -> Dict[str, Any]:
     }
 
 
+LESSONS_HEADING = "## Lessons"
+
+
+def _find_lessons_section(lines: List[str]) -> Optional[Tuple[int, int]]:
+    """Locate the ``## Lessons`` heading: returns (heading_i, section_end_i).
+
+    ``section_end_i`` is exclusive — the index of the next ``## `` heading, or
+    ``len(lines)``. Matching is on the heading TITLE, so ``## Lessons learned``
+    and ``## Lessons:`` land in the same section rather than silently creating
+    a second one.
+    """
+    for i, raw in enumerate(lines):
+        stripped = raw.strip()
+        if not stripped.startswith("## "):
+            continue
+        title = stripped[3:].strip().rstrip(":").lower()
+        if title in {"lessons", "lessons learned"}:
+            end = len(lines)
+            for j in range(i + 1, len(lines)):
+                if lines[j].strip().startswith("## "):
+                    end = j
+                    break
+            return i, end
+    return None
+
+
+def _lesson_line(lesson: str, *, now: Optional[datetime] = None) -> str:
+    """Render ONE dated bullet — the atom the curator later merges/promotes."""
+    when = now or datetime.now(timezone.utc)
+    body = " ".join(str(lesson or "").split())
+    return f"- {when.strftime('%Y-%m-%d')} — {body}"
+
+
+def _add_lesson(name: str, lesson: str) -> Dict[str, Any]:
+    """Append one dated bullet to the skill's ``## Lessons`` section.
+
+    This is the DELTA write path. Rewriting a SKILL.md body to "add" a lesson
+    loses every earlier lesson the rewrite didn't happen to restate, so the
+    append is mechanical here instead of delegated to a whole-file edit:
+    everything outside the Lessons section stays byte-identical, a missing
+    section is created at the end of the file, and the frontmatter is never
+    touched. Consolidating duplicates and promoting a twice-confirmed lesson
+    into the Procedure is the curator's job, not this action's.
+    """
+    text = " ".join(str(lesson or "").split())
+    if not text:
+        return {
+            "success": False,
+            "error": (
+                "content is required for 'add_lesson' — ONE line stating what "
+                "this session taught about doing this class of task."
+            ),
+        }
+
+    existing = _find_skill(name)
+    if not existing:
+        return {"success": False, "error": _skill_not_found_error(name)}
+
+    skill_dir = existing["path"]
+    guard = _background_review_write_guard(name, skill_dir, "add_lesson")
+    if guard:
+        return guard
+
+    target = skill_dir / "SKILL.md"
+    if not target.exists():
+        return {"success": False, "error": f"File not found: SKILL.md in skill '{name}'"}
+
+    read_guard = _background_review_read_before_write_guard(
+        name, target, "add_lesson", "SKILL.md"
+    )
+    if read_guard:
+        return read_guard
+
+    original = target.read_text(encoding="utf-8")
+    bullet = _lesson_line(text)
+    lines = original.splitlines()
+    section = _find_lessons_section(lines)
+
+    if section is None:
+        new_content = original.rstrip("\n") + f"\n\n{LESSONS_HEADING}\n\n{bullet}\n"
+        created_section = True
+    else:
+        heading_i, end_i = section
+        last = end_i - 1
+        while last > heading_i and not lines[last].strip():
+            last -= 1
+        out = list(lines)
+        if last == heading_i:
+            # Section exists but is empty — heading, blank, bullet.
+            out.insert(heading_i + 1, "")
+            out.insert(heading_i + 2, bullet)
+        else:
+            out.insert(last + 1, bullet)
+        new_content = "\n".join(out) + "\n"
+        created_section = False
+
+    # A lesson is a content change: same structural guardrails as a patch.
+    err = _validate_content_size(new_content, label="SKILL.md")
+    if err:
+        return {"success": False, "error": err}
+    err = _validate_frontmatter(new_content)
+    if err:
+        return {"success": False, "error": f"add_lesson would break SKILL.md structure: {err}"}
+
+    _atomic_write_text(target, new_content)
+
+    scan_error = _security_scan_skill(skill_dir)
+    if scan_error:
+        _atomic_write_text(target, original)
+        return {"success": False, "error": scan_error}
+
+    return {
+        "success": True,
+        "message": (
+            f"Appended a lesson to '{name}'"
+            f"{' (created the `## Lessons` section)' if created_section else ''}."
+        ),
+        "_change": {"old": "", "new": bullet[:200]},
+    }
+
+
 def _patch_skill(
     name: str,
     old_string: str,
@@ -1244,7 +1368,7 @@ def _apply_skill_write_gate(action, name, **payload_kwargs):
     write should NOT proceed (blocked or staged), or None to perform the real
     write. Bypassed during approved-pending replay.
     """
-    if action not in {"create", "edit", "patch", "delete", "write_file", "remove_file"}:
+    if action not in {"create", "edit", "patch", "delete", "write_file", "remove_file", "add_lesson"}:
         return None
     if _skill_gate_bypass.get():
         return None
@@ -1295,6 +1419,8 @@ def apply_skill_pending(payload: Dict[str, Any]) -> str:
             new_string=payload.get("new_string"),
             replace_all=payload.get("replace_all", False),
             absorbed_into=payload.get("absorbed_into"),
+            outcome=payload.get("outcome"),
+            outcome_note=payload.get("outcome_note"),
         )
     finally:
         _skill_gate_bypass.reset(token)
@@ -1311,9 +1437,19 @@ def skill_manage(
     new_string: str = None,
     replace_all: bool = False,
     absorbed_into: str = None,
+    outcome: Optional[str] = None,
+    outcome_note: Optional[str] = None,
 ) -> str:
     """
     Manage user-created skills. Dispatches to the appropriate action handler.
+
+    ``record_outcome`` is the one action that mutates NO skill content: it
+    logs effectiveness telemetry ("did this skill help?") into the usage
+    sidecar so lifecycle decisions can weigh observed results. It is
+    deliberately excluded from the write-approval gate (nothing to review),
+    from the content-write preflight, and from the prompt-cache clear below —
+    clearing the skills cache for a telemetry write would invalidate the
+    conversation's cached prefix for a change that touched no skill text.
 
     Returns JSON string with results.
     """
@@ -1366,15 +1502,68 @@ def skill_manage(
             return tool_error("file_path is required for 'remove_file'.", success=False)
         result = _remove_file(name, file_path)
 
+    elif action == "add_lesson":
+        if not content:
+            return tool_error(
+                "content is required for 'add_lesson'. Provide ONE line stating what "
+                "this session taught about doing this class of task.",
+                success=False,
+            )
+        result = _add_lesson(name, content)
+
+    elif action == "record_outcome":
+        if not outcome:
+            return tool_error(
+                "outcome is required for 'record_outcome'. Use 'helped', 'hurt', or 'neutral'.",
+                success=False,
+            )
+        from tools import skill_usage as _su
+
+        recorded = False
+        try:
+            recorded = _su.record_outcome(name, outcome, outcome_note)
+        except Exception:
+            logger.debug("record_outcome(%s) failed", name, exc_info=True)
+        if not recorded:
+            result = {
+                "success": False,
+                "error": (
+                    f"could not record an outcome for '{name}'. Either the outcome "
+                    f"value is not one of {', '.join(_su.VALID_OUTCOMES)}, or '{name}' "
+                    "is not a curator-managed skill (protected built-in, "
+                    "hub-installed, or in an external dir) — effectiveness is only "
+                    "tracked for skills the curator can act on."
+                ),
+            }
+        else:
+            rec = _su.get_record(name)
+            result = {
+                "success": True,
+                "name": name,
+                "outcome": str(outcome).strip().lower(),
+                "helped_count": rec.get("helped_count", 0),
+                "hurt_count": rec.get("hurt_count", 0),
+                "effectiveness": _su.effectiveness(rec),
+                "message": (
+                    f"recorded '{str(outcome).strip().lower()}' for '{name}' "
+                    f"(helped={rec.get('helped_count', 0)}, hurt={rec.get('hurt_count', 0)})"
+                ),
+            }
+
     else:
-        result = {"success": False, "error": f"Unknown action '{action}'. Use: create, edit, patch, delete, write_file, remove_file"}
+        result = {"success": False, "error": f"Unknown action '{action}'. Use: create, edit, patch, delete, write_file, remove_file, add_lesson, record_outcome"}
 
     if result.get("success"):
-        try:
-            from agent.prompt_builder import clear_skills_system_prompt_cache
-            clear_skills_system_prompt_cache(clear_snapshot=True)
-        except Exception:
-            pass
+        # Cache safety: only content-changing actions invalidate the skills
+        # snapshot. record_outcome edits no skill text, so clearing here would
+        # rebuild the system prompt (breaking the cached prefix) for a write
+        # the prompt does not depend on.
+        if action != "record_outcome":
+            try:
+                from agent.prompt_builder import clear_skills_system_prompt_cache
+                clear_skills_system_prompt_cache(clear_snapshot=True)
+            except Exception:
+                pass
         # Curator telemetry: bump patch_count on edit/patch/write_file (the actions
         # that mutate an existing skill's guidance), drop the record on delete.
         # Only mark a skill as agent-created when the background self-improvement
@@ -1387,7 +1576,7 @@ def skill_manage(
             if action == "create":
                 if is_background_review():
                     mark_agent_created(name)
-            elif action in {"patch", "edit", "write_file", "remove_file"}:
+            elif action in {"patch", "edit", "write_file", "remove_file", "add_lesson"}:
                 bump_patch(name)
             elif action == "delete":
                 # A recoverable curator archive (routed through archive_skill)
@@ -1414,7 +1603,22 @@ SKILL_MANAGE_SCHEMA = {
         "Actions: create (full SKILL.md + optional category), "
         "patch (old_string/new_string — preferred for fixes), "
         "edit (full SKILL.md rewrite — major overhauls only), "
-        "delete, write_file, remove_file.\n\n"
+        "delete, write_file, remove_file, "
+        "add_lesson (append ONE dated lesson bullet under `## Lessons`), "
+        "record_outcome (log whether a skill HELPED or HURT when it was used).\n\n"
+        "add_lesson is the DELTA write: pass content=<one line of what the session "
+        "taught> and it appends a dated bullet without touching the rest of the "
+        "file. Prefer it over a rewrite for a new lesson — a whole-body rewrite "
+        "drops earlier lessons the rewrite didn't restate. Reserve patch/edit for "
+        "changing the Procedure, triggers, or frontmatter, and promote a lesson "
+        "into the body only once it has been confirmed twice.\n\n"
+        "record_outcome takes outcome='helped' | 'hurt' | 'neutral' plus an optional "
+        "outcome_note, and records effectiveness telemetry — it never edits the skill. "
+        "Record one outcome per skill that was actually in play this turn, so the "
+        "background curator can weigh observed results instead of pure recency. "
+        "'neutral' is the honest default when you cannot tell; reserve 'helped' for a "
+        "task that demonstrably succeeded using the skill, and use 'hurt' when the "
+        "skill's guidance misled you or a step in it failed.\n\n"
         "On delete, pass `absorbed_into=<umbrella>` when you're merging this "
         "skill's content into another one, or `absorbed_into=\"\"` when you're "
         "pruning it with no forwarding target. This lets the curator tell "
@@ -1442,7 +1646,7 @@ SKILL_MANAGE_SCHEMA = {
         "properties": {
             "action": {
                 "type": "string",
-                "enum": ["create", "patch", "edit", "delete", "write_file", "remove_file"],
+                "enum": ["create", "patch", "edit", "delete", "write_file", "remove_file", "add_lesson", "record_outcome"],
                 "description": "The action to perform."
             },
             "name": {
@@ -1455,9 +1659,11 @@ SKILL_MANAGE_SCHEMA = {
             "content": {
                 "type": "string",
                 "description": (
-                    "Full SKILL.md content (YAML frontmatter + markdown body). "
-                    "Required for 'create' and 'edit'. For 'edit', read the skill "
-                    "first with skill_view() and provide the complete updated text."
+                    "Full SKILL.md content (YAML frontmatter + markdown body) for "
+                    "'create'/'edit'; for 'add_lesson' it is ONE line stating what "
+                    "this session taught. Required for 'create', 'edit', and "
+                    "'add_lesson'. For 'edit', read the skill first with skill_view() "
+                    "and provide the complete updated text."
                 )
             },
             "old_string": {
@@ -1514,6 +1720,24 @@ SKILL_MANAGE_SCHEMA = {
                     "rewriting) will have to guess at intent."
                 )
             },
+            "outcome": {
+                "type": "string",
+                "enum": ["helped", "hurt", "neutral"],
+                "description": (
+                    "For 'record_outcome' only — did using this skill actually help? "
+                    "'helped' = the task succeeded with it, 'hurt' = its guidance "
+                    "misled you or a step failed, 'neutral' = it made no measurable "
+                    "difference (the honest default when unsure)."
+                )
+            },
+            "outcome_note": {
+                "type": "string",
+                "description": (
+                    "For 'record_outcome' only — one short line of evidence "
+                    "(e.g. 'the verification step failed twice, needed a tweak'). "
+                    "Truncated to 280 chars; shown in the curator report."
+                )
+            },
         },
         "required": ["action", "name"],
     },
@@ -1537,6 +1761,8 @@ registry.register(
         old_string=args.get("old_string"),
         new_string=args.get("new_string"),
         replace_all=args.get("replace_all", False),
-        absorbed_into=args.get("absorbed_into")),
+        absorbed_into=args.get("absorbed_into"),
+        outcome=args.get("outcome"),
+        outcome_note=args.get("outcome_note")),
     emoji="📝",
 )

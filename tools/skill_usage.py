@@ -164,7 +164,14 @@ def latest_activity_at(record: Dict[str, Any]) -> Optional[str]:
 
 
 def activity_count(record: Dict[str, Any]) -> int:
-    """Return the total observed activity count across use/view/patch events."""
+    """Return the total observed activity count across use/view/patch events.
+
+    Outcome fields (``helped_count`` / ``hurt_count``) are DELIBERATELY
+    excluded: a recorded outcome is a quality signal, not activity. Counting
+    them here would let a skill that keeps FAILING look busy enough to survive
+    the inactivity prune in ``agent.curator`` — the exact inversion this
+    signal exists to prevent.
+    """
     total = 0
     for key in ("use_count", "view_count", "patch_count"):
         try:
@@ -172,6 +179,47 @@ def activity_count(record: Dict[str, Any]) -> int:
         except (TypeError, ValueError):
             continue
     return total
+
+
+# ---------------------------------------------------------------------------
+# Outcome signal — did using the skill actually help?
+#
+# ``use_count`` answers "was this skill loaded?", never "did it work?".
+# ``record_outcome`` adds the missing quality dimension so lifecycle decisions
+# (and the curator's consolidation pass) can weigh observed effectiveness
+# instead of pure recency. Thresholds and the policy built on top of these
+# numbers live in ``agent.curator`` — this module only stores and aggregates.
+# ---------------------------------------------------------------------------
+
+OUTCOME_HELPED = "helped"
+OUTCOME_HURT = "hurt"
+OUTCOME_NEUTRAL = "neutral"
+VALID_OUTCOMES: Tuple[str, ...] = (OUTCOME_HELPED, OUTCOME_HURT, OUTCOME_NEUTRAL)
+
+_OUTCOME_NOTE_MAX = 280
+
+
+def effectiveness(record: Dict[str, Any]) -> Dict[str, Any]:
+    """Aggregate a record's observed outcomes into a comparable summary.
+
+    ``evaluated`` counts only decisive observations (helped + hurt): a run of
+    ``neutral`` outcomes is absence of evidence, not evidence of harm, so it
+    must not dilute the ratio. ``rate`` is ``None`` until at least one decisive
+    outcome exists — callers must read that as "unknown", not as zero.
+    """
+    helped = int(record.get("helped_count") or 0)
+    hurt = int(record.get("hurt_count") or 0)
+    evaluated = helped + hurt
+    return {
+        "helped": helped,
+        "hurt": hurt,
+        "net": helped - hurt,
+        "evaluated": evaluated,
+        "rate": (helped / evaluated) if evaluated else None,
+        "last": record.get("last_outcome"),
+        "last_at": record.get("last_outcome_at"),
+        "note": record.get("last_outcome_note"),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -490,6 +538,14 @@ def _empty_record() -> Dict[str, Any]:
         "last_viewed_at": None,
         "patch_count": 0,
         "last_patched_at": None,
+        # Effectiveness signal — recorded by the self-improvement review fork
+        # via skill_manage(action="record_outcome"). Orthogonal to activity:
+        # ``latest_activity_at`` / ``activity_count`` ignore these on purpose.
+        "helped_count": 0,
+        "hurt_count": 0,
+        "last_outcome": None,
+        "last_outcome_at": None,
+        "last_outcome_note": None,
         "created_at": _now_iso(),
         "state": STATE_ACTIVE,
         "pinned": False,
@@ -576,7 +632,7 @@ def seed_record_if_missing(skill_name: str) -> None:
         logger.debug("skill_usage.seed_record_if_missing(%s) failed: %s", skill_name, e, exc_info=True)
 
 
-def _mutate(skill_name: str, mutator, *, require_curation_eligible: bool = False) -> None:
+def _mutate(skill_name: str, mutator, *, require_curation_eligible: bool = False) -> bool:
     """Load, apply *mutator(record)* in place, save. Best-effort.
 
     By default this records telemetry for ANY skill — bundled, hub-installed,
@@ -586,12 +642,16 @@ def _mutate(skill_name: str, mutator, *, require_curation_eligible: bool = False
     ``require_curation_eligible=True`` so they never write meaningless state
     onto a skill the curator can't manage (e.g. an ``archived`` flag on a
     hub-installed skill).
+
+    Returns True when the record was persisted, False when the mutation was
+    skipped (empty name, ineligible skill) or failed. Callers that report a
+    result back to a model MUST honor this instead of assuming success.
     """
     if not skill_name:
-        return
+        return False
     try:
         if require_curation_eligible and not is_curation_eligible(skill_name):
-            return
+            return False
         with _usage_file_lock():
             data = load_usage()
             rec = data.get(skill_name)
@@ -600,8 +660,10 @@ def _mutate(skill_name: str, mutator, *, require_curation_eligible: bool = False
             mutator(rec)
             data[skill_name] = rec
             save_usage(data)
+        return True
     except Exception as e:
         logger.debug("skill_usage._mutate(%s) failed: %s", skill_name, e, exc_info=True)
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -641,6 +703,45 @@ def bump_patch(skill_name: str) -> None:
         rec["patch_count"] = int(rec.get("patch_count") or 0) + 1
         rec["last_patched_at"] = _now_iso()
     _mutate(skill_name, _apply)
+
+
+def record_outcome(skill_name: str, outcome: str, note: Optional[str] = None) -> bool:
+    """Record whether *skill_name* actually helped, hurt, or neither.
+
+    Unlike the use/view/patch counters (pure observability, recorded for every
+    skill), an outcome is a CURATION signal: it is only recorded for
+    curator-managed skills, i.e. exactly the set ``apply_automatic_transitions``
+    and the consolidation pass can act on. Asking to record an outcome for a
+    protected built-in, a hub-installed skill, or a skill in an external dir
+    returns False rather than silently writing telemetry nobody will read.
+
+    ``note`` is a short free-text reason (truncated to 280 chars). It is stored
+    for the curator report so a surprising number can be traced back to the
+    session that produced it.
+
+    Returns True when the outcome was persisted.
+    """
+    if not skill_name:
+        return False
+    value = str(outcome or "").strip().lower()
+    if value not in VALID_OUTCOMES:
+        logger.debug(
+            "record_outcome: invalid outcome %r for %s (expected one of %s)",
+            outcome, skill_name, ", ".join(VALID_OUTCOMES),
+        )
+        return False
+
+    def _apply(rec: Dict[str, Any]) -> None:
+        if value == OUTCOME_HELPED:
+            rec["helped_count"] = int(rec.get("helped_count") or 0) + 1
+        elif value == OUTCOME_HURT:
+            rec["hurt_count"] = int(rec.get("hurt_count") or 0) + 1
+        rec["last_outcome"] = value
+        rec["last_outcome_at"] = _now_iso()
+        if note:
+            rec["last_outcome_note"] = str(note).strip()[:_OUTCOME_NOTE_MAX]
+
+    return _mutate(skill_name, _apply, require_curation_eligible=True)
 
 
 def mark_agent_created(skill_name: str) -> None:

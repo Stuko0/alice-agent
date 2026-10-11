@@ -1,0 +1,33 @@
+{
+  "name": "skill-step-failed",
+  "prompt": "skill_review",
+  "note": "A skill that was followed and then failed must be patched AND have its failure recorded. This is the case where use_count would look healthy while the guidance is broken.",
+  "skills": {
+    "deploy-service": "---\nname: deploy-service\ndescription: Deploy a service to the cluster.\n---\n\n# Deploy Service\n\n## Procedure\n\n1. Build the image with `docker build`.\n2. Push it to the registry.\n3. Apply the manifest: `kubectl apply -f manifest.yaml`.\n\n## Verification\n\n`kubectl rollout status` returns successfully.\n"
+  },
+  "transcript": [
+    {
+      "role": "user",
+      "content": "deploy el servicio de ingesta al cluster"
+    },
+    {
+      "role": "assistant",
+      "content": "Seguí la skill deploy-service. Pasos 1 y 2 bien. El paso 3 falló: `kubectl apply` aplicó el manifest pero el pod quedó en ImagePullBackOff, porque el registry es privado y el nodo no puede bajar la imagen — hay que importarla con `sudo ctr -n k8s.io images import` en el nodo antes de aplicar el manifest. Reintenté con ese paso previo y quedó corriendo."
+    },
+    {
+      "role": "user",
+      "content": "ok, ahora sí funciona"
+    },
+    {
+      "role": "assistant",
+      "content": "Deploy completo: rollout status OK, 3/3 réplicas."
+    }
+  ],
+  "expect": {
+    "must_write": ["deploy-service"],
+    "must_not_create": true,
+    "outcomes": {
+      "deploy-service": "hurt"
+    }
+  }
+}

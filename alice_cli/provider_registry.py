@@ -168,6 +168,17 @@ def test_provider(provider_id: str, timeout: float = 10.0) -> dict[str, Any]:
     entry = find_provider(provider_id)
     base_url = str(entry.get("base_url", "") or "").rstrip("/")
     api_key = str(entry.get("api_key", "") or "").strip()
+    if not api_key:
+        # Alice's own writer stores the *env var name* (key_env), not the
+        # value — the credential pool resolves the value at request time.
+        # Read it the same way here, otherwise the probe fires an
+        # unauthenticated request and reports a false HTTP 401 for every
+        # env-backed custom provider.
+        key_env = str(entry.get("key_env", "") or "").strip()
+        if key_env:
+            from alice_cli.config import get_env_value_prefer_dotenv
+
+            api_key = (get_env_value_prefer_dotenv(key_env) or "").strip()
     api_mode = str(entry.get("api_mode", "") or "").lower()
 
     headers = {}

@@ -65,6 +65,49 @@ DEFAULT_CONSOLIDATE = False
 
 
 # ---------------------------------------------------------------------------
+# Effectiveness policy — the outcome signal outranks the clock
+#
+# ``use_count`` answers "was this skill loaded?", never "did it work?". The
+# outcome counters (``helped_count`` / ``hurt_count``, written by the
+# background review fork via skill_manage action=record_outcome) are the only
+# signal that separates "this skill keeps FAILING" from "this skill is old".
+# These thresholds turn that signal into two lifecycle verdicts.
+# ---------------------------------------------------------------------------
+
+# A skill observed hurting this many times with ZERO observed successes is
+# quarantined (forced ``stale``) however recently it was used. Archival stays
+# time-based on purpose: quarantine is the visible, reversible verdict, and a
+# skill that was just found harmful is a candidate for a fix or a merge, not
+# for silent removal.
+EFFECTIVENESS_HURT_QUARANTINE_MIN = 3
+
+# A skill observed working this many times at or above this success rate is
+# PROVEN: idleness stops being a reason to prune it. It leaves the library
+# only through consolidation or an explicit user action.
+EFFECTIVENESS_PROVEN_MIN_HELPED = 5
+EFFECTIVENESS_PROVEN_MIN_RATE = 0.7
+
+
+def is_harmful(effectiveness: Dict[str, Any]) -> bool:
+    """Observed failing repeatedly, never observed succeeding."""
+    return (
+        int(effectiveness.get("hurt") or 0) >= EFFECTIVENESS_HURT_QUARANTINE_MIN
+        and int(effectiveness.get("helped") or 0) == 0
+    )
+
+
+def is_proven(effectiveness: Dict[str, Any]) -> bool:
+    """Observed working often enough that idleness alone must not prune it."""
+    helped = int(effectiveness.get("helped") or 0)
+    rate = effectiveness.get("rate")
+    return (
+        helped >= EFFECTIVENESS_PROVEN_MIN_HELPED
+        and rate is not None
+        and rate >= EFFECTIVENESS_PROVEN_MIN_RATE
+    )
+
+
+# ---------------------------------------------------------------------------
 # .curator_state — persistent scheduler + status
 # ---------------------------------------------------------------------------
 
@@ -309,7 +352,15 @@ def apply_automatic_transitions(now: Optional[datetime] = None) -> Dict[str, int
 
     cron_referenced = _cron_referenced_skills()
 
-    counts = {"marked_stale": 0, "archived": 0, "reactivated": 0, "checked": 0, "seeded": 0}
+    counts = {
+        "marked_stale": 0,
+        "archived": 0,
+        "reactivated": 0,
+        "checked": 0,
+        "seeded": 0,
+        "quarantined": 0,
+        "protected_by_effectiveness": 0,
+    }
 
     for row in _u.agent_created_report():
         counts["checked"] += 1
@@ -349,6 +400,34 @@ def apply_automatic_transitions(now: Optional[datetime] = None) -> Dict[str, int
         never_used = int(row.get("use_count", 0) or 0) == 0
         if never_used and anchor > stale_cutoff:
             # Younger than the stale window — leave it alone entirely.
+            if current == _u.STATE_STALE:
+                _u.set_state(name, _u.STATE_ACTIVE)
+                counts["reactivated"] += 1
+            continue
+
+        # Effectiveness outranks the clock (see is_harmful/is_proven). Both
+        # verdicts are checked BEFORE the time-based chain so a proven skill
+        # can't be aged out and a harmful one can't be kept alive by a recent
+        # timestamp. Outcomes are only ever recorded for curation-managed
+        # skills, so a record with no outcome fields yields (0, 0) here and
+        # falls through to exactly the previous time-based behaviour.
+        eff = _u.effectiveness(row)
+
+        if is_harmful(eff):
+            # Quarantine: it must stop being loaded while it misleads. Never
+            # archived by this pass even past archive_cutoff — a skill proven
+            # harmful is a fix-or-merge candidate, and the visible ``stale``
+            # state is what keeps it in front of the reviewer.
+            if current == _u.STATE_ACTIVE:
+                _u.set_state(name, _u.STATE_STALE)
+                counts["quarantined"] += 1
+            continue
+
+        if anchor <= stale_cutoff and is_proven(eff):
+            # Idleness is not evidence against guidance observed working. Lift
+            # a stale verdict and skip the archive this pass; consolidation can
+            # still absorb it, which is a content decision, not a clock one.
+            counts["protected_by_effectiveness"] += 1
             if current == _u.STATE_STALE:
                 _u.set_state(name, _u.STATE_ACTIVE)
                 counts["reactivated"] += 1
@@ -441,6 +520,34 @@ CURATOR_REVIEW_PROMPT = (
     "unless it is at least 30 days old (check last_activity / created date) "
     "AND its content is genuinely obsolete or fully absorbed elsewhere — a "
     "recently-created skill simply may not have had its trigger come up yet.\n"
+    "4b. Effectiveness IS evidence, unlike the counters. Each candidate "
+    "carries `helped=<n>` and `hurt=<n>` — outcomes recorded when the skill "
+    "was actually used: helped = observed working, hurt = observed misleading "
+    "you. Two consequences. (a) A skill with hurt high and helped=0 is a "
+    "LIABILITY: fix it, absorb it into an umbrella, or archive it — do not "
+    "leave it standing because its counters look healthy. The automatic pass "
+    "already quarantines the worst of these, so treat a `stale` verdict as a "
+    "signal to act, not to ignore. (b) A skill with a strong helped record is "
+    "PROVEN: never prune it for idleness, and when you absorb it, carry its "
+    "worked guidance over faithfully instead of summarising it away. "
+    "Effectiveness does NOT override rule 4 for consolidation: overlapping "
+    "skills still merge on CONTENT. It tells you which behaviour is worth "
+    "preserving, not which narrow entry is allowed to survive as its own "
+    "skill.\n"
+    "4c. A `## Lessons` section is DELTA knowledge, not prose to tidy up. "
+    "The self-improvement review appends ONE dated bullet per session "
+    "(`- YYYY-MM-DD — ...`) instead of rewriting the body, so several "
+    "bullets routinely state the same underlying rule. At consolidation "
+    "time: (a) MERGE duplicate or contradictory bullets into a single "
+    "bullet, keeping the strongest wording and the oldest date that still "
+    "holds; (b) PROMOTE a lesson confirmed by two or more independent "
+    "bullets into a numbered step in the skill's Procedure, then delete the "
+    "bullets it absorbed — that promotion is how a hard-won lesson stops "
+    "being an appendix and starts being the procedure; (c) DROP bullets "
+    "recording environment-dependent failures (missing binary, uninstalled "
+    "package, 'command not found'): those are setup state, not durable "
+    "knowledge. Never delete the section itself — a skill with no "
+    "`## Lessons` is a skill that has stopped learning.\n"
     "5. DO NOT reject consolidation on the grounds that 'each skill has "
     "a distinct trigger'. Pairwise distinctness is the wrong bar. The "
     "right bar is: 'would a human maintainer write this as N separate "
@@ -1297,6 +1404,13 @@ def _render_report_markdown(p: Dict[str, Any]) -> str:
     lines.append(f"- marked stale: {auto.get('marked_stale', 0)}")
     lines.append(f"- archived (no LLM, pure time-based staleness): {auto.get('archived', 0)}")
     lines.append(f"- reactivated: {auto.get('reactivated', 0)}")
+    lines.append(
+        f"- quarantined (observed harmful, 0 successes): {auto.get('quarantined', 0)}"
+    )
+    lines.append(
+        "- kept despite idleness (observed working): "
+        f"{auto.get('protected_by_effectiveness', 0)}"
+    )
     lines.append("")
 
     # LLM pass numbers
@@ -1472,6 +1586,9 @@ def _render_candidate_list() -> str:
             f"use={r.get('use_count', 0)}  "
             f"view={r.get('view_count', 0)}  "
             f"patches={r.get('patch_count', 0)}  "
+            f"helped={r.get('helped_count', 0)}  "
+            f"hurt={r.get('hurt_count', 0)}  "
+            f"last_outcome={r.get('last_outcome') or 'none'}  "
             f"last_activity={r.get('last_activity_at') or 'never'}"
         )
     return "\n".join(lines)
@@ -1523,9 +1640,18 @@ def run_curator_review(
                 "marked_stale": 0,
                 "archived": 0,
                 "reactivated": 0,
+                "quarantined": 0,
+                "protected_by_effectiveness": 0,
             }
         except Exception:
-            counts = {"checked": 0, "marked_stale": 0, "archived": 0, "reactivated": 0}
+            counts = {
+                "checked": 0,
+                "marked_stale": 0,
+                "archived": 0,
+                "reactivated": 0,
+                "quarantined": 0,
+                "protected_by_effectiveness": 0,
+            }
     else:
         # Pre-mutation snapshot — best-effort, never blocks the run. A
         # failed snapshot logs at debug and continues (the alternative is
@@ -1551,6 +1677,12 @@ def run_curator_review(
         auto_summary_parts.append(f"{counts['archived']} archived")
     if counts["reactivated"]:
         auto_summary_parts.append(f"{counts['reactivated']} reactivated")
+    if counts.get("quarantined"):
+        auto_summary_parts.append(f"{counts['quarantined']} quarantined (observed harmful)")
+    if counts.get("protected_by_effectiveness"):
+        auto_summary_parts.append(
+            f"{counts['protected_by_effectiveness']} kept (observed working)"
+        )
     auto_summary = ", ".join(auto_summary_parts) if auto_summary_parts else "no changes"
 
     # Persist state before the LLM pass so a crash mid-review still records

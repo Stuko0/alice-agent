@@ -4401,6 +4401,28 @@ def get_missing_skill_config_vars() -> List[Dict[str, Any]]:
     return missing
 
 
+def _strip_endpoint_path(base_url: str) -> str:
+    """Drop a pasted request-path suffix so ``base_url`` is a real base URL.
+
+    Provider docs usually advertise the full chat endpoint
+    (``https://host/v1/chat/completions``) while every Alice code path —
+    ``/models`` probing, the OpenAI SDK, the credential pool — appends its
+    own path to ``base_url``. A user who pastes the endpoint gets
+    ``https://host/v1/chat/completions/models`` → 404, so live discovery
+    finds no models and the provider silently disappears from every picker
+    (the desktop picker filters out rows with 0 models). Stripping the
+    suffix here — in the single normaliser both ``providers:`` and
+    ``custom_providers:`` flow through — makes such an entry work without
+    the user having to know the difference.
+    """
+    stripped = (base_url or "").strip()
+    lowered = stripped.lower()
+    for suffix in ("/chat/completions", "/completions"):
+        if lowered.endswith(suffix):
+            return stripped[: -len(suffix)].rstrip("/")
+    return stripped
+
+
 def _normalize_custom_provider_entry(
     entry: Any,
     *,
@@ -4454,7 +4476,7 @@ def _normalize_custom_provider_entry(
     for url_key in ("base_url", "url", "api"):
         raw_url = entry.get(url_key)
         if isinstance(raw_url, str) and raw_url.strip():
-            candidate = raw_url.strip()
+            candidate = _strip_endpoint_path(raw_url)
             # Accept URLs containing unresolved placeholder tokens — both
             # ``${ENV_VAR}`` env-refs and bare ``{region}``-style templates —
             # without URL validation. They are expanded at runtime, so a

@@ -98,8 +98,22 @@ def test_check_for_updates_expired_cache(tmp_path, monkeypatch):
 
 
 def test_check_for_updates_official_ssh_origin_uses_https_probe(tmp_path):
-    """Passive update checks must not trigger SSH auth for official installs."""
+    """Passive update checks must not trigger SSH auth for official installs.
+
+    An official ``git@github.com:Stuko0/alice-agent.git`` origin must be
+    probed through the hardcoded public HTTPS upstream via ``git ls-remote``
+    — never through ``git fetch origin``, which invokes SSH (and on desktop
+    the system keyring via SSH_ASKPASS) on every cache expiry. Mirrors
+    apps/desktop/electron/update-remote.cjs.
+    """
     import alice_cli.banner as banner
+
+    # The canonical constant must keep matching the real official remote —
+    # a transposed spelling silently re-enables the SSH fetch path.
+    assert banner._is_official_ssh_remote("git@github.com:Stuko0/alice-agent.git")
+    assert banner._canonical_github_remote("git@github.com:Stuko0/alice-agent.git") == (
+        banner._OFFICIAL_REPO_CANONICAL
+    )
 
     repo_dir = tmp_path / "alice-agent"
     repo_dir.mkdir()
@@ -110,13 +124,13 @@ def test_check_for_updates_official_ssh_origin_uses_https_probe(tmp_path):
     def fake_run(cmd, **kwargs):
         calls.append(cmd)
         if cmd == ["git", "remote", "get-url", "origin"]:
-            return MagicMock(returncode=0, stdout="git@github.com:arquant-admin/NewAlice.git\n")
+            return MagicMock(returncode=0, stdout="git@github.com:Stuko0/alice-agent.git\n")
         if cmd == ["git", "rev-parse", "HEAD"]:
             return MagicMock(returncode=0, stdout="local-sha\n")
         if cmd == [
             "git",
             "ls-remote",
-            "https://10.1.200.116:3000/arquant-admin/NewAlice.git",
+            "https://github.com/Stuko0/alice-agent.git",
             "refs/heads/main",
         ]:
             return MagicMock(returncode=0, stdout="upstream-sha\trefs/heads/main\n")

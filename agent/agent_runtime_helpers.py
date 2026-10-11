@@ -1781,6 +1781,22 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
             _sm_timeout = get_provider_request_timeout(agent.provider, agent.model)
             if _sm_timeout is not None:
                 agent._client_kwargs["timeout"] = _sm_timeout
+            # Re-apply provider-specific default headers on the rebuilt
+            # kwargs — the same URL/profile/user ladder agent init and
+            # credential rotation use (OpenRouter attribution, OpenCode
+            # Go's x-opencode-session from profile.default_headers, user
+            # overrides). Without this, an in-place /model switch to a
+            # chat_completions provider that requires headers rebuilds a
+            # bare client and the next turn 400s (opencode-go:
+            # MissingSessionID) or silently loses attribution.
+            try:
+                agent._apply_client_headers_for_base_url(effective_base)
+            except Exception as _hdr_exc:  # noqa: BLE001
+                logger.warning(
+                    "switch_model: failed to apply provider default headers "
+                    "for %s (%s); continuing with bare client kwargs",
+                    effective_base, _hdr_exc,
+                )
             agent.client = agent._create_openai_client(
                 dict(agent._client_kwargs),
                 reason="switch_model",

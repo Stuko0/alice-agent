@@ -6,6 +6,7 @@ import { Codicon } from '@/components/ui/codicon'
 import { Tip } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { isWailsShell } from '@/lib/desktop-capabilities'
 import { $panesFlipped } from '@/store/layout'
 import { $currentCwd } from '@/store/session'
 import { closeGraphify } from '@/store/graphify'
@@ -13,18 +14,40 @@ import { closeGraphify } from '@/store/graphify'
 import { SidebarPanelLabel } from '../../shell/sidebar-label'
 import { PaneEmptyState, RightSidebarSectionHeader } from '../index'
 
-// We need a way to check if file exists, but for an iframe we can just try to load it.
-// However, it's cleaner to just render it.
-
 export function GraphifyPane() {
   const { t } = useI18n()
   const panesFlipped = useStore($panesFlipped)
   const currentCwd = useStore($currentCwd).trim()
-  
-  // We don't have a direct Node fs call here in the React view without an IPC handler,
-  // but we can just blindly attempt to load the file in an iframe.
+
   // The path will be file://.../graphify-out/graph.html
   const graphPath = currentCwd ? `file://${currentCwd}/graphify-out/graph.html` : undefined
+  const graphFilePath = currentCwd ? `${currentCwd}/graphify-out/graph.html` : undefined
+
+  // In Wails, file:// is blocked by WebKit's Same-Origin Policy (the app
+  // origin is wails://localhost). Read the HTML via Go and render via srcDoc.
+  const wails = isWailsShell()
+  const [srcDoc, setSrcDoc] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!wails || !graphFilePath) {
+      setSrcDoc(null)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    window.aliceDesktop?.readFileText?.(graphFilePath)
+      .then(result => {
+        if (!cancelled) setSrcDoc(result?.text ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) setSrcDoc(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [wails, graphFilePath])
 
   return (
     <aside
@@ -49,7 +72,24 @@ export function GraphifyPane() {
 
       {!currentCwd ? (
         <PaneEmptyState label="No project open" />
+      ) : wails ? (
+        // Wails shell: file:// is blocked by WebKit; load via Go and render srcDoc.
+        <div className="flex min-h-0 flex-1 bg-white">
+          {loading ? (
+            <PaneEmptyState label="Loading graph…" />
+          ) : srcDoc ? (
+            <iframe
+              srcDoc={srcDoc}
+              className="size-full border-0"
+              sandbox="allow-scripts allow-same-origin"
+              title="Graphify"
+            />
+          ) : (
+            <PaneEmptyState label="No graph yet — ask Alice to run graphify" />
+          )}
+        </div>
       ) : (
+        // Electron shell: use the native <webview> for full event support.
         <div className="flex min-h-0 flex-1 bg-white">
           <webview
             src={graphPath}

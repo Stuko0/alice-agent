@@ -413,7 +413,7 @@ export function initWailsBridge(): void {
           })),
         };
       } catch (err: any) {
-        return { entries: [], error: err.message };
+        return { entries: [], error: err?.message || String(err) };
       }
     },
     gitRoot: async (path) => {
@@ -663,8 +663,46 @@ export function initWailsBridge(): void {
           return false;
         }
       },
-      onData: (_id, _callback) => () => {},
-      onExit: (_id, _callback) => () => {},
+      onData: (id, callback) => {
+        // Wails has no push/IPC streaming: poll the Go PTY buffer at ~60fps.
+        // PTYService.ReadTerminal drains and returns whatever has accumulated
+        // since the last call; empty string means no new output (not an error).
+        let stopped = false;
+        const poll = async () => {
+          if (stopped) return;
+          try {
+            const data = await PTYService.ReadTerminal(id);
+            if (data) callback(data);
+          } catch {
+            // Session disposed — stop polling silently; onExit will fire.
+            stopped = true;
+            return;
+          }
+          if (!stopped) setTimeout(poll, 16);
+        };
+        void poll();
+        return () => { stopped = true; };
+      },
+      onExit: (id, callback) => {
+        // Poll until ReadTerminal throws (session disposed by DisposeTerminal
+        // after the shell exits). 200ms is fast enough for UX, cheap enough
+        // that dozens of terminals don't overwhelm the Go side.
+        let stopped = false;
+        const poll = async () => {
+          if (stopped) return;
+          try {
+            await PTYService.ReadTerminal(id);
+            setTimeout(poll, 200);
+          } catch {
+            if (!stopped) {
+              stopped = true;
+              callback();
+            }
+          }
+        };
+        setTimeout(poll, 200);
+        return () => { stopped = true; };
+      },
     },
     onPreviewFileChanged: () => () => {},
     // ── Backend lifecycle — Go-emitted Wails runtime events ────────────

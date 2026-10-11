@@ -554,6 +554,51 @@ def _base_url_needs_context_1m_beta(base_url: str | None) -> bool:
     return "azure.com" in normalized
 
 
+def _is_opencode_go_endpoint(base_url: str | None) -> bool:
+    """Return True for the OpenCode Go relay (``opencode.ai/zen/go``).
+
+    The relay fronts several upstream wire surfaces (OpenAI chat completions
+    for GLM/Kimi, Anthropic Messages for MiniMax/Qwen) but enforces the same
+    client rules on all of them — notably the ``x-opencode-session`` header
+    that must be present on every request or the relay 400s with
+    ``MissingSessionID``.
+    """
+    normalized = _normalize_base_url_text(base_url)
+    if not normalized:
+        return False
+    normalized = normalized.rstrip("/").lower()
+    return normalized.startswith("https://opencode.ai/zen/go")
+
+
+_OPENCODE_GO_FALLBACK_SESSION: str | None = None
+
+
+def _opencode_go_session_value() -> str | None:
+    """Stable per-process session ID for OpenCode Go's ``x-opencode-session``.
+
+    Reuses the opencode-zen provider plugin's session mint when the plugin
+    is registered (bundled builds; keeps main + auxiliary + anthropic-path
+    clients on ONE session so the relay's prompt-cache affinity holds).
+    The plugin lives in a dash-named dir (``model-providers``) so it is only
+    reachable via ``sys.modules`` after the provider loader registers it —
+    hence the dynamic import. Falls back to a locally-cached ID when the
+    plugin isn't registered yet — better a distinct-but-stable ID than a
+    missing header.
+    """
+    global _OPENCODE_GO_FALLBACK_SESSION
+    try:
+        import importlib
+
+        _mod = importlib.import_module("plugins.model_providers.opencode_zen")
+        return _mod._opencode_session_id()
+    except Exception:
+        if not _OPENCODE_GO_FALLBACK_SESSION:
+            import uuid as _uuid
+
+            _OPENCODE_GO_FALLBACK_SESSION = f"alice-{_uuid.uuid4().hex[:16]}"
+        return _OPENCODE_GO_FALLBACK_SESSION
+
+
 def _is_minimax_anthropic_endpoint(base_url: str | None) -> bool:
     """Return True for MiniMax's Anthropic-compatible endpoints.
 
@@ -825,6 +870,21 @@ def build_anthropic_client(
         kwargs["api_key"] = api_key
         if common_betas:
             kwargs["default_headers"] = {"anthropic-beta": ",".join(common_betas)}
+
+    # OpenCode Go relay (opencode.ai/zen/go) requires a stable session header
+    # on every request — including Anthropic Messages traffic (MiniMax, Qwen
+    # route through /v1/messages). Without it the relay 400s with
+    # MissingSessionID. Reuse the profile helper so main and auxiliary
+    # clients share the same session ID (routing + prompt-cache affinity).
+    # Imported inside a try block: the plugin may not be discoverable when
+    # the adapter runs standalone (e.g. before provider discovery), in
+    # which case fall back to a locally-minted session ID.
+    if _is_opencode_go_endpoint(normalized_base_url or base_url):
+        _oc_session = _opencode_go_session_value()
+        if _oc_session:
+            _merged = dict(kwargs.get("default_headers") or {})
+            _merged["x-opencode-session"] = _oc_session
+            kwargs["default_headers"] = _merged
 
     return _anthropic_sdk.Anthropic(**kwargs)
 

@@ -1,4 +1,5 @@
 import { useStore } from '@nanostores/react'
+import { atom } from 'nanostores'
 import { type KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { type NodeApi, type NodeRendererProps, type RowRendererProps, Tree, type TreeApi } from 'react-arborist'
 
@@ -12,11 +13,17 @@ import { $revealInTreeRequest } from '@/store/layout'
 
 import { FileEntryContextMenu, InlineRenameInput, isRenameShortcut } from '../file-actions'
 
-import { getFileTreeDndManager } from './dnd-manager'
+// import { getFileTreeDndManager } from './dnd-manager'
 import type { TreeNode } from './use-project-tree'
 
 const ROW_HEIGHT = 22
-const INDENT = 10
+const INDENT = 12
+
+// Dummy fallback atoms to prevent useStore(undefined) crashes (p.get) due to circular imports in Wails bundle
+const dummyChangeByPath = atom(new Map<string, RepoChangeKind>())
+const dummyRenamingPath = atom('')
+const dummyRevealRequest = atom('')
+
 /** Fixed base inset (`px-6.5`) layered on top of arborist's depth indent. */
 const TREE_ROW_INSET = '17px'
 
@@ -56,9 +63,11 @@ export function ProjectTree({
   openState
 }: ProjectTreeProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const treeRef = useRef<TreeApi<TreeNode> | null>(null)
+  const treeRef = useRef<TreeApi<TreeNode>>(null)
   const [size, setSize] = useState({ height: 0, width: 0 })
-  const changeByPath = useStore($repoChangeByPath)
+  const changeByPath = useStore($repoChangeByPath || dummyChangeByPath)
+  const [renamingState, setRenamingState] = useState(false)
+  const isRenaming = useStore($renamingPath || dummyRenamingPath) !== ''
 
   const syncTreeSize = useCallback(() => {
     const el = containerRef.current
@@ -183,7 +192,6 @@ export function ProjectTree({
           disableDrag
           disableDrop
           disableEdit
-          dndManager={getFileTreeDndManager()}
           height={size.height}
           indent={INDENT}
           initialOpenState={openState}
@@ -200,7 +208,7 @@ export function ProjectTree({
           {props => (
             <ProjectTreeRow
               {...props}
-              changeKind={props.node.data ? changeByPath.get(props.node.data.id) : undefined}
+              changeKind={props.node.data ? changeByPath?.get(props.node.data.id) : undefined}
               onAttachFile={onActivateFile}
               onAttachFolder={onActivateFolder}
               onPreviewFile={onPreviewFile}
@@ -259,7 +267,7 @@ function ProjectTreeRow({
   onPreviewFile?: (path: string) => void
   relativeTo?: null | string
 }) {
-  const renamingPath = useStore($renamingPath)
+  const renamingPath = useStore($renamingPath || dummyRenamingPath)
 
   if (!node.data) {
     return <div style={style} />

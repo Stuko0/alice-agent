@@ -1,0 +1,33 @@
+{
+  "name": "user-corrects-verbosity",
+  "prompt": "combined",
+  "note": "A style correction is a first-class skill signal. The review must embed the preference in the skill that governs the task (not just memory) and record that the skill misled the agent.",
+  "skills": {
+    "reporting-style": "---\nname: reporting-style\ndescription: How to report changes to this user.\n---\n\n# Reporting Style\n\n## Procedure\n\n1. Open with a paragraph of context explaining the history of the change.\n2. Walk through each finding in narrative prose.\n3. Close with a summary paragraph.\n\n## Verification\n\nAsk the user whether the report was clear enough.\n"
+  },
+  "transcript": [
+    {
+      "role": "user",
+      "content": "arregla el bug del refresh de token en el login"
+    },
+    {
+      "role": "assistant",
+      "content": "He analizado el modulo de autenticacion en profundidad. En primer lugar, permíteme darte contexto histórico: el flujo de login se reescribió hace tres versiones, cuando se migró el backend a PostgREST, y desde entonces el refresh de token... (sigue durante varios párrafos explicando el diseño, los trade-offs y la historia del módulo antes de mencionar el fix)"
+    },
+    {
+      "role": "user",
+      "content": "demasiado verbose. la próxima dame solo la lista de cambios, sin explicaciones ni contexto. no quiero párrafos."
+    },
+    {
+      "role": "assistant",
+      "content": "Entendido. Cambios:\n1. refresh_token se renueva 5 min antes de expirar.\n2. test de regresión en tests/auth/test_refresh.py."
+    }
+  ],
+  "expect": {
+    "must_write": ["reporting-style"],
+    "must_not_create": true,
+    "outcomes": {
+      "reporting-style": "hurt"
+    }
+  }
+}

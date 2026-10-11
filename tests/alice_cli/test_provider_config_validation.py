@@ -237,3 +237,47 @@ class TestNormalizeCustomProviderEntry:
         }
         result = _normalize_custom_provider_entry(entry, provider_key="bad")
         assert result is None
+
+
+class TestEndpointPathStrippedFromBaseUrl:
+    """A pasted chat endpoint is normalised down to a real base URL.
+
+    Contract: ``base_url`` must never include the request path, because every
+    consumer (``/models`` discovery, the OpenAI SDK, the credential pool)
+    appends its own path. When it does, discovery probes
+    ``<endpoint>/models`` → 404, the provider row carries 0 models, and the
+    desktop picker (which filters out 0-model rows) hides it entirely.
+    """
+
+    def test_chat_completions_suffix_stripped(self):
+        entry = {"name": "TokenHarbor", "base_url": "https://tokenharbor.ai/v1/chat/completions"}
+        result = _normalize_custom_provider_entry(entry, provider_key="tokenharbor")
+        assert result is not None
+        assert result["base_url"] == "https://tokenharbor.ai/v1"
+
+    def test_legacy_completions_suffix_stripped(self):
+        entry = {"name": "legacy", "base_url": "https://api.example.com/v1/completions"}
+        result = _normalize_custom_provider_entry(entry)
+        assert result is not None
+        assert result["base_url"] == "https://api.example.com/v1"
+
+    def test_trailing_whitespace_and_suffix_stripped(self):
+        entry = {"name": "ws", "base_url": "  https://api.example.com/v1/chat/completions  "}
+        result = _normalize_custom_provider_entry(entry)
+        assert result is not None
+        assert result["base_url"] == "https://api.example.com/v1"
+
+    def test_root_level_endpoint_keeps_host(self):
+        """``https://host/chat/completions`` (no /v1) collapses to the host."""
+        entry = {"name": "root", "base_url": "https://host.example.com/chat/completions"}
+        result = _normalize_custom_provider_entry(entry)
+        assert result is not None
+        assert result["base_url"] == "https://host.example.com"
+
+    def test_plain_base_url_left_untouched(self):
+        """Regression guard: an already-correct base_url is not altered."""
+        entry = {"name": "ok", "base_url": "https://api.example.com/v1"}
+        result = _normalize_custom_provider_entry(entry)
+        assert result is not None
+        assert result["base_url"] == "https://api.example.com/v1"
+

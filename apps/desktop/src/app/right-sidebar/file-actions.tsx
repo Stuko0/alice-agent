@@ -1,4 +1,5 @@
 import { useStore } from '@nanostores/react'
+import { atom } from 'nanostores'
 import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useRef, useState } from 'react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -98,7 +99,12 @@ export function FileEntryContextMenu({ children, isDirectory, name, path, relati
  *  actions. Rename is inline (see {@link InlineRenameInput}). */
 export function FileActionDialogs() {
   const { t } = useI18n()
-  const dialog = useStore($fileActionDialog)
+  const dialog = useStore($fileActionDialog || atom(null))
+
+  if (!dialog) {
+    return null
+  }
+
   const deleting = dialog?.kind === 'delete'
 
   return (

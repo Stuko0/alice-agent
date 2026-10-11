@@ -170,3 +170,96 @@ class TestProbe:
     def test_probe_unknown_provider(self, alice_home):
         with pytest.raises(KeyError):
             pr.test_provider("does-not-exist")
+
+    def test_probe_resolves_key_env_for_auth(self, alice_home, monkeypatch):
+        """A spec that names an env var (Alice's own writer shape) must still
+        authenticate the probe.
+
+        The registry stores ``key_env`` (the var *name*), never the secret.
+        Reading only ``api_key`` sent an unauthenticated ``/models`` request,
+        so every env-backed custom provider reported a false HTTP 401 from
+        Settings → Providers → Test.
+        """
+        import urllib.request
+
+        captured: dict = {}
+
+        class FakeResp:
+            status = 200
+
+            def read(self):
+                return b'{"data":[]}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def fake_urlopen(url, timeout=None):
+            captured["auth"] = getattr(url, "headers", {}).get("Authorization")
+            return FakeResp()
+
+        monkeypatch.setenv("MY_GATEWAY_KEY", "sk-env-value")
+        monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+        pr.add_custom_provider(_spec())  # api_key_env only, no inline key
+        result = pr.test_provider("my-gateway")
+        assert result["ok"] is True
+        assert captured["auth"] == "Bearer sk-env-value"
+
+    def test_probe_prefers_inline_key(self, alice_home, monkeypatch):
+        """An inline ``api_key`` still wins over the env var."""
+        import urllib.request
+
+        captured: dict = {}
+
+        class FakeResp:
+            status = 200
+
+            def read(self):
+                return b'{"data":[]}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def fake_urlopen(url, timeout=None):
+            captured["auth"] = getattr(url, "headers", {}).get("Authorization")
+            return FakeResp()
+
+        monkeypatch.setenv("MY_GATEWAY_KEY", "sk-env-value")
+        monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+        pr.add_custom_provider(_spec(api_key="sk-inline-value"))
+        pr.test_provider("my-gateway")
+        assert captured["auth"] == "Bearer sk-inline-value"
+
+    def test_probe_omits_auth_when_no_key(self, alice_home, monkeypatch):
+        """A keyless endpoint (local llama.cpp / Ollama) probes unauthenticated."""
+        import urllib.request
+
+        captured: dict = {"auth": "sentinel"}
+
+        class FakeResp:
+            status = 200
+
+            def read(self):
+                return b'{"data":[]}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def fake_urlopen(url, timeout=None):
+            captured["auth"] = getattr(url, "headers", {}).get("Authorization")
+            return FakeResp()
+
+        monkeypatch.delenv("MY_GATEWAY_KEY", raising=False)
+        monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+        pr.add_custom_provider(_spec(name="Local", base_url="http://localhost:11434/v1"))
+        pr.test_provider("local")
+        assert captured["auth"] is None
+

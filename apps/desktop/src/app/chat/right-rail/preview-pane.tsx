@@ -6,6 +6,7 @@ import type { SetTitlebarToolGroup, TitlebarTool } from '@/app/shell/titlebar-co
 import { Tip } from '@/components/ui/tooltip'
 import { type Translations, useI18n } from '@/i18n'
 import { isDesktopFsRemoteMode } from '@/lib/desktop-fs'
+import { isWailsShell } from '@/lib/desktop-capabilities'
 import { Bug } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { notify, notifyError } from '@/store/notifications'
@@ -513,6 +514,38 @@ export function PreviewPane({
       return
     }
 
+    if (isWailsShell()) {
+      // Wails shell: <webview> is an Electron-only element. In WebKit it
+      // becomes HTMLUnknownElement (no src, no events) → blank panel.
+      // Use a plain <iframe> instead; this covers http/https preview servers.
+      // File previews (LocalFilePreview) bypass this branch (isWebPreview=false).
+      const iframe = document.createElement('iframe')
+      iframe.className = 'flex h-full w-full flex-1 bg-transparent border-0'
+      iframe.src = target.url
+      iframe.title = target.label || target.url
+
+      const onLoad = () => setLoading(false)
+      const onError = () => {
+        setLoadError({
+          description: copy.unreachableDescription,
+          url: target.url,
+        })
+        setLoading(false)
+      }
+
+      iframe.addEventListener('load', onLoad)
+      iframe.addEventListener('error', onError)
+      host.appendChild(iframe)
+
+      return () => {
+        iframe.removeEventListener('load', onLoad)
+        iframe.removeEventListener('error', onError)
+        iframe.remove()
+      }
+    }
+
+    // Electron shell: use the native <webview> for its richer event surface
+    // (console-message, did-navigate, DevTools).
     const webview = document.createElement('webview') as PreviewWebview
     webview.className = 'flex h-full w-full flex-1 bg-transparent'
     webview.setAttribute('partition', 'persist:alice-preview')

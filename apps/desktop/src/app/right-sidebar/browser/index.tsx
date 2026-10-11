@@ -6,6 +6,7 @@ import { Codicon } from '@/components/ui/codicon'
 import { Input } from '@/components/ui/input'
 import { useI18n } from '@/i18n'
 import { openExternalLink } from '@/lib/external-link'
+import { isWailsShell } from '@/lib/desktop-capabilities'
 import { cn } from '@/lib/utils'
 import { $panesFlipped } from '@/store/layout'
 
@@ -248,12 +249,13 @@ export function BrowserPane() {
                 <Codicon name="link-external" size="0.75rem" />
               </Button>
             </div>
-            {/* The iframe */}
+            {/* The iframe — sandbox is Electron-only; WebKit blocks cross-origin
+                iframes when sandbox is present, leaving the panel blank. */}
             <iframe
               className="min-h-0 flex-1 border-0 bg-white"
               onLoad={handleIframeLoad}
               ref={iframeRef}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              {...(!isWailsShell() && { sandbox: 'allow-scripts allow-same-origin allow-forms allow-popups' })}
               src={iframeSrc}
               title={activeUrl}
             />

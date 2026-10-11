@@ -9,6 +9,7 @@ Both use per-model api_mode routing:
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from providers import register_provider
@@ -29,6 +30,47 @@ def _is_deepseek_thinking_model(model: str | None) -> bool:
     if m.startswith("deepseek-v") and not m.startswith("deepseek-v3"):
         return True
     return m == "deepseek-reasoner"
+
+
+_OPENCODE_SESSION_ID: str | None = None
+
+
+def _opencode_session_id() -> str:
+    """Stable per-process session ID for the ``x-opencode-session`` header.
+
+    OpenCode Go requires a session identifier on every request so the relay
+    can optimize routing and prompt caching. The ID must be *stable across
+    requests within a conversation* — a per-request UUID would defeat the
+    relay's prompt-cache affinity — but distinct per process so parallel
+    Alice sessions don't share a cache bucket.
+
+    A lazily-minted module singleton satisfies both: all requests from this
+    Alice process reuse one ID, and each new process (CLI run, gateway worker,
+    cron tick) gets a fresh one.
+    """
+    global _OPENCODE_SESSION_ID
+    if _OPENCODE_SESSION_ID is None:
+        _OPENCODE_SESSION_ID = f"alice-{uuid.uuid4().hex[:16]}"
+    return _OPENCODE_SESSION_ID
+
+
+def opencode_go_session_headers() -> dict[str, str]:
+    """Headers OpenCode Go requires on every request (main + auxiliary).
+
+    - ``x-opencode-session``: stable session ID for routing + prompt-cache
+      affinity. The relay 400s with ``MissingSessionID`` when absent.
+      https://opencode.ai/docs/go/#where-can-i-use-it
+    - ``User-Agent``: a client-identifying UA — OpenCode asks non-OpenCode
+      clients to identify themselves instead of a generic SDK name.
+    """
+    headers = {"x-opencode-session": _opencode_session_id()}
+    try:
+        from providers.base import _profile_user_agent
+
+        headers["User-Agent"] = _profile_user_agent()
+    except Exception:
+        pass
+    return headers
 
 
 class OpenCodeGoProfile(ProviderProfile):
@@ -120,6 +162,13 @@ opencode_go = OpenCodeGoProfile(
     env_vars=("OPENCODE_GO_API_KEY",),
     base_url="https://opencode.ai/zen/go/v1",
     default_aux_model="glm-5",
+    # OpenCode Go requires a stable session header on every request (main +
+    # auxiliary) — the relay 400s with MissingSessionID without it, and uses
+    # the ID for routing + prompt-cache affinity. Set at instantiation (not
+    # in __post_init__: the dataclass-generated __init__ does not invoke it)
+    # so run_agent.py / auxiliary_client.py merge these into the OpenAI
+    # client via profile.default_headers.
+    default_headers=opencode_go_session_headers(),
 )
 
 register_provider(opencode_zen)

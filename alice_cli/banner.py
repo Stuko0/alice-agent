@@ -131,7 +131,13 @@ _UPDATE_CHECK_CACHE_SECONDS = 6 * 3600
 UPDATE_AVAILABLE_NO_COUNT = -1
 
 _UPSTREAM_REPO_URL = "https://github.com/Stuko0/alice-agent.git"
-_OFFICIAL_REPO_CANONICAL = "github.com/stuk0o/alice-agent"
+# Canonical ``host/owner/repo`` of the official GitHub remote, lowercased.
+# This MUST match the real GitHub owner (Stuko0) — a mismatch silently
+# disables the official-SSH fast path in ``_check_via_local_git`` and the
+# passive check falls through to ``git fetch origin`` over SSH, which invokes
+# SSH_ASKPASS (system keyring) on every cache expiry. Mirrors
+# apps/desktop/electron/update-remote.cjs (OFFICIAL_REPO_CANONICAL).
+_OFFICIAL_REPO_CANONICAL = "github.com/stuko0/alice-agent"
 
 
 def _canonical_github_remote(url: str | None) -> str:

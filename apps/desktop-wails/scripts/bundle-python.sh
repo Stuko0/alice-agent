@@ -28,6 +28,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 PYVER="${1:-3.13}"
 DEST="${2:-$SCRIPT_DIR/../build/bin/resources/python}"
 
+if [[ ! "$DEST" = /* ]]; then
+  DEST="$(pwd)/$DEST"
+fi
+
 command -v uv >/dev/null 2>&1 || { echo "uv not found (needed to provision the standalone CPython)" >&2; exit 1; }
 
 # 1. Provision the STANDALONE CPython into a fresh staging dir. --install-dir

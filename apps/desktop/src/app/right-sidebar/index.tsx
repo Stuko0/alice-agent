@@ -268,9 +268,9 @@ function FileTreeBody({
 
   return (
     <ErrorBoundary
-      fallback={({ reset }) => (
+      fallback={({ error, reset }) => (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
-          <EmptyState body={r.treeErrorBody} title={r.treeErrorTitle} />
+          <EmptyState body={r.treeErrorBody + ' ' + String(error)} title={r.treeErrorTitle} />
           <button
             className="text-[0.68rem] font-medium text-muted-foreground transition hover:text-foreground"
             onClick={reset}

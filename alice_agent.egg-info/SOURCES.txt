@@ -225,6 +225,8 @@ alice_cli/gateway_enroll.py
 alice_cli/gateway_windows.py
 alice_cli/goals.py
 alice_cli/gui_uninstall.py
+alice_cli/help_command.py
+alice_cli/help_tasks.py
 alice_cli/hooks.py
 alice_cli/inventory.py
 alice_cli/journey.py
@@ -260,6 +262,7 @@ alice_cli/nous_account.py
 alice_cli/nous_auth_keepalive.py
 alice_cli/nous_billing.py
 alice_cli/nous_subscription.py
+alice_cli/omniroute.py
 alice_cli/oneshot.py
 alice_cli/pairing.py
 alice_cli/partial_compress.py
@@ -275,7 +278,9 @@ alice_cli/projects_cmd.py
 alice_cli/projects_db.py
 alice_cli/prompt_size.py
 alice_cli/provider_catalog.py
+alice_cli/provider_registry.py
 alice_cli/providers.py
+alice_cli/providers_command.py
 alice_cli/psutil_android.py
 alice_cli/pt_input_extras.py
 alice_cli/pty_bridge.py
@@ -311,6 +316,7 @@ alice_cli/web_git.py
 alice_cli/web_server.py
 alice_cli/webhook.py
 alice_cli/win_pty_bridge.py
+alice_cli/windows_terminal.py
 alice_cli/write_approval_commands.py
 alice_cli/xai_retirement.py
 alice_cli/dashboard_auth/__init__.py
@@ -347,6 +353,7 @@ alice_cli/subcommands/dump.py
 alice_cli/subcommands/gateway.py
 alice_cli/subcommands/graphify.py
 alice_cli/subcommands/gui.py
+alice_cli/subcommands/helpcmd.py
 alice_cli/subcommands/hooks.py
 alice_cli/subcommands/import_cmd.py
 alice_cli/subcommands/insights.py
@@ -361,6 +368,7 @@ alice_cli/subcommands/plugins.py
 alice_cli/subcommands/postinstall.py
 alice_cli/subcommands/profile.py
 alice_cli/subcommands/prompt_size.py
+alice_cli/subcommands/providers.py
 alice_cli/subcommands/security.py
 alice_cli/subcommands/setup.py
 alice_cli/subcommands/skills.py
@@ -939,8 +947,6 @@ plugins/dashboard_auth/basic/__init__.py
 plugins/dashboard_auth/basic/plugin.yaml
 plugins/dashboard_auth/drain/__init__.py
 plugins/dashboard_auth/drain/plugin.yaml
-plugins/dashboard_auth/nous/__init__.py
-plugins/dashboard_auth/nous/plugin.yaml
 plugins/dashboard_auth/self_hosted/__init__.py
 plugins/dashboard_auth/self_hosted/plugin.yaml
 plugins/disk-cleanup/README.md
@@ -1048,8 +1054,6 @@ plugins/model-providers/kimi-coding/__init__.py
 plugins/model-providers/kimi-coding/plugin.yaml
 plugins/model-providers/minimax/__init__.py
 plugins/model-providers/minimax/plugin.yaml
-plugins/model-providers/nous/__init__.py
-plugins/model-providers/nous/plugin.yaml
 plugins/model-providers/novita/__init__.py
 plugins/model-providers/novita/plugin.yaml
 plugins/model-providers/nvidia/__init__.py
