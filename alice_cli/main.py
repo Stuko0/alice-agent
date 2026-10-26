@@ -274,6 +274,7 @@ from alice_cli.subcommands.setup import build_setup_parser
 from alice_cli.subcommands.postinstall import build_postinstall_parser
 from alice_cli.subcommands.whatsapp import build_whatsapp_parser
 from alice_cli.subcommands.slack import build_slack_parser
+from alice_cli.subcommands.jira import build_jira_parser
 from alice_cli.subcommands.login import build_login_parser
 from alice_cli.subcommands.logout import build_logout_parser
 from alice_cli.subcommands.auth import build_auth_parser
@@ -4225,9 +4226,14 @@ def cmd_webhook(args):
 def cmd_slack(args):
     """Slack integration helpers.
 
-    Dispatches ``alice slack <subcommand>``. Currently supports:
+    Dispatches ``alice slack <subcommand>``. Supports:
       manifest — print or write a Slack app manifest with every gateway
                  command registered as a first-class slash.
+      auth     — verify configured tokens (identity only).
+      channels — list channels the bot can see.
+      read     — read a channel's recent messages.
+      post     — post a message (optionally into a thread).
+      search   — full-text search across the workspace.
     """
     sub = getattr(args, "slack_command", None)
     if sub in {None, ""}:
@@ -4238,8 +4244,14 @@ def cmd_slack(args):
             "subcommands:\n"
             "  manifest   Generate a Slack app manifest with every gateway\n"
             "             command registered as a native slash\n"
+            "  auth       Verify configured tokens (identity only; --probe\n"
+            "             also checks the scopes the commands below need)\n"
+            "  channels   List channels the bot can see (channels:read)\n"
+            "  read CH N  Read recent messages of channel CH (ID or #name)\n"
+            "  post CH T  Post message T to channel CH (--thread TS replies)\n"
+            "  search Q   Full-text search (search:read)\n"
             "\n"
-            "Run `alice slack manifest -h` for details.",
+            "Run `alice slack <subcommand> -h` for details.",
             file=sys.stderr,
         )
         return 1
@@ -4249,7 +4261,63 @@ def cmd_slack(args):
 
         return slack_manifest_command(args)
 
+    handlers = {}
+    if sub in {"auth", "channels", "read", "post", "search"}:
+        from alice_cli import slack_cli
+
+        handlers = {
+            "auth": slack_cli.slack_auth_command,
+            "channels": slack_cli.slack_channels_command,
+            "read": slack_cli.slack_read_command,
+            "post": slack_cli.slack_post_command,
+            "search": slack_cli.slack_search_command,
+        }
+    handler = handlers.get(sub)
+    if handler is not None:
+        return handler(args)
+
     print(f"Unknown slack subcommand: {sub}", file=sys.stderr)
+    return 1
+
+
+def cmd_jira(args):
+    """Jira Cloud helpers.
+
+    Dispatches ``alice jira <subcommand>``:
+      auth  — verify configured credentials (identity only; --probe checks search)
+      list  — list issues (default: unresolved MM issues by priority)
+      show  — show one issue (description, comments, subtasks, links)
+    """
+    sub = getattr(args, "jira_command", None)
+    if sub in {None, ""}:
+        print(
+            "usage: alice jira <subcommand>\n"
+            "\n"
+            "subcommands:\n"
+            "  auth          Verify configured credentials (--probe also checks\n"
+            "                the search endpoint)\n"
+            "  list          List issues (default: unresolved MM by priority;\n"
+            "                --jql 'JQL' or --project KEY to override)\n"
+            "  show KEY      Show one issue in detail (e.g. MM-58)\n"
+            "\n"
+            "Run `alice jira <subcommand> -h` for details.",
+            file=sys.stderr,
+        )
+        return 1
+
+    handler = None
+    if sub in {"auth", "list", "show"}:
+        from alice_cli import jira_cli
+
+        handler = {
+            "auth": jira_cli.jira_auth_command,
+            "list": jira_cli.jira_list_command,
+            "show": jira_cli.jira_show_command,
+        }[sub]
+    if handler is not None:
+        return handler(args)
+
+    print(f"Unknown jira subcommand: {sub}", file=sys.stderr)
     return 1
 
 
@@ -12815,6 +12883,7 @@ def main():
     # slack command  (parser built in alice_cli/subcommands/slack.py)
     # =========================================================================
     build_slack_parser(subparsers, cmd_slack=cmd_slack)
+    build_jira_parser(subparsers, cmd_jira=cmd_jira)
 
     # =========================================================================
     # send command — pipe shell-script output to any configured platform

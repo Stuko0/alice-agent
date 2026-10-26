@@ -112,3 +112,119 @@ class TestSlackFullManifest:
         bot_events = manifest["settings"]["event_subscriptions"]["bot_events"]
         for event in ("message.im", "message.channels", "message.groups", "app_mention"):
             assert event in bot_events
+
+
+class TestSlackWorkspaceArgparse:
+    """The workspace subcommands (auth/channels/read/post/search) parse real argv."""
+
+    def test_read_parses_channel_and_limit(self):
+        args = _parse_slack_args(["slack", "read", "#general", "--limit", "5"])
+        assert args.slack_command == "read"
+        assert args.channel == "#general"
+        assert args.limit == 5
+
+    def test_post_parses_thread_reply(self):
+        args = _parse_slack_args(
+            ["slack", "post", "C0123456789", "hola", "--thread", "1700000000.000100"]
+        )
+        assert args.slack_command == "post"
+        assert args.text == "hola"
+        assert args.thread == "1700000000.000100"
+
+    def test_search_collects_multiword_query(self):
+        args = _parse_slack_args(["slack", "search", "bug", "login", "flow"])
+        assert args.query == ["bug", "login", "flow"]
+
+    def test_probe_and_private_flags_default_false(self):
+        assert _parse_slack_args(["slack", "auth"]).probe is False
+        assert _parse_slack_args(["slack", "channels"]).private is False
+
+
+class TestSlackWorkspaceCommands:
+    """Command behavior against a faked Slack API (no network)."""
+
+    def test_resolve_channel_passes_ids_through_without_network(self, monkeypatch):
+        from alice_cli import slack_cli
+
+        def _boom(*_a, **_k):  # pragma: no cover - guard
+            raise AssertionError("no API call expected for an ID")
+
+        monkeypatch.setattr(slack_cli, "_slack_api", _boom)
+        assert slack_cli._resolve_channel("xoxb-fake", "C0123456789") == "C0123456789"
+
+    def test_resolve_channel_looks_up_by_name(self, monkeypatch):
+        from alice_cli import slack_cli
+
+        monkeypatch.setattr(
+            slack_cli,
+            "_slack_api",
+            lambda *_a, **_k: {
+                "ok": True,
+                "channels": [{"id": "C0ABC", "name": "general"}],
+            },
+        )
+        assert slack_cli._resolve_channel("xoxb-fake", "#general") == "C0ABC"
+
+    def test_auth_prints_identity_and_returns_zero(self, monkeypatch, capsys):
+        from types import SimpleNamespace
+
+        from alice_cli import slack_cli
+
+        monkeypatch.setattr(slack_cli, "_get_slack_token", lambda kind="bot": "xoxb-fake")
+        monkeypatch.setattr(
+            slack_cli,
+            "_slack_api",
+            lambda *_a, **_k: {
+                "ok": True,
+                "team": "Acme",
+                "user": "bot",
+                "user_id": "U1",
+                "bot_id": "B1",
+            },
+        )
+        rc = slack_cli.slack_auth_command(SimpleNamespace(probe=False))
+        out = capsys.readouterr().out
+        assert rc == 0
+        assert "equipo=Acme" in out and "bot_id=B1" in out
+        # identity only — the token itself must never leak into output
+        assert "xoxb-fake" not in out
+
+    def test_missing_scope_error_names_the_needed_scope(self, capsys):
+        from alice_cli.slack_cli import _SlackApiError, _print_api_error
+
+        rc = _print_api_error(
+            _SlackApiError(
+                "conversations.list",
+                {"ok": False, "error": "missing_scope",
+                 "needed": "channels:read", "provided": "users:read"},
+            )
+        )
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert "channels:read" in err and "OAuth" in err
+
+    def test_post_retries_with_resolved_channel_on_unknown_id(self, monkeypatch, capsys):
+        from types import SimpleNamespace
+
+        from alice_cli import slack_cli
+
+        calls = []
+
+        def fake_api(method, token, **params):
+            calls.append((method, params.get("channel")))
+            if method == "chat.postMessage" and params.get("channel") == "#general":
+                return {"ok": False, "error": "channel_not_found"}
+            if method == "conversations.list":
+                return {"ok": True, "channels": [{"id": "C0ABC", "name": "general"}]}
+            return {"ok": True, "ts": "1700000000.000100", "channel": params.get("channel")}
+
+        monkeypatch.setattr(slack_cli, "_get_slack_token", lambda kind="bot": "xoxb-fake")
+        monkeypatch.setattr(slack_cli, "_slack_api", fake_api)
+        rc = slack_cli.slack_post_command(
+            SimpleNamespace(channel="#general", text="hola", thread=None, json=False)
+        )
+        assert rc == 0
+        # first attempt used the raw name, retry used the resolved ID
+        assert calls[0][1] == "#general"
+        assert ("chat.postMessage", "C0ABC") in calls
+        assert "ok ts=" in capsys.readouterr().out
