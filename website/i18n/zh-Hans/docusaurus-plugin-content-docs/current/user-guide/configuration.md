@@ -1156,7 +1156,7 @@ display:
   tool_progress_overrides: {}  # 已弃用 —— 改用 display.platforms
   interim_assistant_messages: true  # Gateway：将自然的轮次中 assistant 更新作为单独消息发送
   skin: default           # 内置或自定义 CLI 皮肤（参阅 user-guide/features/skins）
-  personality: "kawaii"  # 旧版外观字段，仍在某些摘要中显示
+  personality: "alice-liddell"  # 旧版外观字段，仍在某些摘要中显示
   compact: false          # 紧凑输出模式（减少空白）
   resume_display: full    # full（恢复时显示之前的消息）| minimal（仅单行）
   bell_on_complete: false # 当 agent 完成时播放终端铃声（适合长任务）

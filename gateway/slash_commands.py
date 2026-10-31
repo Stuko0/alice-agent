@@ -1764,6 +1764,23 @@ class GatewaySlashCommandsMixin:
             config = {}
             personalities = {}
 
+        # Fresh install: config.yaml carries no agent.personalities key at all,
+        # so the raw read above finds nothing while the CLI/TUI picker shows the
+        # shipped presets. Fall back to the merged loader (load_config deep-merges
+        # DEFAULT_CONFIG) so /personality works on messaging platforms before any
+        # config has been written. An explicit `agent.personalities: {}` still
+        # means "none configured" — that is user intent, not a missing key.
+        if "personalities" not in (config.get("agent") or {}):
+            try:
+                from alice_cli.config import load_config as _load_full_config
+
+                personalities = (
+                    (_load_full_config().get("agent") or {}).get("personalities")
+                    or {}
+                )
+            except Exception:
+                personalities = personalities or {}
+
         if not personalities:
             return t("gateway.personality.none_configured", path=display_alice_home())
 

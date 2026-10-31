@@ -299,7 +299,11 @@ _EXTRA_ENV_KEYS = frozenset({
 import yaml
 
 from alice_cli.colors import Colors, color
-from alice_cli.default_soul import DEFAULT_SOUL_MD, is_legacy_template_soul
+from alice_cli.default_soul import (
+    ALICE_LIDDELL_PERSONA,
+    DEFAULT_SOUL_MD,
+    is_legacy_template_soul,
+)
 
 
 # =============================================================================
@@ -892,6 +896,28 @@ def _ensure_alice_home_managed(home: Path):
 # Config loading/saving
 # =============================================================================
 
+# Built-in /personality presets shipped with Alice — single source of truth.
+# Schema per entry: string ("system prompt") or dict
+# {"description": ..., "system_prompt": ..., "tone": ..., "style": ...}.
+# Consumers: cli.py load_cli_config() defaults (CLI + TUI/desktop picker),
+# DEFAULT_CONFIG["agent"]["personalities"] (load_config readers, e.g. the
+# gateway /personality fresh-install fallback), and docs tables.
+# alice-liddell carries the same text DEFAULT_SOUL_MD seeds as the default
+# identity, so identity and preset cannot drift (alice_cli/default_soul.py).
+SHIPPED_PERSONALITIES = {
+    "helpful": "You are a helpful, friendly AI assistant.",
+    "concise": "You are a concise assistant. Keep responses brief and to the point.",
+    "technical": "You are a technical expert. Provide detailed, accurate technical information.",
+    "creative": "You are a creative assistant. Think outside the box and offer innovative solutions.",
+    "teacher": "You are a patient teacher. Explain concepts clearly with examples.",
+    "uwu": "hewwo! i'm your fwiendwy assistant uwu~ i wiww twy my best to hewp you! *nuzzles your code* OwO what's this? wet me take a wook! i pwomise to be vewy hewpful >w<",
+    "philosopher": "Greetings, seeker of wisdom. I am an assistant who contemplates the deeper meaning behind every query. Let us examine not just the 'how' but the 'why' of your questions. Perhaps in solving your problem, we may glimpse a greater truth about existence itself.",
+    "alice-liddell": {
+        "description": "Sardonic Victorian heroine — sharp, articulate, dryly humorous; the persona Alice ships with",
+        "system_prompt": ALICE_LIDDELL_PERSONA,
+    },
+}
+
 DEFAULT_CONFIG = {
     "model": "",
     "providers": {},
@@ -908,6 +934,9 @@ DEFAULT_CONFIG = {
     "max_live_sessions": 16,
     "agent": {
         "max_turns": 90,
+        # Built-in /personality presets — see SHIPPED_PERSONALITIES. Deep-merged
+        # with whatever the user authors under agent.personalities (user wins).
+        "personalities": SHIPPED_PERSONALITIES,
         # Inactivity timeout for gateway agent execution (seconds).
         # The agent can run indefinitely as long as it's actively calling
         # tools or receiving API responses.  Only fires when the agent has
@@ -2450,10 +2479,6 @@ DEFAULT_CONFIG = {
     # Gateway / cron / non-interactive runs need this (or one of the other
     # channels) to pick up newly-added hooks.
     "hooks_auto_accept": False,
-    # Custom personalities — add your own entries here
-    # Supports string format: {"name": "system prompt"}
-    # Or dict format: {"name": {"description": "...", "system_prompt": "...", "tone": "...", "style": "..."}}
-    "personalities": {},
 
     # Pre-exec security scanning via tirith
     "security": {

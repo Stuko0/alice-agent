@@ -14,15 +14,9 @@ export const BUILTIN_PERSONALITIES = [
   'technical',
   'creative',
   'teacher',
-  'kawaii',
-  'catgirl',
-  'pirate',
-  'shakespeare',
-  'surfer',
-  'noir',
   'uwu',
   'philosopher',
-  'hype'
+  'alice-liddell'
 ]
 
 const THINKING_STATUS_PREFIX_RE =

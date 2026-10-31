@@ -188,21 +188,21 @@ Alice 会在第一轮对话前将每个指定的 skill 加载到会话 prompt �
 设置预定义人格以改变 agent 的语气：
 
 ```
-/personality pirate
-/personality kawaii
 /personality concise
+/personality teacher
+/personality alice-liddell
 ```
 
-内置人格包括：`helpful`、`concise`、`technical`、`creative`、`teacher`、`kawaii`、`catgirl`、`pirate`、`shakespeare`、`surfer`、`noir`、`uwu`、`philosopher`、`hype`。
+内置人格包括：`alice-liddell`（随附的默认人格）、`helpful`、`concise`、`technical`、`creative`、`teacher`、`uwu`、`philosopher`。
 
 你也可以在 `~/.alice/config.yaml` 中定义自定义人格：
 
 ```yaml
-personalities:
-  helpful: "You are a helpful, friendly AI assistant."
-  kawaii: "You are a kawaii assistant! Use cute expressions..."
-  pirate: "Arrr! Ye be talkin' to Captain Alice..."
-  # 添加你自己的！
+agent:
+  personalities:
+    helpful: "You are a helpful, friendly AI assistant."
+    codereviewer: "You review code like a strict but fair maintainer."
+    # 添加你自己的！
 ```
 
 ## 多行输入

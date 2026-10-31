@@ -170,26 +170,41 @@ Examples:
 - keep a pragmatic default SOUL, then use `/personality teacher` for a tutoring conversation
 - keep a concise SOUL, then use `/personality creative` for brainstorming
 
+## Shipped default persona: Alice Liddell
+
+Fresh installs come with a persona already in place: **Alice Liddell**, the heroine of
+*American McGee's Alice* (2000) and *Alice: Madness Returns* (2011) — articulate, dry,
+direct, darkly humorous, and steady under pressure.
+
+- It is seeded as the identity (`$ALICE_HOME/SOUL.md`) on first run, so it applies on
+  every surface: CLI, TUI, desktop app, messaging gateway, and cron.
+- The same text ships as the `/personality alice-liddell` preset, so returning to it
+  after another preset is one command.
+- `agent.system_prompt` and `display.personality` stay empty by default: the persona is
+  identity, not an overlay, so `/personality none` keeps meaning "no overlay".
+- It only shapes how Alice communicates. Reasoning, tool use, and verification are
+  unaffected.
+- Existing installs are never touched: a `SOUL.md` you already have is kept as-is.
+  Delete `$ALICE_HOME/SOUL.md` (or empty it) to fall back to the built-in identity.
+
+Both copies come from a single edit source — `alice_cli/default_soul.py`
+(`ALICE_LIDDELL_PERSONA`, composed into `DEFAULT_SOUL_MD`) — so the identity and the
+preset cannot drift apart.
+
 ## Built-in personalities
 
 Alice ships with built-in personalities you can switch to with `/personality`.
 
 | Name | Description |
 |------|-------------|
+| **alice-liddell** | Shipped default persona: sardonic Victorian heroine, sharp and dry |
 | **helpful** | Friendly, general-purpose assistant |
 | **concise** | Brief, to-the-point responses |
 | **technical** | Detailed, accurate technical expert |
 | **creative** | Innovative, outside-the-box thinking |
 | **teacher** | Patient educator with clear examples |
-| **kawaii** | Cute expressions, sparkles, and enthusiasm ★ |
-| **catgirl** | Neko-chan with cat-like expressions, nya~ |
-| **pirate** | Captain Alice, tech-savvy buccaneer |
-| **shakespeare** | Bardic prose with dramatic flair |
-| **surfer** | Totally chill bro vibes |
-| **noir** | Hard-boiled detective narration |
 | **uwu** | Maximum cute with uwu-speak |
 | **philosopher** | Deep contemplation on every query |
-| **hype** | MAXIMUM ENERGY AND ENTHUSIASM!!! |
 
 ## Switching personalities with commands
 

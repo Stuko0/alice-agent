@@ -192,21 +192,21 @@ Every installed skill in `~/.alice/skills/` is automatically registered as a sla
 Set a predefined personality to change the agent's tone:
 
 ```
-/personality pirate
-/personality kawaii
 /personality concise
+/personality teacher
+/personality alice-liddell
 ```
 
-Built-in personalities include: `helpful`, `concise`, `technical`, `creative`, `teacher`, `kawaii`, `catgirl`, `pirate`, `shakespeare`, `surfer`, `noir`, `uwu`, `philosopher`, `hype`.
+Built-in personalities include: `alice-liddell` (the shipped default persona), `helpful`, `concise`, `technical`, `creative`, `teacher`, `uwu`, `philosopher`.
 
 You can also define custom personalities in `~/.alice/config.yaml`:
 
 ```yaml
-personalities:
-  helpful: "You are a helpful, friendly AI assistant."
-  kawaii: "You are a kawaii assistant! Use cute expressions..."
-  pirate: "Arrr! Ye be talkin' to Captain Alice..."
-  # Add your own!
+agent:
+  personalities:
+    helpful: "You are a helpful, friendly AI assistant."
+    codereviewer: "You review code like a strict but fair maintainer."
+    # Add your own!
 ```
 
 ## Multi-line Input

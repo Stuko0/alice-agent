@@ -98,7 +98,7 @@ class TestGatewayPersonalityNone:
         config_file = tmp_path / "config.yaml"
         config_file.write_text(yaml.dump(config_data))
 
-        with patch("gateway.run._alice_home", tmp_path):
+        with patch("gateway.run._alice_home_webhook", tmp_path):
             event = self._make_event("none")
             result = await runner._handle_personality_command(event)
 
@@ -112,7 +112,7 @@ class TestGatewayPersonalityNone:
         config_file = tmp_path / "config.yaml"
         config_file.write_text(yaml.dump(config_data))
 
-        with patch("gateway.run._alice_home", tmp_path):
+        with patch("gateway.run._alice_home_webhook", tmp_path):
             event = self._make_event("default")
             result = await runner._handle_personality_command(event)
 
@@ -125,7 +125,7 @@ class TestGatewayPersonalityNone:
         config_file = tmp_path / "config.yaml"
         config_file.write_text(yaml.dump(config_data))
 
-        with patch("gateway.run._alice_home", tmp_path):
+        with patch("gateway.run._alice_home_webhook", tmp_path):
             event = self._make_event("")
             result = await runner._handle_personality_command(event)
 
@@ -138,7 +138,7 @@ class TestGatewayPersonalityNone:
         config_file = tmp_path / "config.yaml"
         config_file.write_text(yaml.dump(config_data))
 
-        with patch("gateway.run._alice_home", tmp_path):
+        with patch("gateway.run._alice_home_webhook", tmp_path):
             event = self._make_event("nonexistent")
             result = await runner._handle_personality_command(event)
 
@@ -149,12 +149,42 @@ class TestGatewayPersonalityNone:
         runner = self._make_runner(personalities={})
         (tmp_path / "config.yaml").write_text(yaml.dump({"agent": {"personalities": {}}}))
 
-        with patch("gateway.run._alice_home", tmp_path), \
+        with patch("gateway.run._alice_home_webhook", tmp_path), \
              patch("alice_constants.display_alice_home", return_value="~/.alice/profiles/coder"):
             event = self._make_event("")
             result = await runner._handle_personality_command(event)
 
         assert result == "No personalities configured in `~/.alice/profiles/coder/config.yaml`"
+
+    @pytest.mark.asyncio
+    async def test_fresh_install_lists_shipped_personalities(self, tmp_path, monkeypatch):
+        """No config.yaml at all (fresh install): the raw config has no
+        agent.personalities key, so the handler must fall back to the shipped
+        presets (same ones the CLI/TUI picker shows) instead of reporting
+        'none configured'."""
+        monkeypatch.setenv("ALICE_HOME", str(tmp_path))
+        runner = self._make_runner()
+        with patch("gateway.run._alice_home_webhook", tmp_path):
+            event = self._make_event("")
+            result = await runner._handle_personality_command(event)
+
+        assert "none" in result.lower()
+        assert "alice-liddell" in result
+        assert "helpful" in result
+
+    @pytest.mark.asyncio
+    async def test_fresh_install_can_set_shipped_personality(self, tmp_path, monkeypatch):
+        """...and selecting one on a fresh install writes the overlay the same
+        way the CLI does (config.yaml + in-memory ephemeral prompt)."""
+        monkeypatch.setenv("ALICE_HOME", str(tmp_path))
+        runner = self._make_runner()
+        with patch("gateway.run._alice_home_webhook", tmp_path):
+            event = self._make_event("alice-liddell")
+            await runner._handle_personality_command(event)
+
+        assert runner._ephemeral_system_prompt
+        written = yaml.safe_load((tmp_path / "config.yaml").read_text(encoding="utf-8"))
+        assert written["agent"]["system_prompt"] == runner._ephemeral_system_prompt
 
 
 class TestPersonalityDictFormat:

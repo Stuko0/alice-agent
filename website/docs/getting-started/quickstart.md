@@ -235,7 +235,7 @@ Type `/` to see an autocomplete dropdown of all commands:
 | `/help` | Show all available commands |
 | `/tools` | List available tools |
 | `/model` | Switch models interactively |
-| `/personality pirate` | Try a fun personality |
+| `/personality alice-liddell` | Try the shipped default persona |
 | `/save` | Save the conversation |
 
 ### Multi-line input

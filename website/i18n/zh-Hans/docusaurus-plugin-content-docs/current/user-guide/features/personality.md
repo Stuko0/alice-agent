@@ -170,26 +170,32 @@ You optimize for truth, clarity, and usefulness over politeness theater.
 - 保持务实的默认 SOUL，然后在辅导对话中使用 `/personality teacher`
 - 保持简洁的 SOUL，然后在头脑风暴时使用 `/personality creative`
 
+## 随附的默认人格：Alice Liddell
+
+全新安装自带人格：**Alice Liddell**，《American McGee's Alice》（2000）与《Alice: Madness Returns》（2011）的女主角 —— 言辞犀利、冷静克制、直接坦率、冷幽默且临危不乱。
+
+- 它作为身份（`$ALICE_HOME/SOUL.md`）在首次运行时写入，因此对所有界面生效：CLI、TUI、桌面应用、消息网关与 cron。
+- 同样的文本也作为 `/personality alice-liddell` 预设发布，切回它只需一条命令。
+- `agent.system_prompt` 与 `display.personality` 默认保持为空：这是身份而非覆盖层，因此 `/personality none` 仍然表示“清除覆盖层”。
+- 它只影响 Alice 如何表达；推理、工具使用与结果验证完全不受影响。
+- 已有安装不会被改动：你已存在的 `SOUL.md` 保持原样。删除 `$ALICE_HOME/SOUL.md`（或清空它）即可回到内置身份。
+
+两处文本来自同一定义 —— `alice_cli/default_soul.py`（`ALICE_LIDDELL_PERSONA`，组成 `DEFAULT_SOUL_MD`）—— 因此身份与预设不会产生偏差。
+
 ## 内置个性
 
 Alice 内置了多种个性，可通过 `/personality` 切换。
 
 | 名称 | 描述 |
 |------|-------------|
+| **alice-liddell** | 随附的默认人格：愤世嫉俗的维多利亚女主角，犀利而冷峻 |
 | **helpful** | 友好的通用助手 |
 | **concise** | 简短、直击要点的回复 |
 | **technical** | 详尽、准确的技术专家 |
 | **creative** | 创新、突破常规的思维 |
 | **teacher** | 耐心的教育者，配有清晰示例 |
-| **kawaii** | 可爱表达、闪光效果与热情 ★ |
-| **catgirl** | 带有猫咪表达方式的 Neko-chan，nya~ |
-| **pirate** | 船长 Alice，精通技术的海盗 |
-| **shakespeare** | 充满戏剧张力的吟游诗人风格 |
-| **surfer** | 超级冷静的冲浪者氛围 |
-| **noir** | 硬派侦探叙事风格 |
 | **uwu** | 极致可爱的 uwu 语气 |
 | **philosopher** | 对每个问题深度沉思 |
-| **hype** | 最大能量与热情！！！ |
 
 ## 使用命令切换个性
 
