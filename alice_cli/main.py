@@ -5136,11 +5136,20 @@ def _desktop_build_needed(desktop_dir: Path, project_root: Path, *, source_mode:
     except (OSError, json.JSONDecodeError, KeyError):
         return True
 
-    # If the mode changed (source vs packaged), force a rebuild
-    if stamp_data.get("sourceMode") != source_mode:
+    # Freshness is tracked PER SHELL (``shells.<name>``): only this shell's own
+    # entry counts, so a Wails build writing the shared stamp can never mark the
+    # Electron package fresh — and an Electron pack can never mask a stale Wails
+    # binary. Legacy flat stamps have no entry → one conservative rebuild each.
+    shells = stamp_data.get("shells")
+    entry = shells.get("electron") if isinstance(shells, dict) else None
+    if not isinstance(entry, dict):
         return True
 
-    saved_hash = stamp_data.get("contentHash")
+    # If the mode changed (source vs packaged), force a rebuild
+    if entry.get("sourceMode") != source_mode:
+        return True
+
+    saved_hash = entry.get("contentHash")
     if not saved_hash:
         return True
 
@@ -5148,18 +5157,45 @@ def _desktop_build_needed(desktop_dir: Path, project_root: Path, *, source_mode:
     return current_hash != saved_hash
 
 
-def _write_desktop_build_stamp(project_root: Path, *, source_mode: bool) -> None:
-    """Write the desktop build stamp after a successful build."""
+def _write_desktop_build_stamp(project_root: Path, *, source_mode: bool, shell: str = "electron") -> None:
+    """Write the desktop build stamp after a successful build.
+
+    Keeps a per-shell entry (``shells.<shell>``) alongside the legacy flat
+    fields so each desktop shell tracks its own freshness: building one shell
+    must not mark the other shell's artifact as up to date.
+    """
     stamp_file = _desktop_stamp_path()
     try:
         stamp_file.parent.mkdir(parents=True, exist_ok=True)
         content_hash = _compute_desktop_content_hash(project_root)
         from datetime import datetime, timezone
-        stamp_data = {
+        built_at = datetime.now(timezone.utc).isoformat()
+        try:
+            stamp_data = (
+                json.loads(stamp_file.read_text(encoding="utf-8"))
+                if stamp_file.is_file()
+                else {}
+            )
+            if not isinstance(stamp_data, dict):
+                stamp_data = {}
+        except (OSError, json.JSONDecodeError, KeyError):
+            stamp_data = {}
+        stamp_data.update(
+            {
+                "contentHash": content_hash,
+                "sourceMode": source_mode,
+                "builtAt": built_at,
+            }
+        )
+        shells = stamp_data.get("shells")
+        if not isinstance(shells, dict):
+            shells = {}
+        shells[shell] = {
             "contentHash": content_hash,
             "sourceMode": source_mode,
-            "builtAt": datetime.now(timezone.utc).isoformat(),
+            "builtAt": built_at,
         }
+        stamp_data["shells"] = shells
         stamp_file.write_text(json.dumps(stamp_data, indent=2) + "\n", encoding="utf-8")
     except Exception as exc:
         # Never let stamp-writing block or fail a build
@@ -5678,11 +5714,12 @@ def _wails_bin_path(wails_dir: Path) -> Path:
 def _wails_build_needed(wails_dir: Path, desktop_dir: Path, project_root: Path) -> bool:
     """Return True when the Wails binary is stale or missing (stamp-aware).
 
-    Mirrors ``_desktop_build_needed`` but gates the artifact check on the
-    Wails binary instead of the Electron packaged app. The stamp file is
-    shared, so alternating ``alice desktop`` (Wails) and
-    ``alice desktop --electron`` never skips a genuinely needed rebuild: the
-    content hash covers both ``apps/desktop/`` and ``apps/desktop-wails/``.
+    Mirrors ``_desktop_build_needed`` but reads THIS shell's own stamp entry
+    (``shells.wails``): Wails is the default desktop runtime, so it must
+    rebuild whenever its embedded frontend/binary lags the content hash — an
+    Electron build writing the shared stamp must never mask that (and vice
+    versa). Legacy flat stamps carry no per-shell entry and force one
+    conservative rebuild per shell, after which they self-heal.
     """
     if not _wails_bin_path(wails_dir).exists():
         return True
@@ -5693,9 +5730,13 @@ def _wails_build_needed(wails_dir: Path, desktop_dir: Path, project_root: Path) 
         stamp_data = json.loads(stamp_file.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError, KeyError):
         return True
-    if stamp_data.get("sourceMode") is not False:
+    shells = stamp_data.get("shells")
+    entry = shells.get("wails") if isinstance(shells, dict) else None
+    if not isinstance(entry, dict):
         return True
-    saved_hash = stamp_data.get("contentHash")
+    if entry.get("sourceMode") is not False:
+        return True
+    saved_hash = entry.get("contentHash")
     if not saved_hash:
         return True
     return _compute_desktop_content_hash(project_root) != saved_hash
@@ -5747,11 +5788,19 @@ def _cmd_gui_wails(args: argparse.Namespace, desktop_dir: Path) -> None:
     # happen here. Verify the expected artifact exists so a silent "built
     # nothing" can't slip past, then return success.
     if getattr(args, "build_only", False):
+        # ``alice update`` drives this headlessly: skip when the Wails entry is
+        # already current instead of re-running vite + wails on every update.
+        if not getattr(args, "force_build", False) and not _wails_build_needed(
+            wails_dir, desktop_dir, PROJECT_ROOT
+        ):
+            print("✓ Wails desktop build is up to date (content stamp matches)")
+            sys.exit(0)
         print("→ Building Wails desktop application...")
         _build_wails_desktop(npm, desktop_dir, wails_dir)
         if not bin_path.exists():
             print(f"✗ Wails build completed but no binary found at: {bin_path}")
             sys.exit(1)
+        _write_desktop_build_stamp(PROJECT_ROOT, source_mode=False, shell="wails")
         print(f"✓ Production Wails desktop binary built: {bin_path}")
         sys.exit(0)
 
@@ -5783,7 +5832,7 @@ def _cmd_gui_wails(args: argparse.Namespace, desktop_dir: Path) -> None:
         if not bin_path.exists():
             print(f"✗ Wails build produced no binary at: {bin_path}")
             sys.exit(1)
-        _write_desktop_build_stamp(PROJECT_ROOT, source_mode=False)
+        _write_desktop_build_stamp(PROJECT_ROOT, source_mode=False, shell="wails")
 
     print("→ Launching Alice Desktop (Wails)...")
     res = subprocess.run([str(bin_path)], cwd=wails_dir)

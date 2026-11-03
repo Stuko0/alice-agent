@@ -1113,7 +1113,7 @@ def test_gui_defaults_to_wails_runtime(tmp_path, monkeypatch):
     assert mock_run.call_args_list[2].args[0] == [str(bin_path)]
     assert mock_run.call_args_list[2].kwargs["cwd"] == wails_dir
     # stamp is written after a successful Wails build
-    mock_stamp.assert_called_once_with(root, source_mode=False)
+    mock_stamp.assert_called_once_with(root, source_mode=False, shell="wails")
 
 
 def test_gui_wails_skips_build_when_stamp_matches(tmp_path, monkeypatch):
@@ -1310,6 +1310,123 @@ def test_gui_wails_force_build_rebuilds_once_and_launches(tmp_path, monkeypatch)
         ["wails", "build"],
         [str(bin_path)],
     ]
-    mock_stamp.assert_called_once_with(root, source_mode=False)
+    mock_stamp.assert_called_once_with(root, source_mode=False, shell="wails")
     # force_build short-circuits the stamp check (Python `or` short-circuit)
     mock_needed.assert_not_called()
+
+
+# ── Per-shell build-stamp freshness ──────────────────────────────────────────
+# $ALICE_HOME/desktop-build-stamp.json is shared by both desktop shells.
+# Building one shell must never mark the OTHER shell's artifact as fresh:
+# Wails is the default runtime and has to rebuild whenever its binary (with
+# the embedded frontend) is stale, even right after an Electron build wrote
+# the stamp — and vice versa for the compare-only Electron shell.
+
+
+def _stamp_root(tmp_path: Path, monkeypatch) -> Path:
+    root = _make_desktop_tree(tmp_path)
+    (root / "package.json").write_text("{}", encoding="utf-8")
+    (root / "package-lock.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(cli_main, "PROJECT_ROOT", root)
+    return root
+
+
+def test_electron_stamp_does_not_mark_wails_fresh(tmp_path, monkeypatch):
+    """Electron wrote the stamp → the (older) Wails binary is still stale."""
+    root = _stamp_root(tmp_path, monkeypatch)
+    wails_dir = root / "apps" / "desktop-wails"
+    wails_dir.mkdir()
+    _make_wails_bin(wails_dir)  # exists, but not built for current content
+    cli_main._write_desktop_build_stamp(root, source_mode=False)  # Electron pack
+
+    assert (
+        cli_main._wails_build_needed(wails_dir, root / "apps" / "desktop", root)
+        is True
+    )
+
+
+def test_wails_stamp_does_not_mark_electron_fresh(tmp_path, monkeypatch):
+    """Wails wrote the stamp → the (older) packaged Electron app is stale."""
+    root = _stamp_root(tmp_path, monkeypatch)
+    _make_packaged_executable(root, monkeypatch)
+    cli_main._write_desktop_build_stamp(root, source_mode=False, shell="wails")
+
+    assert (
+        cli_main._desktop_build_needed(root / "apps" / "desktop", root, source_mode=False)
+        is True
+    )
+
+
+def test_stamp_records_both_shells_independently(tmp_path, monkeypatch):
+    """Each shell keeps its own entry: building both in any order makes both
+    checks pass — switching shells must not force needless rebuilds."""
+    root = _stamp_root(tmp_path, monkeypatch)
+    _make_packaged_executable(root, monkeypatch)
+    wails_dir = root / "apps" / "desktop-wails"
+    wails_dir.mkdir()
+    _make_wails_bin(wails_dir)
+
+    cli_main._write_desktop_build_stamp(root, source_mode=False, shell="wails")
+    cli_main._write_desktop_build_stamp(root, source_mode=False)  # Electron
+
+    assert (
+        cli_main._wails_build_needed(wails_dir, root / "apps" / "desktop", root)
+        is False
+    )
+    assert (
+        cli_main._desktop_build_needed(root / "apps" / "desktop", root, source_mode=False)
+        is False
+    )
+
+
+def test_legacy_flat_stamp_forces_rebuild_of_both_shells(tmp_path, monkeypatch):
+    """Pre-per-shell stamps carry only the shared contentHash; neither shell
+    may trust them (one conservative rebuild each, then they self-heal)."""
+    import json
+
+    root = _stamp_root(tmp_path, monkeypatch)
+    _make_packaged_executable(root, monkeypatch)
+    wails_dir = root / "apps" / "desktop-wails"
+    wails_dir.mkdir()
+    _make_wails_bin(wails_dir)
+
+    from alice_cli.main import _compute_desktop_content_hash, _desktop_stamp_path
+
+    _desktop_stamp_path().write_text(
+        json.dumps(
+            {
+                "contentHash": _compute_desktop_content_hash(root),
+                "sourceMode": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert (
+        cli_main._desktop_build_needed(root / "apps" / "desktop", root, source_mode=False)
+        is True
+    )
+    assert (
+        cli_main._wails_build_needed(wails_dir, root / "apps" / "desktop", root)
+        is True
+    )
+
+
+def test_wails_build_only_skips_when_stamp_current(tmp_path, monkeypatch):
+    """`alice update` drives `desktop --build-only`: with a fresh Wails entry
+    it must be a no-op instead of a full frontend+Go rebuild."""
+    root = _stamp_root(tmp_path, monkeypatch)
+    wails_dir = root / "apps" / "desktop-wails"
+    wails_dir.mkdir()
+    _make_wails_bin(wails_dir)
+    cli_main._write_desktop_build_stamp(root, source_mode=False, shell="wails")
+
+    with patch("alice_cli.main.shutil.which", return_value="/usr/bin/npm"), \
+         patch("alice_cli.main._run_npm_install_deterministic") as mock_install, \
+         patch("alice_cli.main.subprocess.run") as mock_run, \
+         pytest.raises(SystemExit) as exc:
+        cli_main.cmd_gui(_ns(build_only=True))
+
+    assert exc.value.code == 0
+    mock_install.assert_not_called()
+    mock_run.assert_not_called()
