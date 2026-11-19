@@ -1895,6 +1895,11 @@ export const zh: Translations = {
     recommended: '推荐',
     connected: '已连接',
     featuredPitch: '一个订阅，300+ 前沿模型 — 运行 Alice 的推荐方式',
+    freeProviderTitle: 'Free — no account needed',
+    freeProviderBadge: 'Try it now',
+    freeProviderPitch: 'Starts a local gateway with a free model. No sign-up, no API key, nothing to install by hand.',
+    freeProviderStarting: 'Starting the free gateway… this can take a minute on first run.',
+    freeProviderFailed: 'The free gateway could not start. Pick another provider below, or try again.',
     openRouterPitch: '一个密钥，数百个模型 — 稳妥的默认选择',
     apiKeyOptions: {
       openrouter: { short: '一个密钥，多个模型', description: '用一个密钥访问数百个模型。适合新安装的默认选择。' },

@@ -9,7 +9,6 @@ import { HelpFab, HelpOverlay } from '@/components/help-overlay'
 
 import { MigrationWizard } from '@/components/migration-wizard'
 
-import { SetupDriver } from '@/app/setup-driver/setup-driver'
 import { DesktopInstallOverlay } from '@/components/desktop-install-overlay'
 import { GatewayConnectingOverlay } from '@/components/gateway-connecting-overlay'
 import { DesktopOnboardingOverlay } from '@/components/onboarding'
@@ -950,7 +949,6 @@ export function DesktopController() {
       <UpdatesOverlay />
       <GatewayConnectingOverlay />
       <BootFailureOverlay />
-      <SetupDriver />
       <HelpFab onClick={() => setHelpOpen(true)} />
       <HelpOverlay
         onClose={() => setHelpOpen(false)}

@@ -67,6 +67,7 @@ func (pts *PTYService) StartTerminal(cwd string, cols, rows uint16) (*TerminalSe
 	}
 
 	cmd := exec.Command(shell)
+	hideChildConsole(cmd)
 	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 

@@ -782,6 +782,7 @@ func (pm *PythonManager) StartGateway() error {
 		probeCtx, cancelProbe := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancelProbe()
 		probe := exec.CommandContext(probeCtx, python, "-m", "alice_cli.main", "serve", "--help")
+		hideChildConsole(probe)
 		probe.Dir = root
 		probe.Env = cmdEnvForBackendWithDist(pm, projectRoot, backendEnv, webDist)
 		probe.Stdout = io.Discard

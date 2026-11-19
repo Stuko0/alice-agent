@@ -883,6 +883,7 @@ export interface Translations {
     openSetupGuide: string
     required: string
     recommended: string
+
     advanced: (count: number) => string
     noTokenNeeded: string
     enabled: string
@@ -1431,6 +1432,11 @@ export interface Translations {
     recommended: string
     connected: string
     featuredPitch: string
+    freeProviderTitle: string
+    freeProviderBadge: string
+    freeProviderPitch: string
+    freeProviderStarting: string
+    freeProviderFailed: string
     openRouterPitch: string
     apiKeyOptions: Record<string, { short: string; description: string }>
     backToSignIn: string

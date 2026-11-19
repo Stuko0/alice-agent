@@ -130,6 +130,7 @@ func (us *UpdateService) runGit(args ...string) (string, int, error) {
 		return "", 1, fmt.Errorf("project root not resolved")
 	}
 	cmd := exec.Command("git", args...)
+	hideChildConsole(cmd)
 	cmd.Dir = us.projectRoot
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
 	out, err := cmd.CombinedOutput()
@@ -378,6 +379,7 @@ func (us *UpdateService) currentVersion(root string) string {
 // channel under the given stage. Returns (exitCode, lastErrorLine).
 func (us *UpdateService) runStreamed(command string, args []string, cwd string, env map[string]string, stage string) (int, string) {
 	cmd := exec.Command(command, args...)
+	hideChildConsole(cmd)
 	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(), envToSlice(env)...)
 	stdout, err := cmd.StdoutPipe()
