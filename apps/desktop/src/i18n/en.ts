@@ -1761,6 +1761,11 @@ export const en: Translations = {
     recommended: 'Recommended',
     connected: 'Connected',
     featuredPitch: 'Free with your GitHub account — no API key needed. Includes GPT-4o, Claude, and more.',
+    freeProviderTitle: 'Free — no account needed',
+    freeProviderBadge: 'Try it now',
+    freeProviderPitch: 'Starts a local gateway with a free model. No sign-up, no API key, nothing to install by hand.',
+    freeProviderStarting: 'Starting the free gateway… this can take a minute on first run.',
+    freeProviderFailed: 'The free gateway could not start. Pick another provider below, or try again.',
     openRouterPitch: 'One key, hundreds of models — a solid default',
     apiKeyOptions: {
       openrouter: {

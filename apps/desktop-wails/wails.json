@@ -52,5 +52,6 @@
   },
   "windows": {
     "icon": "../desktop/assets/icon.ico"
-  }
+  },
+  "nsisType": "multiple"
 }

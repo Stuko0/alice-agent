@@ -28,6 +28,7 @@ import {
 import type { ModelOptionProvider, OAuthProvider } from '@/types/alice'
 
 import { DocsLink, FlowPanel, Status } from './flow'
+import { FreeProviderRow } from './free-provider'
 import { FeaturedProviderRow, KeyProviderRow, ProviderRow, sortProviders } from './providers'
 
 export { FeaturedProviderRow, KeyProviderRow, ProviderRow, providerTitle, sortProviders } from './providers'
@@ -437,6 +438,8 @@ export function Picker({ ctx }: { ctx: OnboardingContext }) {
   return (
     <div className="grid gap-2">
       <div className="grid max-h-[60dvh] gap-2 overflow-y-auto p-1">
+        {/* Free, no-account path first: try Alice in one click without keys. */}
+        {manual ? null : <FreeProviderRow ctx={ctx} />}
         {featured ? <FeaturedProviderRow onSelect={select} provider={featured} /> : null}
         {showRest ? (
           <>

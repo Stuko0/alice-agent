@@ -15,6 +15,7 @@ func NewGitService() *GitService {
 
 func (g *GitService) GetGitRoot(dirPath string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -26,6 +27,7 @@ func (g *GitService) GetGitRoot(dirPath string) (string, error) {
 
 func (g *GitService) GetCurrentBranch(dirPath string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -37,6 +39,7 @@ func (g *GitService) GetCurrentBranch(dirPath string) (string, error) {
 
 func (g *GitService) ListWorktrees(dirPath string) ([]string, error) {
 	cmd := exec.Command("git", "worktree", "list", "--porcelain")
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -54,6 +57,7 @@ func (g *GitService) ListWorktrees(dirPath string) ([]string, error) {
 
 func (g *GitService) ListBranches(dirPath string) ([]string, error) {
 	cmd := exec.Command("git", "branch", "--format=%(refname:short)")
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -71,6 +75,7 @@ func (g *GitService) ListBranches(dirPath string) ([]string, error) {
 
 func (g *GitService) SwitchBranch(dirPath string, branch string) error {
 	cmd := exec.Command("git", "switch", branch)
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	return cmd.Run()
 }
@@ -81,6 +86,7 @@ func (g *GitService) AddWorktree(dirPath string, worktreePath string, branch str
 		args = append(args, "-b", branch)
 	}
 	cmd := exec.Command("git", args...)
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	return cmd.Run()
 }
@@ -92,12 +98,14 @@ func (g *GitService) RemoveWorktree(dirPath string, worktreePath string, force b
 	}
 	args = append(args, worktreePath)
 	cmd := exec.Command("git", args...)
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	return cmd.Run()
 }
 
 func (g *GitService) GetRemoteURL(dirPath string) (string, error) {
 	cmd := exec.Command("git", "remote", "get-url", "origin")
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -109,6 +117,7 @@ func (g *GitService) GetRemoteURL(dirPath string) (string, error) {
 
 func (g *GitService) GetStatus(dirPath string) (string, error) {
 	cmd := exec.Command("git", "status", "--porcelain")
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -120,6 +129,7 @@ func (g *GitService) GetStatus(dirPath string) (string, error) {
 
 func (g *GitService) GetFileDiff(dirPath string, filePath string) (string, error) {
 	cmd := exec.Command("git", "diff", "--", filePath)
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -131,30 +141,35 @@ func (g *GitService) GetFileDiff(dirPath string, filePath string) (string, error
 
 func (g *GitService) StageFile(dirPath string, filePath string) error {
 	cmd := exec.Command("git", "add", "--", filePath)
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	return cmd.Run()
 }
 
 func (g *GitService) UnstageFile(dirPath string, filePath string) error {
 	cmd := exec.Command("git", "reset", "HEAD", "--", filePath)
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	return cmd.Run()
 }
 
 func (g *GitService) RevertFile(dirPath string, filePath string) error {
 	cmd := exec.Command("git", "checkout", "--", filePath)
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	return cmd.Run()
 }
 
 func (g *GitService) Commit(dirPath string, message string) error {
 	cmd := exec.Command("git", "commit", "-m", message)
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	return cmd.Run()
 }
 
 func (g *GitService) Push(dirPath string) error {
 	cmd := exec.Command("git", "push")
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	return cmd.Run()
 }
@@ -164,6 +179,7 @@ func (g *GitService) GetRecentCommits(dirPath string, count int) ([]string, erro
 		count = 10
 	}
 	cmd := exec.Command("git", "log", fmt.Sprintf("-%d", count), "--oneline")
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -184,6 +200,7 @@ func (g *GitService) RevParse(dirPath string, ref string) (string, error) {
 		ref = "HEAD"
 	}
 	cmd := exec.Command("git", "rev-parse", ref)
+	hideChildConsole(cmd)
 	cmd.Dir = dirPath
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -192,4 +209,3 @@ func (g *GitService) RevParse(dirPath string, ref string) (string, error) {
 	}
 	return strings.TrimSpace(out.String()), nil
 }
-

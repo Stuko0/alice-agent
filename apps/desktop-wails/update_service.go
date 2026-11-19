@@ -50,6 +50,12 @@ type UpdateStatus struct {
 	Message         string `json:"message,omitempty"`
 	AliceRoot       string `json:"aliceRoot,omitempty"`
 	FetchedAt       int64  `json:"fetchedAt"`
+	// Mode tells the UI how this install updates: "git" (source checkout,
+	// `alice update`) or "installer" (Windows NSIS installer download).
+	Mode           string `json:"mode,omitempty"`
+	CurrentVersion string `json:"currentVersion,omitempty"`
+	LatestVersion  string `json:"latestVersion,omitempty"`
+	InstallerURL   string `json:"installerUrl,omitempty"`
 }
 
 // UpdateApplyOptions mirrors Electron's apply payload.
@@ -124,6 +130,7 @@ func (us *UpdateService) runGit(args ...string) (string, int, error) {
 		return "", 1, fmt.Errorf("project root not resolved")
 	}
 	cmd := exec.Command("git", args...)
+	hideChildConsole(cmd)
 	cmd.Dir = us.projectRoot
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
 	out, err := cmd.CombinedOutput()
@@ -156,12 +163,11 @@ func (us *UpdateService) Check() UpdateStatus {
 		AliceRoot: root,
 		FetchedAt: now,
 	}
-	if _, err := os.Stat(filepath.Join(root, ".git")); err != nil {
-		status.Supported = false
-		status.Reason = "not-a-git-checkout"
-		status.Message = root + " isn't a git checkout — desktop self-update only runs against a source install."
-		return status
+	if !hasGitCheckout(root) {
+		return us.checkInstallerUpdate(root, status)
 	}
+
+	status.Mode = "git"
 
 	// Resolve the branch to pin: configured → current HEAD branch → main.
 	if branch == "" {
@@ -250,6 +256,10 @@ func (us *UpdateService) Apply(opts UpdateApplyOptions) UpdateApplyResult {
 	if root == "" {
 		root = pmRootFallback()
 	}
+	if !hasGitCheckout(root) {
+		return us.applyInstallerUpdate(root)
+	}
+
 	cfg := us.readConfig()
 	branch := opts.Branch
 	if branch == "" {
@@ -325,13 +335,51 @@ func (us *UpdateService) Apply(opts UpdateApplyOptions) UpdateApplyResult {
 		us.emitProgress("error", "Could not start the relaunch watcher.", nil)
 		return UpdateApplyResult{OK: true, ManualRestart: true, Message: "Restart Alice to load the update."}
 	}
+
+	us.quitSoon()
 	return UpdateApplyResult{OK: true, HandedOff: true}
+}
+
+// quitSoon exits after the "Restarting…" progress frame reaches the renderer.
+// The watcher waits for this PID, so nothing happens until we are gone.
+func (us *UpdateService) quitSoon() {
+	if us.ctx == nil {
+		return
+	}
+
+	go func() {
+		time.Sleep(1500 * time.Millisecond)
+		wailsruntime.Quit(us.ctx)
+	}()
+}
+
+// hasGitCheckout reports whether the resolved root is a git working copy.
+func hasGitCheckout(root string) bool {
+	if root == "" {
+		return false
+	}
+
+	_, err := os.Stat(filepath.Join(root, ".git"))
+
+	return err == nil
+}
+
+// currentVersion reads the agent version out of the resolved runtime tree.
+func (us *UpdateService) currentVersion(root string) string {
+	if data, err := os.ReadFile(filepath.Join(root, "alice_cli", "__init__.py")); err == nil {
+		if m := _versionRe.FindSubmatch(data); m != nil {
+			return string(m[1])
+		}
+	}
+
+	return "0.0.0"
 }
 
 // runStreamed runs a command, streaming each output line to the progress
 // channel under the given stage. Returns (exitCode, lastErrorLine).
 func (us *UpdateService) runStreamed(command string, args []string, cwd string, env map[string]string, stage string) (int, string) {
 	cmd := exec.Command(command, args...)
+	hideChildConsole(cmd)
 	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(), envToSlice(env)...)
 	stdout, err := cmd.StdoutPipe()
