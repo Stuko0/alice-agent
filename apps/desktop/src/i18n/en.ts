@@ -1777,6 +1777,7 @@ export const en: Translations = {
       'The free endpoint did not answer. Pick another provider below, or try again.',
     freeProviderBadgeBusy: 'Working',
     freeProviderRetry: 'Try again',
+    freeProviderForce: 'Use it anyway',
     openRouterPitch: 'One key, hundreds of models — a solid default',
     apiKeyOptions: {
       openrouter: {

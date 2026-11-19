@@ -3326,11 +3326,21 @@ async def api_setup_free_endpoint(request: Request) -> dict:
         body = {}
 
     endpoint_id = str((body or {}).get("id") or "").strip() or None
+    # Escape hatch for networks that block the probe (corporate proxies, DNS
+    # filtering): the user can ask to configure the endpoint anyway. The chat
+    # request that follows either works or fails with a real error, instead of
+    # leaving them with no way to try at all.
+    force = bool((body or {}).get("force"))
 
     try:
         endpoint = free_endpoints.get_endpoint(endpoint_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if force:
+        written = free_endpoints.apply_config(endpoint)
+
+        return {"configured": True, **written, "id": endpoint["id"], "label": endpoint["label"], "unverified": True}
 
     try:
         # A real request to the network — keep it off the event loop so the

@@ -1443,6 +1443,7 @@ export interface Translations {
     freeProviderFailed: string
     freeProviderBadgeBusy: string
     freeProviderRetry: string
+    freeProviderForce: string
     openRouterPitch: string
     apiKeyOptions: Record<string, { short: string; description: string }>
     backToSignIn: string

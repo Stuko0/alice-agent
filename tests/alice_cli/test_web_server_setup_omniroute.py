@@ -246,3 +246,23 @@ class TestFreeEndpointSetup:
 
         assert r.status_code == 504, r.text
         assert "did not answer" in r.json()["detail"]
+
+    def test_post_force_skips_the_probe(self, client, monkeypatch):
+        """A blocked probe must not be a dead end."""
+        from alice_cli import free_endpoints
+
+        def explode(*_a, **_kw):
+            raise AssertionError("force must not probe")
+
+        monkeypatch.setattr(free_endpoints, "probe", explode)
+        monkeypatch.setattr(
+            free_endpoints,
+            "apply_config",
+            lambda endpoint: {"base_url": endpoint["base_url"], "model": endpoint["model"], "provider": "custom"},
+        )
+
+        r = client.post("/api/setup/free-endpoint", json={"force": True})
+
+        assert r.status_code == 200, r.text
+        assert r.json()["configured"] is True
+        assert r.json()["unverified"] is True

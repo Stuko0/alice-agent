@@ -53,6 +53,28 @@ describe('FreeProviderRow', () => {
     expect(screen.getByText('Try again')).toBeTruthy()
   })
 
+  it('lets the user configure anyway when the probe is blocked', async () => {
+    const api = vi.fn(async (req: { body?: { force?: boolean }; path: string }) => {
+      if (!req.body?.force) {
+        throw new Error('API /api/setup/free-endpoint failed: 502 Could not reach the free endpoint')
+      }
+
+      return { configured: true, unverified: true }
+    })
+
+    mockApi(api)
+
+    render(<FreeProviderRow ctx={ctx} />)
+    fireEvent.click(screen.getByText('Free — no account needed'))
+
+    await waitFor(() => expect(screen.getByText('Use it anyway')).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Use it anyway'))
+
+    await waitFor(() => expect(ctx.onCompleted).toHaveBeenCalled())
+    expect(api.mock.calls[1][0].body).toEqual({ force: true })
+  })
+
   it('treats an unconfigured response as a failure', async () => {
     mockApi(async () => ({ configured: false }))
 

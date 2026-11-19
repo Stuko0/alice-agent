@@ -30,7 +30,7 @@ export function FreeProviderRow({ ctx }: FreeProviderRowProps) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const start = async () => {
+  const start = async (force = false) => {
     if (busy) {
       return
     }
@@ -48,6 +48,9 @@ export function FreeProviderRow({ ctx }: FreeProviderRowProps) {
 
     try {
       const result = await api<FreeEndpointResult>({
+        // `force` skips the backend's reachability probe: for networks that
+        // block it, configuring anyway is better than a dead end.
+        body: { force },
         method: 'POST',
         path: '/api/setup/free-endpoint'
       })
@@ -98,13 +101,22 @@ export function FreeProviderRow({ ctx }: FreeProviderRowProps) {
       {error ? (
         <div className="grid gap-1 px-1">
           <p className="text-xs text-destructive">{error}</p>
-          <button
-            className="justify-self-start text-xs font-medium text-primary underline-offset-2 hover:underline"
-            onClick={() => void start()}
-            type="button"
-          >
-            {t.onboarding.freeProviderRetry}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+              onClick={() => void start()}
+              type="button"
+            >
+              {t.onboarding.freeProviderRetry}
+            </button>
+            <button
+              className="text-xs text-muted-foreground underline-offset-2 hover:text-primary hover:underline"
+              onClick={() => void start(true)}
+              type="button"
+            >
+              {t.onboarding.freeProviderForce}
+            </button>
+          </div>
         </div>
       ) : null}
     </div>
