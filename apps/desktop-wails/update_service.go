@@ -82,6 +82,12 @@ type DesktopVersionInfo struct {
 	NodeVersion     string `json:"nodeVersion"`
 	Platform        string `json:"platform"`
 	AliceRoot       string `json:"aliceRoot"`
+	// BuildCommit / BuiltAt identify the exact artifact (stamped at link time).
+	// Two installers published under the same tag are otherwise
+	// indistinguishable, which makes "the release still has the old UI"
+	// impossible to confirm or refute from the app.
+	BuildCommit string `json:"buildCommit"`
+	BuiltAt     string `json:"builtAt"`
 }
 
 type updateConfig struct {
@@ -248,6 +254,8 @@ func (us *UpdateService) GetVersion() DesktopVersionInfo {
 		NodeVersion:     runtime.Version(),
 		Platform:        runtime.GOOS,
 		AliceRoot:       root,
+		BuildCommit:     normalizedBuildCommit(),
+		BuiltAt:         normalizedBuildTime(),
 	}
 }
 

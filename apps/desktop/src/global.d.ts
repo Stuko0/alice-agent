@@ -246,6 +246,10 @@ export interface DesktopVersionInfo {
   nodeVersion: string
   platform: string
   aliceRoot: string
+  /** Short commit hash the artifact was built from ("" for dev builds). */
+  buildCommit?: string
+  /** UTC build time, ISO-8601 ("" for dev builds). */
+  builtAt?: string
 }
 
 export type DesktopUninstallMode = 'full' | 'gui' | 'lite'

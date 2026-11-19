@@ -102,6 +102,15 @@ export function AboutSettings() {
           <p className="mt-1 text-xs text-muted-foreground">
             {version?.appVersion ? a.version(version.appVersion) : a.versionUnavailable}
           </p>
+          {/* Exact artifact identity: two builds of the same tag are otherwise
+              indistinguishable, and "which one am I running" is the first
+              question whenever a fix looks absent. */}
+          {version?.buildCommit ? (
+            <p className="mt-0.5 font-mono text-[0.6875rem] text-muted-foreground/80" data-selectable-text="true">
+              {version.buildCommit}
+              {version.builtAt ? ` · ${version.builtAt.replace('T', ' ').replace('Z', ' UTC')}` : ''}
+            </p>
+          ) : null}
         </div>
       </div>
 

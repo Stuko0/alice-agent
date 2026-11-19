@@ -87,7 +87,23 @@ try {
     }
     if (-not $Version) { $Version = "0.0.0" }
     $Version = $Version.TrimStart("v")
+
+    # Commit + build time: without them every republish of a tag is
+    # indistinguishable in About, which turns "does the installer have the new
+    # UI?" into guesswork. CI exports GITHUB_SHA; local builds ask git.
+    $commit = $env:GITHUB_SHA
+    if (-not $commit) {
+        $commit = (& git -C $WailsDir rev-parse --short HEAD 2>$null)
+    }
+    if ($commit) { $commit = $commit.Trim().Substring(0, [Math]::Min(7, $commit.Trim().Length)) }
+
+    $builtAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
     $ldflags = "-X main.buildVersion=$Version"
+    if ($commit) { $ldflags += " -X main.buildCommit=$commit" }
+    $ldflags += " -X main.buildTime=$builtAt"
+
+    Write-Host "=== Build stamp: $Version $commit ($builtAt) ==="
 
     Write-Host "=== Stamping version $Version ==="
     $wailsJsonPath = Join-Path $WailsDir "wails.json"

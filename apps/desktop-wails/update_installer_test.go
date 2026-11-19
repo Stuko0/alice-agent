@@ -471,3 +471,25 @@ func TestReinstallRefusesNonInstallerInstall(t *testing.T) {
 		t.Fatalf("message should say why repair cannot run here, got %q", result.Message)
 	}
 }
+
+func TestGetVersionReportsTheBuildStamp(t *testing.T) {
+	previousVersion, previousCommit, previousTime := buildVersion, buildCommit, buildTime
+	buildVersion, buildCommit, buildTime = "v0.24.0", "abc1234", "2026-11-19T06:54:34Z"
+	t.Cleanup(func() {
+		buildVersion, buildCommit, buildTime = previousVersion, previousCommit, previousTime
+	})
+
+	info := (&UpdateService{projectRoot: t.TempDir()}).GetVersion()
+
+	if info.AppVersion != "0.24.0" {
+		t.Fatalf("AppVersion = %q, want 0.24.0", info.AppVersion)
+	}
+
+	if info.BuildCommit != "abc1234" {
+		t.Fatalf("BuildCommit = %q, want abc1234", info.BuildCommit)
+	}
+
+	if info.BuiltAt != "2026-11-19T06:54:34Z" {
+		t.Fatalf("BuiltAt = %q, want the stamped timestamp", info.BuiltAt)
+	}
+}
