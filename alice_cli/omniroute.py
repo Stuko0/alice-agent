@@ -20,10 +20,12 @@ import os
 import platform
 import secrets
 import shutil
+import socket
 import subprocess
 import sys
 import tarfile
 import time
+import urllib.parse
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -41,6 +43,11 @@ _NODE_VERSION = "22.11.0"  # Node 22 LTS
 # gateway can answer /models; 30 s was not enough and looked like a broken
 # provider instead of a slow first start.
 _HEALTH_TIMEOUT_S = 120.0
+# Ceiling for a first run that keeps making progress (npm installs omniroute's
+# dependency tree — @lobehub/ui, native addons — before the gateway can bind).
+_HEALTH_MAX_TIMEOUT_S = 900.0
+# First run of the npx launcher installs the package before binding the port.
+_COLD_HEALTH_TIMEOUT_S = 300.0
 _HEALTH_POLL_S = 0.5
 _WINDOWS_HIDE = 0x08000000 if IS_WINDOWS else 0  # CREATE_NO_WINDOW
 
@@ -240,25 +247,100 @@ def available() -> Optional[str]:
     return None
 
 
+# Loopback spellings we probe, in preference order. OmniRoute binds whatever
+# `localhost` resolves to first — on hosts where that is ::1, a client pinned to
+# 127.0.0.1 never connects and the gateway looks dead even though it is serving.
+_ACTIVE_BASE_URLS: dict[int, str] = {}
+
+
+def _base_candidates(port: int = _DEFAULT_PORT) -> list[str]:
+    return [
+        f"http://127.0.0.1:{port}/v1",
+        f"http://localhost:{port}/v1",
+        f"http://[::1]:{port}/v1",
+    ]
+
+
 def base_url_for(port: int = _DEFAULT_PORT) -> str:
-    return f"http://127.0.0.1:{port}/v1"
+    """The URL the gateway answered on, or the IPv4 default before the first
+    successful start. Call it *after* ensure_running() to get a reachable one."""
+    return _ACTIVE_BASE_URLS.get(port) or f"http://127.0.0.1:{port}/v1"
 
 
 def _health_ok(base_url: str, timeout: float = 1.0) -> bool:
+    """Is the gateway accepting connections?
+
+    A TCP connect, not an HTTP GET: OmniRoute answers 401 on /v1/models until
+    Alice's token is accepted, and urllib raises HTTPError for any 4xx — so the
+    old probe reported a perfectly healthy gateway as dead, over and over.
+    """
+    parsed = urllib.parse.urlparse(base_url)
+    host = parsed.hostname or "127.0.0.1"
+    port = parsed.port or _DEFAULT_PORT
+
     try:
-        with urllib.request.urlopen(f"{base_url}/models", timeout=timeout) as resp:
-            return resp.status < 500
-    except Exception:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
         return False
 
 
-def _wait_for_health(base_url: str, timeout: float = _HEALTH_TIMEOUT_S) -> bool:
-    deadline = time.monotonic() + timeout
+def _wait_for_health(
+    base_url: str | list[str],
+    timeout: float = _HEALTH_TIMEOUT_S,
+    *,
+    proc: Optional[subprocess.Popen] = None,
+    log_path: Optional[Path] = None,
+    on_status: Optional[Callable[[str], None]] = None,
+) -> Optional[str]:
+    """Wait for the gateway to answer, tolerating a slow first-run install.
+
+    ``base_url`` may be a single URL or several loopback spellings; the first
+    one that answers is returned (None on failure).
+
+    `npx omniroute@x` resolves and downloads the package *before* the gateway
+    binds its port — minutes of npm output with nothing listening yet. A fixed
+    deadline cut that off mid-install and reported a broken provider. Instead:
+    keep extending the deadline while the process is alive and its log keeps
+    growing, and give up when it goes quiet (hung) or exits (crash).
+    """
+    candidates = [base_url] if isinstance(base_url, str) else list(base_url)
+
+    started = time.monotonic()
+    deadline = started + timeout
+    hard_deadline = started + _HEALTH_MAX_TIMEOUT_S
+    last_size = -1
+    announced = 0.0
+
     while time.monotonic() < deadline:
-        if _health_ok(base_url):
-            return True
+        for candidate in candidates:
+            if _health_ok(candidate):
+                return candidate
+
+        # A dead child will never bind the port; stop waiting immediately.
+        if proc is not None and proc.poll() is not None:
+            return None
+
+        if log_path is not None:
+            try:
+                size = log_path.stat().st_size
+            except OSError:
+                size = last_size
+
+            if size != last_size:
+                last_size = size
+                # Output means work is happening (npm unpacking, Node booting):
+                # extend the patience window, capped so a chatty hang still ends.
+                deadline = min(hard_deadline, time.monotonic() + timeout)
+
+        elapsed = time.monotonic() - started
+        if on_status is not None and elapsed - announced >= 15:
+            announced = elapsed
+            on_status(f"Waiting for the free gateway to come up… ({int(elapsed)}s)")
+
         time.sleep(_HEALTH_POLL_S)
-    return False
+
+    return None
 
 
 def _launcher_argv(launcher: str, port: int = _DEFAULT_PORT) -> list[str]:
@@ -271,7 +353,11 @@ def _launcher_argv(launcher: str, port: int = _DEFAULT_PORT) -> list[str]:
     install worth the name puts a bare ``npx.exe`` on PATH.
     """
     if launcher == "npx":
-        args = ["--yes", _OMNIROUTE_NPM_SPEC, "start", "--port", str(port)]
+        # OmniRoute 3.x has a single `serve` command (the default action);
+        # passing `start` exits with "too many arguments for 'serve'" — the
+        # gateway died instantly and the setup looked broken. --no-open keeps
+        # it from launching a browser tab on the user's desktop.
+        args = ["--yes", _OMNIROUTE_NPM_SPEC, "serve", "--port", str(port), "--no-open"]
         npx = shutil.which("npx") or "npx"
         if IS_WINDOWS and npx.lower().endswith((".cmd", ".bat")):
             return [os.environ.get("COMSPEC", "cmd.exe"), "/c", npx, *args]
@@ -289,7 +375,7 @@ def _launcher_argv(launcher: str, port: int = _DEFAULT_PORT) -> list[str]:
     if node is None or entry is None:
         raise RuntimeError("bundled OmniRoute runtime is incomplete; delete ~/.alice/omniroute and retry")
 
-    return [str(node), str(entry), "start", "--port", str(port)]
+    return [str(node), str(entry), "serve", "--port", str(port), "--no-open"]
 
 
 def _gateway_log_target() -> Optional[object]:
@@ -309,7 +395,16 @@ def _gateway_log_target() -> Optional[object]:
 
 
 def _spawn_gateway(argv: list[str]) -> subprocess.Popen:
-    """Start the gateway with its output teed to ~/.alice/omniroute/omniroute.log."""
+    """Start the gateway with its output teed to ~/.alice/omniroute/omniroute.log.
+
+    OmniRoute binds 0.0.0.0 by default and prints a security warning about it:
+    an inference plane with no API key requirement reachable from the LAN. Pin
+    it to loopback — Alice is the only client, and 127.0.0.1 is then guaranteed
+    to be the address that answers.
+    """
+    env = dict(os.environ)
+    env.setdefault("OMNIROUTE_SERVER_HOST", "127.0.0.1")
+
     gateway_log = _gateway_log_target()
     try:
         return subprocess.Popen(
@@ -317,6 +412,7 @@ def _spawn_gateway(argv: list[str]) -> subprocess.Popen:
             stdout=gateway_log or subprocess.DEVNULL,
             stderr=subprocess.STDOUT if gateway_log else subprocess.DEVNULL,
             creationflags=_WINDOWS_HIDE,
+            env=env,
         )
     finally:
         if gateway_log is not None:
@@ -354,9 +450,11 @@ def ensure_running(
                 pass
 
     base = base_url_for(port)
-    if _health_ok(base):
-        status("The free gateway is already running.")
-        return None
+    for candidate in _base_candidates(port):
+        if _health_ok(candidate):
+            _ACTIVE_BASE_URLS[port] = candidate
+            status("The free gateway is already running.")
+            return None
 
     launcher = available()
     if launcher is None:
@@ -397,16 +495,37 @@ def ensure_running(
         except OSError as retry_exc:
             raise RuntimeError(f"Could not start OmniRoute via {launcher}: {retry_exc}") from retry_exc
 
-    if not _wait_for_health(base):
+    log_hint = bundled_root() / "omniroute.log"
+
+    # A cold `npx omniroute@x` spends minutes resolving and unpacking the
+    # package before Node even runs (observed ~150 s); npm's output is buffered
+    # when stdout is a file, so log growth is not a reliable liveness signal.
+    timeout = _COLD_HEALTH_TIMEOUT_S if launcher == "npx" else _HEALTH_TIMEOUT_S
+
+    reached = _wait_for_health(
+        _base_candidates(port),
+        timeout=timeout,
+        proc=proc,
+        log_path=log_hint,
+        on_status=on_status,
+    )
+    if not reached:
         try:
             proc.terminate()
         except Exception:
             pass
-        log_hint = bundled_root() / "omniroute.log"
-        raise RuntimeError(
-            f"OmniRoute did not become healthy at {base} within {_HEALTH_TIMEOUT_S:.0f}s"
-            f" — see {log_hint}"
-        )
+
+        code = proc.poll()
+        if code is not None:
+            raise RuntimeError(
+                f"OmniRoute exited with code {code} before answering on {base}"
+                f" — see {log_hint}"
+            )
+
+        raise RuntimeError(f"OmniRoute did not answer on {base} in time — see {log_hint}")
+
+    if isinstance(reached, str) and reached:
+        _ACTIVE_BASE_URLS[port] = reached
 
     return proc
 

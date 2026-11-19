@@ -8,6 +8,14 @@ import pytest
 from alice_cli import omniroute as omni
 
 
+@pytest.fixture(autouse=True)
+def _reset_active_base_urls():
+    """The resolved loopback URL is process state; tests must not inherit it."""
+    omni._ACTIVE_BASE_URLS.clear()
+    yield
+    omni._ACTIVE_BASE_URLS.clear()
+
+
 class TestDetect:
     def test_available_via_npx(self, monkeypatch):
         monkeypatch.setattr(omni.shutil, "which", lambda n: "/usr/bin/npx" if n == "npx" else None)
@@ -24,6 +32,9 @@ class TestDetect:
 
 class TestSpawn:
     def test_spawn_via_npx_builds_expected_argv(self, monkeypatch):
+        # Never let the reuse probe touch a real port: another process (or a
+        # parallel test run) listening on 4319 would short-circuit the spawn.
+        monkeypatch.setattr(omni, "_health_ok", lambda *_a, **_kw: False)
         monkeypatch.setattr(omni, "available", lambda: "npx")
         popen = MagicMock()
         popen.returncode = None
@@ -34,7 +45,8 @@ class TestSpawn:
         assert proc is popen
         argv = omni.subprocess.Popen.call_args[0][0]
         assert "omniroute@" in argv[2], argv
-        assert argv[-1] == "4319"
+        assert "serve" in argv, argv
+        assert argv[argv.index("--port") + 1] == "4319"
 
     def test_spawn_idempotent_when_already_healthy(self, monkeypatch):
         monkeypatch.setattr(omni, "_health_ok", lambda *_a, **_kw: True)
@@ -61,6 +73,7 @@ class TestSpawn:
         entry.touch()
         monkeypatch.setattr(omni, "bundled_root", lambda: tmp_path)
 
+        monkeypatch.setattr(omni, "_health_ok", lambda *_a, **_kw: False)
         monkeypatch.setattr(omni, "available", lambda: "npx")
         monkeypatch.setattr(omni.shutil, "which", lambda n: "/usr/bin/npx" if n == "npx" else None)
 
@@ -99,6 +112,78 @@ class TestSpawn:
 
         with pytest.raises(RuntimeError, match="Could not start OmniRoute via npx"):
             omni.ensure_running(port=4319, allow_provision=False)
+
+
+class TestWaitForHealth:
+    """The first run spends minutes inside npm before anything listens; a fixed
+    deadline reported that as a broken provider."""
+
+    class Clock:
+        def __init__(self):
+            self.now = 1000.0
+
+        def monotonic(self):
+            return self.now
+
+        def sleep(self, seconds):
+            self.now += seconds
+
+    def _patch_clock(self, monkeypatch):
+        clock = self.Clock()
+        monkeypatch.setattr(omni.time, "monotonic", clock.monotonic)
+        monkeypatch.setattr(omni.time, "sleep", clock.sleep)
+        return clock
+
+    def test_gives_up_when_the_child_exits(self, monkeypatch):
+        clock = self._patch_clock(monkeypatch)
+        monkeypatch.setattr(omni, "_health_ok", lambda *_a, **_kw: False)
+
+        proc = MagicMock()
+        proc.poll.return_value = 3
+
+        started = clock.now
+        assert omni._wait_for_health("http://127.0.0.1:4319/v1", timeout=120, proc=proc) is None
+        # Dead child → no point sitting out the timeout.
+        assert clock.now - started < 5
+
+    def test_extends_the_deadline_while_the_log_grows(self, monkeypatch, tmp_path):
+        self._patch_clock(monkeypatch)
+        log = tmp_path / "omniroute.log"
+        log.write_text("")
+
+        polls = {"n": 0}
+
+        def health(*_a, **_kw):
+            polls["n"] += 1
+            with log.open("a") as fh:
+                fh.write("npm installing…\n")
+            return polls["n"] > 40  # finishes well past the 5 s deadline
+
+        monkeypatch.setattr(omni, "_health_ok", health)
+
+        proc = MagicMock()
+        proc.poll.return_value = None
+
+        assert omni._wait_for_health(
+            "http://127.0.0.1:4319/v1", timeout=5, proc=proc, log_path=log
+        ) == "http://127.0.0.1:4319/v1"
+        assert polls["n"] > 40
+
+    def test_times_out_when_the_gateway_goes_quiet(self, monkeypatch, tmp_path):
+        clock = self._patch_clock(monkeypatch)
+        log = tmp_path / "omniroute.log"
+        log.write_text("started")
+
+        monkeypatch.setattr(omni, "_health_ok", lambda *_a, **_kw: False)
+
+        proc = MagicMock()
+        proc.poll.return_value = None
+
+        started = clock.now
+        assert omni._wait_for_health(
+            "http://127.0.0.1:4319/v1", timeout=5, proc=proc, log_path=log
+        ) is None
+        assert 5 <= clock.now - started <= 10
 
 
 class TestBaseUrlFor:
@@ -290,7 +375,8 @@ class TestLauncherArgv:
         assert argv[1].lower() == "/c"
         assert argv[2].lower().endswith("npx.cmd")
         assert "omniroute@" in argv[4]
-        assert argv[-1] == "4319"
+        assert "serve" in argv
+        assert argv[argv.index("--port") + 1] == "4319"
 
     def test_posix_npx_uses_resolved_path(self, monkeypatch):
         monkeypatch.setattr(omni, "IS_WINDOWS", False)
@@ -322,10 +408,43 @@ class TestLauncherArgv:
 
         assert argv[0] == str(node)
         assert argv[1] == str(entry)
-        assert argv[-1] == "4319"
+        assert "serve" in argv
+        assert argv[argv.index("--port") + 1] == "4319"
 
     def test_bundled_argv_requires_a_complete_bundle(self, monkeypatch, tmp_path):
         monkeypatch.setattr(omni, "bundled_root", lambda: tmp_path)
 
         with pytest.raises(RuntimeError, match="incomplete"):
             omni._launcher_argv("bundled", 4319)
+
+
+class TestHealthProbe:
+    """OmniRoute answers 401 on /v1/models; urllib raises HTTPError for 4xx, so
+    an HTTP probe reported a live gateway as dead."""
+
+    def test_healthy_when_the_port_accepts(self, monkeypatch):
+        seen = {}
+
+        class Conn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_exc):
+                return False
+
+        def connect(address, timeout=None):
+            seen["address"] = address
+            return Conn()
+
+        monkeypatch.setattr(omni.socket, "create_connection", connect)
+
+        assert omni._health_ok("http://127.0.0.1:4319/v1") is True
+        assert seen["address"] == ("127.0.0.1", 4319)
+
+    def test_unhealthy_when_the_port_refuses(self, monkeypatch):
+        def connect(*_a, **_kw):
+            raise ConnectionRefusedError("refused")
+
+        monkeypatch.setattr(omni.socket, "create_connection", connect)
+
+        assert omni._health_ok("http://localhost:4319/v1") is False

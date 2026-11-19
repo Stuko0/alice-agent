@@ -3241,8 +3241,6 @@ def _omniroute_worker() -> None:
     """Provision/start the gateway, then point the model config at it."""
     from alice_cli import omniroute
 
-    base_url = omniroute.base_url_for()
-
     def on_status(message: str) -> None:
         _omniroute_update(message=message)
 
@@ -3253,6 +3251,12 @@ def _omniroute_worker() -> None:
 
     try:
         omniroute.ensure_running(allow_provision=True, on_progress=on_progress, on_status=on_status)
+
+        # Resolve AFTER the gateway answered: it may be listening on
+        # localhost/::1 rather than 127.0.0.1, and the client must use the
+        # spelling that actually works.
+        base_url = omniroute.base_url_for()
+
         _omniroute_update(message="Saving the gateway configuration…", progress=95)
 
         cfg = load_config()
