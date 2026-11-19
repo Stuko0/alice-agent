@@ -18,6 +18,10 @@ export function GetVersion() {
   return window['go']['main']['UpdateService']['GetVersion']();
 }
 
+export function Reinstall() {
+  return window['go']['main']['UpdateService']['Reinstall']();
+}
+
 export function SetBranch(arg1) {
   return window['go']['main']['UpdateService']['SetBranch'](arg1);
 }

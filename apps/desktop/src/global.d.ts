@@ -179,7 +179,7 @@ declare global {
       onBootProgress: (callback: (payload: DesktopBootProgress) => void) => () => void
       getBootstrapState: () => Promise<DesktopBootstrapState>
       resetBootstrap: () => Promise<{ ok: boolean }>
-      repairBootstrap: () => Promise<{ ok: boolean }>
+      repairBootstrap: () => Promise<DesktopUpdateApplyResult>
       cancelBootstrap: () => Promise<{ ok: boolean; cancelled: boolean }>
       onBootstrapEvent: (callback: (payload: DesktopBootstrapEvent) => void) => () => void
       getVersion: () => Promise<DesktopVersionInfo>
@@ -246,6 +246,10 @@ export interface DesktopVersionInfo {
   nodeVersion: string
   platform: string
   aliceRoot: string
+  /** Short commit hash the artifact was built from ("" for dev builds). */
+  buildCommit?: string
+  /** UTC build time, ISO-8601 ("" for dev builds). */
+  builtAt?: string
 }
 
 export type DesktopUninstallMode = 'full' | 'gui' | 'lite'

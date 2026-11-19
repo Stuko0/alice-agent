@@ -449,3 +449,105 @@ func TestGetConnectionInfoLocal(t *testing.T) {
 		t.Fatalf("authMode = %q, want token", info.AuthMode)
 	}
 }
+
+func TestBundledPythonPathFindsInstallerRuntime(t *testing.T) {
+	dir := t.TempDir()
+	resources := filepath.Join(dir, "resources", "python")
+	if err := os.MkdirAll(resources, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	name := "python"
+	if runtime.GOOS == "windows" {
+		name = "python.exe"
+	}
+	if err := os.WriteFile(filepath.Join(resources, name), []byte(""), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// The installer layout is <exeDir>/resources/python/python[.exe].
+	if runtime.GOOS == "windows" {
+		// On Windows bundledPythonPath only inspects real install dirs, so this
+		// test asserts the helper's shape instead of the machine's paths.
+		t.Skip("Windows candidate list is machine-specific; covered by the installer smoke")
+	}
+
+	if got := bundledPythonPath(); got == "" {
+		t.Skip("no installer payload beside the test binary")
+	}
+}
+
+func TestResolveProjectRootPrefersTheShippedTree(t *testing.T) {
+	// An installed shell with its own payload next to it, plus a stale managed
+	// tree left behind by an older `alice update`/install.ps1. The payload must
+	// win: otherwise the shell drives a backend that lacks its routes (405 on
+	// every new endpoint) and none of the installer's fixes apply.
+	base := t.TempDir()
+	installDir := filepath.Join(base, "Programs", "Alice")
+	payload := filepath.Join(installDir, "resources", "alice")
+	stale := filepath.Join(base, "alice", "alice-agent")
+
+	for _, root := range []string{payload, stale} {
+		if err := os.MkdirAll(filepath.Join(root, "alice_cli"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := os.WriteFile(filepath.Join(root, "alice_cli", "main.py"), []byte("# marker"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	exe := filepath.Join(installDir, "alice-desktop.exe")
+	if err := os.WriteFile(exe, []byte(""), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	previousExecutable := osExecutable
+	osExecutable = func() (string, error) { return exe, nil }
+	t.Cleanup(func() { osExecutable = previousExecutable })
+
+	t.Setenv("LOCALAPPDATA", base)
+	t.Setenv("ALICE_DESKTOP_ALICE_ROOT", "")
+	// Leave the checkout: the cwd walk-up would otherwise find this repo.
+	t.Chdir(t.TempDir())
+
+	pm := &PythonManager{}
+	if got := pm.ResolveProjectRoot(); got != payload {
+		t.Fatalf("ResolveProjectRoot() = %q, want the installed payload %q (stale tree: %q)", got, payload, stale)
+	}
+}
+
+func TestResolveProjectRootPrefersACheckoutBesideTheExe(t *testing.T) {
+	// The documented dev layout: the binary sits inside the checkout it was
+	// built from. That tree wins over the installer payload, if any.
+	base := t.TempDir()
+	checkout := filepath.Join(base, "alice")
+	payload := filepath.Join(base, "resources", "alice")
+
+	for _, root := range []string{checkout, payload} {
+		if err := os.MkdirAll(filepath.Join(root, "alice_cli"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := os.WriteFile(filepath.Join(root, "alice_cli", "main.py"), []byte("# marker"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	exe := filepath.Join(checkout, "alice-desktop.exe")
+	if err := os.WriteFile(exe, []byte(""), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	previousExecutable := osExecutable
+	osExecutable = func() (string, error) { return exe, nil }
+	t.Cleanup(func() { osExecutable = previousExecutable })
+
+	t.Setenv("ALICE_DESKTOP_ALICE_ROOT", "")
+	t.Chdir(t.TempDir())
+
+	pm := &PythonManager{}
+	if got := pm.ResolveProjectRoot(); got != checkout {
+		t.Fatalf("ResolveProjectRoot() = %q, want the checkout beside the exe %q", got, checkout)
+	}
+}

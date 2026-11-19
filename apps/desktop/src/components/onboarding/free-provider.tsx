@@ -2,68 +2,106 @@ import { useState } from 'react'
 
 import { useI18n } from '@/i18n'
 import { ChevronRight, Loader2, Zap } from '@/lib/icons'
-import type { OnboardingContext } from '@/store/onboarding'
+import { completeDesktopOnboarding, type OnboardingContext } from '@/store/onboarding'
 
 /**
- * Free, no-account provider (OmniRoute).
+ * Free, no-account provider.
  *
- * The onboarding used to hide this behind a second wizard: first-time users got
- * the Copilot/API-key modal plus a separate setup driver that offered OmniRoute,
- * and most people closed both without ever finding a way to try Alice without an
- * account. This row keeps the single modal and puts the zero-setup path first.
+ * This used to drive a local OmniRoute gateway: download Node, npm-install a
+ * large dependency tree, spawn a server. That is a lot of machinery — and a
+ * lot of ways to fail — for "let me try the app before I own an API key".
  *
- * The backend owns the lifecycle (`/api/setup/omniroute/start` provisions a
- * private Node + gateway under `~/.alice/omniroute` and mints a local token), so
- * there is no key to paste and nothing to download by hand.
+ * A keyless public endpoint needs nothing but a URL, which is exactly what the
+ * `custom` provider already is. The backend probes it with one chat request and
+ * writes base_url/model into config.yaml; nothing is installed or spawned.
  */
-export async function startFreeProvider(): Promise<{ message?: string; ok: boolean }> {
-  const api = window.aliceDesktop?.api
-
-  if (!api) {
-    return { ok: false, message: 'Desktop bridge unavailable.' }
-  }
-
-  try {
-    const result = await api<{ configured?: boolean }>({
-      body: JSON.stringify({}),
-      method: 'POST',
-      path: '/api/setup/omniroute/start'
-    })
-
-    if (!result?.configured) {
-      return { ok: false, message: 'OmniRoute did not finish starting.' }
-    }
-
-    return { ok: true }
-  } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : String(error) }
-  }
+interface FreeEndpointResult {
+  configured?: boolean
+  label?: string
+  model?: string
 }
 
-export function FreeProviderRow({ ctx }: { ctx: OnboardingContext }) {
+interface FreeProviderRowProps {
+  ctx: OnboardingContext
+}
+
+export function FreeProviderRow({ ctx }: FreeProviderRowProps) {
   const { t } = useI18n()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [verifying, setVerifying] = useState(false)
 
-  const start = async () => {
+  const fail = (message?: string) =>
+    setError(message?.trim() || t.onboarding.freeProviderFailed || 'The free endpoint did not answer.')
+
+  // The onboarding store, not this row, decides whether the overlay closes —
+  // and it re-checks readiness on a timer. Writing the config alone was not
+  // enough: the poll disagreed, the modal stayed (or came back) with the row
+  // reset to idle, which reads as "it did nothing". Completing the flow here
+  // is what the OAuth providers do once their credentials are live.
+  const complete = () => {
+    completeDesktopOnboarding()
+    ctx.onCompleted?.()
+  }
+
+  const start = async (force = false) => {
     if (busy) {
+      return
+    }
+
+    const api = window.aliceDesktop?.api
+
+    if (!api) {
+      fail('Desktop bridge unavailable.')
+
       return
     }
 
     setBusy(true)
     setError(null)
+    setVerifying(false)
 
-    const result = await startFreeProvider()
+    try {
+      const result = await api<FreeEndpointResult>({
+        // `force` skips the backend's reachability probe: for networks that
+        // block it, configuring anyway is better than a dead end.
+        body: { force },
+        method: 'POST',
+        path: '/api/setup/free-endpoint'
+      })
 
-    setBusy(false)
+      if (!result?.configured) {
+        fail()
 
-    if (!result.ok) {
-      setError(result.message ?? t.onboarding.freeProviderFailed)
+        return
+      }
 
-      return
+      if (!force) {
+        // Configured is not the same as working. Run one real completion
+        // through the gateway — the same client the first chat message uses —
+        // so a broken endpoint surfaces here, with its error, instead of
+        // closing the modal and failing on the user's first prompt.
+        setVerifying(true)
+
+        const reply = await ctx.requestGateway<{ text?: string }>('llm.oneshot', {
+          input: 'ping',
+          instructions: 'Reply with the single word: ready',
+          max_tokens: 24,
+          temperature: 0
+        })
+
+        if (!reply?.text?.trim()) {
+          throw new Error('The free endpoint answered with an empty message.')
+        }
+      }
+
+      complete()
+    } catch (err) {
+      fail(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+      setVerifying(false)
     }
-
-    ctx.onCompleted?.()
   }
 
   return (
@@ -75,18 +113,22 @@ export function FreeProviderRow({ ctx }: { ctx: OnboardingContext }) {
         onClick={() => void start()}
         type="button"
       >
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Zap className="size-4 shrink-0 text-primary" />
             <span className="text-[length:var(--conversation-text-font-size)] font-semibold">
               {t.onboarding.freeProviderTitle}
             </span>
             <span className="inline-flex items-center gap-1.5 bg-primary px-2 py-0.5 text-[0.64rem] font-semibold uppercase tracking-[0.16em] text-primary-foreground">
-              {t.onboarding.freeProviderBadge}
+              {busy ? t.onboarding.freeProviderBadgeBusy : t.onboarding.freeProviderBadge}
             </span>
           </div>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {busy ? t.onboarding.freeProviderStarting : t.onboarding.freeProviderPitch}
+            {busy
+              ? verifying
+                ? t.onboarding.freeProviderVerifying
+                : t.onboarding.freeProviderStarting
+              : t.onboarding.freeProviderPitch}
           </p>
         </div>
         {busy ? (
@@ -95,7 +137,27 @@ export function FreeProviderRow({ ctx }: { ctx: OnboardingContext }) {
           <ChevronRight className="size-4 shrink-0 text-primary transition group-hover:translate-x-0.5" />
         )}
       </button>
-      {error ? <p className="px-1 text-xs text-destructive">{error}</p> : null}
+      {error ? (
+        <div className="grid gap-1 px-1">
+          <p className="text-xs text-destructive">{error}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+              onClick={() => void start()}
+              type="button"
+            >
+              {t.onboarding.freeProviderRetry}
+            </button>
+            <button
+              className="text-xs text-muted-foreground underline-offset-2 hover:text-primary hover:underline"
+              onClick={() => void start(true)}
+              type="button"
+            >
+              {t.onboarding.freeProviderForce}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

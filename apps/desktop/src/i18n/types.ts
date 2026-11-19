@@ -132,6 +132,10 @@ export interface Translations {
       useLocalGateway: string
       openLogs: string
       repairHint: string
+      repairStartedTitle: string
+      repairStartedMessage: string
+      repairFailedTitle: string
+      repairFailedMessage: string
       remoteSignInHint: string
       hideRecentLogs: string
       showRecentLogs: string
@@ -1437,6 +1441,10 @@ export interface Translations {
     freeProviderPitch: string
     freeProviderStarting: string
     freeProviderFailed: string
+    freeProviderBadgeBusy: string
+    freeProviderRetry: string
+    freeProviderForce: string
+    freeProviderVerifying: string
     openRouterPitch: string
     apiKeyOptions: Record<string, { short: string; description: string }>
     backToSignIn: string

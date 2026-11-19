@@ -89,6 +89,12 @@ export const ja = defineLocale({
       useLocalGateway: 'ローカルゲートウェイを使用',
       openLogs: 'ログを開く',
       repairHint: '修復はインストーラーを再実行します。新しいマシンでは数分かかる場合があります。',
+      repairStartedTitle: 'Repairing Alice',
+      repairStartedMessage:
+        'Downloading and reinstalling the app. It will reopen on its own — this can take a few minutes.',
+      repairFailedTitle: 'Repair could not start',
+      repairFailedMessage:
+        'Downloading the installer failed. Check your connection, then download it again from alice-agent.stuko.dev.',
       remoteSignInHint:
         'ゲートウェイのログインウィンドウを開きます。代わりにバンドルされたバックエンドに切り替えるには「ローカルゲートウェイを使用」を選択してください。',
       hideRecentLogs: '最近のログを非表示',
@@ -1829,9 +1835,15 @@ export const ja = defineLocale({
     featuredPitch: '1 つのサブスクリプションで 300 以上の最先端モデル — Alice を実行するための推奨方法',
     freeProviderTitle: 'Free — no account needed',
     freeProviderBadge: 'Try it now',
-    freeProviderPitch: 'Starts a local gateway with a free model. No sign-up, no API key, nothing to install by hand.',
-    freeProviderStarting: 'Starting the free gateway… this can take a minute on first run.',
-    freeProviderFailed: 'The free gateway could not start. Pick another provider below, or try again.',
+    freeProviderPitch:
+      'Uses a public endpoint that answers without a key or an account. Nothing to install.',
+    freeProviderStarting: 'Checking the free endpoint…',
+    freeProviderFailed:
+      'The free endpoint did not answer. Pick another provider below, or try again.',
+    freeProviderBadgeBusy: 'Working',
+    freeProviderRetry: 'Try again',
+    freeProviderForce: 'Use it anyway',
+    freeProviderVerifying: 'Testing the free endpoint…',
     openRouterPitch: '1 つのキーで数百のモデル — 堅実なデフォルト',
     apiKeyOptions: {
       openrouter: {

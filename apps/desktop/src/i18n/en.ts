@@ -88,7 +88,14 @@ export const en: Translations = {
       repairInstall: 'Repair install',
       useLocalGateway: 'Use local gateway',
       openLogs: 'Open logs',
-      repairHint: 'Repair re-runs the installer and can take a few minutes on a fresh machine.',
+      repairHint:
+        'Downloads and re-runs the installer for this version. Takes a few minutes and keeps your chats and settings.',
+      repairStartedTitle: 'Repairing Alice',
+      repairStartedMessage:
+        'Downloading and reinstalling the app. It will reopen on its own — this can take a few minutes.',
+      repairFailedTitle: 'Repair could not start',
+      repairFailedMessage:
+        'Downloading the installer failed. Check your connection, then download it again from alice-agent.stuko.dev.',
       remoteSignInHint: 'Opens the gateway login window. Use local gateway to switch to the bundled backend instead.',
       hideRecentLogs: 'Hide recent logs',
       showRecentLogs: 'Show recent logs',
@@ -1763,9 +1770,15 @@ export const en: Translations = {
     featuredPitch: 'Free with your GitHub account — no API key needed. Includes GPT-4o, Claude, and more.',
     freeProviderTitle: 'Free — no account needed',
     freeProviderBadge: 'Try it now',
-    freeProviderPitch: 'Starts a local gateway with a free model. No sign-up, no API key, nothing to install by hand.',
-    freeProviderStarting: 'Starting the free gateway… this can take a minute on first run.',
-    freeProviderFailed: 'The free gateway could not start. Pick another provider below, or try again.',
+    freeProviderPitch:
+      'Uses a public endpoint that answers without a key or an account. Nothing to install.',
+    freeProviderStarting: 'Checking the free endpoint…',
+    freeProviderFailed:
+      'The free endpoint did not answer. Pick another provider below, or try again.',
+    freeProviderBadgeBusy: 'Working',
+    freeProviderRetry: 'Try again',
+    freeProviderForce: 'Use it anyway',
+    freeProviderVerifying: 'Testing the free endpoint…',
     openRouterPitch: 'One key, hundreds of models — a solid default',
     apiKeyOptions: {
       openrouter: {

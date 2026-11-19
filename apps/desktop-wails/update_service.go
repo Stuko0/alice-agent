@@ -82,6 +82,12 @@ type DesktopVersionInfo struct {
 	NodeVersion     string `json:"nodeVersion"`
 	Platform        string `json:"platform"`
 	AliceRoot       string `json:"aliceRoot"`
+	// BuildCommit / BuiltAt identify the exact artifact (stamped at link time).
+	// Two installers published under the same tag are otherwise
+	// indistinguishable, which makes "the release still has the old UI"
+	// impossible to confirm or refute from the app.
+	BuildCommit string `json:"buildCommit"`
+	BuiltAt     string `json:"builtAt"`
 }
 
 type updateConfig struct {
@@ -232,10 +238,14 @@ func (us *UpdateService) GetVersion() DesktopVersionInfo {
 	if root == "" {
 		root = pmRootFallback()
 	}
-	appVersion := "0.0.0"
-	if data, err := os.ReadFile(filepath.Join(root, "alice_cli", "__init__.py")); err == nil {
-		if m := _versionRe.FindSubmatch(data); m != nil {
-			appVersion = string(m[1])
+	appVersion := normalizedBuildVersion()
+	if appVersion == "" {
+		appVersion = "0.0.0"
+
+		if data, err := os.ReadFile(filepath.Join(root, "alice_cli", "__init__.py")); err == nil {
+			if m := _versionRe.FindSubmatch(data); m != nil {
+				appVersion = string(m[1])
+			}
 		}
 	}
 	return DesktopVersionInfo{
@@ -244,6 +254,8 @@ func (us *UpdateService) GetVersion() DesktopVersionInfo {
 		NodeVersion:     runtime.Version(),
 		Platform:        runtime.GOOS,
 		AliceRoot:       root,
+		BuildCommit:     normalizedBuildCommit(),
+		BuiltAt:         normalizedBuildTime(),
 	}
 }
 
@@ -364,8 +376,15 @@ func hasGitCheckout(root string) bool {
 	return err == nil
 }
 
-// currentVersion reads the agent version out of the resolved runtime tree.
+// currentVersion reports the running shell's version: the stamped build
+// version when available, otherwise the resolved tree's agent version (dev
+// builds). Installer-mode updates compare against this, so an older checkout on
+// the machine can no longer make a freshly installed build look stale.
 func (us *UpdateService) currentVersion(root string) string {
+	if stamped := normalizedBuildVersion(); stamped != "" {
+		return stamped
+	}
+
 	if data, err := os.ReadFile(filepath.Join(root, "alice_cli", "__init__.py")); err == nil {
 		if m := _versionRe.FindSubmatch(data); m != nil {
 			return string(m[1])

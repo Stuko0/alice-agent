@@ -163,3 +163,11 @@ docs/plans/
 
 # pip build artifacts at the repo root (from `pip install .`)
 /build/
+
+# Wails desktop build output. `go build`/`wails build` write the binary into the
+# package dir, the NSIS step stages the runtime tree under build/bin, and the
+# bundler drops the resources archive there too — none of it belongs in git.
+apps/desktop-wails/alice-desktop
+apps/desktop-wails/alice-desktop.exe
+apps/desktop-wails/build/bin/
+apps/desktop-wails/resources.zip

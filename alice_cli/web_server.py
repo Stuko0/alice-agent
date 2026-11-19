@@ -3180,33 +3180,197 @@ async def api_setup_provider(request: Request):
     return {"provider": config_provider, "model": model_cfg.get("model", "")}
 
 
-@app.post("/api/setup/omniroute/start")
-async def setup_omniroute_start() -> dict:
-    """Bring OmniRoute up; provision Node + the gateway when nothing else can.
+# ── OmniRoute (free, no-account provider) setup job ─────────────────────────
+#
+# Provisioning downloads Node (~25 MB), extracts it and npm-installs OmniRoute:
+# minutes on a fresh machine, not seconds. The old handler did all of that
+# inside one request. FastAPI runs `async def` endpoints ON the event loop, so
+# it also froze the gateway's websocket, and the desktop shell's proxy gave up
+# at 30 s — every real first run ended as an opaque 500. Start it in a worker
+# and poll the state instead.
+_OMNIROUTE_JOB_LOCK = threading.Lock()
+_OMNIROUTE_JOB: Dict[str, Any] = {
+    "state": "idle",  # idle | starting | ready | error
+    "progress": 0,
+    "message": "",
+    "error": None,
+    "base_url": "",
+    "started_at": None,
+}
 
-    Synchronous under the hood (HTTP download + npm install); FastAPI runs
-    us in a threadpool. Progress is not streamed (that's a separate WS /
-    long-poll channel); caller just sees a long 200 on success, 500 on error.
+
+def _omniroute_snapshot() -> dict:
+    with _OMNIROUTE_JOB_LOCK:
+        return dict(_OMNIROUTE_JOB)
+
+
+def _omniroute_update(**fields: Any) -> None:
+    with _OMNIROUTE_JOB_LOCK:
+        _OMNIROUTE_JOB.update(fields)
+
+
+def _omniroute_error_message(exc: BaseException) -> str:
+    """Turn a provisioning failure into something a user can act on.
+
+    The raw error is always appended: "it just says 500" is what made the first
+    report impossible to diagnose.
     """
+    detail = f"{type(exc).__name__}: {exc}"
+
+    if isinstance(exc, urllib.error.URLError):
+        return (
+            "Could not reach nodejs.org to download the local runtime. "
+            "Check the connection or the proxy/firewall, then try again. "
+            f"({detail})"
+        )
+
+    lowered = detail.lower()
+    if "no space left" in lowered or "not enough space" in lowered:
+        return f"The disk is full; the free runtime needs ~120 MB. ({detail})"
+    if "access is denied" in lowered or "permission denied" in lowered or "winerror 5" in lowered:
+        return (
+            "Something blocked writing or running the local runtime "
+            "(antivirus or folder permissions are the usual causes). "
+            f"({detail})"
+        )
+
+    return detail
+
+
+def _omniroute_worker() -> None:
+    """Provision/start the gateway, then point the model config at it."""
     from alice_cli import omniroute
 
-    base_url = omniroute.base_url_for()
+    def on_status(message: str) -> None:
+        _omniroute_update(message=message)
+
+    def on_progress(percent: int) -> None:
+        # Download progress is the only measurable phase; keep it inside 5-90
+        # so it never claims the job is done before the gateway answers.
+        _omniroute_update(progress=max(5, min(90, int(percent))))
+
     try:
-        omniroute.ensure_running(allow_provision=True)
+        omniroute.ensure_running(allow_provision=True, on_progress=on_progress, on_status=on_status)
+
+        # Resolve AFTER the gateway answered: it may be listening on
+        # localhost/::1 rather than 127.0.0.1, and the client must use the
+        # spelling that actually works.
+        base_url = omniroute.base_url_for()
+
+        _omniroute_update(message="Saving the gateway configuration…", progress=95)
+
+        cfg = load_config()
+        model = cfg.setdefault("model", {})
+        if not isinstance(model, dict):
+            model = cfg["model"] = {"default": model} if model else {}
+        model["provider"] = "custom"
+        model["base_url"] = base_url
+        model["api_key"] = omniroute.mint_local_token()
+        model.setdefault("default", "google/gemini-3-flash-preview")
+        save_config(cfg)
+
+        _omniroute_update(state="ready", progress=100, message="", error=None, base_url=base_url)
+    except Exception as exc:  # noqa: BLE001 — every failure must reach the UI
+        _log.exception("omniroute: free-provider setup failed")
+        _omniroute_update(state="error", progress=0, message="", error=_omniroute_error_message(exc))
+
+
+@app.post("/api/setup/omniroute/start")
+async def setup_omniroute_start() -> dict:
+    """Start (or join) the free-gateway setup job. Returns immediately."""
+    current = _omniroute_snapshot()
+    if current["state"] == "starting":
+        return {**current, "configured": False}
+
+    _omniroute_update(
+        state="starting",
+        progress=1,
+        message="Starting the free gateway…",
+        error=None,
+        base_url="",
+        started_at=time.time(),
+    )
+    threading.Thread(target=_omniroute_worker, name="omniroute-setup", daemon=True).start()
+
+    snapshot = _omniroute_snapshot()
+    return {**snapshot, "configured": snapshot["state"] == "ready"}
+
+
+# Wall-clock budget for the free-endpoint probe. urllib's own timeout is
+# per-socket-operation, so a slowly trickling response can outlive it; the
+# desktop's proxy gives up at 30 s, and an answer after that is useless anyway.
+_FREE_ENDPOINT_PROBE_TIMEOUT_S = 40.0
+
+
+@app.get("/api/setup/free-endpoints")
+async def api_free_endpoints() -> list[dict]:
+    """Keyless public endpoints the free-provider row can configure."""
+    from alice_cli import free_endpoints
+
+    return free_endpoints.list_endpoints()
+
+
+@app.post("/api/setup/free-endpoint")
+async def api_setup_free_endpoint(request: Request) -> dict:
+    """Configure a free endpoint that needs only a URL (no install, no key).
+
+    This is the desktop onboarding's "Free — no account needed" path: one tiny
+    chat request proves the endpoint answers for anonymous callers, then the
+    model config points at it. Nothing is downloaded and nothing is spawned.
+    """
+    from alice_cli import free_endpoints
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    endpoint_id = str((body or {}).get("id") or "").strip() or None
+    # Escape hatch for networks that block the probe (corporate proxies, DNS
+    # filtering): the user can ask to configure the endpoint anyway. The chat
+    # request that follows either works or fails with a real error, instead of
+    # leaving them with no way to try at all.
+    force = bool((body or {}).get("force"))
+
+    try:
+        endpoint = free_endpoints.get_endpoint(endpoint_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if force:
+        written = free_endpoints.apply_config(endpoint)
+
+        return {"configured": True, **written, "id": endpoint["id"], "label": endpoint["label"], "unverified": True}
+
+    try:
+        # A real request to the network — keep it off the event loop so the
+        # gateway's websocket stays responsive while the probe runs. wait_for
+        # bounds the whole call, not just each socket read.
+        await asyncio.wait_for(
+            asyncio.to_thread(free_endpoints.probe, endpoint),
+            timeout=_FREE_ENDPOINT_PROBE_TIMEOUT_S,
+        )
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                f"{endpoint['label']} did not answer in {_FREE_ENDPOINT_PROBE_TIMEOUT_S:.0f}s. "
+                "Try again, or pick a provider that uses your own key."
+            ),
+        ) from exc
     except RuntimeError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    cfg = load_config()
-    model = cfg.setdefault("model", {})
-    if not isinstance(model, dict):
-        model = cfg["model"] = {"default": model} if model else {}
-    model["provider"] = "custom"
-    model["base_url"] = base_url
-    model["api_key"] = omniroute.mint_local_token()
-    model.setdefault("default", "google/gemini-3-flash-preview")
-    save_config(cfg)
+    written = free_endpoints.apply_config(endpoint)
 
-    return {"base_url": base_url, "configured": True}
+    return {"configured": True, **written, "id": endpoint["id"], "label": endpoint["label"]}
+
+
+@app.get("/api/setup/omniroute/status")
+async def setup_omniroute_status() -> dict:
+    """Progress of the setup job: {state, progress, message, error}."""
+    snapshot = _omniroute_snapshot()
+    return {**snapshot, "configured": snapshot["state"] == "ready"}
 
 
 @app.get("/api/help/topics")

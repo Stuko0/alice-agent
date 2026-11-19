@@ -87,6 +87,12 @@ export const zh: Translations = {
       useLocalGateway: '使用本地网关',
       openLogs: '打开日志',
       repairHint: '修复会重新运行安装器，在新机器上可能需要几分钟。',
+      repairStartedTitle: 'Repairing Alice',
+      repairStartedMessage:
+        'Downloading and reinstalling the app. It will reopen on its own — this can take a few minutes.',
+      repairFailedTitle: 'Repair could not start',
+      repairFailedMessage:
+        'Downloading the installer failed. Check your connection, then download it again from alice-agent.stuko.dev.',
       remoteSignInHint: '打开网关登录窗口。也可以使用本地网关切换到随应用提供的后端。',
       hideRecentLogs: '隐藏最近日志',
       showRecentLogs: '显示最近日志',
@@ -1897,9 +1903,15 @@ export const zh: Translations = {
     featuredPitch: '一个订阅，300+ 前沿模型 — 运行 Alice 的推荐方式',
     freeProviderTitle: 'Free — no account needed',
     freeProviderBadge: 'Try it now',
-    freeProviderPitch: 'Starts a local gateway with a free model. No sign-up, no API key, nothing to install by hand.',
-    freeProviderStarting: 'Starting the free gateway… this can take a minute on first run.',
-    freeProviderFailed: 'The free gateway could not start. Pick another provider below, or try again.',
+    freeProviderPitch:
+      'Uses a public endpoint that answers without a key or an account. Nothing to install.',
+    freeProviderStarting: 'Checking the free endpoint…',
+    freeProviderFailed:
+      'The free endpoint did not answer. Pick another provider below, or try again.',
+    freeProviderBadgeBusy: 'Working',
+    freeProviderRetry: 'Try again',
+    freeProviderForce: 'Use it anyway',
+    freeProviderVerifying: 'Testing the free endpoint…',
     openRouterPitch: '一个密钥，数百个模型 — 稳妥的默认选择',
     apiKeyOptions: {
       openrouter: { short: '一个密钥，多个模型', description: '用一个密钥访问数百个模型。适合新安装的默认选择。' },
