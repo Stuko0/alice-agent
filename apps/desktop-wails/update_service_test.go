@@ -28,12 +28,20 @@ func TestShellQuote(t *testing.T) {
 }
 
 func TestVenvBinOnPathIncludesVenvBin(t *testing.T) {
-	// The Windows layout (venv/Scripts) is compile-verified via GOOS=windows;
-	// this asserts the shared invariant: the venv bin dir is prepended.
+	// The venv bin dir is prepended on every platform; its leaf differs
+	// (Scripts on Windows, bin elsewhere), so derive it with filepath.Join from
+	// the same input the helper receives.
 	got := venvBinOnPath("/root")
-	if !strings.Contains(got, filepath.Join("root", "venv", "bin")) {
-		t.Errorf("venv bin missing from PATH: %s", got)
+
+	want := filepath.Join("/root", "venv", "bin")
+	if runtime.GOOS == "windows" {
+		want = filepath.Join("/root", "venv", "Scripts")
 	}
+
+	if !strings.HasPrefix(got, want+string(os.PathListSeparator)) {
+		t.Fatalf("PATH should start with %q, got %s", want, got)
+	}
+
 	if !strings.Contains(got, string(os.PathListSeparator)) {
 		t.Errorf("expected PATH separator preserved: %s", got)
 	}
