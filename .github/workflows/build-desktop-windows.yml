@@ -82,13 +82,21 @@ jobs:
 
       - name: Install NSIS
         # wails build -nsis shells out to makensis; the stock image doesn't
-        # ship it. Chocolatey installs it under Program Files (x86).
+        # ship it. Chocolatey installs it under Program Files (x86). GITHUB_PATH
+        # only affects LATER steps, so validate with the absolute path here.
         run: |
           choco install nsis -y --no-progress
-          "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-          makensis -VERSION
+          $nsis = "C:\Program Files (x86)\NSIS"
+          if (-not (Test-Path (Join-Path $nsis "makensis.exe"))) {
+            $nsis = (Get-ChildItem "C:\Program Files*\NSIS" -Directory -ErrorAction SilentlyContinue |
+              Select-Object -First 1).FullName
+          }
+          if (-not $nsis -or -not (Test-Path (Join-Path $nsis "makensis.exe"))) {
+            throw "NSIS not found after choco install"
+          }
+          $nsis | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          & (Join-Path $nsis "makensis.exe") -VERSION
         shell: pwsh
-
       - name: Install npm dependencies (desktop)
         run: |
           cd apps/desktop
