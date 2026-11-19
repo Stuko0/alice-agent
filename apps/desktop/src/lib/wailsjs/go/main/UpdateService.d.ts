@@ -11,6 +11,8 @@ export function GetBranch():Promise<Record<string, string>>;
 
 export function GetVersion():Promise<main.DesktopVersionInfo>;
 
+export function Reinstall():Promise<main.UpdateApplyResult>;
+
 export function SetBranch(arg1:string):Promise<Record<string, string>>;
 
 export function SetContext(arg1:context.Context,arg2:string):Promise<void>;

@@ -116,10 +116,39 @@ export function BootFailureOverlay() {
     window.location.reload()
   }
 
+  // Repair downloads this release's installer and reruns it silently, then
+  // relaunches. It is the fix for an installer install whose bundled runtime
+  // is missing (deleted, or quarantined by an antivirus) — a plain retry cannot
+  // recover from that, which is why the button must report the real outcome
+  // instead of reloading on failure.
   const repair = async () => {
     setBusy('repair')
-    await window.aliceDesktop?.repairBootstrap().catch(() => undefined)
-    window.location.reload()
+
+    try {
+      const result = await window.aliceDesktop?.repairBootstrap()
+
+      if (result?.ok) {
+        notify({
+          kind: 'info',
+          title: copy.repairStartedTitle,
+          message: result.message ?? copy.repairStartedMessage
+        })
+
+        // A successful hand-off quits this process and reopens the app from the
+        // installer; reloading here would only race the shutdown.
+        return
+      }
+
+      notify({
+        kind: 'warning',
+        title: copy.repairFailedTitle,
+        message: result?.message ?? copy.repairFailedMessage
+      })
+    } catch (err) {
+      notifyError(err, copy.repairFailedTitle)
+    } finally {
+      setBusy(null)
+    }
   }
 
   const switchToLocalGateway = async () => {
@@ -174,7 +203,7 @@ export function BootFailureOverlay() {
 
   return (
     <div className="fixed inset-0 z-[1400] flex items-center justify-center bg-(--ui-chat-surface-background) p-6">
-      <div className="w-full max-w-[40rem] overflow-hidden rounded-xl border border-(--stroke-nous) bg-(--ui-chat-bubble-background) shadow-nous">
+      <div className="w-full max-w-[40rem] overflow-hidden rounded-xl border border-(--stroke-hairline) bg-(--ui-chat-bubble-background) shadow-ink">
         <div className="flex items-start gap-3 px-5 py-4">
           <ErrorIcon className="mt-0.5" size="1.25rem" />
           <div>

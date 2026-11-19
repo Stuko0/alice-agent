@@ -268,21 +268,158 @@ func (pm *PythonManager) GetAliceHome() string {
 	return pm.aliceHome
 }
 
+// bundledRuntimeDirs lists the `<install>/resources` directories the installer
+// payload may live in, most specific first.
+//
+// The exe's own directory is the normal case (NSIS installs the app and its
+// resources together). The extra candidates matter when the process was started
+// from somewhere else than the installed binary — an old shortcut, a pinned
+// taskbar entry or `alice desktop --skip-build` — and when the install scope put
+// the app under %LOCALAPPDATA%\Programs instead of beside the caller.
+func bundledRuntimeDirs() []string {
+	var dirs []string
+
+	add := func(dir string) {
+		if dir == "" {
+			return
+		}
+
+		for _, existing := range dirs {
+			if existing == dir {
+				return
+			}
+		}
+
+		dirs = append(dirs, dir)
+	}
+
+	if exe, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exe)
+		add(filepath.Join(exeDir, "resources"))
+		// Source layout: <repo>/apps/desktop-wails/build/bin, with
+		// resources.zip extracted at the repo root by install.ps1.
+		add(filepath.Join(exeDir, "..", "..", "..", "resources"))
+	}
+
+	if runtime.GOOS == "windows" {
+		if la := os.Getenv("LOCALAPPDATA"); la != "" {
+			add(filepath.Join(la, "Programs", "Alice", "resources"))
+			add(filepath.Join(la, "Programs", "Alice Agent Desktop", "resources"))
+		}
+
+		for _, base := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)")} {
+			if base == "" {
+				continue
+			}
+
+			add(filepath.Join(base, "Alice", "resources"))
+			add(filepath.Join(base, "Stuko", "Alice", "resources"))
+		}
+	}
+
+	return dirs
+}
+
 // installerRuntimeRoot returns the runtime tree shipped by the Windows NSIS
 // installer (<install dir>/resources/alice). It carries the agent sources so an
 // installer-only machine needs neither a git checkout nor the CLI.
 func installerRuntimeRoot() string {
-	exe, err := os.Executable()
-	if err != nil {
-		return ""
-	}
-
-	root := filepath.Join(filepath.Dir(exe), "resources", "alice")
-	if _, err := os.Stat(filepath.Join(root, "alice_cli", "main.py")); err == nil {
-		return root
+	for _, dir := range bundledRuntimeDirs() {
+		root := filepath.Join(dir, "alice")
+		if _, err := os.Stat(filepath.Join(root, "alice_cli", "main.py")); err == nil {
+			return root
+		}
 	}
 
 	return ""
+}
+
+// bundledPythonPath returns the interpreter shipped inside the installer
+// (`resources/python`), or "" when this is not an installer build.
+func bundledPythonPath() string {
+	for _, dir := range bundledRuntimeDirs() {
+		if runtime.GOOS == "windows" {
+			for _, name := range []string{"python.exe", "python3.exe"} {
+				candidate := filepath.Join(dir, "python", name)
+				if _, err := os.Stat(candidate); err == nil {
+					return candidate
+				}
+			}
+
+			continue
+		}
+
+		candidate := filepath.Join(dir, "python", "bin", "python3")
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+
+	return ""
+}
+
+// describePath renders a probe result for the boot log ("missing", dir, size).
+func describePath(path string) string {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "missing"
+		}
+
+		return err.Error()
+	}
+
+	if info.IsDir() {
+		return "directory"
+	}
+
+	return fmt.Sprintf("%d bytes", info.Size())
+}
+
+// runtimeSearchReport explains every place the boot looked for an interpreter
+// and what it found. Logged to $ALICE_HOME/logs/desktop-boot.log when no
+// runtime is usable: the overlay can only say "no usable Python", and without
+// the candidate list a remote "it does not start" report is unactionable — we
+// cannot tell a missing payload from an antivirus quarantine or a stale
+// shortcut launching a different executable.
+func (pm *PythonManager) runtimeSearchReport(root string) string {
+	var b strings.Builder
+
+	exe, err := os.Executable()
+	if err != nil {
+		fmt.Fprintf(&b, "python runtime search failed: executable unknown: %v\n", err)
+	} else {
+		fmt.Fprintf(&b, "python runtime search failed (executable: %s)\n", exe)
+	}
+
+	fmt.Fprintf(&b, "  project root: %s (alice_cli/main.py: %s)\n",
+		root, describePath(filepath.Join(root, "alice_cli", "main.py")))
+
+	if override := os.Getenv("ALICE_DESKTOP_PYTHON"); override != "" {
+		fmt.Fprintf(&b, "  ALICE_DESKTOP_PYTHON: %s (%s)\n", override, describePath(override))
+	}
+
+	venvName := "bin/python"
+	if runtime.GOOS == "windows" {
+		venvName = "Scripts/python.exe"
+	}
+
+	fmt.Fprintf(&b, "  ALICE_HOME venv: %s (%s)\n",
+		pm.aliceHome, describePath(filepath.Join(pm.aliceHome, "venv", filepath.FromSlash(venvName))))
+
+	for _, dir := range bundledRuntimeDirs() {
+		python := filepath.Join(dir, "python", "bin", "python3")
+		if runtime.GOOS == "windows" {
+			python = filepath.Join(dir, "python", "python.exe")
+		}
+
+		fmt.Fprintf(&b, "  bundled dir %s (python: %s, alice tree: %s)\n",
+			dir,
+			describePath(python),
+			describePath(filepath.Join(dir, "alice", "alice_cli", "main.py")))
+	}
+
+	return b.String()
 }
 
 // ResolveProjectRoot finds the alice-agent project root by looking for alice_cli/main.py
@@ -380,6 +517,12 @@ func (pm *PythonManager) findPythonForRoot(root string) string {
 		return aliceVenv
 	}
 
+	// The interpreter shipped with an installer build beats any home-relative
+	// guess: it is the runtime this exact shell was packaged with.
+	if bundled := bundledPythonPath(); bundled != "" {
+		return bundled
+	}
+
 	// Check common venv locations relative to home
 	homeDir, _ := os.UserHomeDir()
 	commonVenvs := []string{
@@ -397,26 +540,10 @@ func (pm *PythonManager) findPythonForRoot(root string) string {
 		if la := os.Getenv("LOCALAPPDATA"); la != "" {
 			commonVenvs = append(commonVenvs, filepath.Join(la, "alice", "venv", "Scripts", "python.exe"))
 		}
-		// Bundled python embed shipped beside the executable (resources/python)
-		if exe, err := os.Executable(); err == nil {
-			commonVenvs = append(commonVenvs, filepath.Join(filepath.Dir(exe), "resources", "python", "python.exe"))
-		}
 	}
 	for _, venv := range commonVenvs {
 		if _, err := os.Stat(venv); err == nil {
 			return venv
-		}
-	}
-
-	// Bundled Python embed shipped beside the executable (POSIX layout:
-	// resources/python/bin/python3). Windows already handles the
-	// resources/python/python.exe layout in the branches above.
-	if runtime.GOOS != "windows" {
-		if exe, err := os.Executable(); err == nil {
-			bundled := filepath.Join(filepath.Dir(exe), "resources", "python", "bin", "python3")
-			if _, err := os.Stat(bundled); err == nil {
-				return bundled
-			}
 		}
 	}
 
@@ -698,6 +825,7 @@ func (pm *PythonManager) StartGateway() error {
 	if debugFile != nil {
 		fmt.Fprintf(debugFile, "[Wails] pythonPath=%s, projectRoot=%s\n", pythonPath, projectRoot)
 	}
+	logBoot("boot: python=%q root=%q", pythonPath, projectRoot)
 
 	// No credible Python runtime → fail the boot loudly instead of spawning a
 	// broken interpreter that dies silently before announcing a port (the
@@ -707,14 +835,17 @@ func (pm *PythonManager) StartGateway() error {
 	// message in the boot snapshot; the renderer's error screen shows it.
 	if pythonPath == "" {
 		pm.mu.Unlock()
-		reason := "No usable Python runtime was found for the Alice backend. " +
-			"Install Python 3.10+ from python.org (or create a venv with it), " +
-			"then set ALICE_DESKTOP_PYTHON or run `alice desktop-setup`. " +
+		reason := "Alice could not find the Python runtime it needs for its backend. " +
+			"If you installed Alice with the Windows installer, reinstall it: the app ships its own " +
+			"runtime under resources\\python, so a missing or antivirus-quarantined folder is the usual cause. " +
+			"Running from a source checkout instead? Create the venv (uv venv / alice setup) or set " +
+			"ALICE_DESKTOP_PYTHON to a Python 3.10+ executable. " +
 			"(Windows note: the Microsoft Store 'python3.exe' alias does not count.)"
 		if debugFile != nil {
 			fmt.Fprintf(debugFile, "[Wails] %s\n", reason)
 		}
 		log.Printf("[Wails] %s", reason)
+		logBoot("%s", pm.runtimeSearchReport(projectRoot))
 		pm.recordBootError(reason)
 		return fmt.Errorf("%s", reason)
 	}

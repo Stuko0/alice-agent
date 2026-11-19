@@ -776,7 +776,11 @@ export function initWailsBridge(): void {
       unsupportedPlatform: null,
     }),
     resetBootstrap: async () => ({ ok: true }),
-    repairBootstrap: async () => ({ ok: true }),
+    // Real repair: download THIS release's installer, verify it and hand off to
+    // the silent installer watcher. Used by the boot-failure overlay when the
+    // bundled runtime (resources/python) is missing or was quarantined — there
+    // is no newer release to update to in that case.
+    repairBootstrap: async () => UpdateService.Reinstall(),
     cancelBootstrap: async () => ({ ok: true, cancelled: false }),
     onBootstrapEvent: () => () => {},
     getVersion: async () => UpdateService.GetVersion(),

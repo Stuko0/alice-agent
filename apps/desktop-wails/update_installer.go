@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -351,6 +352,67 @@ func (us *UpdateService) checkInstallerUpdate(root string, status UpdateStatus) 
 // applyInstallerUpdate downloads the next installer, verifies it and hands the
 // swap to a detached watcher, then quits so the watcher can run it.
 func (us *UpdateService) applyInstallerUpdate(root string) UpdateApplyResult {
+	return us.installLatestInstaller(root, false)
+}
+
+// Reinstall re-runs the current release's installer even when it is already the
+// installed version. This is what the boot-failure overlay's "Repair install"
+// calls: when resources/python is missing (deleted, or quarantined by an
+// antivirus), laying the payload down again is the fix, and there is no *newer*
+// release to fetch in that case.
+func (us *UpdateService) Reinstall() UpdateApplyResult {
+	root := us.projectRoot
+	if root == "" {
+		root = pmRootFallback()
+	}
+
+	if runtime.GOOS != "windows" {
+		return UpdateApplyResult{
+			OK:      false,
+			Error:   "repair-unavailable",
+			Message: "Reinstalling through the installer is only available on Windows. Rebuild the desktop app from the checkout instead.",
+		}
+	}
+
+	if hasGitCheckout(root) {
+		return UpdateApplyResult{
+			OK:      false,
+			Error:   "repair-unavailable",
+			Message: "This copy runs from a source checkout, not the Windows installer. Rebuild it (alice desktop --build-only) or install the release installer.",
+		}
+	}
+
+	return us.installLatestInstaller(root, true)
+}
+
+// installedLauncherPath returns the installed shell that sits beside the runtime
+// tree the installer just wrote (<install>/resources/alice →
+// <install>/alice-desktop.exe). A repair started from a portable download must
+// relaunch the freshly installed copy, not the one in Downloads.
+func installedLauncherPath() string {
+	name := "alice-desktop"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+
+	for _, dir := range bundledRuntimeDirs() {
+		if _, err := os.Stat(filepath.Join(dir, "alice", "alice_cli", "main.py")); err != nil {
+			continue
+		}
+
+		exe := filepath.Join(filepath.Dir(dir), name)
+		if _, err := os.Stat(exe); err == nil {
+			return exe
+		}
+	}
+
+	return ""
+}
+
+// installLatestInstaller downloads the release installer, verifies it and hands
+// the swap to a detached watcher. force ignores the version comparison and
+// always reinstalls (repair).
+func (us *UpdateService) installLatestInstaller(root string, force bool) UpdateApplyResult {
 	current := us.currentVersion(root)
 
 	metaClient := &http.Client{Timeout: 20 * time.Second}
@@ -362,7 +424,7 @@ func (us *UpdateService) applyInstallerUpdate(root string) UpdateApplyResult {
 		return UpdateApplyResult{OK: false, Error: "release-check-failed", Message: err.Error()}
 	}
 
-	if compareVersions(current, release.TagName) >= 0 {
+	if !force && compareVersions(current, release.TagName) >= 0 {
 		return UpdateApplyResult{OK: true, Message: fmt.Sprintf("Alice %s is already the latest version.", current)}
 	}
 
@@ -376,7 +438,11 @@ func (us *UpdateService) applyInstallerUpdate(root string) UpdateApplyResult {
 	dest := filepath.Join(os.TempDir(), fmt.Sprintf("alice-desktop-%s-installer.exe", tagForFilename(release.TagName)))
 
 	p5 := 5
-	us.emitProgress("download", fmt.Sprintf("Downloading Alice %s…", release.TagName), &p5)
+	if force {
+		us.emitProgress("download", fmt.Sprintf("Downloading the Alice %s installer to repair this install…", release.TagName), &p5)
+	} else {
+		us.emitProgress("download", fmt.Sprintf("Downloading Alice %s…", release.TagName), &p5)
+	}
 
 	downloadClient := &http.Client{Timeout: 30 * time.Minute}
 
@@ -393,7 +459,11 @@ func (us *UpdateService) applyInstallerUpdate(root string) UpdateApplyResult {
 		}
 
 		lastPercent = percent
-		us.emitProgress("download", fmt.Sprintf("Downloading Alice %s… %d%%", release.TagName, percent), &percent)
+		if force {
+			us.emitProgress("download", fmt.Sprintf("Downloading the installer… %d%%", percent), &percent)
+		} else {
+			us.emitProgress("download", fmt.Sprintf("Downloading Alice %s… %d%%", release.TagName, percent), &percent)
+		}
 	})
 	if err != nil {
 		us.emitProgress("error", err.Error(), nil)
@@ -402,11 +472,21 @@ func (us *UpdateService) applyInstallerUpdate(root string) UpdateApplyResult {
 	}
 
 	p90 := 90
-	us.emitProgress("install", fmt.Sprintf("Installing Alice %s…", release.TagName), &p90)
+	if force {
+		us.emitProgress("install", fmt.Sprintf("Reinstalling Alice %s…", release.TagName), &p90)
+	} else {
+		us.emitProgress("install", fmt.Sprintf("Installing Alice %s…", release.TagName), &p90)
+	}
 
 	exe, err := os.Executable()
 	if err != nil {
 		return UpdateApplyResult{OK: false, Error: "relaunch-failed", Message: "Could not resolve the app executable."}
+	}
+
+	if force {
+		if installed := installedLauncherPath(); installed != "" {
+			exe = installed
+		}
 	}
 
 	script, err := writeInstallerWatcher(os.Getpid(), dest, exe)
@@ -419,7 +499,11 @@ func (us *UpdateService) applyInstallerUpdate(root string) UpdateApplyResult {
 	}
 
 	p100 := 100
-	us.emitProgress("restart", "Restarting Alice with the new version…", &p100)
+	if force {
+		us.emitProgress("restart", fmt.Sprintf("Restarting Alice %s…", release.TagName), &p100)
+	} else {
+		us.emitProgress("restart", "Restarting Alice with the new version…", &p100)
+	}
 	us.quitSoon()
 
 	return UpdateApplyResult{OK: true, HandedOff: true}

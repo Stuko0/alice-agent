@@ -87,6 +87,12 @@ export const zhHant = defineLocale({
       useLocalGateway: '使用本機閘道',
       openLogs: '開啟記錄',
       repairHint: '修復會重新執行安裝程式，在新機器上可能需要幾分鐘。',
+      repairStartedTitle: 'Repairing Alice',
+      repairStartedMessage:
+        'Downloading and reinstalling the app. It will reopen on its own — this can take a few minutes.',
+      repairFailedTitle: 'Repair could not start',
+      repairFailedMessage:
+        'Downloading the installer failed. Check your connection, then download it again from alice-agent.stuko.dev.',
       remoteSignInHint: '開啟閘道登入視窗。使用本機閘道可切換至內建後端。',
       hideRecentLogs: '隱藏最近記錄',
       showRecentLogs: '顯示最近記錄',

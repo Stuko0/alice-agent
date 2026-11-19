@@ -79,3 +79,64 @@ func TestLogGetRecentLogsAll(t *testing.T) {
 		t.Fatalf("got %d lines, want 3", len(got))
 	}
 }
+func TestLogGetRecentLogsIncludesShellBootLog(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("ALICE_HOME", home)
+	logsDir := filepath.Join(home, "logs")
+	if err := os.MkdirAll(logsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(filepath.Join(logsDir, "agent.log"), []byte("agent line\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// The shell writes this before the backend exists, so it is the only trace
+	// of a boot that never reached Python.
+	logBoot("boot: python=%q", "")
+	logBoot("python runtime search failed (executable: C:\\Alice\\alice-desktop.exe)")
+
+	got, err := NewLogService().GetRecentLogs(20)
+	if err != nil {
+		t.Fatalf("GetRecentLogs: %v", err)
+	}
+
+	if len(got) < 3 {
+		t.Fatalf("got %d lines, want the agent line plus both boot lines: %q", len(got), got)
+	}
+
+	joined := strings.Join(got, "")
+	for _, want := range []string{"agent line", "boot: python=", "runtime search failed"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("missing %q in %q", want, joined)
+		}
+	}
+
+	// The boot decision must survive at the tail: the overlay renders the
+	// last 40 lines of this list.
+	if !strings.Contains(got[len(got)-1], "runtime search failed") {
+		t.Fatalf("boot log should end the list, got %q", got[len(got)-1])
+	}
+}
+
+func TestLogBootAppendsToProfileLog(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("ALICE_HOME", home)
+
+	logBoot("first %d", 1)
+	logBoot("second %s", "two")
+
+	want := filepath.Join(home, "logs", bootLogName)
+	if filepath.Clean(bootLogPath()) != want {
+		t.Fatalf("bootLogPath() = %q, want %q", bootLogPath(), want)
+	}
+
+	data, err := os.ReadFile(want)
+	if err != nil {
+		t.Fatalf("reading boot log: %v", err)
+	}
+
+	if !strings.Contains(string(data), "first 1") || !strings.Contains(string(data), "second two") {
+		t.Fatalf("boot log missing entries: %q", data)
+	}
+}

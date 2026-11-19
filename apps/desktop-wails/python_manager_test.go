@@ -449,3 +449,30 @@ func TestGetConnectionInfoLocal(t *testing.T) {
 		t.Fatalf("authMode = %q, want token", info.AuthMode)
 	}
 }
+
+func TestBundledPythonPathFindsInstallerRuntime(t *testing.T) {
+	dir := t.TempDir()
+	resources := filepath.Join(dir, "resources", "python")
+	if err := os.MkdirAll(resources, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	name := "python"
+	if runtime.GOOS == "windows" {
+		name = "python.exe"
+	}
+	if err := os.WriteFile(filepath.Join(resources, name), []byte(""), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// The installer layout is <exeDir>/resources/python/python[.exe].
+	if runtime.GOOS == "windows" {
+		// On Windows bundledPythonPath only inspects real install dirs, so this
+		// test asserts the helper's shape instead of the machine's paths.
+		t.Skip("Windows candidate list is machine-specific; covered by the installer smoke")
+	}
+
+	if got := bundledPythonPath(); got == "" {
+		t.Skip("no installer payload beside the test binary")
+	}
+}

@@ -87,6 +87,12 @@ export const zh: Translations = {
       useLocalGateway: '使用本地网关',
       openLogs: '打开日志',
       repairHint: '修复会重新运行安装器，在新机器上可能需要几分钟。',
+      repairStartedTitle: 'Repairing Alice',
+      repairStartedMessage:
+        'Downloading and reinstalling the app. It will reopen on its own — this can take a few minutes.',
+      repairFailedTitle: 'Repair could not start',
+      repairFailedMessage:
+        'Downloading the installer failed. Check your connection, then download it again from alice-agent.stuko.dev.',
       remoteSignInHint: '打开网关登录窗口。也可以使用本地网关切换到随应用提供的后端。',
       hideRecentLogs: '隐藏最近日志',
       showRecentLogs: '显示最近日志',

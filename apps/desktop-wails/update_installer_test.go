@@ -449,3 +449,25 @@ func TestCurrentVersionPrefersStampedBuildVersion(t *testing.T) {
 		t.Fatalf("currentVersion without a stamp = %q, want 0.23.4 from the tree", got)
 	}
 }
+
+func TestReinstallRefusesNonInstallerInstall(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	us := &UpdateService{projectRoot: root}
+	result := us.Reinstall()
+
+	if result.OK {
+		t.Fatal("Reinstall on a source checkout should fail, not pretend to repair")
+	}
+
+	if result.Error != "repair-unavailable" {
+		t.Fatalf("error = %q, want repair-unavailable", result.Error)
+	}
+
+	if !strings.Contains(result.Message, "source checkout") && !strings.Contains(result.Message, "Windows") {
+		t.Fatalf("message should say why repair cannot run here, got %q", result.Message)
+	}
+}

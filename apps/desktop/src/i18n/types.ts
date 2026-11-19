@@ -132,6 +132,10 @@ export interface Translations {
       useLocalGateway: string
       openLogs: string
       repairHint: string
+      repairStartedTitle: string
+      repairStartedMessage: string
+      repairFailedTitle: string
+      repairFailedMessage: string
       remoteSignInHint: string
       hideRecentLogs: string
       showRecentLogs: string
