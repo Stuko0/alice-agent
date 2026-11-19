@@ -1788,6 +1788,7 @@ export const zhHant = defineLocale({
     freeProviderBadgeBusy: 'Working',
     freeProviderRetry: 'Try again',
     freeProviderForce: 'Use it anyway',
+    freeProviderVerifying: 'Testing the free endpoint…',
     openRouterPitch: '一個金鑰，數百個模型 — 穩定的預設選擇',
     apiKeyOptions: {
       openrouter: { short: '一個金鑰，多個模型', description: '用一個金鑰存取數百個模型。適合新安裝的預設選擇。' },

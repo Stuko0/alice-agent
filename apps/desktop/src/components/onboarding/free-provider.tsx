@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import { useI18n } from '@/i18n'
 import { ChevronRight, Loader2, Zap } from '@/lib/icons'
-import type { OnboardingContext } from '@/store/onboarding'
+import { completeDesktopOnboarding, type OnboardingContext } from '@/store/onboarding'
 
 /**
  * Free, no-account provider.
@@ -29,6 +29,20 @@ export function FreeProviderRow({ ctx }: FreeProviderRowProps) {
   const { t } = useI18n()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [verifying, setVerifying] = useState(false)
+
+  const fail = (message?: string) =>
+    setError(message?.trim() || t.onboarding.freeProviderFailed || 'The free endpoint did not answer.')
+
+  // The onboarding store, not this row, decides whether the overlay closes —
+  // and it re-checks readiness on a timer. Writing the config alone was not
+  // enough: the poll disagreed, the modal stayed (or came back) with the row
+  // reset to idle, which reads as "it did nothing". Completing the flow here
+  // is what the OAuth providers do once their credentials are live.
+  const complete = () => {
+    completeDesktopOnboarding()
+    ctx.onCompleted?.()
+  }
 
   const start = async (force = false) => {
     if (busy) {
@@ -38,13 +52,14 @@ export function FreeProviderRow({ ctx }: FreeProviderRowProps) {
     const api = window.aliceDesktop?.api
 
     if (!api) {
-      setError('Desktop bridge unavailable.')
+      fail('Desktop bridge unavailable.')
 
       return
     }
 
     setBusy(true)
     setError(null)
+    setVerifying(false)
 
     try {
       const result = await api<FreeEndpointResult>({
@@ -56,16 +71,36 @@ export function FreeProviderRow({ ctx }: FreeProviderRowProps) {
       })
 
       if (!result?.configured) {
-        setError(t.onboarding.freeProviderFailed)
+        fail()
 
         return
       }
 
-      ctx.onCompleted?.()
+      if (!force) {
+        // Configured is not the same as working. Run one real completion
+        // through the gateway — the same client the first chat message uses —
+        // so a broken endpoint surfaces here, with its error, instead of
+        // closing the modal and failing on the user's first prompt.
+        setVerifying(true)
+
+        const reply = await ctx.requestGateway<{ text?: string }>('llm.oneshot', {
+          input: 'ping',
+          instructions: 'Reply with the single word: ready',
+          max_tokens: 24,
+          temperature: 0
+        })
+
+        if (!reply?.text?.trim()) {
+          throw new Error('The free endpoint answered with an empty message.')
+        }
+      }
+
+      complete()
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      fail(err instanceof Error ? err.message : String(err))
     } finally {
       setBusy(false)
+      setVerifying(false)
     }
   }
 
@@ -89,7 +124,11 @@ export function FreeProviderRow({ ctx }: FreeProviderRowProps) {
             </span>
           </div>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {busy ? t.onboarding.freeProviderStarting : t.onboarding.freeProviderPitch}
+            {busy
+              ? verifying
+                ? t.onboarding.freeProviderVerifying
+                : t.onboarding.freeProviderStarting
+              : t.onboarding.freeProviderPitch}
           </p>
         </div>
         {busy ? (

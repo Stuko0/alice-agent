@@ -1778,6 +1778,7 @@ export const en: Translations = {
     freeProviderBadgeBusy: 'Working',
     freeProviderRetry: 'Try again',
     freeProviderForce: 'Use it anyway',
+    freeProviderVerifying: 'Testing the free endpoint…',
     openRouterPitch: 'One key, hundreds of models — a solid default',
     apiKeyOptions: {
       openrouter: {

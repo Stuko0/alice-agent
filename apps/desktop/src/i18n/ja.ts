@@ -1843,6 +1843,7 @@ export const ja = defineLocale({
     freeProviderBadgeBusy: 'Working',
     freeProviderRetry: 'Try again',
     freeProviderForce: 'Use it anyway',
+    freeProviderVerifying: 'Testing the free endpoint…',
     openRouterPitch: '1 つのキーで数百のモデル — 堅実なデフォルト',
     apiKeyOptions: {
       openrouter: {
