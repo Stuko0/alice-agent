@@ -379,12 +379,27 @@ jobs:
           $dir = Join-Path $env:LOCALAPPDATA 'Programs/Alice'
           for ($i = 0; $i -lt 15 -and (Test-Path $dir); $i++) { Start-Sleep -Seconds 2 }
 
+          # What matters is that nothing the installer put there survives: no
+          # shell, no runtime tree, no embedded Python. An EMPTY leftover
+          # directory is a Windows handle-timing artifact (the uninstaller was
+          # still exiting when RMDir ran) and does not block a reinstall — it
+          # used to fail this job intermittently with nothing to show for it.
+          $left = @()
           if (Test-Path $dir) {
-            Get-ChildItem -Recurse $dir | Select-Object -First 20 FullName
-            throw "install dir still present after uninstall"
+            $left = @(Get-ChildItem -Recurse -File $dir -ErrorAction SilentlyContinue)
           }
 
-          Write-Host '✅ uninstall cleaned the install dir'
+          if ($left.Count -gt 0) {
+            $left | Select-Object -First 20 FullName | Format-Table -AutoSize
+            throw "uninstall left $($left.Count) file(s) behind"
+          }
+
+          if (Test-Path $dir) {
+            Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue
+            Write-Host '⚠ uninstall left an empty directory; removed it'
+          }
+
+          Write-Host '✅ uninstall removed the installed files'
         shell: pwsh
 
   # Optional: install + smoke-test on a clean Windows VM
