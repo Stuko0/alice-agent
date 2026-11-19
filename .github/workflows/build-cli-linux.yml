@@ -11,6 +11,12 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      publish_tag:
+        description: 'Release tag to upload the CLI to (empty = build only)'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
@@ -114,10 +120,12 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Upload to release (on tag push only)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Upload to release (tag push or manual publish)
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.publish_tag != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.publish_tag != '' && inputs.publish_tag || github.ref_name }}
+          make_latest: ${{ inputs.publish_tag != '' }}
           files: alice-linux-x86_64.tar.gz
           generate_release_notes: false
         env:

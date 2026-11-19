@@ -48,6 +48,54 @@ jobs:
       - uses: ./.github/actions/retry
         with:
           command: npm ci
+      # Preview-specific renderer tests (loopback origin wiring, sandbox,
+      # teardown, lazy diff/markdown, read cache). Scoped to the preview suite
+      # so unrelated pre-existing failures in the wider renderer suite cannot
+      # block this gate.
+      - name: Preview renderer tests
+        run: >-
+          npm run --prefix apps/desktop test:ui --
+          src/app/chat/right-rail
+          src/store/preview-lru.test.ts
+          src/lib/shiki-cache.test.ts
+          src/lib/preview-text-cache.test.ts
+          src/lib/preview-telemetry.test.ts
+          src/lib/desktop-capabilities.test.ts
+      # Interaction invariants from apps/desktop/INTERACTION-PERFORMANCE-PLAN.md:
+      # executable contracts (one git probe per click, no chat re-render on a
+      # pane toggle, no terminal rAF polling, graph served by the loopback
+      # origin, coalesced persistence, delete failure keeps the runtime alive).
+      # Deterministic — no display, no Electron, no network.
+      - name: Interaction invariants
+        run: >-
+          npm run --prefix apps/desktop test:ui --
+          src/app/shell/main-pane-routes.test.tsx
+          src/app/shell/graphify-canvas.test.tsx
+          src/app/chat/chat-view-switch.test.tsx
+          src/app/right-sidebar/terminal/persistent.test.tsx
+          src/app/session/hooks/use-session-actions.test.tsx
+          src/store/review.toggle.test.ts
+          src/store/pane-visibility.test.ts
+          src/store/panes.test.ts
+          src/store/coding-status.test.ts
+          src/lib/interaction-telemetry.test.ts
+          src/app/settings/interaction-stats-panel.test.tsx
+          src/lib/desktop-bridge.teardown.test.ts
+          src/architecture-layers.test.ts
+          src/app/composition-root.test.ts
+          src/components/pane-shell/pane-shell.test.tsx
+          src/lib/graphify-html-cache.test.ts
+          src/lib/persisted-keys.test.ts
+          src/store/wire.test.ts
+          src/app/shell/render-scope.test.tsx
+          src/app/shell-capabilities.test.ts
+          src/app/chat/sidebar/session-row.test.ts
+          src/app/chat/sidebar/sidebar-sections.test.tsx
+          src/alice.test.ts
+      # Pure-node check of the latency harness (stats + case table). The p95
+      # measurement itself needs a display and runs manually.
+      - name: Interaction harness self-test
+        run: node apps/desktop/scripts/measure-interactions.mjs --self-test
       - run: npm run --prefix apps/desktop build
 
   # Bridge surface parity (Wails vs the deprecated Electron preload contract).

@@ -3098,10 +3098,16 @@ async def api_setup_status(request: Request):
     """
     cfg = load_config()
     model_cfg = cfg.get("model", {}) if isinstance(cfg.get("model"), dict) else {}
+    # The model id lives under `model.default` in current configs (and under
+    # `model.model` in older ones). Checking only the legacy key reported a
+    # perfectly configured install as unconfigured, so the desktop mounted its
+    # first-run "Welcome to Alice" wizard on every launch — behind a full-screen
+    # backdrop blur that made the whole UI feel slow.
+    model_name = str(model_cfg.get("default") or model_cfg.get("model") or "").strip()
     return {
-        "configured": bool(model_cfg.get("provider") and model_cfg.get("model")),
+        "configured": bool(model_cfg.get("provider") and model_name),
         "provider": model_cfg.get("provider"),
-        "model": model_cfg.get("model"),
+        "model": model_name or None,
         "terminal_backend": cfg_get(cfg, "terminal", "backend", default="local"),
     }
 
@@ -3977,6 +3983,20 @@ async def get_action_status(name: str, lines: int = 200):
     }
 
 
+def _trim_session_list_row(session: Dict[str, Any]) -> Dict[str, Any]:
+    """Strip fields the session list never renders.
+
+    ``system_prompt`` is the conversation's full cached system prompt (tens of
+    KB per row). Measured on a real profile: 2.72 MB of a 50-row list payload
+    was 99.8% ``system_prompt``. The sidebar/catalog only needs id/title/model/
+    preview/counts/timestamps, so the list endpoints drop it. Session DETAIL
+    (``GET /api/sessions/{id}``) still returns it for anything that needs it.
+    """
+    session.pop("system_prompt", None)
+
+    return session
+
+
 @app.get("/api/sessions")
 async def get_sessions(
     limit: int = 20,
@@ -4056,6 +4076,7 @@ async def get_sessions(
                     s["is_default_profile"] = profile_name == "default"
                 # SQLite stores the flag as 0/1; expose a real JSON boolean.
                 s["archived"] = bool(s.get("archived"))
+                _trim_session_list_row(s)
             return {"sessions": sessions, "total": total, "limit": limit, "offset": offset}
         finally:
             db.close()
@@ -4166,7 +4187,7 @@ def get_profiles_sessions(
                     and (now - s.get("last_active", s.get("started_at", 0))) < 300
                 )
                 s["archived"] = bool(s.get("archived"))
-                merged.append(s)
+                merged.append(_trim_session_list_row(s))
         except Exception as exc:
             errors.append({"profile": name, "error": str(exc)})
         finally:
@@ -4709,59 +4730,15 @@ def get_recommended_default_model(provider: str = ""):
     """Return the recommended default model for a freshly-authenticated provider.
 
     Mirrors the model-curation `alice model` does so GUI onboarding lands on a
-    sensible default instead of blindly taking the first curated entry. For
-    Nous this honors the user's free/paid tier: free users get a free model,
-    paid users get the full curated default. For any other provider it falls
-    back to the first curated model (same as before).
+    sensible default instead of blindly taking the first curated entry.
 
-    Response: {"provider": str, "model": str, "free_tier": bool | None}
-    where free_tier is True/False for Nous and None otherwise. `model` may be
-    empty if nothing could be resolved (caller degrades gracefully).
+    Response: {"provider": str, "model": str, "free_tier": None}
+    `free_tier` is kept in the shape for older clients; no provider prices a
+    tiered catalog today, so it is always null. `model` may be empty if
+    nothing could be resolved (caller degrades gracefully).
     """
     slug = (provider or "").strip().lower()
 
-    if slug == "nous":
-        try:
-            from alice_cli.models import (
-                get_curated_nous_model_ids,
-                get_pricing_for_provider,
-                check_nous_free_tier,
-                partition_nous_models_by_tier,
-                union_with_portal_free_recommendations,
-                union_with_portal_paid_recommendations,
-            )
-            from alice_cli.auth import get_provider_auth_state
-
-            model_ids = get_curated_nous_model_ids()
-            pricing = get_pricing_for_provider("nous") or {}
-            free_tier = check_nous_free_tier(force_fresh=True)
-
-            portal_url = ""
-            try:
-                state = get_provider_auth_state("nous") or {}
-                portal_url = state.get("portal_base_url", "") or ""
-            except Exception:
-                portal_url = ""
-
-            if free_tier:
-                model_ids, pricing = union_with_portal_free_recommendations(
-                    model_ids, pricing, portal_url
-                )
-                model_ids, _unavailable = partition_nous_models_by_tier(
-                    model_ids, pricing, free_tier=True
-                )
-            else:
-                model_ids, pricing = union_with_portal_paid_recommendations(
-                    model_ids, pricing, portal_url
-                )
-
-            model = model_ids[0] if model_ids else ""
-            return {"provider": "nous", "model": model, "free_tier": bool(free_tier)}
-        except Exception:
-            _log.exception("GET /api/model/recommended-default (nous) failed")
-            return {"provider": "nous", "model": "", "free_tier": None}
-
-    # Non-Nous: first curated model for the provider, matching prior behaviour.
     try:
         from alice_cli.inventory import build_models_payload, load_picker_context
 
@@ -4968,34 +4945,10 @@ def _apply_model_assignment_sync(
         )
         cfg["model"] = model_cfg
 
-        # When switching the main provider to Nous, mirror the CLI's
-        # post-model-selection behaviour (alice_cli/main.py
-        # prompt_enable_tool_gateway / tools_config apply_nous_managed_defaults):
-        # auto-route any *unconfigured* tools through the Nous Tool Gateway.
-        # This is purely additive — apply_nous_managed_defaults skips every
-        # tool where the user already has a direct key (FIRECRAWL_API_KEY,
-        # FAL_KEY, etc.) or an explicit backend/provider in config, so it
-        # never overwrites a user's own setup. GUI users thus land on the
-        # gateway the same way CLI users do, without a separate prompt.
+        # Tools that were auto-routed through a managed gateway. Always
+        # empty now that no provider ships a tool-gateway bundle; kept in the
+        # response shape for older clients.
         gateway_tools: list[str] = []
-        if provider.strip().lower() == "nous":
-            try:
-                from alice_cli.nous_subscription import apply_nous_managed_defaults
-                from alice_cli.tools_config import _get_platform_tools
-
-                enabled = _get_platform_tools(
-                    cfg, "cli", include_default_mcp_servers=False
-                )
-                changed = apply_nous_managed_defaults(
-                    cfg,
-                    enabled_toolsets=enabled,
-                    force_fresh=True,
-                )
-                gateway_tools = sorted(changed)
-            except Exception:
-                # Portal lookup hiccups / non-subscriber / non-nous gating
-                # must never block saving the model assignment.
-                _log.debug("apply_nous_managed_defaults skipped", exc_info=True)
 
         save_config(cfg)
 
@@ -6748,7 +6701,7 @@ async def test_messaging_platform(platform_id: str, profile: Optional[str] = Non
 #
 # Phase 1 surfaces *which OAuth providers exist* and whether each is
 # connected, plus a disconnect button. The actual login flow (PKCE for
-# Anthropic, device-code for Nous/Codex) still runs in the CLI for now;
+# Anthropic, device-code for Codex) still runs in the CLI for now;
 # Phase 2 will add in-browser flows. For unconnected providers we return
 # the canonical ``alice auth add <provider>`` command so the dashboard
 # can surface a one-click copy.
@@ -6911,7 +6864,7 @@ _OAUTH_PROVIDER_CATALOG: tuple[Dict[str, Any], ...] = (
     # ── OAuth providers in recommended order ──────────────────────────
     # GitHub Copilot is the first/default — free with a GitHub account,
     # no API key needed. Followed by other OAuth-first providers, then
-    # API-key providers, then Nous Portal (available but not default).
+    # API-key providers.
     {
         "id": "copilot-acp",
         "name": "GitHub Copilot (ACP)",
@@ -6953,7 +6906,7 @@ _OAUTH_PROVIDER_CATALOG: tuple[Dict[str, Any], ...] = (
         # MiniMax's flow is structurally device-code (verification URI +
         # user code, backend polls the token endpoint) with a PKCE
         # extension for code-binding. The dashboard renders the same UX
-        # as Nous's device-code flow; the PKCE bit is a security
+        # as the Codex device-code flow; the PKCE bit is a security
         # extension that doesn't change the operator experience.
         "flow": "device_code",
         "cli_command": "alice auth add minimax-oauth",
@@ -6977,17 +6930,6 @@ _OAUTH_PROVIDER_CATALOG: tuple[Dict[str, Any], ...] = (
         "docs_url": "https://docs.claude.com/en/docs/claude-code",
         "status_fn": _claude_code_only_status,
     },
-    # ── Legacy / third-party providers ───────────────────────────────
-    # Nous Portal is available as an optional provider but is NOT the
-    # default or recommended. Users who want it can find it here.
-    {
-        "id": "nous",
-        "name": "Nous Portal",
-        "flow": "device_code",
-        "cli_command": "alice auth add nous",
-        "docs_url": "https://stuko.dev",
-        "status_fn": None,  # dispatched via auth.get_nous_auth_status
-    },
 )
 
 
@@ -7000,16 +6942,6 @@ def _resolve_provider_status(provider_id: str, status_fn) -> Dict[str, Any]:
             return {"logged_in": False, "error": str(e)}
     try:
         from alice_cli import auth as hauth
-        if provider_id == "nous":
-            raw = hauth.get_nous_auth_status()
-            return {
-                "logged_in": bool(raw.get("logged_in")),
-                "source": "nous_portal",
-                "source_label": raw.get("portal_base_url") or "Nous Portal",
-                "token_preview": _truncate_token(raw.get("access_token")),
-                "expires_at": raw.get("access_expires_at"),
-                "has_refresh_token": bool(raw.get("has_refresh_token")),
-            }
         if provider_id == "openai-codex":
             raw = hauth.get_codex_auth_status()
             return {
@@ -7272,10 +7204,8 @@ async def disconnect_oauth_provider(
             return {"ok": bool(cleared), "provider": provider_id}
 
         try:
-            from alice_cli.auth import clear_provider_auth, invalidate_nous_auth_status_cache
+            from alice_cli.auth import clear_provider_auth
             cleared = clear_provider_auth(provider_id)
-            if provider_id == "nous":
-                invalidate_nous_auth_status_cache()
             _log.info("oauth/disconnect: %s (cleared=%s)", provider_id, cleared)
             return {"ok": bool(cleared), "provider": provider_id}
         except Exception as e:
@@ -7300,8 +7230,8 @@ async def disconnect_oauth_provider(
 #          → persists to ~/.alice/.anthropic_oauth.json AND credential pool
 #          → returns { ok: true, status: "approved" }
 #
-#   Device code (Nous, OpenAI Codex):
-#     1. POST /api/providers/oauth/{nous|openai-codex}/start
+#   Device code (OpenAI Codex, MiniMax):
+#     1. POST /api/providers/oauth/{openai-codex|minimax-oauth}/start
 #          → server hits provider's device-auth endpoint
 #          → gets { user_code, verification_url, device_code, interval, expires_in }
 #          → spawns background poller thread that polls the token endpoint
@@ -7587,64 +7517,12 @@ async def _start_device_code_flow(
     provider_id: str,
     profile: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Initiate a device-code flow (Nous, OpenAI Codex, or MiniMax).
+    """Initiate a device-code flow (OpenAI Codex or MiniMax).
 
     Calls the provider's device-auth endpoint via the existing CLI helpers,
     then spawns a background poller. Returns the user-facing display fields
     so the UI can render the verification page link + user code.
     """
-    if provider_id == "nous":
-        from alice_cli.auth import (
-            _request_device_code,
-            PROVIDER_REGISTRY,
-        )
-        import httpx
-        pconfig = PROVIDER_REGISTRY["nous"]
-        portal_base_url = (
-            os.getenv("ALICE_PORTAL_BASE_URL")
-            or os.getenv("NOUS_PORTAL_BASE_URL")
-            or pconfig.portal_base_url
-        ).rstrip("/")
-        client_id = pconfig.client_id
-        scope = pconfig.scope
-
-        def _do_nous_device_request():
-            with httpx.Client(
-                timeout=httpx.Timeout(15.0),
-                headers={"Accept": "application/json"},
-            ) as client:
-                return (
-                    _request_device_code(
-                        client=client,
-                        portal_base_url=portal_base_url,
-                        client_id=client_id,
-                        scope=scope,
-                    ),
-                    scope,
-                )
-
-        device_data, effective_scope = await asyncio.get_running_loop().run_in_executor(
-            None, _do_nous_device_request
-        )
-        sid, sess = _new_oauth_session("nous", "device_code", profile=profile)
-        sess["device_code"] = str(device_data["device_code"])
-        sess["interval"] = int(device_data["interval"])
-        sess["expires_at"] = time.time() + int(device_data["expires_in"])
-        sess["portal_base_url"] = portal_base_url
-        sess["client_id"] = client_id
-        sess["scope"] = effective_scope
-        threading.Thread(
-            target=_nous_poller, args=(sid,), daemon=True, name=f"oauth-poll-{sid[:6]}"
-        ).start()
-        return {
-            "session_id": sid,
-            "flow": "device_code",
-            "user_code": str(device_data["user_code"]),
-            "verification_url": str(device_data["verification_uri_complete"]),
-            "expires_in": int(device_data["expires_in"]),
-            "poll_interval": int(device_data["interval"]),
-        }
-
     if provider_id == "openai-codex":
         # Codex uses fixed OpenAI device-auth endpoints; reuse the helper.
         sid, _ = _new_oauth_session("openai-codex", "device_code", profile=profile)
@@ -7683,7 +7561,7 @@ async def _start_device_code_flow(
     if provider_id == "minimax-oauth":
         # MiniMax uses a device-code-style flow (verification URI + user
         # code + background poll) with a PKCE extension on top. From the
-        # operator's perspective it's identical to Nous's device-code
+        # operator's perspective it's identical to the Codex device-code
         # flow; the PKCE bit (verifier + challenge from
         # _minimax_pkce_pair) is a security extension that binds the
         # token exchange to the original session.
@@ -7975,7 +7853,7 @@ def _add_xai_oauth_pool_entry(
 
 
 def _nous_poller(session_id: str) -> None:
-    """Background poller that drives a Nous device-code flow to completion."""
+    """Background poller that drives a device-code flow to completion."""
     from alice_cli.auth import (
         _poll_for_token,
         refresh_nous_oauth_from_state,
@@ -8030,9 +7908,9 @@ def _nous_poller(session_id: str) -> None:
             persist_nous_credentials(full_state)
         with _oauth_sessions_lock:
             sess["status"] = "approved"
-        _log.info("oauth/device: nous login completed (session=%s)", session_id)
+        _log.info("oauth/device: login completed (session=%s)", session_id)
     except Exception as e:
-        _log.warning("nous device-code poll failed (session=%s): %s", session_id, e)
+        _log.warning("device-code poll failed (session=%s): %s", session_id, e)
         with _oauth_sessions_lock:
             sess["status"] = "error"
             sess["error_message"] = str(e)
@@ -8043,7 +7921,7 @@ def _minimax_poller(session_id: str) -> None:
 
     Mirrors `_nous_poller` but calls the MiniMax-specific token endpoint,
     which uses a PKCE-style ``code_verifier`` + ``user_code`` rather than
-    the ``device_code`` field used by Nous. On success, builds the same
+    the ``device_code`` field used by Codex. On success, builds the same
     auth_state dict that ``_minimax_oauth_login`` (the CLI flow) builds
     and persists via ``_minimax_save_auth_state`` — so the dashboard
     path leaves the system in the same state as
@@ -8312,7 +8190,7 @@ async def poll_oauth_session(
 ):
     """Poll a session's status (no auth — read-only state).
 
-    Shared by the device-code flows (Nous, OpenAI Codex, MiniMax) and the
+    Shared by the device-code flows (OpenAI Codex, MiniMax) and the
     loopback flow (xAI Grok). Both surface progress through the same
     background-worker-updated ``status`` field, so a single poll endpoint
     serves them all.
@@ -8638,8 +8516,89 @@ async def get_session_latest_descendant(session_id: str):
         "changed": bool(path and latest != path[0]),
     }
 
+# Fields the transcript renderer never reads, dropped from the default message
+# payload. ``reasoning_content`` is a byte-for-byte duplicate of ``reasoning``
+# on every provider we persist (measured on a 739-message session: 684.8 KB
+# reasoning + 684.7 KB reasoning_content of 2.85 MB total), so the compact
+# payload keeps exactly one reasoning field. Pass ``?full=true`` for the
+# untouched row shape (exports, debugging, provider-fidelity tooling).
+_TRANSCRIPT_DROPPED_FIELDS = (
+    "session_id",
+    "token_count",
+    "active",
+    "reasoning_details",
+    "codex_reasoning_items",
+    "codex_message_items",
+)
+
+
+def _trim_transcript_message(message: Dict[str, Any], include_reasoning: bool = False) -> Dict[str, Any]:
+    for field in _TRANSCRIPT_DROPPED_FIELDS:
+        message.pop(field, None)
+
+    # Reasoning is the single biggest optional field (~25% of a long
+    # transcript). Keep only a flag so the renderer can show the Thinking
+    # disclosure and fetch the text on expand.
+    has_reasoning = bool(message.get("reasoning") or message.get("reasoning_content"))
+    reasoning = message.get("reasoning") or message.get("reasoning_content")
+    message.pop("reasoning_content", None)
+
+    if include_reasoning and reasoning:
+        message["reasoning"] = reasoning
+    else:
+        message.pop("reasoning", None)
+        if has_reasoning:
+            message["has_reasoning"] = True
+
+    return message
+
+
+@app.get("/api/sessions/{session_id}/reasoning")
+async def get_session_reasoning(
+    session_id: str,
+    ids: str = "",
+    profile: Optional[str] = None,
+):
+    """Reasoning text for specific messages.
+
+    The transcript payload omits reasoning (see ``_trim_transcript_message``);
+    the desktop calls this when the user expands a Thinking block, asking only
+    for the ids it is about to show. ``ids`` is a comma-separated list.
+    """
+    wanted = {int(part) for part in ids.split(",") if part.strip().isdigit()}
+    db = _open_session_db_for_profile(profile)
+    try:
+        sid = db.resolve_session_id(session_id)
+        if not sid:
+            raise HTTPException(status_code=404, detail="Session not found")
+        sid = db.resolve_resume_session_id(sid)
+        reasoning = db.get_reasoning(sid, wanted)
+        return {"reasoning": {str(key): value for key, value in reasoning.items()}, "session_id": sid}
+    finally:
+        db.close()
+
+
 @app.get("/api/sessions/{session_id}/messages")
-async def get_session_messages(session_id: str, profile: Optional[str] = None):
+async def get_session_messages(
+    session_id: str,
+    profile: Optional[str] = None,
+    limit: Optional[int] = None,
+    offset: Optional[int] = None,
+    since_id: Optional[int] = None,
+    full: bool = False,
+    reasoning: bool = False,
+):
+    # ``limit``/``offset`` are opt-in pagination for large sessions. Without
+    # them this returns the FULL history (back-compat: the TUI and exports
+    # need every message). The desktop renderer only paints the transcript,
+    # so a 2MB history fetched on every session switch dominated switch
+    # latency (measured: 1.9–2.2MB per switch on a 983MB state.db); passing
+    # ``limit`` collapses that to a few KB of recent messages.
+    #
+    # ``since_id`` is the delta cursor used by the desktop's 2s follow poll: it
+    # returns only rows newer than the last one the window already has, so a
+    # sibling process finishing a turn costs bytes, not the whole transcript.
+    # ``full=true`` opts out of the compact field set.
     db = _open_session_db_for_profile(profile)
     try:
         sid = db.resolve_session_id(session_id)
@@ -8647,7 +8606,22 @@ async def get_session_messages(session_id: str, profile: Optional[str] = None):
             raise HTTPException(status_code=404, detail="Session not found")
         sid = db.resolve_resume_session_id(sid)
         messages = db.get_messages(sid)
-        return {"session_id": sid, "messages": messages}
+        if since_id is not None:
+            messages = [message for message in messages if (message.get("id") or 0) > since_id]
+        if offset or limit:
+            if offset:
+                start = max(0, offset)
+                end = start + limit if limit else None
+                messages = messages[start:end]
+            else:
+                # No offset → ``limit`` means "the N most recent". The history
+                # is ascending, so the tail is what a session switch paints;
+                # taking the head would show the oldest messages instead.
+                messages = messages[-limit:] if limit else messages
+        last_id = max((message.get("id") or 0) for message in messages) if messages else None
+        if not full:
+            messages = [_trim_transcript_message(message, include_reasoning=reasoning) for message in messages]
+        return {"session_id": sid, "messages": messages, "last_id": last_id}
     finally:
         db.close()
 
@@ -13525,7 +13499,7 @@ def mount_spa(application: FastAPI):
 _BUILTIN_DASHBOARD_THEMES = [
     {"name": "default",       "label": "Alice Teal",         "description": "Classic dark teal — the canonical Alice look"},
     {"name": "default-large", "label": "Alice Teal (Large)", "description": "Alice Teal with bigger fonts and roomier spacing"},
-    {"name": "nous-blue",     "label": "Nous Blue",           "description": "Light mode — vivid Nous-blue accents on cream canvas"},
+    {"name": "stuko-blue",    "label": "Stuko Blue",          "description": "Light mode — vivid Stuko-blue accents on cream canvas"},
     {"name": "midnight",      "label": "Midnight",            "description": "Deep blue-violet with cool accents"},
     {"name": "ember",     "label": "Ember",          "description": "Warm crimson and bronze — forge vibes"},
     {"name": "mono",      "label": "Mono",           "description": "Clean grayscale — minimal and focused"},
@@ -14578,13 +14552,6 @@ def start_server(
     """
     import uvicorn
 
-    try:
-        from alice_cli.nous_auth_keepalive import start_nous_auth_keepalive
-
-        start_nous_auth_keepalive()
-    except Exception as exc:
-        _log.debug("Nous auth keepalive did not start: %s", exc)
-
     # Phase 0: stash the auth-gate flag on app.state so middleware / SPA-token
     # injection / WS-auth paths can branch on it consistently.  Phase 3.5
     # uses this to decide whether to refuse the bind, log the gate-on
@@ -14610,23 +14577,7 @@ def start_server(
         # escape hatch that serves the dashboard without authentication.
         from alice_cli.dashboard_auth import list_providers
         if not list_providers():
-            # Surface the *specific* reason any bundled provider declined
-            # to register (e.g. missing ALICE_DASHBOARD_OAUTH_CLIENT_ID).
-            # Each provider plugin that ships with Alice Agent exposes a
-            # module-level ``LAST_SKIP_REASON`` string for this purpose;
-            # without it the operator would only see "no providers" which
-            # is misleading when the provider IS installed but unconfigured.
-            skip_reasons: list[str] = []
-            try:
-                from plugins.dashboard_auth import nous as _nous_plugin
-
-                if _nous_plugin.LAST_SKIP_REASON:
-                    skip_reasons.append(
-                        f"  • nous: {_nous_plugin.LAST_SKIP_REASON}"
-                    )
-            except Exception:
-                pass
-
+            # No provider registered. Point at the two supported paths.
             _fix_hint = (
                 "Configure an auth provider before exposing the dashboard:\n"
                 "  • Password: set dashboard.basic_auth.username + "
@@ -14634,21 +14585,12 @@ def start_server(
                 "    (hash with: python -c \"from "
                 "plugins.dashboard_auth.basic import hash_password; "
                 "print(hash_password('your-password'))\")\n"
-                "  • OAuth: run `alice dashboard register` (Nous Portal) or "
-                "install a DashboardAuthProvider plugin.\n"
+                "  • OAuth: set dashboard.oauth.self_hosted.{issuer,client_id} "
+                "(or ALICE_DASHBOARD_OIDC_ISSUER + ALICE_DASHBOARD_OIDC_CLIENT_ID), "
+                "or install a DashboardAuthProvider plugin.\n"
                 "There is no unauthenticated public-bind option — to keep it "
                 "local, bind 127.0.0.1 and tunnel in (SSH / Tailscale)."
             )
-            if skip_reasons:
-                raise SystemExit(
-                    f"Refusing to bind dashboard to {host} — the auth gate "
-                    f"engages on non-loopback binds, but no auth providers "
-                    f"are registered.\n\n"
-                    f"Bundled providers reported these issues:\n"
-                    + "\n".join(skip_reasons)
-                    + "\n\n"
-                    + _fix_hint
-                )
             raise SystemExit(
                 f"Refusing to bind dashboard to {host} — the auth gate "
                 f"engages on non-loopback binds, but no auth providers are "
@@ -14749,6 +14691,35 @@ def start_server(
             _hb_interval = 2.0
             _hb_stall_threshold = 5.0
             _hb_loop = asyncio.get_running_loop()
+            _hb_last_dump = [0.0]  # monotime of the last stack dump
+            _hb_dump_cooldown = 60.0
+
+            def _dump_stall_stack(drift: float) -> None:
+                """Write every thread's stack to logs/loop-stall.log.
+
+                A stalled loop is otherwise undiagnosable: the heartbeat can
+                only say HOW LONG it was stuck, not what held the GIL. This
+                turns the next 58s freeze into an actionable stack (which
+                tool call, import, or C extension ran away). Rate-limited so
+                a hot loop can't fill the disk.
+                """
+                import faulthandler
+                import time as _time
+
+                now = _time.monotonic()
+                if now - _hb_last_dump[0] < _hb_dump_cooldown:
+                    return
+                _hb_last_dump[0] = now
+                try:
+                    from alice_constants import get_alice_home
+
+                    path = get_alice_home() / "logs" / "loop-stall.log"
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(path, "a", encoding="utf-8") as fh:
+                        fh.write(f"\n=== event loop stalled {drift:.1f}s ===\n")
+                        faulthandler.dump_traceback(file=fh, all_threads=True)
+                except Exception as exc:  # pragma: no cover - best-effort
+                    _log.debug("loop-stall dump skipped: %s", exc)
 
             def _loop_heartbeat(expected: float) -> None:
                 now = _hb_loop.time()
@@ -14758,6 +14729,7 @@ def start_server(
                         "event loop stalled %.1fs (GIL pressure suspected)",
                         drift,
                     )
+                    _dump_stall_stack(drift)
                 _hb_loop.call_later(
                     _hb_interval, _loop_heartbeat, now + _hb_interval
                 )

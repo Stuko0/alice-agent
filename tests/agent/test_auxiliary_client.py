@@ -24,7 +24,6 @@ from agent.auxiliary_client import (
     _is_rate_limit_error,
     _is_model_not_found_error,
     _is_model_incompatible_error,
-    _refresh_nous_recommended_model,
     _normalize_aux_provider,
     _try_payment_fallback,
     _try_openrouter,
@@ -115,7 +114,6 @@ class TestResolveTaskProviderModel:
         [
             "anthropic",
             "minimax-oauth",
-            "nous",
             "openai-codex",
             "qwen-oauth",
             "xai-oauth",
@@ -234,47 +232,6 @@ class TestBuildCallKwargsMaxTokens:
             base_url="https://integrate.api.nvidia.com/v1",
         )
         assert kwargs["max_tokens"] == 4096
-
-
-class TestNousTagsScoping:
-    def test_tags_injected_when_provider_is_nous(self, monkeypatch):
-        import agent.auxiliary_client as aux
-
-        monkeypatch.setattr(aux, "auxiliary_is_nous", False)
-
-        kwargs = aux._build_call_kwargs(
-            provider="nous",
-            model="alice-4",
-            messages=[{"role": "user", "content": "hi"}],
-        )
-
-        assert kwargs["extra_body"]["tags"] == aux._nous_portal_tags()
-
-    def test_tags_not_injected_for_gemini_when_main_is_nous(self, monkeypatch):
-        import agent.auxiliary_client as aux
-
-        monkeypatch.setattr(aux, "auxiliary_is_nous", True)
-
-        kwargs = aux._build_call_kwargs(
-            provider="gemini",
-            model="gemini-2.5-flash",
-            messages=[{"role": "user", "content": "hi"}],
-        )
-
-        assert "extra_body" not in kwargs
-
-    def test_tags_not_injected_for_openrouter_when_main_is_nous(self, monkeypatch):
-        import agent.auxiliary_client as aux
-
-        monkeypatch.setattr(aux, "auxiliary_is_nous", True)
-
-        kwargs = aux._build_call_kwargs(
-            provider="openrouter",
-            model="openai/gpt-5.4",
-            messages=[{"role": "user", "content": "hi"}],
-        )
-
-        assert "extra_body" not in kwargs
 
 
 class TestNormalizeAuxProvider:
@@ -1142,87 +1099,6 @@ class TestVisionClientFallback:
 
 
 class TestAuxiliaryPoolAwareness:
-    def test_try_nous_uses_pool_entry(self):
-        pooled_token = _jwt_with_claims({
-            "scope": "inference:invoke",
-            "exp": int(time.time() + 3600),
-        })
-
-        class _Entry:
-            access_token = "pooled-access-token"
-            agent_key = pooled_token
-            agent_key_expires_at = "2099-01-01T00:00:00+00:00"
-            scope = "inference:invoke"
-            inference_base_url = "https://inference.pool.example/v1"
-
-        class _Pool:
-            def has_credentials(self):
-                return True
-
-            def select(self):
-                return _Entry()
-
-        with (
-            patch("agent.auxiliary_client.load_pool", return_value=_Pool()),
-            patch("agent.auxiliary_client.OpenAI") as mock_openai,
-            patch("alice_cli.models.get_nous_recommended_aux_model", return_value=None),
-        ):
-            from agent.auxiliary_client import _try_nous
-
-            client, model = _try_nous()
-
-        assert client is not None
-        assert model == "google/gemini-3-flash-preview"
-        assert mock_openai.call_args.kwargs["api_key"] == pooled_token
-        assert mock_openai.call_args.kwargs["base_url"] == "https://inference.pool.example/v1"
-
-    def test_try_nous_refreshes_stale_pool_entry(self):
-        stale_token = _jwt_with_claims({
-            "scope": "inference:invoke",
-            "exp": int(time.time() - 60),
-        })
-        fresh_token = _jwt_with_claims({
-            "scope": "inference:invoke",
-            "exp": int(time.time() + 3600),
-        })
-
-        class _Entry:
-            def __init__(self, token):
-                self.access_token = "pooled-access-token"
-                self.agent_key = token
-                self.agent_key_expires_at = "2099-01-01T00:00:00+00:00"
-                self.scope = "inference:invoke"
-                self.inference_base_url = "https://inference.pool.example/v1"
-
-        class _Pool:
-            refreshed = False
-
-            def has_credentials(self):
-                return True
-
-            def select(self):
-                return _Entry(stale_token)
-
-            def try_refresh_current(self):
-                self.refreshed = True
-                return _Entry(fresh_token)
-
-        pool = _Pool()
-        with (
-            patch("agent.auxiliary_client.load_pool", return_value=pool),
-            patch("agent.auxiliary_client.OpenAI") as mock_openai,
-            patch("alice_cli.models.get_nous_recommended_aux_model", return_value=None),
-        ):
-            from agent.auxiliary_client import _try_nous
-
-            client, model = _try_nous()
-
-        assert pool.refreshed is True
-        assert client is not None
-        assert model == "google/gemini-3-flash-preview"
-        assert mock_openai.call_args.kwargs["api_key"] == fresh_token
-        assert mock_openai.call_args.kwargs["base_url"] == "https://inference.pool.example/v1"
-
     def test_resolve_nous_runtime_api_rejects_stale_pool_entry_when_refresh_fails(self):
         stale_token = _jwt_with_claims({
             "scope": "inference:invoke",
@@ -1258,55 +1134,6 @@ class TestAuxiliaryPoolAwareness:
             runtime = _resolve_nous_runtime_api()
 
         assert runtime is None
-
-    def test_try_nous_uses_portal_recommendation_for_text(self):
-        """When the Portal recommends a compaction model, _try_nous honors it."""
-        fresh_base = "https://inference-api.nousresearch.com/v1"
-        with (
-            patch("agent.auxiliary_client._read_nous_auth", return_value={"access_token": "***"}),
-            patch("agent.auxiliary_client._resolve_nous_runtime_api", return_value=("fresh-agent-key", fresh_base)),
-            patch("alice_cli.models.get_nous_recommended_aux_model", return_value="minimax/minimax-m2.7") as mock_rec,
-            patch("agent.auxiliary_client.OpenAI") as mock_openai,
-        ):
-            from agent.auxiliary_client import _try_nous
-
-            mock_openai.return_value = MagicMock()
-            client, model = _try_nous(vision=False)
-
-        assert client is not None
-        assert model == "minimax/minimax-m2.7"
-        assert mock_rec.call_args.kwargs["vision"] is False
-
-    def test_try_nous_uses_portal_recommendation_for_vision(self):
-        """Vision tasks should ask for the vision-specific recommendation."""
-        fresh_base = "https://inference-api.nousresearch.com/v1"
-        with (
-            patch("agent.auxiliary_client._read_nous_auth", return_value={"access_token": "***"}),
-            patch("agent.auxiliary_client._resolve_nous_runtime_api", return_value=("fresh-agent-key", fresh_base)),
-            patch("alice_cli.models.get_nous_recommended_aux_model", return_value="google/gemini-3-flash-preview") as mock_rec,
-            patch("agent.auxiliary_client.OpenAI"),
-        ):
-            from agent.auxiliary_client import _try_nous
-            client, model = _try_nous(vision=True)
-
-        assert client is not None
-        assert model == "google/gemini-3-flash-preview"
-        assert mock_rec.call_args.kwargs["vision"] is True
-
-    def test_try_nous_falls_back_when_recommendation_lookup_raises(self):
-        """If the Portal lookup throws, we must still return a usable model."""
-        fresh_base = "https://inference-api.nousresearch.com/v1"
-        with (
-            patch("agent.auxiliary_client._read_nous_auth", return_value={"access_token": "***"}),
-            patch("agent.auxiliary_client._resolve_nous_runtime_api", return_value=("fresh-agent-key", fresh_base)),
-            patch("alice_cli.models.get_nous_recommended_aux_model", side_effect=RuntimeError("portal down")),
-            patch("agent.auxiliary_client.OpenAI"),
-        ):
-            from agent.auxiliary_client import _try_nous
-            client, model = _try_nous()
-
-        assert client is not None
-        assert model == "google/gemini-3-flash-preview"
 
     def test_call_llm_retries_nous_after_401(self):
         class _Auth401(Exception):
@@ -1701,50 +1528,6 @@ class TestIsModelIncompatibleError:
         assert _is_model_incompatible_error(exc) is False
 
 
-class TestRefreshNousRecommendedModel:
-    """_refresh_nous_recommended_model picks a fresh model after a stale 404."""
-
-    def test_returns_fresh_portal_recommendation(self, monkeypatch):
-        monkeypatch.setattr(
-            "alice_cli.models.get_nous_recommended_aux_model",
-            lambda **kw: "stepfun/step-3.7-flash:free",
-        )
-        out = _refresh_nous_recommended_model(
-            vision=True, stale_model="openai/gpt-5.4-mini")
-        assert out == "stepfun/step-3.7-flash:free"
-
-    def test_falls_back_to_default_when_portal_matches_stale(self, monkeypatch):
-        """If the Portal still recommends the model that just 404'd, fall back
-        to the known-good default."""
-        monkeypatch.setattr(
-            "alice_cli.models.get_nous_recommended_aux_model",
-            lambda **kw: "openai/gpt-5.4-mini",
-        )
-        out = _refresh_nous_recommended_model(
-            vision=True, stale_model="openai/gpt-5.4-mini")
-        assert out == "google/gemini-3-flash-preview"
-
-    def test_falls_back_to_default_when_portal_unavailable(self, monkeypatch):
-        def _boom(**kw):
-            raise RuntimeError("portal down")
-        monkeypatch.setattr(
-            "alice_cli.models.get_nous_recommended_aux_model", _boom)
-        out = _refresh_nous_recommended_model(
-            vision=False, stale_model="some/dead-model")
-        assert out == "google/gemini-3-flash-preview"
-
-    def test_returns_none_when_no_distinct_alternative(self, monkeypatch):
-        """When the failed model IS the default and the Portal has nothing
-        else, there's no usable alternative."""
-        monkeypatch.setattr(
-            "alice_cli.models.get_nous_recommended_aux_model",
-            lambda **kw: "google/gemini-3-flash-preview",
-        )
-        out = _refresh_nous_recommended_model(
-            vision=False, stale_model="google/gemini-3-flash-preview")
-        assert out is None
-
-
 class TestIsRateLimitError:
     """_is_rate_limit_error detects 429 rate-limit errors warranting fallback."""
 
@@ -1807,11 +1590,11 @@ class TestIsRateLimitError:
 class TestGetProviderChain:
     """_get_provider_chain() resolves functions at call time (testable)."""
 
-    def test_returns_four_entries(self):
+    def test_returns_three_entries(self):
         chain = _get_provider_chain()
-        assert len(chain) == 4
+        assert len(chain) == 3
         labels = [label for label, _ in chain]
-        assert labels == ["openrouter", "nous", "local/custom", "api-key"]
+        assert labels == ["openrouter", "local/custom", "api-key"]
         # Codex is deliberately NOT in this chain — see _get_provider_chain
         # docstring. ChatGPT-account Codex has a shifting model allow-list;
         # guessing a model to fall back on breaks more often than it helps.
@@ -1845,16 +1628,15 @@ class TestTryPaymentFallback:
     def test_skips_failed_provider(self):
         mock_client = MagicMock()
         with patch("agent.auxiliary_client._try_openrouter", return_value=(None, None)), \
-             patch("agent.auxiliary_client._try_nous", return_value=(mock_client, "nous-model")), \
+             patch("agent.auxiliary_client._try_custom_endpoint", return_value=(mock_client, "custom-model")), \
              patch("agent.auxiliary_client._read_main_provider", return_value="openrouter"):
             client, model, label = _try_payment_fallback("openrouter", task="compression")
         assert client is mock_client
-        assert model == "nous-model"
-        assert label == "nous"
+        assert model == "custom-model"
+        assert label == "local/custom"
 
     def test_returns_none_when_no_fallback(self):
         with patch("agent.auxiliary_client._try_openrouter", return_value=(None, None)), \
-             patch("agent.auxiliary_client._try_nous", return_value=(None, None)), \
              patch("agent.auxiliary_client._try_custom_endpoint", return_value=(None, None)), \
              patch("agent.auxiliary_client._resolve_api_key_provider", return_value=(None, None)), \
              patch("agent.auxiliary_client._read_main_provider", return_value="openrouter"):
@@ -1878,7 +1660,6 @@ class TestTryPaymentFallback:
         Codex is never tried with a guessed model.
         """
         with patch("agent.auxiliary_client._try_openrouter", return_value=(None, None)), \
-             patch("agent.auxiliary_client._try_nous", return_value=(None, None)), \
              patch("agent.auxiliary_client._try_custom_endpoint", return_value=(None, None)), \
              patch("agent.auxiliary_client._resolve_api_key_provider", return_value=(None, None)), \
              patch("agent.auxiliary_client._read_main_provider", return_value="openrouter"):
@@ -4485,18 +4266,17 @@ class TestAuxUnhealthyCache:
             _resolve_auto,
             _mark_provider_unhealthy,
         )
-        nous_client = MagicMock()
-        # Mark OpenRouter unhealthy → chain should skip it and pick nous.
+        fallback_client = MagicMock()
+        # Mark OpenRouter unhealthy → chain should skip it and pick custom.
         _mark_provider_unhealthy("openrouter")
         with patch("agent.auxiliary_client._read_main_provider", return_value=""), \
              patch("agent.auxiliary_client._read_main_model", return_value=""), \
              patch("agent.auxiliary_client._try_openrouter") as or_try, \
-             patch("agent.auxiliary_client._try_nous", return_value=(nous_client, "nous-model")), \
-             patch("agent.auxiliary_client._try_custom_endpoint", return_value=(None, None)), \
+             patch("agent.auxiliary_client._try_custom_endpoint", return_value=(fallback_client, "custom-model")), \
              patch("agent.auxiliary_client._resolve_api_key_provider", return_value=(None, None)):
             client, model = _resolve_auto()
-        assert client is nous_client
-        assert model == "nous-model"
+        assert client is fallback_client
+        assert model == "custom-model"
         # The skipped provider's _try_* should NOT have been called at all.
         or_try.assert_not_called()
 
@@ -4508,21 +4288,20 @@ class TestAuxUnhealthyCache:
             _resolve_auto,
             _mark_provider_unhealthy,
         )
-        nous_client = MagicMock()
+        fallback_client = MagicMock()
         _mark_provider_unhealthy("openrouter")
         with patch("agent.auxiliary_client._read_main_provider", return_value="openrouter"), \
              patch("agent.auxiliary_client._read_main_model", return_value="anthropic/claude-sonnet-4.6"), \
              patch("agent.auxiliary_client.resolve_provider_client") as step1, \
              patch("agent.auxiliary_client._try_openrouter") as or_try, \
-             patch("agent.auxiliary_client._try_nous", return_value=(nous_client, "n-model")), \
-             patch("agent.auxiliary_client._try_custom_endpoint", return_value=(None, None)), \
+             patch("agent.auxiliary_client._try_custom_endpoint", return_value=(fallback_client, "custom-model")), \
              patch("agent.auxiliary_client._resolve_api_key_provider", return_value=(None, None)):
             client, model = _resolve_auto()
         # Step-1 was bypassed — resolve_provider_client never invoked
         step1.assert_not_called()
-        # Step-2 also skipped openrouter and landed on nous
+        # Step-2 also skipped openrouter and landed on custom
         or_try.assert_not_called()
-        assert client is nous_client
+        assert client is fallback_client
 
     def test_payment_fallback_skips_unhealthy(self):
         """_try_payment_fallback also consults the unhealthy cache so a 402
@@ -4532,18 +4311,17 @@ class TestAuxUnhealthyCache:
             _try_payment_fallback,
             _mark_provider_unhealthy,
         )
-        nous_client = MagicMock()
+        fallback_client = MagicMock()
         # Mark BOTH the failed provider (openrouter) and a sibling (custom)
-        # unhealthy. The chain should still find nous.
+        # unhealthy. The chain should still find the api-key rung.
         _mark_provider_unhealthy("local/custom")
         with patch("agent.auxiliary_client._read_main_provider", return_value="openrouter"), \
              patch("agent.auxiliary_client._try_openrouter") as or_try, \
-             patch("agent.auxiliary_client._try_nous", return_value=(nous_client, "n-model")), \
              patch("agent.auxiliary_client._try_custom_endpoint") as custom_try, \
-             patch("agent.auxiliary_client._resolve_api_key_provider", return_value=(None, None)):
+             patch("agent.auxiliary_client._resolve_api_key_provider", return_value=(fallback_client, "key-model")):
             client, model, label = _try_payment_fallback("openrouter", task="compression")
-        assert client is nous_client
-        assert label == "nous"
+        assert client is fallback_client
+        assert label == "api-key"
         # OR is skipped via skip_chain_labels (failed provider), custom via unhealthy cache.
         or_try.assert_not_called()
         custom_try.assert_not_called()

@@ -32,8 +32,7 @@ def test_billing_logged_out(cli, monkeypatch, capsys):
     monkeypatch.setattr(bv, "build_billing_state", lambda *a, **kw: BillingState(logged_in=False))
     cli._show_billing("/billing")
     out = capsys.readouterr().out
-    assert "Not logged into Nous Portal" in out
-    assert "alice portal" in out
+    assert "Nous billing is no longer available" in out
 
 
 def test_billing_overview_non_interactive_renders_text_not_modal(cli, monkeypatch, capsys):

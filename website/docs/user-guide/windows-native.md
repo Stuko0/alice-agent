@@ -40,14 +40,22 @@ No admin rights required. The installer goes to `%LOCALAPPDATA%\alice\` and adds
 | `-SkipSetup` | off | Skip the post-install `alice setup` wizard |
 | `-AliceHome` | `%LOCALAPPDATA%\alice` | Override data directory |
 | `-InstallDir` | `%LOCALAPPDATA%\alice\alice-agent` | Override code location |
+| `-IncludeDesktop` | auto | Force the desktop install even without a graphical session |
+| `-NoDesktop` | off | Never install the desktop (headless servers / automation) |
 
 The installer auto-retries flaky git fetches and strips BOM from any downloaded `install.ps1` payload, so a UTF-8 BOM picked up during HTTP transit no longer breaks the `[scriptblock]::Create((irm ...))` form.
 
-### Desktop installer (alternative)
+In a **graphical session** the one-liner also installs the desktop app and creates the **Alice** shortcuts (Desktop + Start Menu), so there is no `alice desktop` command to run: double-click the shortcut. The shell comes from the release matching the installed tag; when the checkout isn't on a tag (or has no Go toolchain) the installer falls back to the newest published shell. On servers, SSH sessions and CI (no Explorer shell in the session) the desktop stage is skipped — pass `-IncludeDesktop` to force it, or `-NoDesktop` to opt out.
 
-A thin GUI installer is also available — useful if you'd rather double-click an `.exe` than open PowerShell. Download Alice Desktop, run the installer, and on first launch the GUI calls `install.ps1` under the hood to provision Python (via `uv`), Node, PortableGit, and the rest of the dependency bootstrap described below. After the first run, the desktop app and the PowerShell-installed `alice` CLI share the same `%LOCALAPPDATA%\alice\alice-agent` install and `%LOCALAPPDATA%\alice` data directory — switch between the GUI and the CLI freely.
+### Desktop installer (recommended for end users)
 
-Use the desktop installer when you want a familiar Windows install experience or you're handing Alice to a non-developer; use the PowerShell one-liner when you're already in a terminal.
+`Alice-<version>-amd64-installer.exe` is a **per-user** installer (installs to `%LOCALAPPDATA%\Programs\Alice`, no admin rights, no UAC). It ships everything the app needs — the Wails shell, a self-contained Python runtime, and the agent runtime tree — so it works on a machine with **no git checkout and no `alice` CLI**.
+
+1. Download the installer from the GitHub release and double-click it.
+2. Launch **Alice** from the shortcut the installer created (or let the last wizard page start it).
+3. Updates arrive from inside the app: the update toast / **Settings → About → Check for updates** shows the new version, and **Update now** downloads the next installer, verifies its SHA-256, installs it silently in user scope and relaunches Alice. No terminal, no UAC.
+
+A source/CLI install keeps updating with git (`alice update`) as before; the desktop detects which mode it is in and offers the right flow.
 
 ### Dependency bootstrap (`dep_ensure`)
 

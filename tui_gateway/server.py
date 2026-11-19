@@ -59,6 +59,16 @@ _CRASH_LOG = os.path.join(_alice_home_webhook, "logs", "tui_gateway_crash.log")
 def _panic_hook(exc_type, exc_value, exc_tb):
     import traceback
 
+    # An orderly shutdown is not a crash. The desktop shell (and Ctrl+C)
+    # stop the backend with SIGINT, which surfaces here as KeyboardInterrupt;
+    # logging it made every clean desktop close look like a crash in the
+    # forensics file and pushed a bogus "[gateway-crash]" line to Activity.
+    if exc_type is not None and issubclass(exc_type, (KeyboardInterrupt, SystemExit)):
+        print("[gateway] shutdown requested", file=sys.stderr, flush=True)
+        return
+    if exc_type is None:  # pragma: no cover - defensive; keeps types honest
+        return
+
     trace = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
     try:
         os.makedirs(os.path.dirname(_CRASH_LOG), exist_ok=True)
@@ -6955,7 +6965,7 @@ def _(rid, params: dict) -> dict:
 def _(rid, params: dict) -> dict:
     """Whether pet generation is possible right now.
 
-    True only when a reference-capable image backend (Nous Portal / OpenRouter /
+    True only when a reference-capable image backend (OpenRouter /
     OpenAI gpt-image) is configured — the desktop checks this on open so it can
     offer setup instead of a dead prompt. Cheap (config + plugin discovery).
     """

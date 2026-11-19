@@ -107,33 +107,6 @@ def test_minimax_login_does_not_launch_anthropic_flow():
     assert body["expires_in"] == 600
 
 
-def test_nous_dashboard_device_flow_ignores_legacy_scope_override(monkeypatch):
-    from alice_cli import auth as auth_mod
-    from alice_cli import web_server as ws
-
-    requested_scopes = []
-
-    def fake_request_device_code(**kwargs):
-        requested_scopes.append(kwargs["scope"])
-        return _fake_nous_device_data()
-
-    monkeypatch.setenv("ALICE_AGENT_USE_LEGACY_SESSION_KEYS", "true")
-    monkeypatch.setattr(auth_mod, "_request_device_code", fake_request_device_code)
-    monkeypatch.setattr(ws, "_nous_poller", lambda sid: None)
-
-    result = asyncio.run(ws._start_device_code_flow("nous"))
-    try:
-        assert requested_scopes == [auth_mod.DEFAULT_NOUS_SCOPE]
-        assert result["flow"] == "device_code"
-        assert result["user_code"] == "NOUS-1234"
-        assert (
-            ws._oauth_sessions[result["session_id"]]["scope"]
-            == auth_mod.DEFAULT_NOUS_SCOPE
-        )
-    finally:
-        ws._oauth_sessions.pop(result["session_id"], None)
-
-
 def test_oauth_provider_status_uses_profile_query(tmp_path, monkeypatch):
     from alice_cli import web_server as ws
     from alice_constants import get_alice_home
@@ -193,25 +166,6 @@ def test_oauth_start_stores_profile_for_background_completion(tmp_path, monkeypa
         assert ws._oauth_sessions[session_id]["profile"] == "coder"
     finally:
         ws._oauth_sessions.pop(session_id, None)
-
-
-def test_nous_dashboard_device_flow_does_not_retry_legacy_scope_on_invoke_refusal(monkeypatch):
-    from alice_cli import auth as auth_mod
-    from alice_cli import web_server as ws
-
-    requested_scopes = []
-
-    def fake_request_device_code(**kwargs):
-        requested_scopes.append(kwargs["scope"])
-        raise _invoke_scope_refusal()
-
-    monkeypatch.delenv("ALICE_AGENT_USE_LEGACY_SESSION_KEYS", raising=False)
-    monkeypatch.setattr(auth_mod, "_request_device_code", fake_request_device_code)
-    monkeypatch.setattr(ws, "_nous_poller", lambda sid: None)
-
-    with pytest.raises(httpx.HTTPStatusError):
-        asyncio.run(ws._start_device_code_flow("nous"))
-    assert requested_scopes == [auth_mod.DEFAULT_NOUS_SCOPE]
 
 
 def test_codex_dashboard_worker_persists_runtime_provider(tmp_path, monkeypatch):
@@ -870,18 +824,16 @@ def test_status_falls_through_to_generic_dispatcher_for_catalog_only_provider():
 
 
 def test_status_hardcoded_branch_wins_over_generic_fallback():
-    """An existing hardcoded branch (nous) is unaffected by the fallthrough."""
+    """An existing hardcoded branch (codex) is unaffected by the fallthrough."""
     import alice_cli.web_server as ws
 
     with patch(
-        "alice_cli.auth.get_nous_auth_status",
-        return_value={"logged_in": True, "portal_base_url": "https://portal.test"},
+        "alice_cli.auth.get_codex_auth_status",
+        return_value={"logged_in": True, "auth_mode": "device_code"},
     ):
-        out = ws._resolve_provider_status("nous", None)
-    assert out["source"] == "nous_portal"
-    assert out["source_label"] == "https://portal.test"
-
-
+        out = ws._resolve_provider_status("openai-codex", None)
+    assert out["source"] == "openai_codex"
+    assert out["source_label"] == "device_code"
 def test_status_unknown_provider_degrades_to_logged_out():
     """A provider the generic dispatcher can't resolve stays logged-out cleanly."""
     import alice_cli.web_server as ws

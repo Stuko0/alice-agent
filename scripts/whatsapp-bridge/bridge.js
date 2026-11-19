@@ -32,6 +32,7 @@ import qrcode from 'qrcode-terminal';
 import { matchesAllowedUser, parseAllowedUsers } from './allowlist.js';
 import { createOutboundIdTracker } from './outbound_ids.js';
 import { classifyOwnerMessageGate } from './owner_message_gate.js';
+import { wrapSocket } from 'baileys-antiban';
 
 // Parse CLI args
 const args = process.argv.slice(2);
@@ -102,6 +103,56 @@ const CHUNK_DELAY_MS = parseInt(process.env.WHATSAPP_CHUNK_DELAY_MS || '300', 10
 // fires. Fail fast instead so the gateway can surface a real error and retry.
 const SEND_TIMEOUT_MS = parseInt(process.env.WHATSAPP_SEND_TIMEOUT_MS || '60000', 10);
 
+// --- Agent group (owner messages Alice here instead of the self-chat) ---
+const AGENT_GROUP_NAME = process.env.WHATSAPP_AGENT_GROUP || 'Alice Agent';
+let agentGroupJid = null;
+
+// --- baileys-antiban (Gaussian rate limiting, warmup, session health) ---
+// conservative preset suits a low-volume personal assistant. warmupDays: 0
+// because this is an EXISTING number (chat history + contacts) used as a
+// personal assistant today — a warmup ramp would throttle replies to ~15s+
+// on day 1 for little anti-ban benefit at this volume. Anti-ban is carried
+// by the rate limiter + typing/jitter below + autoPauseAt high-risk.
+const ANTIBAN_CONFIG = {
+  preset: 'conservative',
+  maxPerMinute: 15,
+  warmupDays: 0,
+  autoPauseAt: 'high',
+};
+
+// Gaussian random via Box-Muller, clamped to [min, max].
+function gaussianRandom(mean, std, min, max) {
+  let u = 0; let v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  const n = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+  let val = mean + n * std;
+  if (min != null) val = Math.max(min, val);
+  if (max != null) val = Math.min(max, val);
+  return val;
+}
+
+// Resolve the designated agent group by name at connect time so owner
+// messages in that group reach Alice (alternative to the self-chat).
+async function resolveAgentGroup() {
+  try {
+    const groups = await sock.groupFetchAllParticipating();
+    const match = Object.values(groups || {}).find(
+      (g) => (g.subject || '').trim().toLowerCase() === AGENT_GROUP_NAME.trim().toLowerCase(),
+    );
+    if (match) {
+      agentGroupJid = match.id;
+      console.log(`👥 Agent group "${AGENT_GROUP_NAME}" resolved: ${agentGroupJid}`);
+    } else {
+      agentGroupJid = null;
+      console.log(`⚠️ Agent group "${AGENT_GROUP_NAME}" not found — group routing off (self-chat still works).`);
+    }
+  } catch (err) {
+    agentGroupJid = null;
+    console.warn('[bridge] Failed to resolve agent group:', err.message);
+  }
+}
+
 // --- Send queue: serialise all sock.sendMessage() calls across concurrent
 //     HTTP handlers so a single Baileys socket never has overlapping sends.
 //     Overlapping sends are the root cause of cross-chat contamination
@@ -128,7 +179,10 @@ function sendWithTimeout(chatId, payload, timeoutMs = SEND_TIMEOUT_MS) {
     );
   });
   return enqueueSend(() =>
-    Promise.race([sock.sendMessage(chatId, payload), timeoutPromise])
+    // Pass an explicit `{}` options arg: baileys-antiban's wrapped sendMessage
+    // reads `options.circuitBreaker` without guarding `options === undefined`
+    // (Baileys treats the 3rd arg as optional), which would throw a TypeError.
+    Promise.race([sock.sendMessage(chatId, payload, {}), timeoutPromise])
       .finally(() => clearTimeout(timer))
   );
 }
@@ -239,7 +293,7 @@ async function startSocket() {
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
   const { version } = await fetchLatestBaileysVersion();
 
-  sock = makeWASocket({
+  sock = wrapSocket(makeWASocket({
     version,
     auth: state,
     logger,
@@ -254,7 +308,7 @@ async function startSocket() {
       // This is enough for Baileys to complete the retry handshake.
       return { conversation: '' };
     },
-  });
+  }), ANTIBAN_CONFIG);
 
   sock.ev.on('creds.update', () => { saveCreds(); lidToPhone = buildLidMap(); });
 
@@ -286,6 +340,7 @@ async function startSocket() {
     } else if (connection === 'open') {
       connectionState = 'connected';
       console.log('✅ WhatsApp connected!');
+      resolveAgentGroup();
       if (PAIR_ONLY) {
         console.log('✅ Pairing complete. Credentials saved.');
         // Give Baileys a moment to flush creds, then exit cleanly
@@ -325,9 +380,13 @@ async function startSocket() {
       // Handle fromMe messages based on mode
       let fromOwner = false;
       if (msg.key.fromMe) {
-        if (isGroup || chatId.includes('status')) continue;
-
-        if (WHATSAPP_MODE === 'bot') {
+        if (chatId.includes('status')) continue;
+        if (isGroup) {
+          // Only the designated agent group is treated as an owner input
+          // channel; every other group is ignored (unchanged behavior).
+          if (!agentGroupJid || chatId !== agentGroupJid) continue;
+          fromOwner = true;
+        } else if (WHATSAPP_MODE === 'bot') {
           // Bot mode: separate bot number. fromMe inbound is either
           //   (a) an echo of our own /send (recentlySentIds will catch it), or
           //   (b) a message the owner typed from their own phone using the
@@ -594,12 +653,19 @@ app.post('/send', async (req, res) => {
   try {
     const chunks = splitLongMessage(formatOutgoingMessage(message));
     const messageIds = [];
+    // Humanise: show "typing…" and add a Gaussian think-delay before the
+    // first chunk so replies are never instant.
+    await sock.sendPresenceUpdate('composing', chatId).catch(() => {});
+    await sleep(gaussianRandom(2200, 700, 1200, 4200));
     for (let i = 0; i < chunks.length; i += 1) {
       const sent = await sendWithTimeout(chatId, { text: chunks[i] });
       trackSentMessageId(sent);
       if (sent?.key?.id) messageIds.push(sent.key.id);
       if (chunks.length > 1 && i < chunks.length - 1) {
-        await sleep(CHUNK_DELAY_MS);
+        // Keep "typing…" alive between fragments + Gaussian jitter so
+        // multi-part replies read as human typing, not a metronome.
+        await sock.sendPresenceUpdate('composing', chatId).catch(() => {});
+        await sleep(gaussianRandom(1600, 600, 800, 3500));
       }
     }
 
