@@ -138,9 +138,19 @@ jobs:
         # build.ps1 stages the agent runtime tree (resources/alice), bundles the
         # Python runtime (resources/python), zips resources.zip and, with -Nsis,
         # builds the user-scoped installer (no UAC on install/update).
+        #
+        # The version comes from the release tag and is stamped into wails.json
+        # (NSIS + PE metadata, Add/Remove Programs) and linked into the binary.
+        # Without it every build reported the repo's static 0.23.4 and Windows
+        # kept offering the same "update".
         run: |
+          $version = "${{ inputs.publish_tag }}"
+          if (-not $version) { $version = "${{ github.ref_name }}" }
+          $version = $version -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { $version = "" }
+          Write-Host "Build version: '$version' (empty = derive from alice_cli/__init__.py)"
           cd apps/desktop-wails
-          ./build.ps1 -Nsis
+          ./build.ps1 -Nsis -Version $version
         shell: pwsh
 
       - name: Verify binary exists

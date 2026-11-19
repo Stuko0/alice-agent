@@ -24,7 +24,12 @@
 # installer is user-scoped so install/update never raises UAC.
 
 param(
-    [switch]$Nsis
+    [switch]$Nsis,
+    # Shell version (tag without "v"). CI passes the release tag; local builds
+    # fall back to alice_cli/__init__.py. It is stamped into wails.json (NSIS +
+    # PE version metadata, Add/Remove Programs) and linked into the binary
+    # (main.buildVersion), so the app never reports a stale checkout's version.
+    [string]$Version = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -70,8 +75,28 @@ try {
     New-Item -ItemType Directory -Force -Path (Join-Path $distDst "assets/wailsjs/go") | Out-Null
     Copy-Item (Join-Path $WailsDir "frontend/wailsjs/go/models.ts") (Join-Path $distDst "assets/wailsjs/go/") -Force -ErrorAction SilentlyContinue
 
+    # --- Version stamping -----------------------------------------------------
+    # NSIS takes INFO_PRODUCTVERSION from wails.json (VIProductVersion + the
+    # uninstaller entry), and the About/update code reads main.buildVersion.
+    if (-not $Version) {
+        $initPy = Join-Path (Split-Path -Parent $WailsDir) "alice_cli\__init__.py"
+        if (Test-Path $initPy) {
+            $m = Select-String -Path $initPy -Pattern '__version__\s*=\s*"([^"]+)"' | Select-Object -First 1
+            if ($m) { $Version = $m.Matches[0].Groups[1].Value }
+        }
+    }
+    if (-not $Version) { $Version = "0.0.0" }
+    $Version = $Version.TrimStart("v")
+    $ldflags = "-X main.buildVersion=$Version"
+
+    Write-Host "=== Stamping version $Version ==="
+    $wailsJsonPath = Join-Path $WailsDir "wails.json"
+    $wailsJson = Get-Content $wailsJsonPath -Raw | ConvertFrom-Json
+    $wailsJson.info.productVersion = $Version
+    $wailsJson | ConvertTo-Json -Depth 12 | Set-Content $wailsJsonPath -Encoding utf8
+
     Write-Host "=== Building Wails binary ==="
-    & wails build -platform windows/amd64
+    & wails build -platform windows/amd64 -ldflags $ldflags
     if ($LASTEXITCODE -ne 0) { throw "wails build failed (exit $LASTEXITCODE)" }
 
     # Bundle a self-contained Python backend beside the binary so the desktop
@@ -125,7 +150,7 @@ try {
             Copy-Item -Force $iconSrc (Join-Path $WailsDir "build\windows\icon.ico")
         }
 
-        & wails build -platform windows/amd64 -nsis -installscope user
+        & wails build -platform windows/amd64 -nsis -installscope user -ldflags $ldflags
         if ($LASTEXITCODE -ne 0) { throw "wails nsis build failed (exit $LASTEXITCODE)" }
     }
 

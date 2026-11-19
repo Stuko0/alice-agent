@@ -421,3 +421,31 @@ func TestApplyInstallerUpdateNoopWhenCurrent(t *testing.T) {
 		t.Fatalf("expected a no-op success, got %+v", result)
 	}
 }
+
+func TestCurrentVersionPrefersStampedBuildVersion(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "alice_cli"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// A stale CLI checkout on the same machine (the Windows bug): this reads
+	// 0.23.4 while the shell was built as 0.24.0.
+	if err := os.WriteFile(filepath.Join(root, "alice_cli", "__init__.py"), []byte("__version__ = \"0.23.4\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	previous := buildVersion
+	buildVersion = "v0.24.0"
+	t.Cleanup(func() { buildVersion = previous })
+
+	us := &UpdateService{}
+
+	if got := us.currentVersion(root); got != "0.24.0" {
+		t.Fatalf("currentVersion = %q, want the stamped 0.24.0 (not the stale checkout)", got)
+	}
+
+	buildVersion = ""
+
+	if got := us.currentVersion(root); got != "0.23.4" {
+		t.Fatalf("currentVersion without a stamp = %q, want 0.23.4 from the tree", got)
+	}
+}
