@@ -175,3 +175,74 @@ class TestOmnirouteWorker:
         assert saved["model"]["provider"] == "custom"
         assert saved["model"]["base_url"] == "http://127.0.0.1:4319/v1"
         assert saved["model"]["api_key"] == "omniroute-local-test"
+
+
+class TestFreeEndpointSetup:
+    """The URL-only free provider: no install, no key, one request."""
+
+    def test_get_lists_endpoints_without_keys(self, client):
+        r = client.get("/api/setup/free-endpoints")
+
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body and body[0]["id"] == "pollinations"
+        assert "api_key" not in body[0]
+
+    def test_post_probes_then_configures(self, client, monkeypatch):
+        from alice_cli import free_endpoints
+
+        probed = []
+        monkeypatch.setattr(free_endpoints, "probe", lambda endpoint, **_kw: probed.append(endpoint["id"]))
+        monkeypatch.setattr(
+            free_endpoints,
+            "apply_config",
+            lambda endpoint: {
+                "base_url": endpoint["base_url"],
+                "model": endpoint["model"],
+                "provider": "custom",
+            },
+        )
+
+        r = client.post("/api/setup/free-endpoint", json={})
+
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert probed == ["pollinations"]
+        assert body["configured"] is True
+        assert body["id"] == "pollinations"
+        assert body["base_url"].startswith("https://")
+        assert body["model"]
+
+    def test_post_surfaces_a_probe_failure_as_502(self, client, monkeypatch):
+        from alice_cli import free_endpoints
+
+        def explode(*_a, **_kw):
+            raise RuntimeError("The free endpoint is rate-limiting anonymous requests right now.")
+
+        monkeypatch.setattr(free_endpoints, "probe", explode)
+
+        r = client.post("/api/setup/free-endpoint", json={})
+
+        assert r.status_code == 502, r.text
+        assert "rate-limiting" in r.json()["detail"]
+
+    def test_post_rejects_an_unknown_endpoint(self, client):
+        r = client.post("/api/setup/free-endpoint", json={"id": "does-not-exist"})
+
+        assert r.status_code == 400
+        assert "unknown free endpoint" in r.json()["detail"]
+
+    def test_post_bounds_a_hanging_probe(self, client, monkeypatch):
+        """urllib's timeout is per socket read; a trickling response would hold
+        the request open past the desktop proxy's limit."""
+        import time
+
+        from alice_cli import free_endpoints
+
+        monkeypatch.setattr(web_server, "_FREE_ENDPOINT_PROBE_TIMEOUT_S", 0.05)
+        monkeypatch.setattr(free_endpoints, "probe", lambda *_a, **_kw: time.sleep(1.0))
+
+        r = client.post("/api/setup/free-endpoint", json={})
+
+        assert r.status_code == 504, r.text
+        assert "did not answer" in r.json()["detail"]

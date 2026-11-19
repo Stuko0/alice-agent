@@ -1,60 +1,34 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 
 import { useI18n } from '@/i18n'
 import { ChevronRight, Loader2, Zap } from '@/lib/icons'
 import type { OnboardingContext } from '@/store/onboarding'
 
 /**
- * Free, no-account provider (OmniRoute).
+ * Free, no-account provider.
  *
- * The onboarding used to hide this behind a second wizard: first-time users got
- * the Copilot/API-key modal plus a separate setup driver that offered OmniRoute,
- * and most people closed both without ever finding a way to try Alice without an
- * account. This row keeps the single modal and puts the zero-setup path first.
+ * This used to drive a local OmniRoute gateway: download Node, npm-install a
+ * large dependency tree, spawn a server. That is a lot of machinery — and a
+ * lot of ways to fail — for "let me try the app before I own an API key".
  *
- * The backend owns the lifecycle (`/api/setup/omniroute/start` provisions a
- * private Node + gateway under `~/.alice/omniroute` and mints a local token), so
- * there is no key to paste and nothing to download by hand.
- *
- * That provisioning is a download plus an npm install — minutes on a first run.
- * The backend therefore answers `start` immediately and reports progress on
- * `/api/setup/omniroute/status`; polling here is what turns "spinner then 500"
- * into "Downloading Node 22… 40%" and a real error message when it fails.
+ * A keyless public endpoint needs nothing but a URL, which is exactly what the
+ * `custom` provider already is. The backend probes it with one chat request and
+ * writes base_url/model into config.yaml; nothing is installed or spawned.
  */
-
-const POLL_MS = 1500
-const MAX_WAIT_MS = 15 * 60_000
-
-type SetupState = 'error' | 'idle' | 'ready' | 'starting'
-
-interface OmniRouteStatus {
+interface FreeEndpointResult {
   configured?: boolean
-  error?: string | null
-  message?: string
-  progress?: number
-  state?: SetupState
+  label?: string
+  model?: string
 }
 
 interface FreeProviderRowProps {
   ctx: OnboardingContext
 }
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
 export function FreeProviderRow({ ctx }: FreeProviderRowProps) {
   const { t } = useI18n()
   const [busy, setBusy] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const alive = useRef(true)
-
-  useEffect(
-    () => () => {
-      alive.current = false
-    },
-    []
-  )
 
   const start = async () => {
     if (busy) {
@@ -71,68 +45,26 @@ export function FreeProviderRow({ ctx }: FreeProviderRowProps) {
 
     setBusy(true)
     setError(null)
-    setMessage(null)
-    setProgress(2)
 
     try {
-      const first = await api<OmniRouteStatus>({
+      const result = await api<FreeEndpointResult>({
         method: 'POST',
-        path: '/api/setup/omniroute/start'
+        path: '/api/setup/free-endpoint'
       })
 
-      if (!alive.current) {
+      if (!result?.configured) {
+        setError(t.onboarding.freeProviderFailed)
+
         return
       }
 
-      let status = first
-
-      setProgress(first.progress ?? 2)
-      setMessage(first.message || null)
-
-      const deadline = Date.now() + MAX_WAIT_MS
-
-      while (Date.now() < deadline) {
-        if (status.state === 'ready' || status.configured) {
-          ctx.onCompleted?.()
-
-          return
-        }
-
-        if (status.state === 'error') {
-          setError(status.error || t.onboarding.freeProviderFailed)
-
-          return
-        }
-
-        await sleep(POLL_MS)
-
-        if (!alive.current) {
-          return
-        }
-
-        status = await api<OmniRouteStatus>({ path: '/api/setup/omniroute/status' })
-
-        if (!alive.current) {
-          return
-        }
-
-        setProgress(status.progress ?? 0)
-        setMessage(status.message || null)
-      }
-
-      setError(t.onboarding.freeProviderTimeout)
+      ctx.onCompleted?.()
     } catch (err) {
-      if (alive.current) {
-        setError(err instanceof Error ? err.message : String(err))
-      }
+      setError(err instanceof Error ? err.message : String(err))
     } finally {
-      if (alive.current) {
-        setBusy(false)
-      }
+      setBusy(false)
     }
   }
-
-  const pitch = busy ? (message ?? t.onboarding.freeProviderStarting) : t.onboarding.freeProviderPitch
 
   return (
     <div className="grid gap-1">
@@ -153,15 +85,9 @@ export function FreeProviderRow({ ctx }: FreeProviderRowProps) {
               {busy ? t.onboarding.freeProviderBadgeBusy : t.onboarding.freeProviderBadge}
             </span>
           </div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{pitch}</p>
-          {busy ? (
-            <div className="mt-2 h-1 overflow-hidden rounded-full bg-primary/15">
-              <div
-                className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out"
-                style={{ width: `${Math.max(4, Math.min(100, progress))}%` }}
-              />
-            </div>
-          ) : null}
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            {busy ? t.onboarding.freeProviderStarting : t.onboarding.freeProviderPitch}
+          </p>
         </div>
         {busy ? (
           <Loader2 className="size-4 shrink-0 animate-spin text-primary" />

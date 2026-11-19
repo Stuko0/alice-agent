@@ -18,8 +18,13 @@ afterEach(() => {
 })
 
 describe('FreeProviderRow', () => {
-  it('completes the onboarding as soon as the gateway reports ready', async () => {
-    const api = vi.fn(async () => ({ configured: true, progress: 100, state: 'ready' }))
+  it('configures the keyless endpoint and finishes onboarding', async () => {
+    const api = vi.fn(async (_req: { path: string }) => ({
+      configured: true,
+      id: 'pollinations',
+      model: 'openai-fast'
+    }))
+
     mockApi(api)
 
     render(<FreeProviderRow ctx={ctx} />)
@@ -27,63 +32,34 @@ describe('FreeProviderRow', () => {
 
     await waitFor(() => expect(ctx.onCompleted).toHaveBeenCalled())
 
-    // Ready on the POST itself: no status polling needed.
+    // One request: the backend probes and writes the config. No polling.
     expect(api).toHaveBeenCalledTimes(1)
+    expect(api.mock.calls[0][0].path).toBe('/api/setup/free-endpoint')
   })
 
-  it('polls the status endpoint and shows the backend error text', async () => {
-    const api = vi.fn(async (req: { path: string }) => {
-      if (req.path.endsWith('/start')) {
-        return { configured: false, progress: 5, state: 'starting', message: 'Downloading Node 22…' }
-      }
-
-      return { configured: false, error: 'omniroute: URLError: nodename nor servname provided', state: 'error' }
+  it('shows the backend detail when the probe fails', async () => {
+    mockApi(async () => {
+      throw new Error(
+        'API /api/setup/free-endpoint failed: 502 The free endpoint is rate-limiting anonymous requests right now.'
+      )
     })
-
-    mockApi(api)
 
     render(<FreeProviderRow ctx={ctx} />)
     fireEvent.click(screen.getByText('Free — no account needed'))
 
-    await waitFor(() => expect(screen.getByText(/nodename nor servname/)).toBeTruthy(), { timeout: 5000 })
+    await waitFor(() => expect(screen.getByText(/rate-limiting anonymous requests/)).toBeTruthy())
 
     expect(ctx.onCompleted).not.toHaveBeenCalled()
     expect(screen.getByText('Try again')).toBeTruthy()
-  }, 10_000)
+  })
 
-  it('surfaces the progress message while provisioning', async () => {
-    let polls = 0
-
-    const api = vi.fn(async (req: { path: string }) => {
-      if (req.path.endsWith('/start')) {
-        return { configured: false, progress: 10, state: 'starting', message: 'Downloading Node 22…' }
-      }
-
-      polls += 1
-
-      return polls === 1
-        ? { configured: false, progress: 55, state: 'starting', message: 'Installing OmniRoute…' }
-        : { configured: true, progress: 100, state: 'ready' }
-    })
-
-    mockApi(api)
+  it('treats an unconfigured response as a failure', async () => {
+    mockApi(async () => ({ configured: false }))
 
     render(<FreeProviderRow ctx={ctx} />)
     fireEvent.click(screen.getByText('Free — no account needed'))
 
-    await waitFor(() => expect(screen.getByText('Installing OmniRoute…')).toBeTruthy(), { timeout: 5000 })
-    await waitFor(() => expect(ctx.onCompleted).toHaveBeenCalled(), { timeout: 5000 })
-  }, 15_000)
-
-  it('reports a failed start request instead of spinning forever', async () => {
-    mockApi(async () => {
-      throw new Error('API /api/setup/omniroute/start failed: 500 the backend exploded')
-    })
-
-    render(<FreeProviderRow ctx={ctx} />)
-    fireEvent.click(screen.getByText('Free — no account needed'))
-
-    await waitFor(() => expect(screen.getByText(/the backend exploded/)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/did not answer/)).toBeTruthy())
     expect(ctx.onCompleted).not.toHaveBeenCalled()
   })
 })

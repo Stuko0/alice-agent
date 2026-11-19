@@ -3296,6 +3296,66 @@ async def setup_omniroute_start() -> dict:
     return {**snapshot, "configured": snapshot["state"] == "ready"}
 
 
+# Wall-clock budget for the free-endpoint probe. urllib's own timeout is
+# per-socket-operation, so a slowly trickling response can outlive it; the
+# desktop's proxy gives up at 30 s, and an answer after that is useless anyway.
+_FREE_ENDPOINT_PROBE_TIMEOUT_S = 40.0
+
+
+@app.get("/api/setup/free-endpoints")
+async def api_free_endpoints() -> list[dict]:
+    """Keyless public endpoints the free-provider row can configure."""
+    from alice_cli import free_endpoints
+
+    return free_endpoints.list_endpoints()
+
+
+@app.post("/api/setup/free-endpoint")
+async def api_setup_free_endpoint(request: Request) -> dict:
+    """Configure a free endpoint that needs only a URL (no install, no key).
+
+    This is the desktop onboarding's "Free — no account needed" path: one tiny
+    chat request proves the endpoint answers for anonymous callers, then the
+    model config points at it. Nothing is downloaded and nothing is spawned.
+    """
+    from alice_cli import free_endpoints
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    endpoint_id = str((body or {}).get("id") or "").strip() or None
+
+    try:
+        endpoint = free_endpoints.get_endpoint(endpoint_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        # A real request to the network — keep it off the event loop so the
+        # gateway's websocket stays responsive while the probe runs. wait_for
+        # bounds the whole call, not just each socket read.
+        await asyncio.wait_for(
+            asyncio.to_thread(free_endpoints.probe, endpoint),
+            timeout=_FREE_ENDPOINT_PROBE_TIMEOUT_S,
+        )
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                f"{endpoint['label']} did not answer in {_FREE_ENDPOINT_PROBE_TIMEOUT_S:.0f}s. "
+                "Try again, or pick a provider that uses your own key."
+            ),
+        ) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    written = free_endpoints.apply_config(endpoint)
+
+    return {"configured": True, **written, "id": endpoint["id"], "label": endpoint["label"]}
+
+
 @app.get("/api/setup/omniroute/status")
 async def setup_omniroute_status() -> dict:
     """Progress of the setup job: {state, progress, message, error}."""

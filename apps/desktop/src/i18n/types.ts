@@ -1442,7 +1442,6 @@ export interface Translations {
     freeProviderStarting: string
     freeProviderFailed: string
     freeProviderBadgeBusy: string
-    freeProviderTimeout: string
     freeProviderRetry: string
     openRouterPitch: string
     apiKeyOptions: Record<string, { short: string; description: string }>

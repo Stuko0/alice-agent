@@ -1835,12 +1835,12 @@ export const ja = defineLocale({
     featuredPitch: '1 つのサブスクリプションで 300 以上の最先端モデル — Alice を実行するための推奨方法',
     freeProviderTitle: 'Free — no account needed',
     freeProviderBadge: 'Try it now',
-    freeProviderPitch: 'Starts a local gateway with a free model. No sign-up, no API key, nothing to install by hand.',
-    freeProviderStarting: 'Starting the free gateway… this can take a minute on first run.',
-    freeProviderFailed: 'The free gateway could not start. Pick another provider below, or try again.',
+    freeProviderPitch:
+      'Uses a public endpoint that answers without a key or an account. Nothing to install.',
+    freeProviderStarting: 'Checking the free endpoint…',
+    freeProviderFailed:
+      'The free endpoint did not answer. Pick another provider below, or try again.',
     freeProviderBadgeBusy: 'Working',
-    freeProviderTimeout:
-      'The free gateway is taking longer than expected. Leave the app open and try again in a minute — the install continues in the background.',
     freeProviderRetry: 'Try again',
     openRouterPitch: '1 つのキーで数百のモデル — 堅実なデフォルト',
     apiKeyOptions: {
