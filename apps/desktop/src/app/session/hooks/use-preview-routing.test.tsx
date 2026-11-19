@@ -1,38 +1,20 @@
-import { act, cleanup, render, waitFor } from '@testing-library/react'
+import { act, cleanup, render } from '@testing-library/react'
 import { useEffect, useRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { assistantTextPart, type ChatMessage } from '@/lib/chat-messages'
 import {
+  $previewTabUrl,
   $previewTarget,
   clearSessionPreviewRegistry,
   type PreviewTarget,
   registerSessionPreview
 } from '@/store/preview'
-import { $currentCwd, $messages } from '@/store/session'
 import type { RpcEvent } from '@/types/alice'
 
 import { usePreviewRouting } from './use-preview-routing'
 
-function assistantMessage(id: string, text: string): ChatMessage {
-  return {
-    id,
-    parts: [assistantTextPart(text)],
-    role: 'assistant'
-  }
-}
-
-function previewTarget(source: string): PreviewTarget {
-  const isUrl = /^https?:\/\//i.test(source)
-
-  return {
-    kind: isUrl ? 'url' : 'file',
-    label: source,
-    path: isUrl ? undefined : source,
-    previewKind: isUrl ? undefined : 'html',
-    source,
-    url: isUrl ? source : `file://${source}`
-  }
+function urlTarget(url: string): PreviewTarget {
+  return { kind: 'url', label: url, source: url, url }
 }
 
 let handleEvent: (event: RpcEvent) => void = () => undefined
@@ -42,12 +24,7 @@ function PreviewRoutingHarness({ onEvent }: { onEvent: (handler: (event: RpcEven
 
   const routing = usePreviewRouting({
     activeSessionIdRef,
-    baseHandleGatewayEvent: vi.fn(),
-    currentCwd: '/work',
-    currentView: 'chat',
-    requestGateway: vi.fn(),
-    routedSessionId: 'session-1',
-    selectedStoredSessionId: null
+    baseHandleGatewayEvent: vi.fn()
   })
 
   useEffect(() => {
@@ -57,77 +34,54 @@ function PreviewRoutingHarness({ onEvent }: { onEvent: (handler: (event: RpcEven
   return null
 }
 
+function renderHarness() {
+  render(
+    <PreviewRoutingHarness
+      onEvent={handler => {
+        handleEvent = handler
+      }}
+    />
+  )
+}
+
 describe('usePreviewRouting', () => {
+  const navigate = vi.fn(async () => true)
+
   beforeEach(() => {
-    $currentCwd.set('/work')
-    $messages.set([])
     $previewTarget.set(null)
+    $previewTabUrl.set(null)
     window.localStorage.clear()
     clearSessionPreviewRegistry()
     handleEvent = () => undefined
+    navigate.mockClear()
 
     Object.defineProperty(window, 'aliceDesktop', {
       configurable: true,
-      value: {
-        normalizePreviewTarget: vi.fn(async (target: string) => previewTarget(target))
-      }
+      value: { browser: { navigate } }
     })
   })
 
   afterEach(() => {
     cleanup()
-    $messages.set([])
     $previewTarget.set(null)
+    $previewTabUrl.set(null)
     window.localStorage.clear()
     clearSessionPreviewRegistry()
     vi.restoreAllMocks()
   })
 
-  it('opens the active session preview from the registry', async () => {
-    const target = previewTarget('/work/demo.html')
+  it('does not restore a registered preview into a pane on boot', () => {
+    registerSessionPreview('session-1', urlTarget('http://localhost:5173/'), 'tool-result')
 
-    registerSessionPreview('session-1', target, 'tool-result')
-    render(
-      <PreviewRoutingHarness
-        onEvent={handler => {
-          handleEvent = handler
-        }}
-      />
-    )
+    renderHarness()
 
-    await waitFor(() => {
-      expect($previewTarget.get()).toEqual({ ...target, renderMode: 'preview' })
-    })
-  })
-
-  it('does not infer previews from assistant prose', async () => {
-    render(
-      <PreviewRoutingHarness
-        onEvent={handler => {
-          handleEvent = handler
-        }}
-      />
-    )
-
-    act(() => {
-      $messages.set([
-        assistantMessage('a1', 'Preview: http://localhost:5173/'),
-        assistantMessage('a2', 'Open /work/demo.html')
-      ])
-    })
-
+    // The rail that used to restore itself is gone; previews only appear when
+    // the user (or an explicit open) asks for one.
     expect($previewTarget.get()).toBeNull()
-    expect(window.aliceDesktop.normalizePreviewTarget).not.toHaveBeenCalled()
   })
 
-  it('does not auto-open a preview from tool results', async () => {
-    render(
-      <PreviewRoutingHarness
-        onEvent={handler => {
-          handleEvent = handler
-        }}
-      />
-    )
+  it('does not auto-open a preview from tool results', () => {
+    renderHarness()
 
     act(() =>
       handleEvent({
@@ -140,5 +94,36 @@ describe('usePreviewRouting', () => {
 
     expect($previewTarget.get()).toBeNull()
     expect(window.localStorage.getItem('alice.desktop.sessionPreviews.v1')).toBeNull()
+  })
+
+  it('reloads the preview tab when the agent rewrites the served artifact', () => {
+    $previewTarget.set(urlTarget('http://localhost:5173/'))
+    $previewTabUrl.set('http://localhost:5173/')
+
+    renderHarness()
+
+    act(() =>
+      handleEvent({
+        payload: { inline_diff: '\u001b[38;2;218;165;32ma/index.html -> b/index.html\u001b[0m\n' },
+        session_id: 'session-1',
+        type: 'tool.complete'
+      })
+    )
+
+    expect(navigate).toHaveBeenCalledWith('http://localhost:5173/')
+  })
+
+  it('ignores file diffs while no url preview is open', () => {
+    renderHarness()
+
+    act(() =>
+      handleEvent({
+        payload: { inline_diff: '\u001b[38;2;218;165;32ma/index.html -> b/index.html\u001b[0m\n' },
+        session_id: 'session-1',
+        type: 'tool.complete'
+      })
+    )
+
+    expect(navigate).not.toHaveBeenCalled()
   })
 })

@@ -1,5 +1,10 @@
-import type { AliceGitWorktree } from '@/global'
 import type { ProjectInfo, SessionInfo } from '@/alice'
+import type { AliceGitWorktree } from '@/global'
+
+// Moved to `lib/session-projects.ts` (D2: stores consume them). Re-exported for
+// the sidebar's existing imports; the shared path helpers are used below.
+export { kanbanWorktreeDir, liveSessionProjectId } from '@/lib/session-projects'
+import { isPathUnder, kanbanWorktreeDir, liveSessionProjectId, pathSegments as segments } from '@/lib/session-projects'
 
 // Session grouping is now computed authoritatively on the backend
 // (`tui_gateway/project_tree.py`, exposed via `projects.tree` /
@@ -62,13 +67,6 @@ export interface SidebarProjectTree {
   previewSessions?: SessionInfo[]
 }
 
-/** Path split into segments, ignoring trailing slashes and mixed separators. */
-const segments = (path: string): string[] =>
-  path
-    .replace(/[/\\]+$/, '')
-    .split(/[/\\]/)
-    .filter(Boolean)
-
 /** A path with trailing separators stripped, for stable equality checks. */
 const normalizePath = (path: null | string | undefined): string => (path ?? '').replace(/[/\\]+$/, '')
 
@@ -81,9 +79,7 @@ export const baseName = (path: string): string | undefined => segments(path).pop
 // "New worktree" dirs (`<repo>/.worktrees/<slug>`) stay as their own lanes.
 const KANBAN_DIR_RE = /^(.*[/\\]\.worktrees)[/\\]t_[0-9a-f]+[/\\]?$/
 
-export function kanbanWorktreeDir(path: string): null | string {
-  return path.match(KANBAN_DIR_RE)?.[1] ?? null
-}
+
 
 /** Label for a main-checkout lane whose session recorded no branch. */
 export const DEFAULT_BRANCH_LABEL = 'main'
@@ -314,18 +310,6 @@ export function mergeRepoWorktreeGroups(
 // needs the backend common-root probe, so those rows are left for the next
 // tree refresh; the common case (a new main-checkout session) overlays here.
 
-/** True when `target` equals `folder` or is nested under it (segment-wise). */
-function isPathUnder(folder: string, target: string): boolean {
-  const f = segments(folder)
-  const t = segments(target)
-
-  if (!f.length || f.length > t.length) {
-    return false
-  }
-
-  return f.every((seg, i) => seg === t[i])
-}
-
 /**
  * The project a live session belongs to (overview membership) — explicit project
  * by longest-prefix folder, else the repo root (the auto-project id). An IN-TREE
@@ -337,43 +321,7 @@ function isPathUnder(folder: string, target: string): boolean {
  * kanban-task worktrees (they fold into the kanban bucket), or a worktree that
  * lives OUTSIDE the repo root (a sibling dir whose project can't be derived).
  */
-export function liveSessionProjectId(session: SessionInfo, explicitProjects: ProjectInfo[]): null | string {
-  const cwd = (session.cwd || '').trim()
 
-  if (!cwd || kanbanWorktreeDir(cwd)) {
-    return null
-  }
-
-  // No persisted repo root yet (brand-new session) → the cwd is the root.
-  const repoRoot = (session.git_repo_root || '').trim() || cwd
-  const underRepo = cwd === repoRoot || cwd.startsWith(`${repoRoot}/`) || cwd.startsWith(`${repoRoot}\\`)
-
-  if (!underRepo) {
-    return null
-  }
-
-  let projectId = ''
-  let bestLen = -1
-
-  for (const project of explicitProjects) {
-    if (project.archived) {
-      continue
-    }
-
-    for (const folder of project.folders) {
-      if (isPathUnder(folder.path, cwd) || isPathUnder(folder.path, repoRoot)) {
-        const len = segments(folder.path).length
-
-        if (len > bestLen) {
-          bestLen = len
-          projectId = project.id
-        }
-      }
-    }
-  }
-
-  return projectId || repoRoot
-}
 
 const upsertSession = (rows: SessionInfo[], session: SessionInfo): SessionInfo[] =>
   [session, ...rows.filter(row => row.id !== session.id)].sort((a, b) => b.started_at - a.started_at)

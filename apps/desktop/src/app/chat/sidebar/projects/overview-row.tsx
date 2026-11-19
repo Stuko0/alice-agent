@@ -1,9 +1,9 @@
 import type * as React from 'react'
 import { useRef } from 'react'
 
+import type { SessionInfo } from '@/alice'
 import { Codicon } from '@/components/ui/codicon'
 import { DisclosureCaret } from '@/components/ui/disclosure-caret'
-import type { SessionInfo } from '@/alice'
 import { useI18n } from '@/i18n'
 import { cn } from '@/lib/utils'
 

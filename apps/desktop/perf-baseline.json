@@ -1,0 +1,9 @@
+{
+  "_comment": "Interaction latency baseline (p95 ms per interaction). Unmeasured by design: capturing it needs a GUI session running `wails dev` (Settings → About → Copy JSON). Fill `meta` (captured_at/commit/machine) and `cases` from a real capture; CI then compares captures against it and never fabricates numbers.",
+  "meta": {
+    "captured_at": null,
+    "commit": null,
+    "machine": null
+  },
+  "cases": {}
+}

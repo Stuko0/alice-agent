@@ -7,6 +7,7 @@ import { normalizeOrLocalPreviewTarget } from '@/lib/local-preview'
 import { previewName } from '@/lib/preview-targets'
 import { notifyError } from '@/store/notifications'
 import {
+  $previewTabOpen,
   $previewTarget,
   dismissPreviewTarget,
   type PreviewRecordSource,
@@ -18,6 +19,7 @@ export function PreviewAttachment({ source = 'manual', target }: { source?: Prev
   const { t } = useI18n()
   const cwd = useStore($currentCwd)
   const activePreview = useStore($previewTarget)
+  const previewTabOpen = useStore($previewTabOpen)
   const [opening, setOpening] = useState(false)
   const activePreviewRef = useRef(activePreview)
   const cwdRef = useRef(cwd)
@@ -25,7 +27,7 @@ export function PreviewAttachment({ source = 'manual', target }: { source?: Prev
   const requestTokenRef = useRef(0)
   const targetRef = useRef(target)
   const name = previewName(target)
-  const isActive = activePreview?.source === target
+  const isActive = activePreview?.source === target && previewTabOpen
 
   activePreviewRef.current = activePreview
   cwdRef.current = cwd

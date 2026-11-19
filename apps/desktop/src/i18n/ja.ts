@@ -567,6 +567,17 @@ export const ja = defineLocale({
           'アプリから Alice 自身を更新するとき、ローカルのソース変更を保持するか破棄するかを選びます。ターミナル更新では常に確認されます。'
       }
     }),
+    interactionStats: {
+      clear: 'Clear',
+      copy: 'Copy JSON',
+      description: 'Dev-only: p50/p95 of the interactions the performance plan targets.',
+      empty: 'No interactions recorded yet.',
+      name: 'Interaction',
+      p50: 'p50',
+      p95: 'p95',
+      samples: 'n',
+      title: 'Interaction latency'
+    },
     about: {
       heading: 'Alice Desktop',
       version: value => `バージョン ${value}`,
@@ -827,7 +838,6 @@ export const ja = defineLocale({
         'このツールセットにはプロバイダーのオプションがありません。有効にすれば現在の設定で動作します。',
       noProviders: '現在このツールセットに利用可能なプロバイダーがありません。',
       ready: '準備完了',
-      nousIncluded: 'Nous サブスクリプションに含まれています。有効にするには Nous Portal にサインインしてください。',
       noApiKeyRequired: 'API キーは不要です。',
       postSetupHint: step =>
         `このバックエンドは一度だけインストールが必要です (${step})。このマシン上で実行され、数分かかる場合があります。`,
@@ -1835,11 +1845,9 @@ export const ja = defineLocale({
     featuredPitch: '1 つのサブスクリプションで 300 以上の最先端モデル — Alice を実行するための推奨方法',
     freeProviderTitle: 'Free — no account needed',
     freeProviderBadge: 'Try it now',
-    freeProviderPitch:
-      'Uses a public endpoint that answers without a key or an account. Nothing to install.',
+    freeProviderPitch: 'Uses a public endpoint that answers without a key or an account. Nothing to install.',
     freeProviderStarting: 'Checking the free endpoint…',
-    freeProviderFailed:
-      'The free endpoint did not answer. Pick another provider below, or try again.',
+    freeProviderFailed: 'The free endpoint did not answer. Pick another provider below, or try again.',
     freeProviderBadgeBusy: 'Working',
     freeProviderRetry: 'Try again',
     freeProviderForce: 'Use it anyway',
@@ -1895,8 +1903,6 @@ export const ja = defineLocale({
     reopenVerification: '確認ページを再度開く',
     copy: 'コピー',
     defaultModel: 'デフォルトモデル',
-    freeTier: '無料プラン',
-    pro: 'Pro',
     free: '無料',
     price: (input, output) => `${input} 入力 / ${output} 出力 per Mtok`,
     change: '変更',
@@ -1913,10 +1919,7 @@ export const ja = defineLocale({
     addProvider: 'プロバイダーを追加',
     loadFailed: 'モデルを読み込めませんでした',
     noAuthenticatedProviders: '認証済みプロバイダーがありません。',
-    pro: 'Pro',
-    proNeedsSubscription: 'Pro モデルには有料の Nous サブスクリプションが必要です。',
     free: '無料',
-    freeTier: '無料プラン',
     priceTitle: '100 万トークンあたりの入力/出力価格'
   },
 
@@ -2098,6 +2101,13 @@ export const ja = defineLocale({
     largeBody: (label, size) => `${label} は ${size} です。Alice は最初の 512 KB のみを表示します。`,
     previewAnyway: 'とにかくプレビュー',
     truncated: '最初の 512 KB を表示しています。',
+    largeImageTitle: '画像が大きすぎます',
+    largeImageBody: (label, size) => `${label} は ${size} です。ブラウザまたは画像ビューアで開いてください。`,
+    plainBecauseLarge: '大きいファイルのため、シンタックスハイライトなしで表示しています。',
+    highlightAnyway: 'それでもハイライトする',
+    diffEmptyTitle: '未コミットの変更はありません',
+    diffEmptyBody: 'このファイルは作業ツリーの最終コミットと一致しています。',
+    diffLoading: '差分を読み込み中',
     noInlineTitle: 'インラインプレビューなし',
     noInlineBody: mimeType => `${mimeType || 'このファイルタイプ'} はコンテキストとして添付できます。`,
     edit: '編集',
@@ -2145,8 +2155,7 @@ export const ja = defineLocale({
       showConsole: 'プレビューコンソールを表示',
       hideDevTools: 'プレビュー DevTools を非表示',
       openDevTools: 'プレビュー DevTools を開く',
-      finishedRestarting: message =>
-        `Alice がプレビューサーバーの再起動を完了しました${message ? `: ${message}` : ''}`,
+      finishedRestarting: message => `Alice がプレビューサーバーの再起動を完了しました${message ? `: ${message}` : ''}`,
       failedRestarting: message => `サーバーの再起動に失敗しました: ${message}`,
       unknownError: '不明なエラー',
       restartedTitle: 'プレビューサーバーが再起動しました',
@@ -2163,6 +2172,10 @@ export const ja = defineLocale({
         'モジュールスクリプトが間違った MIME タイプで提供されています。通常、静的ファイルサーバーがプロジェクトの開発サーバーの代わりに Vite/React アプリを提供していることを意味します。',
       loadFailedConsole: (code, message) => `読み込みに失敗しました${code ? ` (${code})` : ''}: ${message}`,
       unreachableDescription: 'プレビューページに到達できませんでした。',
+      viewSource: 'ソースを表示',
+      loadTimeout: 'プレビューページの読み込みが完了しませんでした。',
+      localServer: url => `ローカルプレビューを ${url} から配信中`,
+      localServerStopped: 'ローカルプレビューサーバーを停止しました',
       openTarget: url => `${url} を開く`,
       fallbackTitle: 'プレビュー'
     }

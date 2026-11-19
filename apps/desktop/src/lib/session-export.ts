@@ -33,7 +33,8 @@ export async function exportSession(sessionId: string, params: Omit<ExportSessio
 
   try {
     const profile = params.profile ?? params.session?.profile
-    const { messages } = await getSessionMessages(sessionId, profile)
+    // Exports are an archive: ask for the untrimmed row shape.
+    const { messages } = await getSessionMessages(sessionId, profile, undefined, undefined, { full: true })
 
     const payload = {
       exported_at: new Date().toISOString(),

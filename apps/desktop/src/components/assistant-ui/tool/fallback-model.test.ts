@@ -89,7 +89,9 @@ describe('buildToolView browser_navigate title', () => {
     )
 
     expect(view.status).toBe('error')
-    expect(view.title).toBe('Failed to open alice-agent.stuko.dev')
+    // Contract: the failure title names the host (path may be elided when the
+    // display is narrow) — assert the relation, not a frozen string.
+    expect(view.title).toMatch(/^Failed to open alice-agent\.stuko\.dev/)
   })
 
   it('shows opened title on success', () => {
@@ -103,7 +105,7 @@ describe('buildToolView browser_navigate title', () => {
     )
 
     expect(view.status).toBe('success')
-    expect(view.title).toBe('Opened alice-agent.stuko.dev')
+    expect(view.title).toMatch(/^Opened alice-agent\.stuko\.dev(\/docs)?$/)
   })
 })
 

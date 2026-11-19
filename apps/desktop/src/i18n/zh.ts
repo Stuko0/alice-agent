@@ -376,6 +376,10 @@ export const zh: Translations = {
       toolViewDesc: '产品模式隐藏原始工具数据；技术模式显示完整输入/输出。',
       translucencyTitle: '窗口透明',
       translucencyDesc: '让整个窗口透出桌面。仅支持 macOS 和 Windows。',
+      displayScaleTitle: '显示缩放',
+      displayScaleDesc: '放大整个窗口；布局会按剩余空间重新排列。',
+      reduceMotionTitle: '减少动态效果',
+      reduceMotionDesc: '关闭所有动画与过渡。默认跟随系统设置，也可在此手动切换。',
       embedsTitle: '内嵌预览',
       embedsDesc:
         '富预览会从第三方网站（YouTube、X 等）加载。询问会在你允许前显示占位符；总是会自动加载；关闭则保留纯链接。',
@@ -646,6 +650,17 @@ export const zh: Translations = {
           'Alice 从应用内更新时（无终端提示），保留本地源码修改（暂存）或丢弃（放弃）。通过终端更新时始终会询问。'
       }
     }),
+    interactionStats: {
+      clear: 'Clear',
+      copy: 'Copy JSON',
+      description: 'Dev-only: p50/p95 of the interactions the performance plan targets.',
+      empty: 'No interactions recorded yet.',
+      name: 'Interaction',
+      p50: 'p50',
+      p95: 'p95',
+      samples: 'n',
+      title: 'Interaction latency'
+    },
     about: {
       heading: 'Alice Desktop',
       version: value => `版本 ${value}`,
@@ -900,7 +915,6 @@ export const zh: Translations = {
       noProviderOptions: '此工具集没有提供方选项；启用后即可使用当前配置。',
       noProviders: '此工具集当前没有可用提供方。',
       ready: '就绪',
-      nousIncluded: '包含在 Nous 订阅中；登录 Nous Portal 即可激活。',
       noApiKeyRequired: '不需要 API 密钥。',
       postSetupHint: step => `此后端需要一次性安装 (${step})。将在此机器上执行，可能需要几分钟。`,
       postSetupRun: '运行设置',
@@ -1544,8 +1558,7 @@ export const zh: Translations = {
       copyPath: '复制路径',
       removeFromSidebar: '从侧边栏移除',
       createFailed: '无法创建项目',
-      staleBackend:
-        '请更新 Alice 后端以创建项目——当前后端比桌面应用旧（设置 → 更新 → 后端）。',
+      staleBackend: '请更新 Alice 后端以创建项目——当前后端比桌面应用旧（设置 → 更新 → 后端）。',
       deleteConfirm: '这会从 Alice 中移除已保存的项目。文件、git 仓库和工作树保持不变。',
       startWork: '新建工作树',
       newWorktreeTitle: '新建工作树',
@@ -1833,8 +1846,7 @@ export const zh: Translations = {
     copy: '复制',
     copied: '已复制',
     done: '完成',
-    applyingBody:
-      'Alice 更新器会在自己的窗口中接管，并在完成后自动重新打开 Alice。更新期间请不要自行重新打开 Alice。',
+    applyingBody: 'Alice 更新器会在自己的窗口中接管，并在完成后自动重新打开 Alice。更新期间请不要自行重新打开 Alice。',
     applyingBodyBackend: '远程后端正在应用更新并将重启。恢复后 Alice 会自动重新连接。',
     applyingClose: '此窗口会在更新期间关闭，随后 Alice 会自动重新打开。',
     errorTitle: '更新未完成',
@@ -1903,11 +1915,9 @@ export const zh: Translations = {
     featuredPitch: '一个订阅，300+ 前沿模型 — 运行 Alice 的推荐方式',
     freeProviderTitle: 'Free — no account needed',
     freeProviderBadge: 'Try it now',
-    freeProviderPitch:
-      'Uses a public endpoint that answers without a key or an account. Nothing to install.',
+    freeProviderPitch: 'Uses a public endpoint that answers without a key or an account. Nothing to install.',
     freeProviderStarting: 'Checking the free endpoint…',
-    freeProviderFailed:
-      'The free endpoint did not answer. Pick another provider below, or try again.',
+    freeProviderFailed: 'The free endpoint did not answer. Pick another provider below, or try again.',
     freeProviderBadgeBusy: 'Working',
     freeProviderRetry: 'Try again',
     freeProviderForce: 'Use it anyway',
@@ -1958,8 +1968,6 @@ export const zh: Translations = {
     reopenVerification: '重新打开验证页面',
     copy: '复制',
     defaultModel: '默认模型',
-    freeTier: '免费层',
-    pro: 'Pro',
     free: '免费',
     price: (input, output) => `${input} 输入 / ${output} 输出每 Mtok`,
     change: '更改',
@@ -1976,10 +1984,7 @@ export const zh: Translations = {
     addProvider: '添加提供方',
     loadFailed: '无法加载模型',
     noAuthenticatedProviders: '没有已认证的提供方。',
-    pro: 'Pro',
-    proNeedsSubscription: 'Pro 模型需要付费 Nous 订阅。',
     free: '免费',
-    freeTier: '免费层',
     priceTitle: '每百万 token 的输入/输出价格'
   },
 
@@ -2161,6 +2166,13 @@ export const zh: Translations = {
     largeBody: (label, size) => `${label} 大小为 ${size}。Alice 只会显示前 512 KB。`,
     previewAnyway: '仍然预览',
     truncated: '显示前 512 KB。',
+    largeImageTitle: '图片过大',
+    largeImageBody: (label, size) => `${label} 为 ${size}。请在浏览器或图片查看器中打开。`,
+    plainBecauseLarge: '文件较大：已关闭语法高亮。',
+    highlightAnyway: '仍然高亮',
+    diffEmptyTitle: '没有未提交的更改',
+    diffEmptyBody: '此文件与工作区最后一次提交一致。',
+    diffLoading: '正在加载差异',
     noInlineTitle: '没有内联预览',
     noInlineBody: mimeType => `${mimeType || '此文件类型'} 仍可作为上下文附件。`,
     edit: '编辑',
@@ -2223,6 +2235,10 @@ export const zh: Translations = {
         '模块脚本使用了错误的 MIME 类型。这通常表示静态文件服务器正在服务 Vite/React 应用，而不是项目开发服务器。',
       loadFailedConsole: (code, message) => `加载失败${code ? ` (${code})` : ''}: ${message}`,
       unreachableDescription: '无法访问预览页面。',
+      viewSource: '查看源代码',
+      loadTimeout: '预览页面未能加载完成。',
+      localServer: url => `正在从 ${url} 提供本地预览`,
+      localServerStopped: '本地预览服务器已停止',
       openTarget: url => `打开 ${url}`,
       fallbackTitle: '预览'
     }

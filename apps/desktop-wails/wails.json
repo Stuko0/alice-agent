@@ -10,7 +10,7 @@
   "frontend:dev:serverUrl": "auto",
   "author": {
     "name": "Stuko",
-    "email": "avplaying@gmail.com"
+    "email": "contact@stuko.dev"
   },
   "info": {
     "companyName": "Stuko",
@@ -22,8 +22,8 @@
   "linux": {
     "icon": "../desktop/assets/icon.png",
     "deb": {
-      "maintainer": "Stuko <avplaying@gmail.com>",
-      "homepage": "https://github.com/Stuko0/alice-agent",
+      "maintainer": "Stuko <contact@stuko.dev>",
+      "homepage": "https://alice-agent.stuko.dev",
       "description": "Native Wails v2 Desktop Shell for Alice Agent",
       "section": "utils",
       "priority": "optional",
@@ -31,7 +31,9 @@
         "libgtk-3-0",
         "libwebkit2gtk-4.0-37"
       ],
-      "recommends": ["alice"]
+      "recommends": [
+        "alice"
+      ]
     },
     "rpm": {
       "license": "MIT",
@@ -40,10 +42,12 @@
         "gtk3",
         "webkit2gtk40"
       ],
-      "recommends": ["alice"]
+      "recommends": [
+        "alice"
+      ]
     },
     "apk": {
-      "maintainer": "Stuko <avplaying@gmail.com>",
+      "maintainer": "Stuko <contact@stuko.dev>",
       "depends": [
         "gtk3",
         "webkit2gtk-4.0"

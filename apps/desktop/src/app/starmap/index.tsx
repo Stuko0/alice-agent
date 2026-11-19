@@ -6,7 +6,7 @@ import { useI18n } from '@/i18n'
 import { $starmapError, $starmapGraph, $starmapLoading, loadStarmapGraph } from '@/store/starmap'
 import type { StarmapGraph } from '@/types/alice'
 
-import { Panel, PanelEmpty } from '../overlays/panel'
+import { Panel, PanelEmpty, PanelHeader } from '../overlays/panel'
 
 import { StarMap } from './star-map'
 
@@ -39,6 +39,7 @@ export function StarmapView({ onClose }: { onClose: () => void }) {
 
   return (
     <Panel closeLabel={t.starmap.close} onClose={onClose}>
+      <PanelHeader title={t.starmap.title} />
       {error ? (
         <PanelEmpty description={error} icon="warning" title={t.starmap.loadFailed} />
       ) : !shown && loading ? (

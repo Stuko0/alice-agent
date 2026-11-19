@@ -18,12 +18,28 @@ export function IsGatewayHealthy() {
   return window['go']['main']['App']['IsGatewayHealthy']();
 }
 
+export function NormalizePreviewTarget(arg1, arg2) {
+  return window['go']['main']['App']['NormalizePreviewTarget'](arg1, arg2);
+}
+
 export function OpenExternal(arg1) {
   return window['go']['main']['App']['OpenExternal'](arg1);
 }
 
 export function PathExists(arg1) {
   return window['go']['main']['App']['PathExists'](arg1);
+}
+
+export function PreviewStartForFile(arg1) {
+  return window['go']['main']['App']['PreviewStartForFile'](arg1);
+}
+
+export function PreviewStartForImage(arg1) {
+  return window['go']['main']['App']['PreviewStartForImage'](arg1);
+}
+
+export function PreviewStop(arg1) {
+  return window['go']['main']['App']['PreviewStop'](arg1);
 }
 
 export function ProxyApi(arg1) {
@@ -36,6 +52,10 @@ export function ReadFileDataUrl(arg1) {
 
 export function ReadFileText(arg1) {
   return window['go']['main']['App']['ReadFileText'](arg1);
+}
+
+export function ReadFileTextLimited(arg1, arg2) {
+  return window['go']['main']['App']['ReadFileTextLimited'](arg1, arg2);
 }
 
 export function RenamePath(arg1, arg2) {
@@ -52,6 +72,18 @@ export function RevealLogs() {
 
 export function RevealPath(arg1) {
   return window['go']['main']['App']['RevealPath'](arg1);
+}
+
+export function StartFileWatch(arg1) {
+  return window['go']['main']['App']['StartFileWatch'](arg1);
+}
+
+export function StatFile(arg1) {
+  return window['go']['main']['App']['StatFile'](arg1);
+}
+
+export function StopFileWatch(arg1) {
+  return window['go']['main']['App']['StopFileWatch'](arg1);
 }
 
 export function TrashPath(arg1) {

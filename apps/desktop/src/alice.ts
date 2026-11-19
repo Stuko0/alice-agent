@@ -8,18 +8,11 @@ import type {
   AudioTranscriptionResponse,
   AuxiliaryModelsResponse,
   BackendUpdateCheckResponse,
-  ComputerUseStatus,
-  ConfigSchemaResponse,
   CronJob,
   CronJobCreatePayload,
   CronJobUpdates,
   ElevenLabsVoicesResponse,
-  EnvVarInfo,
-  AliceConfig,
-  AliceConfigRecord,
   LogsResponse,
-  MemoryProviderConfig,
-  MemoryProviderOAuthStatus,
   MessagingPlatformsResponse,
   MessagingPlatformTestResponse,
   MessagingPlatformUpdate,
@@ -28,31 +21,33 @@ import type {
   ModelAssignmentResponse,
   ModelInfoResponse,
   ModelOptionsResponse,
-  OAuthPollResponse,
-  OAuthProvidersResponse,
-  OAuthStartResponse,
-  OAuthSubmitResponse,
-  PaginatedSessions,
   ProfileCreatePayload,
   ProfileSetupCommand,
   ProfileSoul,
   ProfilesResponse,
   SessionInfo,
-  SessionMessagesResponse,
-  SessionSearchResponse,
   SkillInfo,
   StarmapGraph,
-  StatusResponse,
-  ToolsetConfig,
-  ToolsetInfo
+  StatusResponse
 } from '@/types/alice'
 
 const DEFAULT_GATEWAY_REQUEST_TIMEOUT_MS = 30_000
-const SESSION_LIST_REQUEST_TIMEOUT_MS = 60_000
 
+// Domain modules split out of this file. Re-exported so '@alice' remains the
+// single public entry point (same names, same signatures).
+export { setApiRequestProfile } from './lib/api/client'
+
+export * from './lib/api/config'
+export * from './lib/api/help'
+export * from './lib/api/migration'
+export * from './lib/api/providers'
+export * from './lib/api/sessions'
+export * from './lib/api/tools'
 export type {
   ActionResponse,
   ActionStatusResponse,
+  AliceConfig,
+  AliceConfigRecord,
   AnalyticsDailyEntry,
   AnalyticsModelEntry,
   AnalyticsResponse,
@@ -76,8 +71,6 @@ export type {
   ElevenLabsVoicesResponse,
   EnvVarInfo,
   GatewayReadyPayload,
-  AliceConfig,
-  AliceConfigRecord,
   LogsResponse,
   MemoryProviderConfig,
   MemoryProviderOAuthStatus,
@@ -120,6 +113,8 @@ export type {
   ToolsetInfo
 } from '@/types/alice'
 
+import { profileScoped } from './lib/api/client'
+
 export class AliceGateway extends JsonRpcGatewayClient {
   constructor() {
     super({
@@ -138,142 +133,6 @@ export class AliceGateway extends JsonRpcGatewayClient {
 // Electron main consumes request.profile to pick which backend *process* serves
 // the call; each pooled backend already has its own ALICE_HOME, so no backend
 // change is needed. Null → primary, so single-profile users are unaffected.
-let _apiProfile: null | string = null
-
-export function setApiRequestProfile(profile: null | string): void {
-  _apiProfile = profile || null
-}
-
-function profileScoped(): { profile?: string } {
-  return _apiProfile ? { profile: _apiProfile } : {}
-}
-
-export async function listSessions(
-  limit = 40,
-  minMessages = 0,
-  archived: 'exclude' | 'include' | 'only' = 'exclude',
-  order: 'created' | 'recent' = 'recent'
-): Promise<PaginatedSessions> {
-  const result = await window.aliceDesktop.api<PaginatedSessions>({
-    path:
-      `/api/sessions?limit=${limit}&offset=0&min_messages=${Math.max(0, minMessages)}` +
-      `&archived=${archived}&order=${order}`,
-    timeoutMs: SESSION_LIST_REQUEST_TIMEOUT_MS
-  })
-
-  return {
-    ...result,
-    sessions: result.sessions.slice(0, limit),
-    offset: 0
-  }
-}
-
-// Unified, read-only session list aggregated across ALL profiles. Served by the
-// primary backend straight off each profile's state.db — no per-profile backend
-// is spawned. Single-profile users get the same rows as listSessions(), tagged
-// profile="default".
-// Source scoping lets callers split the unified list into independent slices:
-// recents pass `excludeSources: ['cron']`, the cron-jobs section passes
-// `source: 'cron'`. Without this a burst of (always-newest) cron sessions
-// consumes the whole recents page and starves real conversations.
-export interface SessionSourceFilter {
-  source?: string
-  excludeSources?: string[]
-}
-
-export async function listAllProfileSessions(
-  limit = 40,
-  minMessages = 0,
-  archived: 'exclude' | 'include' | 'only' = 'exclude',
-  order: 'created' | 'recent' = 'recent',
-  profile: 'all' | (string & {}) = 'all',
-  filter: SessionSourceFilter = {}
-): Promise<PaginatedSessions> {
-  const sourceParam = filter.source ? `&source=${encodeURIComponent(filter.source)}` : ''
-
-  const excludeParam = filter.excludeSources?.length
-    ? `&exclude_sources=${encodeURIComponent(filter.excludeSources.join(','))}`
-    : ''
-
-  const result = await window.aliceDesktop.api<PaginatedSessions>({
-    path:
-      `/api/profiles/sessions?limit=${limit}&offset=0&min_messages=${Math.max(0, minMessages)}` +
-      `&archived=${archived}&order=${order}&profile=${encodeURIComponent(profile)}${sourceParam}${excludeParam}`,
-    timeoutMs: SESSION_LIST_REQUEST_TIMEOUT_MS
-  })
-
-  return {
-    ...result,
-    sessions: result.sessions.slice(0, limit),
-    offset: 0
-  }
-}
-
-// Mutations take the owning `profile` so Electron routes them to that profile's
-// backend (remote pool or local primary) via request.profile — matching the
-// read path. A remote session's row lives only on its remote host, so a mutation
-// that hit the local primary would no-op or 404. Omit for the current/default.
-export function setSessionArchived(id: string, archived: boolean, profile?: string | null): Promise<{ ok: boolean }> {
-  return window.aliceDesktop.api<{ ok: boolean }>({
-    ...(profile ? { profile } : {}),
-    path: `/api/sessions/${encodeURIComponent(id)}`,
-    method: 'PATCH',
-    body: { archived }
-  })
-}
-
-export function searchSessions(query: string): Promise<SessionSearchResponse> {
-  return window.aliceDesktop.api<SessionSearchResponse>({
-    path: `/api/sessions/search?q=${encodeURIComponent(query)}`
-  })
-}
-
-// Resolves a single session row by id on one backend (the active profile, or
-// the given `profile`). The backend resolves exact ids and unique prefixes and
-// 404s when the id isn't on that profile — so a cheap by-id lookup replaces the
-// cross-profile list scan when locating an unknown id's owner.
-export function getSession(id: string, profile?: string | null): Promise<SessionInfo> {
-  const suffix = profile ? `?profile=${encodeURIComponent(profile)}` : ''
-
-  return window.aliceDesktop.api<SessionInfo>({
-    ...(profile ? { profile } : {}),
-    path: `/api/sessions/${encodeURIComponent(id)}${suffix}`
-  })
-}
-
-// Reads another profile's transcript. For a remote profile Electron reroutes
-// this GET to the remote backend (which serves its own state.db); for a local
-// profile the primary opens that profile's state.db via ?profile=. Omit for
-// the current/default profile.
-export function getSessionMessages(id: string, profile?: string | null): Promise<SessionMessagesResponse> {
-  const suffix = profile ? `?profile=${encodeURIComponent(profile)}` : ''
-
-  return window.aliceDesktop.api<SessionMessagesResponse>({
-    ...(profile ? { profile } : {}),
-    path: `/api/sessions/${encodeURIComponent(id)}/messages${suffix}`
-  })
-}
-
-export function deleteSession(id: string, profile?: string | null): Promise<{ ok: boolean }> {
-  return window.aliceDesktop.api<{ ok: boolean }>({
-    ...(profile ? { profile } : {}),
-    path: `/api/sessions/${encodeURIComponent(id)}`,
-    method: 'DELETE'
-  })
-}
-
-export function renameSession(
-  id: string,
-  title: string,
-  profile?: string | null
-): Promise<{ ok: boolean; title: string }> {
-  return window.aliceDesktop.api<{ ok: boolean; title: string }>({
-    ...(profile ? { profile } : {}),
-    path: `/api/sessions/${encodeURIComponent(id)}`,
-    method: 'PATCH',
-    body: { title, ...(profile ? { profile } : {}) }
-  })
-}
 
 export function getGlobalModelInfo(): Promise<ModelInfoResponse> {
   return window.aliceDesktop.api<ModelInfoResponse>({
@@ -318,325 +177,6 @@ export function getLogs(params: {
   return window.aliceDesktop.api<LogsResponse>({
     ...profileScoped(),
     path: suffix ? `/api/logs?${suffix}` : '/api/logs'
-  })
-}
-
-export function getAliceConfig(): Promise<AliceConfig> {
-  return window.aliceDesktop.api<AliceConfig>({
-    ...profileScoped(),
-    path: '/api/config'
-  })
-}
-
-export function getAliceConfigRecord(): Promise<AliceConfigRecord> {
-  return window.aliceDesktop.api<AliceConfigRecord>({
-    ...profileScoped(),
-    path: '/api/config'
-  })
-}
-
-export function getAliceConfigDefaults(): Promise<AliceConfigRecord> {
-  return window.aliceDesktop.api<AliceConfigRecord>({
-    ...profileScoped(),
-    path: '/api/config/defaults'
-  })
-}
-
-export function getAliceConfigSchema(): Promise<ConfigSchemaResponse> {
-  return window.aliceDesktop.api<ConfigSchemaResponse>({
-    ...profileScoped(),
-    path: '/api/config/schema'
-  })
-}
-
-export function saveAliceConfig(config: AliceConfigRecord): Promise<{ ok: boolean }> {
-  return window.aliceDesktop.api<{ ok: boolean }>({
-    ...profileScoped(),
-    path: '/api/config',
-    method: 'PUT',
-    body: { config }
-  })
-}
-
-export function getMemoryProviderConfig(provider: string): Promise<MemoryProviderConfig> {
-  return window.aliceDesktop.api<MemoryProviderConfig>({
-    path: `/api/memory/providers/${encodeURIComponent(provider)}/config`
-  })
-}
-
-export function saveMemoryProviderConfig(provider: string, values: Record<string, string>): Promise<{ ok: boolean }> {
-  return window.aliceDesktop.api<{ ok: boolean }>({
-    path: `/api/memory/providers/${encodeURIComponent(provider)}/config`,
-    method: 'PUT',
-    body: { values }
-  })
-}
-
-export function getEnvVars(): Promise<Record<string, EnvVarInfo>> {
-  return window.aliceDesktop.api<Record<string, EnvVarInfo>>({
-    ...profileScoped(),
-    path: '/api/env'
-  })
-}
-
-export function setEnvVar(key: string, value: string): Promise<{ ok: boolean }> {
-  return window.aliceDesktop.api<{ ok: boolean }>({
-    ...profileScoped(),
-    path: '/api/env',
-    method: 'PUT',
-    body: { key, value }
-  })
-}
-
-export function validateProviderCredential(
-  key: string,
-  value: string,
-  apiKey?: string
-): Promise<{ ok: boolean; reachable: boolean; message: string; models?: string[] }> {
-  return window.aliceDesktop.api<{ ok: boolean; reachable: boolean; message: string; models?: string[] }>({
-    ...profileScoped(),
-    path: '/api/providers/validate',
-    method: 'POST',
-    body: { key, value, api_key: apiKey ?? '' }
-  })
-}
-
-export function deleteEnvVar(key: string): Promise<{ ok: boolean }> {
-  return window.aliceDesktop.api<{ ok: boolean }>({
-    ...profileScoped(),
-    path: '/api/env',
-    method: 'DELETE',
-    body: { key }
-  })
-}
-
-export function revealEnvVar(key: string): Promise<{ key: string; value: string }> {
-  return window.aliceDesktop.api<{ key: string; value: string }>({
-    ...profileScoped(),
-    path: '/api/env/reveal',
-    method: 'POST',
-    body: { key }
-  })
-}
-
-export function listOAuthProviders(): Promise<OAuthProvidersResponse> {
-  return window.aliceDesktop.api<OAuthProvidersResponse>({
-    ...profileScoped(),
-    path: '/api/providers/oauth'
-  })
-}
-
-export function disconnectOAuthProvider(providerId: string): Promise<{ ok: boolean; provider: string }> {
-  return window.aliceDesktop.api<{ ok: boolean; provider: string }>({
-    ...profileScoped(),
-    path: `/api/providers/oauth/${encodeURIComponent(providerId)}`,
-    method: 'DELETE'
-  })
-}
-
-export function startOAuthLogin(providerId: string): Promise<OAuthStartResponse> {
-  return window.aliceDesktop.api<OAuthStartResponse>({
-    ...profileScoped(),
-    path: `/api/providers/oauth/${encodeURIComponent(providerId)}/start`,
-    method: 'POST',
-    body: {}
-  })
-}
-
-// ── Dynamic Provider Registry (DPR) ──────────────────────────────────────────
-// Custom providers live as declarative specs in ~/.alice/providers.d/ and
-// appear everywhere built-ins do. These four calls drive the Settings →
-// Providers "Custom" section.
-
-export interface CustomProviderSpec {
-  name: string
-  base_url?: string
-  api?: string
-  url?: string
-  api_key_env?: string
-  key_env?: string
-  api_mode?: 'openai' | 'anthropic'
-  models?: string[]
-  provider_key?: string
-}
-
-export interface CustomProviderProbe {
-  ok: boolean
-  latency_ms: number
-  models?: string[]
-  error?: string
-}
-
-export function listCustomProviders(): Promise<CustomProviderSpec[]> {
-  return window.aliceDesktop.api<CustomProviderSpec[]>({
-    ...profileScoped(),
-    path: '/api/providers/custom'
-  })
-}
-
-export function addCustomProvider(spec: CustomProviderSpec): Promise<CustomProviderSpec & { id: string }> {
-  // If api_key_env looks like an actual API key (not an env var name),
-  // auto-generate the env var name from the provider name and store the
-  // key value directly.
-  const cleanSpec = { ...spec }
-  if (cleanSpec.api_key_env) {
-    const val = cleanSpec.api_key_env.trim()
-    // If it contains common API key patterns, treat it as the key value
-    if (val.startsWith('sk-') || val.startsWith('key-') || val.includes('-') || val.length > 20) {
-      const envName = cleanSpec.name.toUpperCase().replace(/[^A-Z0-9_]/g, '_') + '_API_KEY'
-      cleanSpec.api_key_env = envName
-      // We'll need to save the key separately after adding the provider
-      // Store it temporarily in the spec for the backend to handle
-      ;(cleanSpec as any)._api_key_value = val
-    }
-  }
-  return window.aliceDesktop.api<CustomProviderSpec & { id: string }>({
-    ...profileScoped(),
-    path: '/api/providers/custom',
-    method: 'POST',
-    body: cleanSpec
-  })
-}
-
-export function deleteCustomProvider(providerId: string): Promise<{ removed: boolean; id: string }> {
-  return window.aliceDesktop.api<{ removed: boolean; id: string }>({
-    ...profileScoped(),
-    path: `/api/providers/custom/${encodeURIComponent(providerId)}`,
-    method: 'DELETE'
-  })
-}
-
-export function testCustomProvider(providerId: string): Promise<CustomProviderProbe> {
-  return window.aliceDesktop.api<CustomProviderProbe>({
-    ...profileScoped(),
-    path: `/api/providers/custom/${encodeURIComponent(providerId)}/test`,
-    method: 'POST',
-    body: {}
-  })
-}
-
-// ── Task-scoped help ──────────────────────────────────────────────────────────
-
-export interface HelpTopic {
-  id: string
-  title: string
-  description: string
-}
-
-export interface HelpTaskContent extends HelpTopic {
-  markdown: string
-  doc_available: boolean
-}
-
-export function listHelpTopics(): Promise<HelpTopic[]> {
-  return window.aliceDesktop.api<HelpTopic[]>({
-    ...profileScoped(),
-    path: '/api/help/topics'
-  })
-}
-
-export function getHelpTask(taskId: string): Promise<HelpTaskContent> {
-  return window.aliceDesktop.api<HelpTaskContent>({
-    ...profileScoped(),
-    path: `/api/help/task/${encodeURIComponent(taskId)}`
-  })
-}
-
-// ── OpenClaw migration wizard ─────────────────────────────────────────────────
-
-export interface MigrationScanResult {
-  found: boolean
-  source_dir: string | null
-}
-
-export interface MigrationResult {
-  ok: boolean
-  source_dir?: string
-  execute?: boolean
-  error?: string
-  summary?: {
-    migrated?: number
-    conflict?: number
-    skipped?: number
-    error?: number
-    applied?: boolean
-  }
-  report?: {
-    items?: Array<Record<string, unknown>>
-  }
-}
-
-export interface MigrationOptions {
-  source?: string
-  preset?: 'full' | 'user-data'
-  overwrite?: boolean
-  migrate_secrets?: boolean
-  skill_conflict?: 'skip' | 'overwrite' | 'rename'
-}
-
-export function scanMigration(): Promise<MigrationScanResult> {
-  return window.aliceDesktop.api<MigrationScanResult>({
-    ...profileScoped(),
-    path: '/api/migration/scan'
-  })
-}
-
-export function previewMigration(options: MigrationOptions): Promise<MigrationResult> {
-  return window.aliceDesktop.api<MigrationResult>({
-    ...profileScoped(),
-    path: '/api/migration/preview',
-    method: 'POST',
-    body: options
-  })
-}
-
-export function applyMigration(options: MigrationOptions): Promise<MigrationResult> {
-  return window.aliceDesktop.api<MigrationResult>({
-    ...profileScoped(),
-    path: '/api/migration/apply',
-    method: 'POST',
-    body: options
-  })
-}
-
-export function submitOAuthCode(providerId: string, sessionId: string, code: string): Promise<OAuthSubmitResponse> {
-  return window.aliceDesktop.api<OAuthSubmitResponse>({
-    ...profileScoped(),
-    path: `/api/providers/oauth/${encodeURIComponent(providerId)}/submit`,
-    method: 'POST',
-    body: { session_id: sessionId, code }
-  })
-}
-
-export function pollOAuthSession(providerId: string, sessionId: string): Promise<OAuthPollResponse> {
-  return window.aliceDesktop.api<OAuthPollResponse>({
-    ...profileScoped(),
-    path: `/api/providers/oauth/${encodeURIComponent(providerId)}/poll/${encodeURIComponent(sessionId)}`
-  })
-}
-
-export function cancelOAuthSession(sessionId: string): Promise<{ ok: boolean }> {
-  return window.aliceDesktop.api<{ ok: boolean }>({
-    ...profileScoped(),
-    path: `/api/providers/oauth/sessions/${encodeURIComponent(sessionId)}`,
-    method: 'DELETE'
-  })
-}
-
-// Memory-provider OAuth connect (provider-keyed; 404s for providers without an
-// OAuth flow). Profile-scoped: the grant lands in the active profile's config.
-export function startMemoryProviderOAuth(provider: string): Promise<MemoryProviderOAuthStatus> {
-  return window.aliceDesktop.api<MemoryProviderOAuthStatus>({
-    ...profileScoped(),
-    path: `/api/memory/providers/${encodeURIComponent(provider)}/oauth/start`,
-    method: 'POST'
-  })
-}
-
-export function getMemoryProviderOAuthStatus(provider: string): Promise<MemoryProviderOAuthStatus> {
-  return window.aliceDesktop.api<MemoryProviderOAuthStatus>({
-    ...profileScoped(),
-    path: `/api/memory/providers/${encodeURIComponent(provider)}/oauth/status`
   })
 }
 
@@ -694,68 +234,6 @@ export function toggleSkill(name: string, enabled: boolean): Promise<{ ok: boole
     path: '/api/skills/toggle',
     method: 'PUT',
     body: { name, enabled }
-  })
-}
-
-export function getToolsets(): Promise<ToolsetInfo[]> {
-  return window.aliceDesktop.api<ToolsetInfo[]>({
-    ...profileScoped(),
-    path: '/api/tools/toolsets'
-  })
-}
-
-export function toggleToolset(
-  name: string,
-  enabled: boolean
-): Promise<{ ok: boolean; name: string; enabled: boolean }> {
-  return window.aliceDesktop.api<{ ok: boolean; name: string; enabled: boolean }>({
-    ...profileScoped(),
-    path: `/api/tools/toolsets/${encodeURIComponent(name)}`,
-    method: 'PUT',
-    body: { enabled }
-  })
-}
-
-export function getToolsetConfig(name: string): Promise<ToolsetConfig> {
-  return window.aliceDesktop.api<ToolsetConfig>({
-    ...profileScoped(),
-    path: `/api/tools/toolsets/${encodeURIComponent(name)}/config`
-  })
-}
-
-export function selectToolsetProvider(
-  name: string,
-  provider: string
-): Promise<{ ok: boolean; name: string; provider: string }> {
-  return window.aliceDesktop.api<{ ok: boolean; name: string; provider: string }>({
-    ...profileScoped(),
-    path: `/api/tools/toolsets/${encodeURIComponent(name)}/provider`,
-    method: 'PUT',
-    body: { provider }
-  })
-}
-
-export function runToolsetPostSetup(name: string, key: string): Promise<ActionResponse & { key: string }> {
-  return window.aliceDesktop.api<ActionResponse & { key: string }>({
-    ...profileScoped(),
-    path: `/api/tools/toolsets/${encodeURIComponent(name)}/post-setup`,
-    method: 'POST',
-    body: { key }
-  })
-}
-
-export function getComputerUseStatus(): Promise<ComputerUseStatus> {
-  return window.aliceDesktop.api<ComputerUseStatus>({
-    ...profileScoped(),
-    path: '/api/tools/computer-use/status'
-  })
-}
-
-export function grantComputerUsePermissions(): Promise<ActionResponse> {
-  return window.aliceDesktop.api<ActionResponse>({
-    ...profileScoped(),
-    path: '/api/tools/computer-use/permissions/grant',
-    method: 'POST'
   })
 }
 
@@ -913,13 +391,12 @@ export function getGlobalModelOptions(opts?: { refresh?: boolean }): Promise<Mod
 export interface RecommendedDefaultModel {
   provider: string
   model: string
-  /** True/false for Nous (free vs paid tier); null for other providers. */
+  /** Legacy tier flag kept for response-shape compatibility; always null. */
   free_tier: boolean | null
 }
 
 // Recommended default model for a freshly-authenticated provider. Mirrors the
-// curation `alice model` does — for Nous it honors the free/paid tier so a
-// free user gets a free model instead of a paid default.
+// curation `alice model` does so onboarding lands on a sensible default.
 export function getRecommendedDefaultModel(provider: string): Promise<RecommendedDefaultModel> {
   return window.aliceDesktop.api<RecommendedDefaultModel>({
     ...profileScoped(),

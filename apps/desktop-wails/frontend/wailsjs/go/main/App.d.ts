@@ -10,15 +10,25 @@ export function GetRecentLogs(arg1:number):Promise<Array<string>>;
 
 export function IsGatewayHealthy():Promise<boolean>;
 
+export function NormalizePreviewTarget(arg1:string,arg2:string):Promise<main.PreviewTarget>;
+
 export function OpenExternal(arg1:string):Promise<void>;
 
 export function PathExists(arg1:string):Promise<boolean>;
+
+export function PreviewStartForFile(arg1:string):Promise<Record<string, string>>;
+
+export function PreviewStartForImage(arg1:string):Promise<Record<string, string>>;
+
+export function PreviewStop(arg1:string):Promise<boolean>;
 
 export function ProxyApi(arg1:main.ProxyApiRequest):Promise<main.ProxyApiResponse>;
 
 export function ReadFileDataUrl(arg1:string):Promise<string>;
 
-export function ReadFileText(arg1:string):Promise<string>;
+export function ReadFileText(arg1:string):Promise<main.ReadTextResult>;
+
+export function ReadFileTextLimited(arg1:string,arg2:number):Promise<main.ReadTextResult>;
 
 export function RenamePath(arg1:string,arg2:string):Promise<string>;
 
@@ -27,6 +37,12 @@ export function RestartGateway():Promise<void>;
 export function RevealLogs():Promise<void>;
 
 export function RevealPath(arg1:string):Promise<void>;
+
+export function StartFileWatch(arg1:string):Promise<Record<string, string>>;
+
+export function StatFile(arg1:string):Promise<main.FileStat>;
+
+export function StopFileWatch(arg1:string):Promise<boolean>;
 
 export function TrashPath(arg1:string):Promise<void>;
 

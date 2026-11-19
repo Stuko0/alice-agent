@@ -1,17 +1,9 @@
-import type { ChatMessage } from '@/lib/chat-messages'
 
 export type ThreadLoadingState = 'response' | 'session'
 
-export function lastVisibleMessageIsUser(messages: ChatMessage[]): boolean {
-  // Allocation-free reverse scan — runs in a hot $messages computed.
-  for (let i = messages.length - 1; i >= 0; i -= 1) {
-    if (!messages[i].hidden) {
-      return messages[i].role === 'user'
-    }
-  }
-
-  return false
-}
+// Moved to lib/ for D2 (store/session.ts uses it in a `computed`); re-exported
+// here for existing call sites.
+export { lastVisibleMessageIsUser } from '@/lib/chat-messages'
 
 export function threadLoadingState(
   loadingSession: boolean,

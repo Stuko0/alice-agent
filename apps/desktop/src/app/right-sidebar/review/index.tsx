@@ -1,4 +1,5 @@
 import { useStore } from '@nanostores/react'
+import { memo } from 'react'
 
 import { FileDiffPanel } from '@/components/chat/diff-lines'
 import { DiffSkeleton, TreeSkeleton } from '@/components/chat/skeletons'
@@ -51,7 +52,7 @@ import { ReviewShipBar } from './ship-bar'
 // the rest of the app's icon-action rows.
 const ACTION_BTN = 'size-5'
 
-export function ReviewPane() {
+function ReviewPaneInner() {
   const { t } = useI18n()
   const c = t.statusStack.coding
   const panesFlipped = useStore($panesFlipped)
@@ -243,3 +244,5 @@ export function ReviewPane() {
     </aside>
   )
 }
+
+export const ReviewPane = memo(ReviewPaneInner)

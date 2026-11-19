@@ -17,7 +17,7 @@ import { persistString, persistStringRecord, storedString, storedStringRecord } 
 import { $activeGatewayProfile, normalizeProfileKey } from '@/store/profile'
 
 import { hexToRgb, mix, readableOn } from './color'
-import { BUILTIN_THEME_LIST, BUILTIN_THEMES, DEFAULT_SKIN_NAME, DEFAULT_TYPOGRAPHY, nousTheme } from './presets'
+import { BUILTIN_THEME_LIST, BUILTIN_THEMES, DEFAULT_SKIN_NAME, DEFAULT_TYPOGRAPHY, madnessTheme } from './presets'
 import type { DesktopTheme, DesktopThemeColors } from './types'
 import { $userThemes, resolveTheme } from './user-themes'
 
@@ -33,9 +33,15 @@ const PROFILE_MODES_KEY = 'alice-desktop-profile-modes-v1'
 // Last active profile, recorded so the boot-time paint can pick that profile's
 // theme before the gateway reports which profile actually launched.
 const LAST_PROFILE_KEY = 'alice-desktop-active-profile-v1'
-const RETIRED_SKINS = new Set(['nous-light', 'default', 'gold'])
+const RETIRED_SKINS = new Set(['nous', 'nous-light', 'default', 'gold'])
 
 export type ThemeMode = 'light' | 'dark' | 'system'
+
+/**
+ * New installs (and installs migrating off a retired identity) open in the
+ * "Vale of Tears" dark surface. The paper-light variant stays one click away.
+ */
+export const DEFAULT_MODE: ThemeMode = 'dark'
 
 const INJECTED_FONT_URLS = new Set<string>()
 
@@ -46,7 +52,7 @@ const normalizeSkin = (name: string | null): string =>
   name && resolveTheme(name) && !RETIRED_SKINS.has(name) ? name : DEFAULT_SKIN_NAME
 
 const normalizeMode = (value: string | null): ThemeMode =>
-  value === 'light' || value === 'dark' || value === 'system' ? value : 'light'
+  value === 'light' || value === 'dark' || value === 'system' ? value : DEFAULT_MODE
 
 // ─── Per-profile appearance persistence ─────────────────────────────────────
 // Skin and mode are each stored per profile. "default" isn't a real profile —
@@ -114,7 +120,7 @@ function synthLightColors(seed: DesktopTheme): DesktopThemeColors {
 
 /** Returns the seed palette for a given skin + mode (no overrides applied). */
 export function getBaseColors(skinName: string, mode: 'light' | 'dark'): DesktopThemeColors {
-  const seed = resolveTheme(skinName) ?? nousTheme
+  const seed = resolveTheme(skinName) ?? madnessTheme
 
   if (mode === 'dark') {
     return seed.darkColors ?? seed.colors
@@ -124,7 +130,7 @@ export function getBaseColors(skinName: string, mode: 'light' | 'dark'): Desktop
 }
 
 function deriveTheme(skinName: string, mode: 'light' | 'dark'): DesktopTheme {
-  const seed = resolveTheme(skinName) ?? nousTheme
+  const seed = resolveTheme(skinName) ?? madnessTheme
 
   return {
     ...seed,
@@ -178,7 +184,7 @@ function applyTheme(theme: DesktopTheme, mode: 'light' | 'dark') {
 
   const root = document.documentElement
   const c = theme.colors
-  const typo = { ...DEFAULT_TYPOGRAPHY, ...nousTheme.typography, ...theme.typography }
+  const typo = { ...DEFAULT_TYPOGRAPHY, ...madnessTheme.typography, ...theme.typography }
   const rendered = renderedModeFor(c, mode)
   const isDark = rendered === 'dark'
   const midground = c.midground ?? c.ring
@@ -268,6 +274,16 @@ const syncNativeTheme = (pref: ThemeMode, rendered: 'light' | 'dark') =>
 // skin + light/dark mode.
 if (typeof window !== 'undefined') {
   const profile = readBootProfileKey()
+  // One-time identity migration: a profile still carrying a retired skin
+  // moves to the new default skin AND its default mode (dark). We also rewrite
+  // the stored skin so this runs once instead of pinning dark forever.
+  const rawSkin = storedStringRecord(PROFILE_SKINS_KEY)[profile] ?? storedString(SKIN_KEY)
+
+  if (rawSkin && RETIRED_SKINS.has(rawSkin)) {
+    skinPref.assign(profile, DEFAULT_SKIN_NAME)
+    modePref.assign(profile, DEFAULT_MODE)
+  }
+
   const pref = modePref.resolve(profile)
   const resolved = resolveMode(pref)
   const theme = deriveTheme(skinPref.resolve(profile), resolved)
@@ -298,7 +314,7 @@ interface ThemeContextValue {
 const SKIN_LIST = BUILTIN_THEME_LIST.map(({ name, label, description }) => ({ name, label, description }))
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: nousTheme,
+  theme: madnessTheme,
   themeName: DEFAULT_SKIN_NAME,
   mode: 'light',
   resolvedMode: 'light',
@@ -333,7 +349,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   )
 
   const [mode, setModeState] = useState<ThemeMode>(() =>
-    typeof window === 'undefined' ? 'light' : modePref.resolve(readBootProfileKey())
+    typeof window === 'undefined' ? DEFAULT_MODE : modePref.resolve(readBootProfileKey())
   )
 
   // Follow profile switches: paint the profile's assigned skin + mode and

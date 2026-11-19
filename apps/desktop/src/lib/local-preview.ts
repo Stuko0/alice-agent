@@ -67,6 +67,23 @@ function pathToFileUrl(path: string) {
   return `file://${encoded.startsWith('/') ? encoded : `/${encoded}`}`
 }
 
+// Resolve the on-disk path behind a preview target. `target.path` wins; a
+// `file:` URL is decoded; anything else falls back to the raw URL. Shared by
+// the web-preview pane (loopback server) and the local file renderer.
+export function previewFilePath(target: PreviewTarget): string {
+  if (target.path) {
+    return target.path
+  }
+
+  try {
+    const url = new URL(target.url)
+
+    return url.protocol === 'file:' ? decodeURIComponent(url.pathname) : target.url
+  } catch {
+    return target.url
+  }
+}
+
 export function localPreviewTarget(rawTarget: string, cwd?: string | null): PreviewTarget | null {
   const raw = rawTarget.trim().replace(/^`|`$/g, '')
 

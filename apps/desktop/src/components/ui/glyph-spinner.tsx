@@ -33,6 +33,30 @@ interface GlyphSpinnerProps {
   spinner?: SpinnerName
 }
 
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
+
+/** Track the OS "reduce motion" preference; the spinner freezes when set. */
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(
+    () => typeof window !== 'undefined' && Boolean(window.matchMedia?.(REDUCED_MOTION_QUERY).matches)
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) {
+      return
+    }
+
+    const query = window.matchMedia(REDUCED_MOTION_QUERY)
+    const onChange = () => setReduced(query.matches)
+
+    query.addEventListener?.('change', onChange)
+
+    return () => query.removeEventListener?.('change', onChange)
+  }, [])
+
+  return reduced
+}
+
 /**
  * One-char glyph spinner driven by `unicode-animations` (braille, orbit, scan,
  * etc. — pick any `spinner` name). Mirrors the spinner used by the Ink TUI so
@@ -42,14 +66,20 @@ interface GlyphSpinnerProps {
  */
 export function GlyphSpinner({ ariaLabel = 'Loading', className, spinner = 'braille' }: GlyphSpinnerProps) {
   const spin = FRAMES_BY_NAME[spinner] ?? FRAMES_BY_NAME.braille!
+  const reducedMotion = usePrefersReducedMotion()
   const [frame, setFrame] = useState(0)
 
   useEffect(() => {
     setFrame(0)
+
+    if (reducedMotion) {
+      return
+    }
+
     const id = window.setInterval(() => setFrame(f => (f + 1) % spin.frames.length), spin.interval)
 
     return () => window.clearInterval(id)
-  }, [spin])
+  }, [spin, reducedMotion])
 
   return (
     <span

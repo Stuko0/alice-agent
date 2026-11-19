@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 
+import { getGlobalModelOptions } from '@/alice'
 import { ModelPickerDialog } from '@/components/model-picker'
 import { Button } from '@/components/ui/button'
 import { ErrorIcon } from '@/components/ui/error-state'
 import { Input } from '@/components/ui/input'
 import { Loader } from '@/components/ui/loader'
-import { getGlobalModelOptions } from '@/alice'
 import { useI18n } from '@/i18n'
 import { ExternalLink, Loader2 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -182,7 +182,7 @@ function DeviceCode({ code, copied, onCopy }: { code: string; copied: boolean; o
               'flex size-10 items-center justify-center rounded-md border font-mono text-xl font-semibold uppercase transition-colors',
               copied
                 ? 'border-primary/50 text-primary'
-                : 'border-(--stroke-nous) text-foreground group-hover:border-(--ui-stroke-secondary)'
+                : 'border-(--stroke-hairline) text-foreground group-hover:border-(--ui-stroke-secondary)'
             )}
             key={i}
           >
@@ -198,7 +198,7 @@ function CodeBlock({ copied, onCopy, text }: { copied: boolean; onCopy: () => vo
   const { t } = useI18n()
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md border border-(--stroke-nous) px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-md border border-(--stroke-hairline) px-3 py-2">
       <code className="min-w-0 flex-1 truncate font-mono text-sm">
         <span className="mr-2 select-none text-muted-foreground">$</span>
         {text}
@@ -260,7 +260,6 @@ function ConfirmingModelPanel({
   )
 
   const price = providerRow?.pricing?.[flow.currentModel]
-  const freeTier = providerRow?.free_tier
 
   return (
     <div className="grid place-items-center gap-7 py-6 text-center">
@@ -276,16 +275,6 @@ function ConfirmingModelPanel({
           <span className="font-mono text-[0.625rem] uppercase tracking-[0.2em] text-muted-foreground">
             {t.onboarding.defaultModel}
           </span>
-          {freeTier === true && (
-            <span className="rounded-sm bg-emerald-500/15 px-1 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-              {t.onboarding.freeTier}
-            </span>
-          )}
-          {freeTier === false && (
-            <span className="rounded-sm bg-primary/15 px-1 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-primary">
-              {t.onboarding.pro}
-            </span>
-          )}
         </div>
         <p className="font-mono text-base">
           <GlyphText text={scrambledModel} />

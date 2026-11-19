@@ -40,7 +40,11 @@ type MessageGroup = { id: string; weight: number } & (
 // sticky human bubble never loses its turn. This is the long-session perf lever
 // WITHOUT a virtualizer — pure rendering, never touches scrollTop, so it can't
 // fight use-stick-to-bottom (the single scroll owner).
-const RENDER_BUDGET = 300
+// Groups painted on first mount. 300 turn pairs meant a 739-message session
+// committed a wall of tables/code blocks before the first frame (the 5–15s
+// drawer-open stalls measured on real sessions). 60 fills more than a
+// viewport and "show earlier" still pages in +60 at a time.
+const RENDER_BUDGET = 60
 
 interface ThreadMessageListProps {
   clampToComposer: boolean
@@ -278,14 +282,14 @@ const ThreadMessageListInner: FC<ThreadMessageListProps> = ({
       >
         {renderEmpty ? (
           <div
-            className="mx-auto grid h-full w-full max-w-(--composer-width) grid-rows-[minmax(0,1fr)_auto] min-w-0 gap-(--conversation-turn-gap) px-6 py-8"
+            className="mx-auto grid h-full w-full max-w-(--measure-read) grid-rows-[minmax(0,1fr)_auto] min-w-0 gap-(--conversation-turn-gap) px-8 py-10"
             data-slot="aui_thread-content"
           >
             {emptyPlaceholder}
           </div>
         ) : (
           <div
-            className={cn('mx-auto flex w-full max-w-(--composer-width) min-w-0 flex-col px-6', threadContentTopPad)}
+            className={cn('mx-auto flex w-full max-w-(--measure-read) min-w-0 flex-col px-8', threadContentTopPad)}
             data-slot="aui_thread-content"
             ref={contentRef as React.RefCallback<HTMLDivElement>}
           >
@@ -300,7 +304,7 @@ const ThreadMessageListInner: FC<ThreadMessageListProps> = ({
             )}
             {visibleGroups.map(group => (
               <div
-                className="flex min-w-0 flex-col gap-(--conversation-turn-gap) pb-(--conversation-turn-gap)"
+                className="thread-group-cv flex min-w-0 flex-col gap-(--conversation-turn-gap) pb-(--conversation-turn-gap)"
                 key={group.id}
               >
                 <MessageRenderBoundary resetKey={messageSignature}>

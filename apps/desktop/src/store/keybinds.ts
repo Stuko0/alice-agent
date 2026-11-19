@@ -52,7 +52,7 @@ function persistBindings(bindings: KeybindBindings): void {
 
 export const $bindings = atom<KeybindBindings>(loadBindings())
 
-$bindings.subscribe(persistBindings)
+$bindings.listen(persistBindings)
 
 // Reverse lookup combo → actionId for dispatch. First action wins on conflict;
 // the panel/edit overlay surface conflicts so users can resolve them. Keys go

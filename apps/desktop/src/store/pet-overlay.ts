@@ -65,7 +65,7 @@ const OVERLAY_BOUNDS_KEY = 'alice.desktop.pet-overlay-bounds.v1'
 export const $petOverlayActive = atom(storedBoolean(OVERLAY_ACTIVE_KEY, false))
 
 // Persist the in/out choice so a popped-out pet comes back popped out.
-$petOverlayActive.subscribe(active => persistBoolean(OVERLAY_ACTIVE_KEY, active))
+$petOverlayActive.listen(active => persistBoolean(OVERLAY_ACTIVE_KEY, active))
 
 function loadSavedBounds(): null | PetOverlayBounds {
   try {

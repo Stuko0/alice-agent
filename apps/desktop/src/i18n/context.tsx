@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 
-import { getAliceConfigRecord, type AliceConfigRecord, saveAliceConfig } from '@/alice'
+import { type AliceConfigRecord, getAliceConfigRecord, saveAliceConfig } from '@/alice'
 
 import { TRANSLATIONS } from './catalog'
 import { DEFAULT_LOCALE, localeConfigValue, normalizeLocale } from './languages'

@@ -1,0 +1,5 @@
+{
+  "fixture": "relative-assets",
+  "module": true,
+  "fetch": true
+}

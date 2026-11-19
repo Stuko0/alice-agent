@@ -7,23 +7,21 @@ import {
 import { useStore } from '@nanostores/react'
 import { useQuery } from '@tanstack/react-query'
 import type * as React from 'react'
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef } from 'react'
+import { Suspense, useCallback, useMemo, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 
+import { type AliceGateway, getGlobalModelOptions } from '@/alice'
 import { Thread } from '@/components/assistant-ui/thread'
 import { Backdrop } from '@/components/Backdrop'
 import { PromptOverlays } from '@/components/prompt-overlays'
 import { Button } from '@/components/ui/button'
-import { Codicon } from '@/components/ui/codicon'
 import { ErrorState } from '@/components/ui/error-state'
-import { getGlobalModelOptions, type AliceGateway } from '@/alice'
 import { useI18n } from '@/i18n'
 import type { ChatMessage } from '@/lib/chat-messages'
-import { quickModelOptions, sessionTitle, toRuntimeMessage } from '@/lib/chat-runtime'
+import { quickModelOptions, toRuntimeMessage } from '@/lib/chat-runtime'
 import { useIncrementalExternalStoreRuntime } from '@/lib/incremental-external-store-runtime'
 import { cn } from '@/lib/utils'
 import type { ComposerAttachment } from '@/store/composer'
-import { $pinnedSessionIds } from '@/store/layout'
 import { $gatewaySwapTarget } from '@/store/profile'
 import {
   $activeSessionId,
@@ -41,20 +39,16 @@ import {
   $messages,
   $messagesEmpty,
   $resumeExhaustedSessionId,
-  $selectedStoredSessionId,
-  $sessions,
-  sessionPinId
+  $selectedStoredSessionId
 } from '@/store/session'
 import { isSecondaryWindow, isWatchWindow } from '@/store/windows'
 import type { ModelOptionsResponse } from '@/types/alice'
 
 import { routeSessionId } from '../routes'
-import { titlebarHeaderBaseClass, titlebarHeaderShadowClass, titlebarHeaderTitleClass } from '../shell/titlebar'
-import { GraphifyCanvas } from '../shell/graphify-canvas'
-import { $chatView, setChatView } from '@/store/graphify'
 
 import { ChatDropOverlay } from './chat-drop-overlay'
 import { ChatSwapOverlay } from './chat-swap-overlay'
+import { ChatViewSwitch } from './chat-view-switch'
 import { ChatBar, ChatBarFallback } from './composer'
 import { requestComposerInsert, requestComposerInsertRefs } from './composer/focus'
 import { droppedFileInlineRefs, type SessionDragPayload, sessionInlineRef } from './composer/inline-refs'
@@ -62,7 +56,6 @@ import type { ChatBarState } from './composer/types'
 import { type DroppedFile, partitionDroppedFiles } from './hooks/use-composer-actions'
 import { useFileDropZone } from './hooks/use-file-drop-zone'
 import { ScrollToBottomButton } from './scroll-to-bottom-button'
-import { SessionActionsMenu } from './sidebar/session-actions-menu'
 import { threadLoadingState } from './thread-loading'
 
 interface ChatViewProps extends Omit<React.ComponentProps<'div'>, 'onSubmit'> {
@@ -96,76 +89,6 @@ interface ChatViewProps extends Omit<React.ComponentProps<'div'>, 'onSubmit'> {
   onDismissError?: (messageId: string) => void
 }
 
-interface ChatHeaderProps {
-  activeSessionId: null | string
-  isRoutedSessionView: boolean
-  onDeleteSelectedSession: () => void
-  onToggleSelectedPin: () => void
-  selectedSessionId: null | string
-}
-
-function ChatHeader({
-  activeSessionId,
-  isRoutedSessionView,
-  onDeleteSelectedSession,
-  onToggleSelectedPin,
-  selectedSessionId
-}: ChatHeaderProps) {
-  const sessions = useStore($sessions)
-  const pinnedSessionIds = useStore($pinnedSessionIds)
-
-  const activeStoredSession =
-    sessions.find(session => session.id === selectedSessionId || session._lineage_root_id === selectedSessionId) || null
-
-  const title = activeStoredSession ? sessionTitle(activeStoredSession) : 'New session'
-
-  // Pins live on the durable lineage-root id, but selectedSessionId is the live
-  // (tip) id — resolve through the loaded row so the menu reflects the pin
-  // state after auto-compression rotates the id.
-  const selectedIsPinned = activeStoredSession
-    ? pinnedSessionIds.includes(sessionPinId(activeStoredSession))
-    : selectedSessionId
-      ? pinnedSessionIds.includes(selectedSessionId)
-      : false
-
-  // Secondary windows (new-session scratch, subagent watch, cmd-click pop-out)
-  // are compact side panels — they drop the session-actions header + border
-  // entirely. A brand-new draft has nothing to pin/delete/rename either.
-  if (isSecondaryWindow() || (!selectedSessionId && !activeSessionId && !isRoutedSessionView)) {
-    return null
-  }
-
-  return (
-    <header className={cn(titlebarHeaderBaseClass, isRoutedSessionView && titlebarHeaderShadowClass)}>
-      <div
-        className={titlebarHeaderTitleClass}
-        style={{
-          maxWidth:
-            'calc(100vw - var(--titlebar-content-inset,0px) - var(--titlebar-tools-right) - var(--titlebar-tools-width) - 1.5rem)'
-        }}
-      >
-        <SessionActionsMenu
-          align="start"
-          onDelete={selectedSessionId ? onDeleteSelectedSession : undefined}
-          onPin={selectedSessionId ? onToggleSelectedPin : undefined}
-          pinned={selectedIsPinned}
-          sessionId={selectedSessionId || activeSessionId || ''}
-          sideOffset={8}
-          title={title}
-        >
-          <Button
-            className="pointer-events-auto flex h-6 min-w-0 max-w-full gap-1 overflow-hidden border border-transparent bg-transparent px-2 py-0 text-(--ui-text-secondary) hover:border-(--ui-stroke-tertiary) hover:bg-(--ui-control-hover-background) hover:text-foreground data-[state=open]:border-(--ui-stroke-tertiary) data-[state=open]:bg-(--ui-control-active-background) [-webkit-app-region:no-drag]"
-            type="button"
-            variant="ghost"
-          >
-            <h2 className="min-w-0 flex-1 truncate text-[0.75rem] font-medium leading-none">{title}</h2>
-            <Codicon className="shrink-0 text-(--ui-text-tertiary)" name="chevron-down" size="0.8125rem" />
-          </Button>
-        </SessionActionsMenu>
-      </div>
-    </header>
-  )
-}
 
 interface ChatRuntimeBoundaryProps {
   busy: boolean
@@ -431,14 +354,6 @@ export function ChatView({
       )}
     >
       <Backdrop />
-      <ChatHeader
-        activeSessionId={activeSessionId}
-        isRoutedSessionView={isRoutedSessionView}
-        onDeleteSelectedSession={onDeleteSelectedSession}
-        onToggleSelectedPin={onToggleSelectedPin}
-        selectedSessionId={selectedSessionId}
-      />
-
       <PromptOverlays />
 
       <ChatViewSwitch activeSessionId={activeSessionId}>
@@ -527,33 +442,4 @@ export function ChatView({
       </ChatViewSwitch>
     </div>
   )
-}
-
-// Renders children when `$chatView === 'chat'`, otherwise renders the
-// fullscreen `<GraphifyCanvas />` for the active session. Auto-flips back to
-// 'chat' when the user navigates to a different session so they don't end
-// up looking at a stale graph.
-function ChatViewSwitch({
-  activeSessionId,
-  children
-}: {
-  activeSessionId: null | string
-  children: React.ReactNode
-}) {
-  const view = useStore($chatView)
-
-  useEffect(() => {
-    // When the user switches sessions while in graph view, drop them back
-    // into chat — the graph path is the prior session's cwd.
-    if (view === 'graph') {
-      setChatView('chat')
-    }
-    // Intentionally only on activeSessionId change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSessionId])
-
-  if (view === 'graph') {
-    return <GraphifyCanvas onClose={() => setChatView('chat')} />
-  }
-  return <>{children}</>
 }

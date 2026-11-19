@@ -224,6 +224,12 @@ function IdleView({
 
         <DialogTitle className="text-center text-xl">{title}</DialogTitle>
         <DialogDescription className="text-center text-sm">{body}</DialogDescription>
+
+        {status.mode === 'installer' && status.latestVersion ? (
+          <p className="font-mono text-xs text-muted-foreground">
+            {status.currentVersion ? `v${status.currentVersion} → ${status.latestVersion}` : status.latestVersion}
+          </p>
+        ) : null}
       </div>
 
       <div className="grid gap-3">
@@ -303,7 +309,7 @@ function ManualView({ command, message, onDone }: { command: string | null; mess
       <button
         className={cn(
           'group flex w-full items-center justify-between gap-3 rounded-md border px-4 py-3 text-left transition-colors',
-          copied ? 'border-primary/50' : 'border-(--stroke-nous) hover:border-(--ui-stroke-secondary)'
+          copied ? 'border-primary/50' : 'border-(--stroke-hairline) hover:border-(--ui-stroke-secondary)'
         )}
         onClick={handleCopy}
         type="button"

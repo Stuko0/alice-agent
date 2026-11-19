@@ -1,5 +1,7 @@
 import type {
   AliceConnection,
+  AliceFileStat,
+  AlicePreviewServer,
   AliceReadDirResult,
   AliceReadFileTextResult,
   AliceSelectPathsOptions
@@ -43,6 +45,10 @@ function fsPath(endpoint: string, filePath: string) {
 }
 
 function bridge() {
+  if (typeof window === 'undefined') {
+    throw new Error('Alice Desktop bridge is unavailable')
+  }
+
   const desktop = window.aliceDesktop
 
   if (!desktop) {
@@ -153,6 +159,47 @@ export async function trashDesktopPath(path: string): Promise<void> {
 
 export async function copyTextToClipboard(text: string): Promise<void> {
   await bridge().writeClipboard(text)
+}
+
+export async function statDesktopFile(path: string): Promise<AliceFileStat | null> {
+  if (isDesktopFsRemoteMode()) {
+    return null
+  }
+
+  const desktop = bridge()
+
+  return desktop.statFile ? desktop.statFile(path) : null
+}
+
+// Start a token-scoped loopback origin for a local preview target. Electron
+// doesn't need one (it has <webview> and a richer preload), so this is a
+// no-op there and returns null when the bridge lacks the capability.
+export async function startDesktopPreviewServer(
+  path: string,
+  kind: 'file' | 'image'
+): Promise<AlicePreviewServer | null> {
+  if (isDesktopFsRemoteMode()) {
+    return null
+  }
+
+  const desktop = bridge()
+  const start = kind === 'image' ? desktop.previewStartForImage : desktop.previewStartForFile
+
+  if (!start) {
+    return null
+  }
+
+  const started = await start(path)
+
+  return started?.id && started?.url ? started : null
+}
+
+export async function stopDesktopPreviewServer(id: string | null | undefined): Promise<void> {
+  if (!id) {
+    return
+  }
+
+  await bridge().previewStop?.(id)
 }
 
 // Working-tree-vs-HEAD diff for one file. Empty when unchanged / not a repo.

@@ -46,7 +46,8 @@ const PROFILE_ORDER_STORAGE_KEY = 'alice.desktop.profileOrder'
 
 export const $profileOrder = atom<string[]>(storedStringArray(PROFILE_ORDER_STORAGE_KEY))
 
-$profileOrder.subscribe(value => persistStringArray(PROFILE_ORDER_STORAGE_KEY, [...value]))
+// `listen` (not `subscribe`) so importing the store does not rewrite the seed.
+$profileOrder.listen(value => persistStringArray(PROFILE_ORDER_STORAGE_KEY, [...value]))
 
 export function setProfileOrder(names: string[]): void {
   if (!arraysEqual($profileOrder.get(), names)) {
@@ -78,7 +79,7 @@ const PROFILE_COLORS_STORAGE_KEY = 'alice.desktop.profileColors'
 
 export const $profileColors = atom<Record<string, string>>(storedStringRecord(PROFILE_COLORS_STORAGE_KEY))
 
-$profileColors.subscribe(value => persistStringRecord(PROFILE_COLORS_STORAGE_KEY, value))
+$profileColors.listen(value => persistStringRecord(PROFILE_COLORS_STORAGE_KEY, value))
 
 // Set (or, with null, clear) a profile's color override.
 export function setProfileColor(name: string, color: null | string): void {
@@ -157,23 +158,35 @@ export function requestFreshSession(): void {
 
 // Route profile-scoped REST settings (config/env/skills/tools/model/…) to the
 // profile the live gateway is currently on, and drop cached settings from the
-// previous profile so pages refetch against the right backend. Fires once
-// immediately (no real change → no invalidation), so single-profile users just
-// get "default" (→ the primary backend) with no extra fetches.
+// previous profile so pages refetch against the right backend. Wired explicitly
+// by `wireStores()` — importing this store must not call `setApiRequestProfile`
+// or invalidate queries — but it still fires once immediately when wired (no
+// real change → no invalidation), so single-profile users just get "default"
+// (→ the primary backend) with no extra fetches.
 let _lastRoutedProfile: string | null = null
+let _profileRoutingWired = false
 
-$activeGatewayProfile.subscribe(value => {
-  const key = normalizeProfileKey(value)
-  setApiRequestProfile(key)
-
-  if (_lastRoutedProfile !== null && _lastRoutedProfile !== key) {
-    // Profile-scoped settings + the unified session list are now stale.
-    void queryClient.invalidateQueries()
-    resetStarmapGraph()
+/** Idempotent: safe to call from every entry point and from tests. */
+export function wireProfileRouting(): void {
+  if (_profileRoutingWired) {
+    return
   }
 
-  _lastRoutedProfile = key
-})
+  _profileRoutingWired = true
+
+  $activeGatewayProfile.subscribe(value => {
+    const key = normalizeProfileKey(value)
+    setApiRequestProfile(key)
+
+    if (_lastRoutedProfile !== null && _lastRoutedProfile !== key) {
+      // Profile-scoped settings + the unified session list are now stale.
+      void queryClient.invalidateQueries()
+      resetStarmapGraph()
+    }
+
+    _lastRoutedProfile = key
+  })
+}
 
 // Target profile while a gateway swap is mid-flight (spawning/reconnecting that
 // profile's backend), else null. Drives the chat's "waking up <profile>" loader
@@ -275,7 +288,7 @@ const SHOW_ALL_PROFILES_STORAGE_KEY = 'alice.desktop.showAllProfiles'
 // single-profile users (who never see the switcher) are completely unaffected.
 export const $showAllProfiles = atom<boolean>(storedBoolean(SHOW_ALL_PROFILES_STORAGE_KEY, false))
 
-$showAllProfiles.subscribe(value => persistBoolean(SHOW_ALL_PROFILES_STORAGE_KEY, value))
+$showAllProfiles.listen(value => persistBoolean(SHOW_ALL_PROFILES_STORAGE_KEY, value))
 
 // The profile context the sidebar is currently showing: a concrete profile key,
 // or ALL_PROFILES for the unified grouped view. Concrete scope is tied to the

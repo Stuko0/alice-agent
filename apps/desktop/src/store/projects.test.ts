@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { flushCoalescedPersistence } from '@/lib/storage'
+
 import { $sidebarAgentsGrouped } from '@/store/layout'
 
 import {
@@ -77,6 +79,8 @@ describe('project scope', () => {
 
   it('persists the scope to localStorage', () => {
     enterProject('p_abc')
+    // persistentAtom writes are coalesced; flush before reading storage.
+    flushCoalescedPersistence()
     expect(window.localStorage.getItem('alice.desktop.projectScope')).toBe('p_abc')
   })
 })
