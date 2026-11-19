@@ -45,6 +45,18 @@ type PreviewTarget struct {
 // (the drive letter keeps a leading slash) and for UNC URLs
 // ("file://server/share" puts the host in Host, not Path). That produced an
 // unusable path on Windows and a "%20"-encoded one when the URL had spaces.
+// isWindowsDriveHost reports whether a URL host is really a drive letter
+// ("C:") from the non-standard file://C:/path spelling.
+func isWindowsDriveHost(host string) bool {
+	if len(host) != 2 || host[1] != ':' {
+		return false
+	}
+
+	c := host[0] | 0x20 // lowercase ASCII without importing unicode
+
+	return c >= 'a' && c <= 'z'
+}
+
 func pathFromFileURL(raw string) string {
 	parsed, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil {
@@ -53,7 +65,13 @@ func pathFromFileURL(raw string) string {
 
 	p := parsed.Path
 
-	if parsed.Host != "" && !strings.EqualFold(parsed.Host, "localhost") {
+	switch {
+	case isWindowsDriveHost(parsed.Host):
+		// Not a real host: `file://C:/Users/a.md` (what several editors and
+		// our own renderer produce) puts the drive letter in Host. Treat it as
+		// part of the path instead of a UNC server.
+		p = parsed.Host + p
+	case parsed.Host != "" && !strings.EqualFold(parsed.Host, "localhost"):
 		// UNC share: file://server/share/dir -> //server/share/dir
 		p = "//" + parsed.Host + p
 	}

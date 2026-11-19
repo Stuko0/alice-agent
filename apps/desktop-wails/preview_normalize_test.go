@@ -97,7 +97,13 @@ func TestNormalizePreviewTargetFileURLWithSpaces(t *testing.T) {
 	// Build a proper file URL: "file://" + "C:\\dir" is not one on Windows
 	// (it needs file:///C:/...), and this test is about the normalizer, not
 	// about how a caller stitches the string together.
-	raw := (&url.URL{Scheme: "file", Path: filepath.ToSlash(path)}).String()
+	fileURL := url.URL{Scheme: "file", Path: filepath.ToSlash(path)}
+	if !strings.HasPrefix(fileURL.Path, "/") {
+		// Windows drive path: file URLs need file:///C:/..., not file://C:/...
+		fileURL.Path = "/" + fileURL.Path
+	}
+
+	raw := fileURL.String()
 
 	target, err := NewFSService().NormalizePreviewTarget(raw, "")
 	if err != nil {
@@ -157,6 +163,8 @@ func TestPathFromFileURL(t *testing.T) {
 		{"file:///tmp/my%20notes.md", filepath.FromSlash("/tmp/my notes.md")},
 		{"file:///C:/Users/Stuko/my%20notes.md", filepath.FromSlash("C:/Users/Stuko/my notes.md")},
 		{"file://server/share/dir/file.txt", filepath.FromSlash("//server/share/dir/file.txt")},
+		// Non-standard but common: the drive letter parsed as the URL host.
+		{"file://C:/Users/Stuko/my%20notes.md", filepath.FromSlash("C:/Users/Stuko/my notes.md")},
 	}
 
 	for _, tc := range cases {
