@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"path/filepath"
+	"testing"
+)
 
 func TestNormalizeBrowserURL(t *testing.T) {
 	cases := []struct {
@@ -56,10 +59,12 @@ func TestClampBrowserBounds(t *testing.T) {
 }
 
 func TestBrowserServiceKeepsProfileUnderAliceHome(t *testing.T) {
-	service := NewBrowserService("/tmp/alice-profile")
+	home := filepath.Join(t.TempDir(), "alice-profile")
+	want := filepath.Join(home, "browser", "webkit")
+	service := NewBrowserService(home)
 
-	if got := service.DataDir(); got != "/tmp/alice-profile/browser/webkit" {
-		t.Fatalf("DataDir = %q, want %q", got, "/tmp/alice-profile/browser/webkit")
+	if got := service.DataDir(); got != want {
+		t.Fatalf("DataDir = %q, want %q", got, want)
 	}
 }
 

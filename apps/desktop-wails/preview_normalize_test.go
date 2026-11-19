@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -93,20 +94,36 @@ func TestNormalizePreviewTargetFileURLWithSpaces(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	raw := "file://" + strings.ReplaceAll(path, " ", "%20")
+	// Build a proper file URL: "file://" + "C:\\dir" is not one on Windows
+	// (it needs file:///C:/...), and this test is about the normalizer, not
+	// about how a caller stitches the string together.
+	raw := (&url.URL{Scheme: "file", Path: filepath.ToSlash(path)}).String()
+
 	target, err := NewFSService().NormalizePreviewTarget(raw, "")
 	if err != nil {
-		t.Fatalf("NormalizePreviewTarget: %v", err)
+		t.Fatalf("NormalizePreviewTarget(%q): %v", raw, err)
 	}
 	if target.Path != path {
 		t.Fatalf("Path = %q, want %q", target.Path, path)
 	}
+
 	parsed, err := url.Parse(target.URL)
 	if err != nil {
 		t.Fatalf("URL %q unparseable: %v", target.URL, err)
 	}
-	if decoded, err := url.PathUnescape(parsed.Path); err != nil || decoded != path {
-		t.Fatalf("URL round trip = (%q, %v), want %q", decoded, err, path)
+
+	decoded, err := url.PathUnescape(parsed.Path)
+	if err != nil {
+		t.Fatalf("PathUnescape(%q): %v", parsed.Path, err)
+	}
+
+	// On Windows the URL path keeps the drive letter's leading slash.
+	if runtime.GOOS == "windows" && strings.HasPrefix(decoded, "/") && len(decoded) > 2 && decoded[2] == ':' {
+		decoded = decoded[1:]
+	}
+
+	if filepath.FromSlash(decoded) != path {
+		t.Fatalf("URL round trip = %q, want %q", decoded, path)
 	}
 }
 
@@ -129,5 +146,22 @@ func TestNormalizePreviewTargetUppercaseExtension(t *testing.T) {
 func TestNormalizePreviewTargetRejectsEmpty(t *testing.T) {
 	if _, err := NewFSService().NormalizePreviewTarget("   ", ""); err == nil {
 		t.Fatal("NormalizePreviewTarget accepted an empty target")
+	}
+}
+
+func TestPathFromFileURL(t *testing.T) {
+	cases := []struct {
+		raw  string
+		want string
+	}{
+		{"file:///tmp/my%20notes.md", filepath.FromSlash("/tmp/my notes.md")},
+		{"file:///C:/Users/Stuko/my%20notes.md", filepath.FromSlash("C:/Users/Stuko/my notes.md")},
+		{"file://server/share/dir/file.txt", filepath.FromSlash("//server/share/dir/file.txt")},
+	}
+
+	for _, tc := range cases {
+		if got := pathFromFileURL(tc.raw); got != tc.want {
+			t.Fatalf("pathFromFileURL(%q) = %q, want %q", tc.raw, got, tc.want)
+		}
 	}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -30,7 +31,15 @@ func TestStatFileSizeMtime(t *testing.T) {
 	if stat.Language != "markdown" {
 		t.Fatalf("Language = %q, want markdown", stat.Language)
 	}
-	if !strings.Contains(stat.MimeType, "markdown") && !strings.Contains(stat.MimeType, "text/plain") {
+	// Windows resolves extensions from the registry and commonly has no entry
+	// for .md, so the generic type is legitimate there; the assertion is about
+	// a MIME type being reported at all (plus markdown detection above), not
+	// about the host's mime database.
+	if stat.MimeType == "" {
+		t.Fatal("MimeType = \"\", want a content type")
+	}
+
+	if runtime.GOOS != "windows" && !strings.Contains(stat.MimeType, "markdown") && !strings.Contains(stat.MimeType, "text/plain") {
 		t.Fatalf("MimeType = %q", stat.MimeType)
 	}
 }
