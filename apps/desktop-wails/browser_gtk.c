@@ -1,3 +1,5 @@
+//go:build linux
+
 #include "browser_gtk.h"
 
 #include <gdk/gdkkeysyms.h>
