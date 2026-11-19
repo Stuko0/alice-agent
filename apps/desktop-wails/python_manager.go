@@ -24,6 +24,10 @@ import (
 
 var portRe = regexp.MustCompile(`\bport[=:]\s*(\d{4,5})\b`)
 
+// osExecutable is os.Executable, wrapped so tests can simulate an installed
+// layout (the exe's directory drives where the runtime is looked up).
+var osExecutable = os.Executable
+
 const (
 	defaultPortAnnounceTimeoutMs = 90_000
 	minPortAnnounceTimeoutMs     = 45_000
@@ -293,7 +297,7 @@ func bundledRuntimeDirs() []string {
 		dirs = append(dirs, dir)
 	}
 
-	if exe, err := os.Executable(); err == nil {
+	if exe, err := osExecutable(); err == nil {
 		exeDir := filepath.Dir(exe)
 		add(filepath.Join(exeDir, "resources"))
 		// Source layout: <repo>/apps/desktop-wails/build/bin, with
@@ -385,7 +389,7 @@ func describePath(path string) string {
 func (pm *PythonManager) runtimeSearchReport(root string) string {
 	var b strings.Builder
 
-	exe, err := os.Executable()
+	exe, err := osExecutable()
 	if err != nil {
 		fmt.Fprintf(&b, "python runtime search failed: executable unknown: %v\n", err)
 	} else {
@@ -422,6 +426,23 @@ func (pm *PythonManager) runtimeSearchReport(root string) string {
 	return b.String()
 }
 
+// backendVersionAt reads __version__ from a resolved runtime tree ("unknown"
+// when it is unreadable). Logged next to the shell's stamped version: when the
+// two disagree, the shell is driving a tree it did not ship with — the failure
+// mode that made a new shell answer 405 on a route only the new backend has.
+func backendVersionAt(root string) string {
+	data, err := os.ReadFile(filepath.Join(root, "alice_cli", "__init__.py"))
+	if err != nil {
+		return "unknown"
+	}
+
+	if m := _versionRe.FindSubmatch(data); m != nil {
+		return string(m[1])
+	}
+
+	return "unknown"
+}
+
 // ResolveProjectRoot finds the alice-agent project root by looking for alice_cli/main.py
 func (pm *PythonManager) ResolveProjectRoot() string {
 	// 1. Check explicit override
@@ -447,10 +468,31 @@ func (pm *PythonManager) ResolveProjectRoot() string {
 		}
 	}
 
-	// 2.5 Managed-install layout on Windows: %LOCALAPPDATA%\alice\alice-agent
-	// (what `alice update`/the installer maintains). A double-clicked exe has
-	// no alice cwd, so without this the walk falls through to C:\ and every
-	// python resolution below goes sideways.
+	// 2.5 The exe beside an alice checkout (the documented source layout):
+	// C:\alice\alice-desktop.exe -> C:\alice. A developer running the built
+	// binary from their tree means that tree.
+	if exe, err := osExecutable(); err == nil {
+		exeDir := filepath.Dir(exe)
+		if _, err := os.Stat(filepath.Join(exeDir, "alice_cli", "main.py")); err == nil {
+			return exeDir
+		}
+	}
+
+	// 3. Installer payload: the agent tree that shipped with THIS executable.
+	// It must outrank any other Alice tree on the machine. A stale
+	// %LOCALAPPDATA%\alice\alice-agent (left by an older `alice update` or
+	// install.ps1) used to win here, so a freshly installed shell drove an old
+	// backend: new endpoints fell through to the SPA mount and answered
+	// 405 Method Not Allowed, and every fix shipped in the installer's own tree
+	// was silently ignored.
+	if root := installerRuntimeRoot(); root != "" {
+		return root
+	}
+
+	// 4. Managed-install layout on Windows: %LOCALAPPDATA%\alice\alice-agent
+	// (what `alice update` maintains when there is no installer payload).
+	// A double-clicked exe has no alice cwd, so without this the walk falls
+	// through to C:\ and every python resolution below goes sideways.
 	if runtime.GOOS == "windows" {
 		if la := os.Getenv("LOCALAPPDATA"); la != "" {
 			candidate := filepath.Join(la, "alice", "alice-agent")
@@ -463,25 +505,9 @@ func (pm *PythonManager) ResolveProjectRoot() string {
 				return candidate
 			}
 		}
-		// The exe beside an alice checkout (the documented source layout):
-		// C:\alice\alice-desktop.exe -> C:\alice
-		if exe, err := os.Executable(); err == nil {
-			exeDir := filepath.Dir(exe)
-			if _, err := os.Stat(filepath.Join(exeDir, "alice_cli", "main.py")); err == nil {
-				return exeDir
-			}
-		}
 	}
 
-	// 3. Installer-managed install: the tree ships beside the exe and there is
-	// no checkout to prefer. Checked AFTER the checkout probes so an
-	// install.ps1 install always runs the code it just cloned, not the copy
-	// baked into the installer.
-	if root := installerRuntimeRoot(); root != "" {
-		return root
-	}
-
-	// 4. Fallback: assume we're in apps/desktop-wails and go up two levels
+	// 5. Fallback: assume we're in apps/desktop-wails and go up two levels
 	return filepath.Clean(filepath.Join(execDir, "..", ".."))
 }
 
@@ -693,7 +719,7 @@ func (pm *PythonManager) findVenvRoot(projectRoot string) string {
 			commonVenvs = append(commonVenvs, filepath.Join(la, "alice", "venv"))
 		}
 		// Bundled python embed shipped beside the executable (resources/python)
-		if exe, err := os.Executable(); err == nil {
+		if exe, err := osExecutable(); err == nil {
 			commonVenvs = append(commonVenvs, filepath.Join(filepath.Dir(exe), "resources", "python"))
 		}
 	}
@@ -706,7 +732,7 @@ func (pm *PythonManager) findVenvRoot(projectRoot string) string {
 	// Bundled Python embed beside the executable (POSIX dir layout). Windows
 	// already handles resources/python in the branch above.
 	if runtime.GOOS != "windows" {
-		if exe, err := os.Executable(); err == nil {
+		if exe, err := osExecutable(); err == nil {
 			bundled := filepath.Join(filepath.Dir(exe), "resources", "python")
 			if _, err := os.Stat(bundled); err == nil {
 				return bundled
@@ -825,7 +851,20 @@ func (pm *PythonManager) StartGateway() error {
 	if debugFile != nil {
 		fmt.Fprintf(debugFile, "[Wails] pythonPath=%s, projectRoot=%s\n", pythonPath, projectRoot)
 	}
-	logBoot("boot: python=%q root=%q", pythonPath, projectRoot)
+	backendVersion := backendVersionAt(projectRoot)
+
+	logBoot(
+		"boot: shell=%q backend=%q python=%q root=%q",
+		normalizedBuildVersion(), backendVersion, pythonPath, projectRoot,
+	)
+
+	if shellVersion := normalizedBuildVersion(); shellVersion != "" &&
+		backendVersion != "unknown" && shellVersion != backendVersion {
+		logBoot(
+			"WARNING: shell %s is driving backend %s (%s) — the app and its agent tree are from different builds; reinstall the desktop app",
+			shellVersion, backendVersion, projectRoot,
+		)
+	}
 
 	// No credible Python runtime → fail the boot loudly instead of spawning a
 	// broken interpreter that dies silently before announcing a port (the
