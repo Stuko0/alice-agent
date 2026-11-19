@@ -1783,6 +1783,10 @@ export const zhHant = defineLocale({
     freeProviderPitch: 'Starts a local gateway with a free model. No sign-up, no API key, nothing to install by hand.',
     freeProviderStarting: 'Starting the free gateway… this can take a minute on first run.',
     freeProviderFailed: 'The free gateway could not start. Pick another provider below, or try again.',
+    freeProviderBadgeBusy: 'Working',
+    freeProviderTimeout:
+      'The free gateway is taking longer than expected. Leave the app open and try again in a minute — the install continues in the background.',
+    freeProviderRetry: 'Try again',
     openRouterPitch: '一個金鑰，數百個模型 — 穩定的預設選擇',
     apiKeyOptions: {
       openrouter: { short: '一個金鑰，多個模型', description: '用一個金鑰存取數百個模型。適合新安裝的預設選擇。' },

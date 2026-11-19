@@ -50,6 +50,57 @@ class TestSpawn:
             omni.ensure_running(port=4319, allow_provision=False)
 
 
+    def test_falls_back_to_bundled_when_the_launcher_cannot_start(self, monkeypatch, tmp_path):
+        """A broken npx on PATH must not dead-end the free-provider click."""
+        bin_dir = tmp_path / ("." if omni.IS_WINDOWS else "bin")
+        bin_dir.mkdir(parents=True, exist_ok=True)
+        node = bin_dir / ("node.exe" if omni.IS_WINDOWS else "node")
+        node.touch()
+        entry = tmp_path / "node_modules" / "omniroute" / "bin" / "omniroute.mjs"
+        entry.parent.mkdir(parents=True)
+        entry.touch()
+        monkeypatch.setattr(omni, "bundled_root", lambda: tmp_path)
+
+        monkeypatch.setattr(omni, "available", lambda: "npx")
+        monkeypatch.setattr(omni.shutil, "which", lambda n: "/usr/bin/npx" if n == "npx" else None)
+
+        provisioned = []
+        monkeypatch.setattr(omni, "provision_bundled", lambda **_kw: provisioned.append(True) or node)
+
+        attempts = []
+
+        def popen(argv, **_kwargs):
+            attempts.append(argv)
+            if len(attempts) == 1:
+                raise FileNotFoundError("[WinError 2] The system cannot find the file specified")
+
+            return MagicMock()
+
+        monkeypatch.setattr(omni.subprocess, "Popen", popen)
+        monkeypatch.setattr(omni, "_wait_for_health", lambda *_a, **_kw: True)
+
+        proc = omni.ensure_running(port=4319)
+
+        assert proc is not None
+        assert provisioned == [True]
+        assert len(attempts) == 2
+        assert attempts[0][0].endswith("npx")
+        assert attempts[1][0] == str(node)
+
+    def test_launcher_start_error_is_readable_when_provisioning_is_off(self, monkeypatch):
+        monkeypatch.setattr(omni, "available", lambda: "npx")
+        monkeypatch.setattr(omni.shutil, "which", lambda n: "/usr/bin/npx" if n == "npx" else None)
+
+        def popen(_argv, **_kwargs):
+            raise FileNotFoundError("[WinError 2] npx")
+
+        monkeypatch.setattr(omni.subprocess, "Popen", popen)
+        monkeypatch.setattr(omni, "_health_ok", lambda *_a, **_kw: False)
+
+        with pytest.raises(RuntimeError, match="Could not start OmniRoute via npx"):
+            omni.ensure_running(port=4319, allow_provision=False)
+
+
 class TestBaseUrlFor:
     def test_url_format(self):
         assert omni.base_url_for(4319) == "http://127.0.0.1:4319/v1"
@@ -172,7 +223,7 @@ class TestProvision:
         monkeypatch.setattr(omni, "_health_ok", lambda *_a, **_kw: False)
         monkeypatch.setattr(omni, "bundled_root", lambda: tmp_path)
 
-        def fake_provision(on_progress=None):
+        def fake_provision(on_progress=None, on_status=None):
             node.touch()
             entry.touch()
             return node
@@ -221,3 +272,60 @@ class TestNodeDist:
         monkeypatch.setattr(omni.sys, "platform", "sunos5")
         with pytest.raises(RuntimeError, match="[Uu]nsupported"):
             omni._node_dist_url()
+
+
+class TestLauncherArgv:
+    """Windows resolves `npx` to a .cmd shim, which CreateProcessW refuses to
+    run — the free-provider click died with a bare 500 because of it."""
+
+    def test_windows_npx_shim_goes_through_cmd(self, monkeypatch):
+        monkeypatch.setattr(omni, "IS_WINDOWS", True)
+        monkeypatch.setattr(
+            omni.shutil, "which", lambda n: r"C:\Program Files\nodejs\npx.cmd" if n == "npx" else None
+        )
+
+        argv = omni._launcher_argv("npx", 4319)
+
+        assert argv[0].lower().endswith("cmd.exe")
+        assert argv[1].lower() == "/c"
+        assert argv[2].lower().endswith("npx.cmd")
+        assert "omniroute@" in argv[4]
+        assert argv[-1] == "4319"
+
+    def test_posix_npx_uses_resolved_path(self, monkeypatch):
+        monkeypatch.setattr(omni, "IS_WINDOWS", False)
+        monkeypatch.setattr(omni.shutil, "which", lambda n: "/usr/bin/npx" if n == "npx" else None)
+
+        argv = omni._launcher_argv("npx", 4319)
+
+        assert argv[0] == "/usr/bin/npx"
+        assert "--yes" in argv
+
+    def test_docker_argv_publishes_the_port(self):
+        argv = omni._launcher_argv("docker", 4319)
+
+        assert argv[0] == "docker"
+        assert "4319:4319" in argv
+        assert omni._OMNIROUTE_DOCKER_IMAGE in argv
+
+    def test_bundled_argv_runs_node_directly(self, monkeypatch, tmp_path):
+        bin_dir = tmp_path / ("." if omni.IS_WINDOWS else "bin")
+        bin_dir.mkdir(parents=True, exist_ok=True)
+        node = bin_dir / ("node.exe" if omni.IS_WINDOWS else "node")
+        node.touch()
+        entry = tmp_path / "node_modules" / "omniroute" / "bin" / "omniroute.mjs"
+        entry.parent.mkdir(parents=True)
+        entry.touch()
+        monkeypatch.setattr(omni, "bundled_root", lambda: tmp_path)
+
+        argv = omni._launcher_argv("bundled", 4319)
+
+        assert argv[0] == str(node)
+        assert argv[1] == str(entry)
+        assert argv[-1] == "4319"
+
+    def test_bundled_argv_requires_a_complete_bundle(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(omni, "bundled_root", lambda: tmp_path)
+
+        with pytest.raises(RuntimeError, match="incomplete"):
+            omni._launcher_argv("bundled", 4319)

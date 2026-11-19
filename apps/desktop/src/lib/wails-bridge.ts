@@ -31,6 +31,39 @@ export const wailsCapabilities = {
   remoteGateway: true,     // implemented via persisted connection.json
 } as const
 
+/**
+ * Turn a failed backend response into readable text.
+ *
+ * FastAPI answers handled errors with `{"detail": "..."}` and unhandled ones
+ * with the bare string "Internal Server Error". The bridge used to interpolate
+ * the raw body, so every real cause ended up in bug reports as "500 Internal
+ * Server Error" with nothing to act on.
+ */
+function describeApiFailure(body: unknown): string {
+  if (typeof body !== 'string') {
+    return String(body ?? '');
+  }
+
+  const trimmed = body.trim();
+
+  if (!trimmed) {
+    return 'no response body';
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    const detail = parsed?.detail ?? parsed?.message ?? parsed?.error;
+
+    if (typeof detail === 'string' && detail.trim()) {
+      return detail.trim();
+    }
+  } catch {
+    // Not JSON — show it as-is.
+  }
+
+  return trimmed;
+}
+
 export function initWailsBridge(): void {
   if (typeof window === 'undefined' || window.aliceDesktop) {
     return
@@ -245,7 +278,7 @@ export function initWailsBridge(): void {
             body: req.body ? JSON.stringify(req.body) : '',
           });
           if (result.status >= 400) {
-            throw new Error(`API ${req.path} failed: ${result.status} ${result.body}`);
+            throw new Error(`API ${req.path} failed: ${result.status} ${describeApiFailure(result.body)}`);
           }
           return JSON.parse(result.body);
         } catch (err) {

@@ -3180,33 +3180,123 @@ async def api_setup_provider(request: Request):
     return {"provider": config_provider, "model": model_cfg.get("model", "")}
 
 
-@app.post("/api/setup/omniroute/start")
-async def setup_omniroute_start() -> dict:
-    """Bring OmniRoute up; provision Node + the gateway when nothing else can.
+# ── OmniRoute (free, no-account provider) setup job ─────────────────────────
+#
+# Provisioning downloads Node (~25 MB), extracts it and npm-installs OmniRoute:
+# minutes on a fresh machine, not seconds. The old handler did all of that
+# inside one request. FastAPI runs `async def` endpoints ON the event loop, so
+# it also froze the gateway's websocket, and the desktop shell's proxy gave up
+# at 30 s — every real first run ended as an opaque 500. Start it in a worker
+# and poll the state instead.
+_OMNIROUTE_JOB_LOCK = threading.Lock()
+_OMNIROUTE_JOB: Dict[str, Any] = {
+    "state": "idle",  # idle | starting | ready | error
+    "progress": 0,
+    "message": "",
+    "error": None,
+    "base_url": "",
+    "started_at": None,
+}
 
-    Synchronous under the hood (HTTP download + npm install); FastAPI runs
-    us in a threadpool. Progress is not streamed (that's a separate WS /
-    long-poll channel); caller just sees a long 200 on success, 500 on error.
+
+def _omniroute_snapshot() -> dict:
+    with _OMNIROUTE_JOB_LOCK:
+        return dict(_OMNIROUTE_JOB)
+
+
+def _omniroute_update(**fields: Any) -> None:
+    with _OMNIROUTE_JOB_LOCK:
+        _OMNIROUTE_JOB.update(fields)
+
+
+def _omniroute_error_message(exc: BaseException) -> str:
+    """Turn a provisioning failure into something a user can act on.
+
+    The raw error is always appended: "it just says 500" is what made the first
+    report impossible to diagnose.
     """
+    detail = f"{type(exc).__name__}: {exc}"
+
+    if isinstance(exc, urllib.error.URLError):
+        return (
+            "Could not reach nodejs.org to download the local runtime. "
+            "Check the connection or the proxy/firewall, then try again. "
+            f"({detail})"
+        )
+
+    lowered = detail.lower()
+    if "no space left" in lowered or "not enough space" in lowered:
+        return f"The disk is full; the free runtime needs ~120 MB. ({detail})"
+    if "access is denied" in lowered or "permission denied" in lowered or "winerror 5" in lowered:
+        return (
+            "Something blocked writing or running the local runtime "
+            "(antivirus or folder permissions are the usual causes). "
+            f"({detail})"
+        )
+
+    return detail
+
+
+def _omniroute_worker() -> None:
+    """Provision/start the gateway, then point the model config at it."""
     from alice_cli import omniroute
 
     base_url = omniroute.base_url_for()
+
+    def on_status(message: str) -> None:
+        _omniroute_update(message=message)
+
+    def on_progress(percent: int) -> None:
+        # Download progress is the only measurable phase; keep it inside 5-90
+        # so it never claims the job is done before the gateway answers.
+        _omniroute_update(progress=max(5, min(90, int(percent))))
+
     try:
-        omniroute.ensure_running(allow_provision=True)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        omniroute.ensure_running(allow_provision=True, on_progress=on_progress, on_status=on_status)
+        _omniroute_update(message="Saving the gateway configuration…", progress=95)
 
-    cfg = load_config()
-    model = cfg.setdefault("model", {})
-    if not isinstance(model, dict):
-        model = cfg["model"] = {"default": model} if model else {}
-    model["provider"] = "custom"
-    model["base_url"] = base_url
-    model["api_key"] = omniroute.mint_local_token()
-    model.setdefault("default", "google/gemini-3-flash-preview")
-    save_config(cfg)
+        cfg = load_config()
+        model = cfg.setdefault("model", {})
+        if not isinstance(model, dict):
+            model = cfg["model"] = {"default": model} if model else {}
+        model["provider"] = "custom"
+        model["base_url"] = base_url
+        model["api_key"] = omniroute.mint_local_token()
+        model.setdefault("default", "google/gemini-3-flash-preview")
+        save_config(cfg)
 
-    return {"base_url": base_url, "configured": True}
+        _omniroute_update(state="ready", progress=100, message="", error=None, base_url=base_url)
+    except Exception as exc:  # noqa: BLE001 — every failure must reach the UI
+        _log.exception("omniroute: free-provider setup failed")
+        _omniroute_update(state="error", progress=0, message="", error=_omniroute_error_message(exc))
+
+
+@app.post("/api/setup/omniroute/start")
+async def setup_omniroute_start() -> dict:
+    """Start (or join) the free-gateway setup job. Returns immediately."""
+    current = _omniroute_snapshot()
+    if current["state"] == "starting":
+        return {**current, "configured": False}
+
+    _omniroute_update(
+        state="starting",
+        progress=1,
+        message="Starting the free gateway…",
+        error=None,
+        base_url="",
+        started_at=time.time(),
+    )
+    threading.Thread(target=_omniroute_worker, name="omniroute-setup", daemon=True).start()
+
+    snapshot = _omniroute_snapshot()
+    return {**snapshot, "configured": snapshot["state"] == "ready"}
+
+
+@app.get("/api/setup/omniroute/status")
+async def setup_omniroute_status() -> dict:
+    """Progress of the setup job: {state, progress, message, error}."""
+    snapshot = _omniroute_snapshot()
+    return {**snapshot, "configured": snapshot["state"] == "ready"}
 
 
 @app.get("/api/help/topics")
