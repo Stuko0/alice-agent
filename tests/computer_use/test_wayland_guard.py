@@ -251,6 +251,16 @@ def _health_proc() -> MagicMock:
 
 
 class TestDoctorWaylandProbe:
+    # The doctor consults the native Wayland backend before falling back to
+    # the X11 enumeration probe. These legacy-path tests pin that fallback,
+    # so they force the native backend off instead of inheriting whatever
+    # this host has installed (grim+hyprctl exist on the dev box).
+    def _no_native(self):
+        return patch(
+            "tools.computer_use.wayland_backend.wayland_backend_available",
+            return_value=False,
+        )
+
     @pytest.mark.skipif(
         __import__("sys").platform != "linux",
         reason="probe only runs on linux",
@@ -260,7 +270,8 @@ class TestDoctorWaylandProbe:
         overlay → synthesized check, overall=failed, exit 1."""
         from tools.computer_use import doctor
 
-        with patch("shutil.which", return_value="/fake/cua-driver"), \
+        with self._no_native(), \
+             patch("shutil.which", return_value="/fake/cua-driver"), \
              patch("subprocess.Popen", side_effect=[_health_proc(), _probe_proc_with([ANCHOR, OVERLAY])]):
             code = doctor.run_doctor()
 
@@ -285,7 +296,8 @@ class TestDoctorWaylandProbe:
             "title": "xterm",
             "window_id": 77,
         }
-        with patch("shutil.which", return_value="/fake/cua-driver"), \
+        with self._no_native(), \
+             patch("shutil.which", return_value="/fake/cua-driver"), \
              patch("subprocess.Popen", side_effect=[_health_proc(), _probe_proc_with([real])]):
             code = doctor.run_doctor()
 
@@ -303,7 +315,8 @@ class TestDoctorWaylandProbe:
         health_report verdict (exit 0 for ok)."""
         from tools.computer_use import doctor
 
-        with patch("shutil.which", return_value="/fake/cua-driver"), \
+        with self._no_native(), \
+             patch("shutil.which", return_value="/fake/cua-driver"), \
              patch("subprocess.Popen", side_effect=[_health_proc(), OSError("boom")]):
             code = doctor.run_doctor()
 
@@ -316,7 +329,8 @@ class TestDoctorWaylandProbe:
     def test_json_output_includes_synthesized_check(self, capsys):
         from tools.computer_use import doctor
 
-        with patch("shutil.which", return_value="/fake/cua-driver"), \
+        with self._no_native(), \
+             patch("shutil.which", return_value="/fake/cua-driver"), \
              patch("subprocess.Popen", side_effect=[_health_proc(), _probe_proc_with([ANCHOR])]), \
              patch("sys.stdout", new_callable=StringIO) as fake_out:
             code = doctor.run_doctor(json_output=True)
@@ -326,3 +340,29 @@ class TestDoctorWaylandProbe:
         names = [c["name"] for c in payload["checks"]]
         assert "linux-wayland-window-enum" in names
         assert payload["overall"] == "failed"
+
+    @pytest.mark.skipif(
+        __import__("sys").platform != "linux",
+        reason="probe only runs on linux",
+    )
+    def test_native_wayland_backend_keeps_overall_ok(self, capsys):
+        """With the compositor-native backend available, the X11 enumeration
+        blindness stops being an operational failure: the doctor emits an
+        ok-status check documenting the switch and overall stays ok (exit 0).
+
+        The native path returns before any cua-driver probe runs, so only
+        the health-report subprocess is consumed."""
+        from tools.computer_use import doctor
+
+        with patch(
+            "tools.computer_use.wayland_backend.wayland_backend_available",
+            return_value=True,
+        ), \
+             patch("shutil.which", return_value="/fake/cua-driver"), \
+             patch("subprocess.Popen", side_effect=[_health_proc()]):
+            code = doctor.run_doctor()
+
+        assert code == 0
+        out = capsys.readouterr().out
+        assert "linux-wayland-window-enum" in out
+        assert "Wayland" in out

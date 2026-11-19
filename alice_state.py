@@ -3303,6 +3303,34 @@ class SessionDB:
             result.append(msg)
         return result
 
+    def get_reasoning(self, session_id: str, message_ids: set[int]) -> Dict[int, str]:
+        """Return ``{message_id: reasoning_text}`` for the requested rows.
+
+        The transcript payload ships without reasoning by default (it is ~25%
+        of a large session); the desktop fetches it lazily when a Thinking
+        disclosure is expanded. Only assistant rows carry either column, and
+        only the ones asked for are read, so the query stays index-sized.
+        """
+        if not message_ids:
+            return {}
+
+        ids = sorted(int(value) for value in message_ids)
+        placeholders = ",".join("?" for _ in ids)
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT id, reasoning, reasoning_content FROM messages "
+                f"WHERE session_id = ? AND active = 1 AND id IN ({placeholders})",
+                (session_id, *ids),
+            ).fetchall()
+
+        out: Dict[int, str] = {}
+        for row in rows:
+            text = row["reasoning"] or row["reasoning_content"] or ""
+            if text:
+                out[int(row["id"])] = text
+
+        return out
+
     def get_messages_around(
         self,
         session_id: str,

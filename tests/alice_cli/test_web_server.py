@@ -967,6 +967,154 @@ class TestWebServerEndpoints:
             for r in results
         )
 
+    def test_session_list_omits_system_prompt(self):
+        """The list payload must not ship the cached system prompt.
+
+        Measured on a real profile: 99.8% of a 2.72 MB / 50-row response was
+        ``system_prompt`` (the conversations' full cached prompts). The sidebar
+        never renders it; session DETAIL keeps it.
+        """
+        from alice_state import SessionDB
+
+        db = SessionDB()
+        try:
+            db.create_session(session_id="prompt-heavy", source="cli")
+            db.update_system_prompt("prompt-heavy", "SYSTEM PROMPT " * 500)
+            db.append_message(session_id="prompt-heavy", role="user", content="hello")
+        finally:
+            db.close()
+
+        for path in ("/api/sessions?limit=5", "/api/profiles/sessions?limit=5"):
+            rows = self.client.get(path).json()["sessions"]
+            row = next(r for r in rows if r["id"] == "prompt-heavy")
+            assert "system_prompt" not in row
+
+        detail = self.client.get("/api/sessions/prompt-heavy").json()
+        assert detail.get("system_prompt")
+
+    def test_messages_payload_is_compact(self):
+        """The transcript payload keeps one reasoning field and drops dead weight."""
+        from alice_state import SessionDB
+
+        db = SessionDB()
+        try:
+            db.create_session(session_id="compact-msgs", source="cli")
+            db.append_message(session_id="compact-msgs", role="user", content="question")
+            db.append_message(
+                session_id="compact-msgs",
+                role="assistant",
+                content="answer",
+                reasoning="thinking hard",
+                reasoning_content="thinking hard",
+                reasoning_details={"steps": [1, 2]},
+                token_count=42,
+            )
+        finally:
+            db.close()
+
+        payload = self.client.get("/api/sessions/compact-msgs/messages").json()
+        assistant = payload["messages"][-1]
+
+        # Reasoning text is lazy now: the payload carries a flag only.
+        assert assistant["has_reasoning"] is True
+        assert "reasoning" not in assistant
+        assert "reasoning_content" not in assistant
+        assert "reasoning_details" not in assistant
+        assert "session_id" not in assistant
+        assert "token_count" not in assistant
+        assert payload["last_id"] == assistant["id"]
+
+        # …and the dedicated endpoint returns it for exactly the requested ids.
+        reasoning = self.client.get(f"/api/sessions/compact-msgs/reasoning?ids={assistant['id']}").json()
+        assert reasoning["reasoning"] == {str(assistant["id"]): "thinking hard"}
+
+        # Technical view asks for reasoning up front, still without the duplicate.
+        technical = self.client.get("/api/sessions/compact-msgs/messages?reasoning=true").json()
+        technical_assistant = technical["messages"][-1]
+        assert technical_assistant["reasoning"] == "thinking hard"
+        assert "reasoning_content" not in technical_assistant
+        assert "has_reasoning" not in technical_assistant
+
+        full = self.client.get("/api/sessions/compact-msgs/messages?full=true").json()
+        full_assistant = full["messages"][-1]
+        assert full_assistant["reasoning_content"] == "thinking hard"
+        assert full_assistant["session_id"] == "compact-msgs"
+
+    def test_list_and_transcript_byte_budgets(self):
+        """Perf budgets for the two hot payloads.
+
+        These are contracts, not snapshots: the list must stay tiny when every
+        row carries a large cached prompt, and the transcript must not ship
+        reasoning text unless asked. Thresholds are per-session/per-message so
+        growing the fixture can't make them flaky.
+        """
+        import json as _json
+
+        from alice_state import SessionDB
+
+        sessions = 20
+        messages = 30
+        prompt = "P" * 4000
+        reasoning = "R" * 2000
+        content = "C" * 1000
+
+        db = SessionDB()
+        try:
+            for index in range(sessions):
+                sid = f"budget-s{index}"
+                db.create_session(session_id=sid, source="cli")
+                db.update_system_prompt(sid, prompt)
+                db.append_message(session_id=sid, role="user", content="{}-user".format(index))
+            for index in range(messages):
+                db.append_message(
+                    session_id="budget-s0",
+                    role="assistant" if index % 2 else "user",
+                    content=content,
+                    reasoning=reasoning if index % 2 else None,
+                )
+        finally:
+            db.close()
+
+        listing = self.client.get("/api/profiles/sessions?limit=50&min_messages=0&profile=default").json()
+        raw_list = len(_json.dumps(listing))
+        assert all("system_prompt" not in row for row in listing["sessions"])
+        # 20 rows + envelope; before the trim this was 80 KB of prompts alone.
+        assert raw_list < sessions * 2_000, raw_list
+
+        compact = self.client.get("/api/sessions/budget-s0/messages").json()
+        assert compact["messages"]
+        assert all("reasoning" not in message for message in compact["messages"])
+        compact_bytes = len(_json.dumps(compact))
+
+        full = self.client.get("/api/sessions/budget-s0/messages?full=true").json()
+        full_bytes = len(_json.dumps(full))
+        assert full_bytes - compact_bytes >= messages * len(reasoning) * 0.4
+
+        # ~1 KB of content per message + light metadata, no 2 KB reasoning.
+        assert compact_bytes < messages * 2_500, compact_bytes
+
+    def test_messages_since_id_returns_only_the_delta(self):
+        """The 2s follow poll asks for rows newer than its cursor."""
+        from alice_state import SessionDB
+
+        db = SessionDB()
+        try:
+            db.create_session(session_id="delta-msgs", source="cli")
+            first = db.append_message(session_id="delta-msgs", role="user", content="one")
+            db.append_message(session_id="delta-msgs", role="assistant", content="two")
+            third = db.append_message(session_id="delta-msgs", role="user", content="three")
+        finally:
+            db.close()
+
+        payload = self.client.get(f"/api/sessions/delta-msgs/messages?since_id={first}").json()
+
+        assert [m["content"] for m in payload["messages"]] == ["two", "three"]
+        assert payload["last_id"] == third
+
+        empty = self.client.get(f"/api/sessions/delta-msgs/messages?since_id={third}").json()
+        assert empty["messages"] == []
+        assert empty["last_id"] is None
+
     def test_get_session_messages_follows_compression_tip(self):
         """Reading a compressed session by its old id should hydrate from the
         live continuation, matching /resume behavior."""
@@ -2509,35 +2657,6 @@ class TestWebServerEndpoints:
 
         assert seen_encodings == {"index": "utf-8", "css": "utf-8"}
 
-    def test_set_model_main_nous_applies_gateway_defaults(self, monkeypatch):
-        """Switching the main provider to Nous calls apply_nous_managed_defaults
-        (mirroring the CLI's post-model-selection Tool Gateway routing) and
-        surfaces the routed tools in the response."""
-        import alice_cli.nous_subscription as ns
-
-        called = {}
-
-        def fake_apply(config, *, enabled_toolsets=None, force_fresh=False):
-            called["enabled"] = set(enabled_toolsets or ())
-            called["force_fresh"] = force_fresh
-            # Simulate routing the unconfigured web tool through the gateway.
-            web = config.setdefault("web", {})
-            web["backend"] = "firecrawl"
-            return {"web"}
-
-        monkeypatch.setattr(ns, "apply_nous_managed_defaults", fake_apply)
-
-        resp = self.client.post(
-            "/api/model/set",
-            json={"scope": "main", "provider": "nous", "model": "alice-4"},
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["ok"] is True
-        assert data["provider"] == "nous"
-        assert data["gateway_tools"] == ["web"]
-        assert called["force_fresh"] is True
-
     def test_set_model_main_non_nous_skips_gateway_defaults(self, monkeypatch):
         """Non-Nous providers must NOT trigger Tool Gateway auto-routing."""
         import alice_cli.nous_subscription as ns
@@ -2856,75 +2975,21 @@ class TestWebServerEndpoints:
         assert data["ok"] is True
         assert data.get("gateway_tools", []) == []
 
-    def test_recommended_default_nous_honors_free_tier(self, monkeypatch):
-        """For a free-tier Nous user, the recommended default must be a free
-        model (mirroring `alice model`), not the first curated paid entry."""
-        import alice_cli.models as models_mod
-
-        monkeypatch.setattr(models_mod, "get_curated_nous_model_ids", lambda: ["paid/expensive", "free/cheap"])
-        monkeypatch.setattr(
-            models_mod, "get_pricing_for_provider",
-            lambda provider: {"paid/expensive": {"input": "1"}, "free/cheap": {"input": "0"}},
-        )
-        monkeypatch.setattr(models_mod, "check_nous_free_tier", lambda *, force_fresh=False: True)
-        monkeypatch.setattr(
-            models_mod, "union_with_portal_free_recommendations",
-            lambda ids, pricing, url: (ids, pricing),
-        )
-        # Free partition keeps only the free model selectable.
-        monkeypatch.setattr(
-            models_mod, "partition_nous_models_by_tier",
-            lambda ids, pricing, free_tier: (["free/cheap"], ["paid/expensive"]),
-        )
-
-        resp = self.client.get("/api/model/recommended-default?provider=nous")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["provider"] == "nous"
-        assert data["model"] == "free/cheap"
-        assert data["free_tier"] is True
-
-    def test_recommended_default_nous_paid_uses_curated_default(self, monkeypatch):
-        """A paid Nous user gets the first curated/paid-augmented model."""
-        import alice_cli.models as models_mod
-
-        monkeypatch.setattr(models_mod, "get_curated_nous_model_ids", lambda: ["top/model", "other/model"])
-        monkeypatch.setattr(models_mod, "get_pricing_for_provider", lambda provider: {})
-        monkeypatch.setattr(models_mod, "check_nous_free_tier", lambda *, force_fresh=False: False)
-        monkeypatch.setattr(
-            models_mod, "union_with_portal_paid_recommendations",
-            lambda ids, pricing, url: (ids, pricing),
-        )
-
-        resp = self.client.get("/api/model/recommended-default?provider=nous")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["provider"] == "nous"
-        assert data["model"] == "top/model"
-        assert data["free_tier"] is False
-
     def test_recommended_default_handles_failure_gracefully(self, monkeypatch):
-        """Endpoint never 500s — returns empty model on internal error."""
-        import alice_cli.models as models_mod
+        """Endpoint never 500s — returns an empty model on internal error."""
+        import alice_cli.inventory as inventory
 
-        def boom():
-            raise RuntimeError("portal down")
+        def boom(*args, **kwargs):
+            raise RuntimeError("picker exploded")
 
-        monkeypatch.setattr(models_mod, "get_curated_nous_model_ids", boom)
+        monkeypatch.setattr(inventory, "build_models_payload", boom)
 
-        resp = self.client.get("/api/model/recommended-default?provider=nous")
+        resp = self.client.get("/api/model/recommended-default?provider=openrouter")
         assert resp.status_code == 200
         data = resp.json()
         assert data["model"] == ""
         assert data["free_tier"] is None
 
-
-# ---------------------------------------------------------------------------
-# _build_schema_from_config tests
-# ---------------------------------------------------------------------------
-
-
-class TestBuildSchemaFromConfig:
     def test_produces_expected_field_count(self):
         from alice_cli.web_server import CONFIG_SCHEMA
         # DEFAULT_CONFIG has ~150+ leaf fields

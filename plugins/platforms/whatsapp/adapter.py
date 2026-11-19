@@ -872,7 +872,11 @@ class WhatsAppAdapter(WhatsAppBehaviorMixin, BasePlatformAdapter):
                 async with self._http_session.post(
                     f"http://127.0.0.1:{self._bridge_port}/send",
                     json=payload,
-                    timeout=aiohttp.ClientTimeout(total=30)
+                    # Generous headroom: the bridge now adds human typing
+                    # delays + Gaussian jitter + antiban rate-limiting before
+                    # each chunk, so a multi-chunk reply can exceed the old
+                    # 30s. Keep well above the bridge's per-chunk 60s budget.
+                    timeout=aiohttp.ClientTimeout(total=90)
                 ) as resp:
                     if resp.status == 200:
                         data = await resp.json()

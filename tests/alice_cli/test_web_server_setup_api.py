@@ -39,6 +39,41 @@ class TestSetupStatus:
         assert "terminal_backend" in data
 
 
+class TestSetupStatusConfigured:
+    def test_counts_default_model_key_as_configured(self, client, monkeypatch):
+        # Modern configs store the model id under `model.default`; only the
+        # legacy `model.model` key used to count, so working installs were told
+        # to run first-run setup on every launch.
+        import alice_cli.web_server as web_server
+
+        monkeypatch.setattr(
+            web_server,
+            "load_config",
+            lambda: {"model": {"provider": "opencode-go", "default": "deepseek-v4.1-flash"}},
+        )
+
+        data = client.get("/api/setup/status").json()
+
+        assert data["configured"] is True
+        assert data["model"] == "deepseek-v4.1-flash"
+
+    def test_legacy_model_key_still_counts(self, client, monkeypatch):
+        import alice_cli.web_server as web_server
+
+        monkeypatch.setattr(
+            web_server, "load_config", lambda: {"model": {"provider": "p", "model": "m-1"}}
+        )
+
+        assert client.get("/api/setup/status").json()["configured"] is True
+
+    def test_missing_model_is_not_configured(self, client, monkeypatch):
+        import alice_cli.web_server as web_server
+
+        monkeypatch.setattr(web_server, "load_config", lambda: {"model": {"provider": "p"}})
+
+        assert client.get("/api/setup/status").json()["configured"] is False
+
+
 class TestSetupTerminalBackend:
     def test_post_local_backend(self, client):
         resp = client.post("/api/setup/terminal-backend", json={"backend": "local"})

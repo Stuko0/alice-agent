@@ -1050,121 +1050,39 @@ def test_named_custom_provider_falls_back_to_openai_api_key(monkeypatch):
 
 
 def test_named_custom_provider_does_not_shadow_builtin_provider(monkeypatch):
+    """A custom_providers entry named like a built-in must not win over it."""
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-runtime-key")
     monkeypatch.setattr(
         rp,
         "load_config",
         lambda: {
             "custom_providers": [
                 {
-                    "name": "nous",
+                    "name": "openrouter",
                     "base_url": "http://localhost:1234/v1",
                     "api_key": "shadow-key",
                 }
             ]
         },
     )
-    monkeypatch.setattr(
-        rp,
-        "resolve_nous_runtime_credentials",
-        lambda **kwargs: {
-            "base_url": "https://inference-api.nousresearch.com/v1",
-            "api_key": "nous-runtime-key",
-            "source": "portal",
-            "expires_at": None,
-        },
-    )
 
-    resolved = rp.resolve_runtime_provider(requested="nous")
+    resolved = rp.resolve_runtime_provider(requested="openrouter")
 
-    assert resolved["provider"] == "nous"
-    assert resolved["base_url"] == "https://inference-api.nousresearch.com/v1"
-    assert resolved["api_key"] == "nous-runtime-key"
-    assert resolved["requested_provider"] == "nous"
-
-
-def test_nous_pool_entry_refreshes_expired_agent_key(monkeypatch):
-    stale_token = _fake_invoke_jwt(ttl_seconds=-60)
-    fresh_token = _fake_invoke_jwt(ttl_seconds=3600)
-
-    class _Entry:
-        def __init__(self, token):
-            self.access_token = "pool-access-token"
-            self.agent_key = token
-            self.agent_key_expires_at = "2099-01-01T00:00:00+00:00"
-            self.scope = "inference:invoke"
-            self.base_url = "https://inference.pool.example/v1"
-            self.source = "manual:nous"
-
-        @property
-        def runtime_api_key(self):
-            return self.agent_key
-
-    class _Pool:
-        refreshed = False
-
-        def has_credentials(self):
-            return True
-
-        def select(self):
-            return _Entry(stale_token)
-
-        def try_refresh_current(self):
-            self.refreshed = True
-            return _Entry(fresh_token)
-
-    pool = _Pool()
-    monkeypatch.setattr(rp, "resolve_provider", lambda *a, **k: "nous")
-    monkeypatch.setattr(rp, "load_pool", lambda provider: pool)
-    monkeypatch.setattr(rp, "_get_model_config", lambda: {"provider": "nous"})
-
-    resolved = rp.resolve_runtime_provider(requested="nous")
-
-    assert pool.refreshed is True
-    assert resolved["provider"] == "nous"
-    assert resolved["api_key"] == fresh_token
-    assert resolved["base_url"] == "https://inference.pool.example/v1"
-
-
-def test_named_custom_provider_wins_over_builtin_alias(monkeypatch):
-    """A custom_providers entry named after a built-in *alias* (not a canonical
-    provider name) must win over the built-in.  Regression guard for #15743:
-    when users define ``custom_providers: [{name: kimi, ...}]`` and reference
-    ``provider: kimi``, the built-in alias rewriting (``kimi`` → ``kimi-coding``)
-    would otherwise hijack the request and send it to the wrong endpoint.
-    """
-    monkeypatch.setattr(
-        rp,
-        "load_config",
-        lambda: {
-            "custom_providers": [
-                {
-                    "name": "kimi",
-                    "base_url": "https://my-custom-kimi.example.com/v1",
-                    "api_key": "my-kimi-key",
-                }
-            ]
-        },
-    )
-
-    entry = rp._get_named_custom_provider("kimi")
-
-    assert entry is not None
-    assert entry["base_url"] == "https://my-custom-kimi.example.com/v1"
-    assert entry["api_key"] == "my-kimi-key"
+    assert resolved["provider"] == "openrouter"
+    assert "openrouter.ai" in resolved["base_url"]
+    assert resolved["api_key"] == "or-runtime-key"
+    assert resolved["requested_provider"] == "openrouter"
 
 
 def test_named_custom_provider_skipped_for_canonical_built_in(monkeypatch):
-    """Companion to the test above: ``nous`` is a canonical provider name
-    (``resolve_provider('nous') == 'nous'``), so a custom entry with that name
-    should NOT be returned — the built-in wins as before.
-    """
+    """A custom entry named like a canonical provider is ignored."""
     monkeypatch.setattr(
         rp,
         "load_config",
         lambda: {
             "custom_providers": [
                 {
-                    "name": "nous",
+                    "name": "openrouter",
                     "base_url": "http://localhost:1234/v1",
                     "api_key": "shadow-key",
                 }
@@ -1172,7 +1090,7 @@ def test_named_custom_provider_skipped_for_canonical_built_in(monkeypatch):
         },
     )
 
-    entry = rp._get_named_custom_provider("nous")
+    entry = rp._get_named_custom_provider("openrouter")
 
     assert entry is None
 

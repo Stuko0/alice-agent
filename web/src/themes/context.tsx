@@ -47,8 +47,9 @@ const FONT_STORAGE_KEY = "alice-dashboard-font";
  *  Keep entries here until enough release cycles have passed that we can
  *  reasonably assume nobody still has the old value persisted. */
 const THEME_NAME_ALIASES: Record<string, string> = {
-  // Renamed during the LENS_5I port + Stuko-blue rebrand.
-  "lens-5i": "nous-blue",
+  // Renamed during the LENS_5I port + Stuko-blue rebrand, then de-branded.
+  "lens-5i": "stuko-blue",
+  "nous-blue": "stuko-blue",
 };
 
 function migrateThemeName(name: string): string {

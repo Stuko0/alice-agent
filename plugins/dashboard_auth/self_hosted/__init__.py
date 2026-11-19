@@ -1,10 +1,7 @@
 """SelfHostedOIDCProvider — generic self-hosted OpenID Connect dashboard auth.
 
 A standards-compliant OpenID Connect Relying Party for the ``alice dashboard``
-OAuth gate. Unlike the bundled ``nous`` provider (which encodes Nous Portal's
-bespoke contract — ``agent:{instance_id}`` client ids, a custom access-token
-JWT, the ``x-nous-refresh-token`` header, an ``oauth_contract_version`` claim),
-this provider speaks **plain OIDC** so it works against any conformant
+OAuth gate. It speaks **plain OIDC** so it works against any conformant
 self-hosted identity provider:
 
     Authentik · Keycloak · Zitadel · Authelia · Auth0 · Okta · Google · …

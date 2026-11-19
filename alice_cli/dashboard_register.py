@@ -1,4 +1,12 @@
-"""``alice dashboard register`` — register a self-hosted dashboard OAuth client.
+"""``alice dashboard register`` — legacy Nous Portal dashboard registration.
+
+.. deprecated::
+   The bundled ``plugins/dashboard_auth/nous`` provider was removed with the
+   Nous Portal integration. This command still talks to the Portal, but the
+   client id it writes no longer activates a dashboard-auth provider. Use the
+   self-hosted OIDC provider (``ALICE_DASHBOARD_OIDC_*``) instead.
+
+Legacy behaviour follows.
 
 Automates what a user otherwise does by hand: open the Nous Portal
 ``/local-dashboards`` page in a browser, click "register", copy the

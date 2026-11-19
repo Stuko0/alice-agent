@@ -269,9 +269,8 @@ def test_dashboard_oauth_gate_engages_on_non_loopback_bind(
 ) -> None:
     """The s6 dashboard run script must NOT auto-add ``--insecure`` when the
     dashboard binds to ``0.0.0.0``. The OAuth auth gate engages on its own
-    when a ``DashboardAuthProvider`` is registered (the bundled nous
-    provider activates whenever ``ALICE_DASHBOARD_OAUTH_CLIENT_ID`` is
-    set).
+    when a ``DashboardAuthProvider`` is registered (the bundled self-hosted
+    OIDC provider activates whenever an issuer + client_id are configured).
 
     Regression guard for the wildcard-subdomain rollout where every
     portal-provisioned agent binds ``0.0.0.0`` and relies on the OAuth
@@ -284,8 +283,8 @@ def test_dashboard_oauth_gate_engages_on_non_loopback_bind(
     on:
 
     1. ``/api/auth/providers`` (publicly reachable through the gate so
-       the login page can bootstrap) returns 200 with ``nous`` in the
-       provider list — proves the bundled provider registered.
+       the login page can bootstrap) returns 200 with the configured
+       provider in the list — proves a provider registered.
     2. ``/api/sessions`` (a gated route under both the legacy
        ``_SESSION_TOKEN`` middleware and the OAuth gate) returns 401
        to an unauthenticated caller — proves the OAuth gate is actively
@@ -299,7 +298,8 @@ def test_dashboard_oauth_gate_engages_on_non_loopback_bind(
         built_image, container_name,
         "ALICE_DASHBOARD=1",
         "ALICE_DASHBOARD_HOST=0.0.0.0",
-        "ALICE_DASHBOARD_OAUTH_CLIENT_ID=agent:test-instance",
+        "ALICE_DASHBOARD_OIDC_ISSUER=https://auth.example.com",
+        "ALICE_DASHBOARD_OIDC_CLIENT_ID=alice-dashboard",
         cmd="sleep 120",
     )
 
@@ -311,9 +311,9 @@ def test_dashboard_oauth_gate_engages_on_non_loopback_bind(
     )
     payload = json.loads(body)
     provider_names = [p.get("name") for p in payload.get("providers", [])]
-    assert "nous" in provider_names, (
-        "Bundled dashboard_auth/nous provider should register when "
-        f"ALICE_DASHBOARD_OAUTH_CLIENT_ID is set. Got: {payload!r}"
+    assert "self-hosted" in provider_names, (
+        "dashboard_auth/self_hosted should register when the OIDC issuer + "
+        f"client_id are set. Got: {payload!r}"
     )
 
     # (2) A gated route (``/api/sessions``) returns 401 to an

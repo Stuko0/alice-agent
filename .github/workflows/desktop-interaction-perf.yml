@@ -1,0 +1,78 @@
+name: Desktop interaction perf
+
+# Latency layer for apps/desktop/INTERACTION-PERFORMANCE-PLAN.md (P2.3).
+#
+# `measure-interactions.mjs` has two transports:
+#   - Chromium/Electron: `--case=all` drives the UI over CDP (needs a display).
+#   - Wails: the renderer's dev panel exports `{samples:[{name,ms}]}` (Copy JSON),
+#     which CI compares offline with `--import`/`--baseline`.
+#
+# This job never runs the UI: it validates the harness, compares any capture
+# committed under `perf-captures/` against `perf-baseline.json`, and publishes the
+# capture as an artifact. It is non-blocking (`continue-on-error`) by design: a
+# latency regression should be visible, not break unrelated PRs.
+on:
+  workflow_dispatch:
+    inputs:
+      baseline:
+        description: Repo-relative baseline JSON
+        required: false
+        default: apps/desktop/perf-baseline.json
+  push:
+    paths:
+      - 'apps/desktop/perf-captures/**'
+      - 'apps/desktop/perf-baseline.json'
+      - 'apps/desktop/scripts/measure-interactions.mjs'
+  pull_request:
+    paths:
+      - 'apps/desktop/perf-captures/**'
+      - 'apps/desktop/perf-baseline.json'
+      - 'apps/desktop/scripts/measure-interactions.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    name: Compare interaction capture
+    runs-on: ubuntu-latest
+    # Never gate a PR on unmeasured latency data.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      # Pure-node check of the stats/compare layer (no display, no Electron).
+      - name: Harness self-test
+        run: node apps/desktop/scripts/measure-interactions.mjs --self-test
+
+      - name: Find capture
+        id: capture
+        run: |
+          shopt -s nullglob
+          files=(apps/desktop/perf-captures/*.json)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "found=" >> "$GITHUB_OUTPUT"
+            echo "▸ no capture committed — nothing to compare (capture with wails dev)"
+          else
+            echo "found=${files[0]}" >> "$GITHUB_OUTPUT"
+            echo "▸ comparing ${files[0]}"
+          fi
+
+      - name: Compare against baseline
+        if: steps.capture.outputs.found != ''
+        run: >-
+          node apps/desktop/scripts/measure-interactions.mjs
+          --import="${{ steps.capture.outputs.found }}"
+          --baseline="${{ inputs.baseline || 'apps/desktop/perf-baseline.json' }}"
+
+      - name: Publish capture artifact
+        if: steps.capture.outputs.found != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: interaction-capture
+          path: ${{ steps.capture.outputs.found }}
+          if-no-files-found: ignore
+          retention-days: 90

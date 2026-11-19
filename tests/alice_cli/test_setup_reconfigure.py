@@ -64,6 +64,10 @@ def _enter_existing_install_patches(stack, **extra):
         ("alice_cli.auth.get_active_provider", {"return_value": "openrouter"}),
         ("alice_cli.setup._print_setup_summary", {}),
         ("alice_cli.setup._offer_openclaw_migration", {"return_value": False}),
+        # The wizard's browser section prompts only when it detected something;
+        # pinning it to "none" keeps this test about the section sequence
+        # (prompt_choice stays untouched).
+        ("alice_cli.browser_scanner.scan_browsers", {"return_value": []}),
     ]:
         stack.enter_context(patch(target, **kwargs))
 

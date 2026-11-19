@@ -11788,7 +11788,7 @@ def _maybe_setup_dashboard_auth_interactively(args) -> None:
     ``DashboardAuthProvider`` is registered. Rather than greet an interactive
     operator with that hard error, prompt them to set up the bundled
     username/password provider on the spot — or point them at
-    ``alice dashboard register`` for OAuth.
+    the self-hosted OIDC provider.
 
     No-ops (so the existing fail-closed ``SystemExit`` remains the backstop)
     when:
@@ -11829,7 +11829,7 @@ def _maybe_setup_dashboard_auth_interactively(args) -> None:
     print()
     print("  How do you want to authenticate the dashboard?")
     print("    [1] Username & password (quickest; for a trusted LAN / VPN)")
-    print("    [2] OAuth via Nous Portal (run `alice dashboard register`)")
+    print("    [2] OAuth via a self-hosted OIDC provider")
     print("    [3] Cancel")
     print()
 
@@ -11842,11 +11842,12 @@ def _maybe_setup_dashboard_auth_interactively(args) -> None:
     if choice == "2":
         print()
         print(
-            "  Run this on the host where the dashboard lives, then start "
-            "the dashboard again:\n"
-            "    alice dashboard register\n"
-            "  It provisions a Nous Portal OAuth client and writes "
-            "ALICE_DASHBOARD_OAUTH_CLIENT_ID into ~/.alice/.env for you.\n"
+            "  Configure a conformant OpenID Connect identity provider, then "
+            "start the dashboard again:\n"
+            "    ALICE_DASHBOARD_OIDC_ISSUER=https://your-idp.example.com\n"
+            "    ALICE_DASHBOARD_OIDC_CLIENT_ID=alice-dashboard\n"
+            "  (or set dashboard.oauth.self_hosted.{issuer,client_id} in "
+            "config.yaml)\n"
             "  Docs: https://alice-agent.stuko.dev/docs/"
             "user-guide/features/web-dashboard#authentication-gated-mode"
         )
@@ -12074,7 +12075,7 @@ def cmd_dashboard(args):
         print(f"→ Skipping web UI build (--skip-build); using dist at {_dist_root}")
 
     # Discover and load plugins so any DashboardAuthProvider plugin
-    # (e.g. plugins/dashboard_auth/nous) registers BEFORE start_server's
+    # (e.g. plugins/dashboard_auth/self_hosted) registers BEFORE start_server's
     # fail-closed gate check runs. The top-level argparse setup skips
     # plugin discovery for built-in subcommands like ``dashboard`` to
     # save ~500ms startup; we have to trigger it explicitly here because
@@ -12193,7 +12194,7 @@ def _build_provider_choices() -> list[str]:
     except Exception:
         # Fallback: static list guarantees the CLI always works
         return [
-            "auto", "openrouter", "nous", "openai-codex", "xai-oauth", "copilot-acp", "copilot",
+            "auto", "openrouter", "openai-codex", "xai-oauth", "copilot-acp", "copilot",
             "anthropic", "gemini", "xai", "bedrock", "azure-foundry",
             "ollama-cloud", "huggingface", "zai", "kimi-coding", "kimi-coding-cn",
             "stepfun", "minimax", "minimax-cn", "kilocode", "novita", "xiaomi", "arcee",
@@ -12218,7 +12219,7 @@ _BUILTIN_SUBCOMMANDS = frozenset(
         "dump", "fallback", "gateway", "hooks", "import", "insights",
         "gui", "desktop", "kanban", "login", "logout", "logs", "lsp", "mcp", "memory", "migrate", "moa",
         "journey", "memory-graph", "learning",
-        "model", "pairing", "pets", "plugins", "portal", "postinstall", "profile",
+        "model", "pairing", "pets", "plugins", "postinstall", "profile",
         "project", "proxy",
         "prompt-size",
         "send", "sessions", "setup",
@@ -12969,12 +12970,6 @@ def main():
     # webhook command  (parser built in alice_cli/subcommands/webhook.py)
     # =========================================================================
     build_webhook_parser(subparsers, cmd_webhook=cmd_webhook)
-
-    # =========================================================================
-    # portal command — Nous Portal status + Tool Gateway routing
-    # =========================================================================
-    from alice_cli.portal_cli import add_parser as _add_portal_parser
-    _add_portal_parser(subparsers)
 
     # =========================================================================
     # kanban command — multi-profile collaboration board

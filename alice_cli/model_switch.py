@@ -613,7 +613,6 @@ def _resolve_alias_fallback(
 
     Falls back to ``("openrouter",)`` only when no authenticated
     providers are supplied (backwards compat for non-interactive callers).
-    ``nous`` was removed from the fallback with the Nous Portal integration.
     """
     providers = authenticated_providers or ("openrouter",)
     for provider in providers:
@@ -638,7 +637,7 @@ def resolve_display_context_length(
     but provider-enforced limits can be lower (e.g. Codex OAuth caps the
     same slug at 272k). The authoritative source is
     ``agent.model_metadata.get_model_context_length`` which already knows
-    about Codex OAuth, Copilot, Nous, and falls back to models.dev for the
+    about Codex OAuth and Copilot, and falls back to models.dev for the
     rest.
 
     When ``custom_providers`` is provided, per-model ``context_length``
@@ -1427,7 +1426,6 @@ def list_authenticated_providers(
     user_providers: dict = None,
     custom_providers: list | None = None,
     *,
-    force_fresh_nous_tier: bool = False,
     max_models: int | None = None,
     current_model: str = "",
     refresh: bool = False,
@@ -1448,9 +1446,6 @@ def list_authenticated_providers(
       - source: str — "built-in", "models.dev", "user-config"
 
     Only includes providers that have API keys set or are user-defined endpoints.
-    ``force_fresh_nous_tier`` bypasses the short Nous tier cache for explicit
-    account-sensitive flows. UI picker opens should leave it false so they do
-    not block on fresh Portal/account checks every time.
 
     ``refresh`` busts the per-provider model-id disk cache
     (``provider_models_cache.json``) up front so every row re-fetches its
@@ -1468,7 +1463,7 @@ def list_authenticated_providers(
     from alice_cli.models import (
         OPENROUTER_MODELS, _PROVIDER_MODELS,
         _MODELS_DEV_PREFERRED, _merge_with_models_dev, cached_provider_model_ids,
-        clear_provider_models_cache, get_curated_nous_model_ids,
+        clear_provider_models_cache,
     )
 
     # Explicit refresh: drop every provider's cached model-id list so the
@@ -1562,12 +1557,6 @@ def list_authenticated_providers(
     # Build curated model lists keyed by alice provider ID
     curated: dict[str, list[str]] = dict(_PROVIDER_MODELS)
     curated["openrouter"] = [mid for mid, _ in OPENROUTER_MODELS]
-    # "nous" pulls from the remote model-catalog manifest published at
-    # https://alice-agent.stuko.dev/docs/api/model-catalog.json so
-    # newly added Portal models surface in the /model picker without
-    # requiring a Alice release. Falls back to the in-repo
-    # _PROVIDER_MODELS["nous"] snapshot when the manifest is unreachable.
-    curated["nous"] = get_curated_nous_model_ids()
     # Ollama Cloud uses dynamic discovery (no static curated list)
     if "ollama-cloud" not in curated:
         from alice_cli.models import fetch_ollama_cloud_models
@@ -1689,7 +1678,7 @@ def list_authenticated_providers(
         seen_mdev_ids.add(mdev_id)
         _record_builtin_endpoint(slug)
 
-    # --- 2. Check Alice-only providers (nous, openai-codex, copilot, opencode-go) ---
+    # --- 2. Check Alice-only providers (openai-codex, copilot, opencode-go) ---
     from alice_cli.providers import ALICE_OVERLAYS
     from alice_cli.auth import PROVIDER_REGISTRY as _auth_registry
 
@@ -1786,43 +1775,6 @@ def list_authenticated_providers(
                 model_ids = _ids if _ids else (curated.get(alice_slug, []) or curated.get(pid, []))
             except Exception:
                 model_ids = curated.get(alice_slug, []) or curated.get(pid, [])
-        elif alice_slug == "nous":
-            # Nous serves a large live /v1/models catalog (vendor-prefixed
-            # models from many providers, returned alphabetically). The
-            # `alice model` picker deliberately shows ONLY the curated agentic
-            # list — augmented with the Portal's free/paid recommendations so
-            # newly-launched models surface without a CLI release — in curated
-            # order. Mirror that exactly (see _model_flow_nous in main.py) so
-            # the GUI picker matches the CLI. Was: falling through to
-            # cached_provider_model_ids, which dumped the full alphabetical
-            # catalog; then: curated-only, which dropped the 4 Portal
-            # recommendations (e.g. stepfun/step-3.7-flash:free).
-            model_ids = curated.get("nous", [])
-            try:
-                from alice_cli.models import (
-                    get_pricing_for_provider as _nous_pricing,
-                    check_nous_free_tier as _nous_free,
-                    union_with_portal_free_recommendations as _union_free,
-                    union_with_portal_paid_recommendations as _union_paid,
-                )
-                from alice_cli.auth import get_provider_auth_state as _nous_state
-
-                _pricing = _nous_pricing("nous") or {}
-                _portal = ""
-                try:
-                    _st = _nous_state("nous") or {}
-                    _portal = _st.get("portal_base_url", "") or ""
-                except Exception:
-                    _portal = ""
-                if _nous_free(force_fresh=force_fresh_nous_tier):
-                    model_ids, _ = _union_free(model_ids, _pricing, _portal)
-                else:
-                    model_ids, _ = _union_paid(model_ids, _pricing, _portal)
-            except Exception:
-                # Portal recommendation fetch failed — fall back to the
-                # curated list alone (still correct, just may lag newly
-                # launched models, exactly like an offline CLI run).
-                pass
         else:
             # Unified pathway — see Section 1 rationale. Fall back to the
             # curated dict (with models.dev merge for preferred providers)
