@@ -106,6 +106,17 @@ jobs:
       # Pure-Go services (preview origin, FS read limits, normalisation) are
       # covered here because this job already has the Wails/CGO toolchain the
       # package needs to compile on Windows.
+      - name: Build frontend for the Go embed
+        # main.go embeds `all:frontend/dist`, which is gitignored. Without this
+        # the `go test ./...` step below fails at compile time on a fresh
+        # checkout ("pattern all:frontend/dist: no matching files found").
+        run: |
+          cd apps/desktop
+          npm run build
+          Remove-Item -Recurse -Force ../desktop-wails/frontend/dist -ErrorAction SilentlyContinue
+          Copy-Item -Recurse dist ../desktop-wails/frontend/dist
+        shell: pwsh
+
       - name: Test Wails Go services
         run: |
           cd apps/desktop-wails
