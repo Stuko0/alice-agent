@@ -299,26 +299,52 @@ jobs:
         shell: pwsh
 
       - name: Launch and wait for the backend to announce a port
+        # A double-clicked installer build has no ALICE_HOME, so the shell uses
+        # %USERPROFILE%\.alice (python_manager.NewPythonManager). Also accept
+        # %LOCALAPPDATA%\alice in case the machine sets ALICE_HOME.
         run: |
           $app = $env:ALICE_APP
+          $logs = @(
+            (Join-Path $env:USERPROFILE '.alice/logs/agent.log'),
+            (Join-Path $env:LOCALAPPDATA 'alice/logs/agent.log')
+          )
+          $debugLog = Join-Path $env:TEMP 'wails-debug.log'
+
           $proc = Start-Process -FilePath $app -PassThru
-          $log = Join-Path $env:LOCALAPPDATA 'alice/logs/agent.log'
-          $deadline = (Get-Date).AddMinutes(4)
+          $deadline = (Get-Date).AddMinutes(6)
           $ready = $false
 
           while ((Get-Date) -lt $deadline) {
             if ($proc.HasExited) { break }
-            if (Test-Path $log) {
-              $tail = Get-Content $log -Tail 200 -ErrorAction SilentlyContinue | Out-String
-              if ($tail -match 'Uvicorn running|Application startup complete|port') { $ready = $true; break }
+
+            foreach ($log in $logs) {
+              if (-not (Test-Path $log)) { continue }
+              $tail = Get-Content $log -Tail 400 -ErrorAction SilentlyContinue | Out-String
+              if ($tail -match 'ALICE_DASHBOARD_READY|Uvicorn running|Application startup complete|Alice Web UI') {
+                $ready = $true
+                break
+              }
             }
+            if ($ready) { break }
+
+            if (Test-Path $debugLog) {
+              $dbg = Get-Content $debugLog -Tail 200 -ErrorAction SilentlyContinue | Out-String
+              if ($dbg -match 'announced port') { $ready = $true; break }
+            }
+
             Start-Sleep -Seconds 3
           }
 
           if (-not $ready) {
-            Write-Host '--- agent.log tail ---'
-            if (Test-Path $log) { Get-Content $log -Tail 200 }
+            Write-Host "--- process exited: $($proc.HasExited) ---"
+            foreach ($log in @($logs + $debugLog)) {
+              Write-Host "--- $log ---"
+              if (Test-Path $log) { Get-Content $log -Tail 120 }
+            }
             if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+            Get-Process python -ErrorAction SilentlyContinue |
+              Where-Object { $_.Path -and $_.Path.StartsWith($env:USERPROFILE) } |
+              Stop-Process -Force -ErrorAction SilentlyContinue
             throw "backend never announced a port (installer-only launch failed)"
           }
 
