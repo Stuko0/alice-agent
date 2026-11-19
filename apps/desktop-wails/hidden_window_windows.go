@@ -8,12 +8,12 @@ import (
 )
 
 const (
-	// CREATE_NO_WINDOW: the child gets no console at all (nothing to flash).
-	createNoWindow = 0x08000000
 	// CREATE_NEW_CONSOLE: allocate a console for the child and its own
 	// children. Combined with HideWindow the console exists but is invisible,
 	// so grandchildren (python → subprocesses) inherit it instead of each
 	// allocating a fresh, VISIBLE console.
+	//
+	// (createNoWindow lives in relaunch_windows.go.)
 	createNewConsole = 0x00000010
 )
 
