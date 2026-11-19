@@ -3766,7 +3766,18 @@ def run_conversation(
                         if _billing_guidance:
                             _final_response += f"\n\n{_billing_guidance}"
                     else:
-                        _final_response = f"API call failed after {max_retries} retries: {_final_summary}"
+                        # Include WHERE the call went: "429" alone is
+                        # undiagnosable — the same 429 means "provider rate
+                        # limit" for a real endpoint and "you are still
+                        # talking to the free preview endpoint" for another.
+                        _via = f"provider={_provider or '?'} model={_model or '?'}"
+                        _endpoint = str(getattr(agent, "base_url", "") or "").strip()
+                        if _endpoint:
+                            _via += f" endpoint={_endpoint}"
+                        _final_response = (
+                            f"API call failed after {max_retries} retries: {_final_summary}"
+                            f"\n\n[{_via}]"
+                        )
                     if _is_thinking_timeout:
                         # Thinking-timeout guidance overrides the generic
                         # stream-drop guidance — the latter is wrong for
