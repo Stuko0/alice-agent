@@ -25,6 +25,11 @@ on:
         type: choice
         options:
           - amd64
+      publish_tag:
+        description: 'Release tag to upload the artifacts to (empty = build only, no upload)'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write    # needed for release upload
@@ -75,16 +80,37 @@ jobs:
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
         shell: pwsh
 
+      - name: Install NSIS
+        # wails build -nsis shells out to makensis; the stock image doesn't
+        # ship it. Chocolatey installs it under Program Files (x86).
+        run: |
+          choco install nsis -y --no-progress
+          "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          makensis -VERSION
+        shell: pwsh
+
       - name: Install npm dependencies (desktop)
         run: |
           cd apps/desktop
           npm ci
         shell: pwsh
 
-      - name: Build Wails desktop binary
+      # Pure-Go services (preview origin, FS read limits, normalisation) are
+      # covered here because this job already has the Wails/CGO toolchain the
+      # package needs to compile on Windows.
+      - name: Test Wails Go services
         run: |
           cd apps/desktop-wails
-          ./build.ps1
+          go test ./...
+        shell: pwsh
+
+      - name: Build Wails desktop binary + NSIS installer
+        # build.ps1 stages the agent runtime tree (resources/alice), bundles the
+        # Python runtime (resources/python), zips resources.zip and, with -Nsis,
+        # builds the user-scoped installer (no UAC on install/update).
+        run: |
+          cd apps/desktop-wails
+          ./build.ps1 -Nsis
         shell: pwsh
 
       - name: Verify binary exists
@@ -92,6 +118,25 @@ jobs:
           $bin = 'apps/desktop-wails/build/bin/alice-desktop.exe'
           if (-not (Test-Path $bin)) { throw "Wails binary not found at $bin" }
           Write-Host "✅ Wails binary: $((Resolve-Path $bin).Path) ($('{0:N0}' -f (Get-Item $bin).Length) bytes)"
+        shell: pwsh
+
+      - name: Verify NSIS installer exists
+        run: |
+          $installer = 'apps/desktop-wails/build/bin/alice-desktop-amd64-installer.exe'
+          if (-not (Test-Path $installer)) { throw "NSIS installer not found at $installer" }
+          Write-Host "✅ Installer: $((Resolve-Path $installer).Path) ($('{0:N1}' -f ((Get-Item $installer).Length / 1MB)) MB)"
+        shell: pwsh
+
+      - name: Verify runtime tree exists
+        # python_manager.go resolves <exe>\resources\alice first: the installer
+        # must carry the agent sources, otherwise a clean machine has nothing to
+        # run.
+        run: |
+          $entry = 'apps/desktop-wails/build/bin/resources/alice/alice_cli/main.py'
+          if (-not (Test-Path $entry)) { throw "runtime tree missing at $entry" }
+          $skills = 'apps/desktop-wails/build/bin/resources/alice/skills'
+          if (-not (Test-Path $skills)) { throw "runtime tree is missing skills/ at $skills" }
+          Write-Host "✅ Runtime tree present (alice_cli/main.py + skills/)"
         shell: pwsh
 
       - name: Verify embedded Python bundle exists
@@ -117,6 +162,12 @@ jobs:
           "$hash  alice-desktop.exe" | Out-File -FilePath "$bin.sha256" -Encoding ascii
           $zhash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
           "$zhash  resources.zip" | Out-File -FilePath "$zip.sha256" -Encoding ascii
+
+          # The desktop updater downloads this installer and verifies the
+          # sidecar before running it silently (update_installer.go).
+          $installer = 'apps/desktop-wails/build/bin/alice-desktop-amd64-installer.exe'
+          $ihash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLower()
+          "$ihash  alice-desktop-amd64-installer.exe" | Out-File -FilePath "$installer.sha256" -Encoding ascii
         shell: pwsh
 
       - name: Upload Wails binary artifact
@@ -139,17 +190,126 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Upload to release (on tag push only)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Upload NSIS installer artifact
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: alice-desktop-windows-installer-${{ github.ref_name }}
+          path: |
+            apps/desktop-wails/build/bin/alice-desktop-amd64-installer.exe
+            apps/desktop-wails/build/bin/alice-desktop-amd64-installer.exe.sha256
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload to release (tag push or manual publish)
+        # Tag pushes publish automatically. A workflow_dispatch can publish to
+        # an existing tag too (publish_tag), which is how a release can be
+        # re-cut with the installer without bumping the version.
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.publish_tag != ''
         uses: softprops/action-gh-release@v2  # v2.2.1
         with:
+          tag_name: ${{ inputs.publish_tag != '' && inputs.publish_tag || github.ref_name }}
+          make_latest: ${{ inputs.publish_tag != '' }}
           files: |
             apps/desktop-wails/build/bin/alice-desktop.exe
             apps/desktop-wails/build/bin/alice-desktop.exe.sha256
             apps/desktop-wails/build/bin/resources.zip
             apps/desktop-wails/build/bin/resources.zip.sha256
+            apps/desktop-wails/build/bin/alice-desktop-amd64-installer.exe
+            apps/desktop-wails/build/bin/alice-desktop-amd64-installer.exe.sha256
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Installer smoke test: the artifact users double-click must install and
+  # launch the desktop with NO checkout and NO `alice` on PATH (the runtime tree
+  # + Python runtime ship inside the installer).
+  installer-smoke:
+    name: Install + launch the NSIS installer
+    needs: wails-build
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Download the installer artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: alice-desktop-windows-installer-${{ github.ref_name }}
+          path: installer
+
+      # The smoke machine must look like a normal desktop install: no repo, no
+      # alice CLI. install.ps1's desktop stage is graphical-session gated, and
+      # this job proves the *installer* path (which doesn't use that script).
+      - name: Fail if alice is already on PATH
+        run: |
+          if (Get-Command alice -ErrorAction SilentlyContinue) { throw "runner unexpectedly has alice on PATH" }
+        shell: pwsh
+
+      - name: Install silently (user scope, no UAC)
+        run: |
+          $exe = Join-Path $PWD 'installer/alice-desktop-amd64-installer.exe'
+          if (-not (Test-Path $exe)) { throw "installer missing at $exe" }
+          $p = Start-Process -FilePath $exe -ArgumentList '/S' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "installer exited $($p.ExitCode)" }
+          $app = Join-Path $env:LOCALAPPDATA 'Programs/Alice/alice-desktop.exe'
+          if (-not (Test-Path $app)) { throw "installed app missing at $app" }
+          $tree = Join-Path $env:LOCALAPPDATA 'Programs/Alice/resources/alice/alice_cli/main.py'
+          if (-not (Test-Path $tree)) { throw "runtime tree missing after install: $tree" }
+          $py = Join-Path $env:LOCALAPPDATA 'Programs/Alice/resources/python/python.exe'
+          if (-not (Test-Path $py)) { throw "bundled python missing after install: $py" }
+          "ALICE_APP=$app" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        shell: pwsh
+
+      - name: Launch and wait for the backend to announce a port
+        run: |
+          $app = $env:ALICE_APP
+          $proc = Start-Process -FilePath $app -PassThru
+          $log = Join-Path $env:LOCALAPPDATA 'alice/logs/agent.log'
+          $deadline = (Get-Date).AddMinutes(4)
+          $ready = $false
+
+          while ((Get-Date) -lt $deadline) {
+            if ($proc.HasExited) { break }
+            if (Test-Path $log) {
+              $tail = Get-Content $log -Tail 200 -ErrorAction SilentlyContinue | Out-String
+              if ($tail -match 'Uvicorn running|Application startup complete|port') { $ready = $true; break }
+            }
+            Start-Sleep -Seconds 3
+          }
+
+          if (-not $ready) {
+            Write-Host '--- agent.log tail ---'
+            if (Test-Path $log) { Get-Content $log -Tail 200 }
+            if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+            throw "backend never announced a port (installer-only launch failed)"
+          }
+
+          Write-Host "✅ backend announced a port; app pid $($proc.Id)"
+
+          # Kill the app AND the backend it spawned: the bundled python holds
+          # resources\python\python.exe open, which would block the uninstall.
+          Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+          Get-Process python -ErrorAction SilentlyContinue |
+            Where-Object { $_.Path -and $_.Path.StartsWith($env:LOCALAPPDATA) } |
+            Stop-Process -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 2
+        shell: pwsh
+
+      - name: Uninstall silently
+        run: |
+          $uninst = Join-Path $env:LOCALAPPDATA 'Programs/Alice/uninstall.exe'
+          if (Test-Path $uninst) {
+            $p = Start-Process -FilePath $uninst -ArgumentList '/S' -PassThru -Wait
+            if ($p.ExitCode -ne 0) { throw "uninstaller exited $($p.ExitCode)" }
+          }
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs/Alice'
+          for ($i = 0; $i -lt 15 -and (Test-Path $dir); $i++) { Start-Sleep -Seconds 2 }
+
+          if (Test-Path $dir) {
+            Get-ChildItem -Recurse $dir | Select-Object -First 20 FullName
+            throw "install dir still present after uninstall"
+          }
+
+          Write-Host '✅ uninstall cleaned the install dir'
+        shell: pwsh
 
   # Optional: install + smoke-test on a clean Windows VM

@@ -47,6 +47,11 @@ type PythonManager struct {
 	port         int
 	sessionToken string
 	portReady    chan struct{}
+	// spawnStartedAt stamps the moment the backend process was launched so
+	// the announce log can report cold-start duration. Startup regressions
+	// were invisible before this: the only logged boot segment was ~0.5s of
+	// plugin loading, with no spawn→READY measurement anywhere.
+	spawnStartedAt time.Time
 	// Wails app context for runtime event emission (nil until SetContext).
 	// Events are best-effort: a nil ctx (headless tests, early startup) just
 	// skips the emit, the state is still observable via GetBootProgress.
@@ -65,8 +70,8 @@ type PythonManager struct {
 	// `alice:backend:exit` for an intentional shutdown.
 	stopping bool
 	// Ring buffer tail of the backend's stderr for error reporting.
-	stderrMu    sync.Mutex
-	stderrTail  []byte
+	stderrMu   sync.Mutex
+	stderrTail []byte
 }
 
 // BootProgress mirrors the renderer's DesktopBootProgress contract
@@ -263,6 +268,23 @@ func (pm *PythonManager) GetAliceHome() string {
 	return pm.aliceHome
 }
 
+// installerRuntimeRoot returns the runtime tree shipped by the Windows NSIS
+// installer (<install dir>/resources/alice). It carries the agent sources so an
+// installer-only machine needs neither a git checkout nor the CLI.
+func installerRuntimeRoot() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+
+	root := filepath.Join(filepath.Dir(exe), "resources", "alice")
+	if _, err := os.Stat(filepath.Join(root, "alice_cli", "main.py")); err == nil {
+		return root
+	}
+
+	return ""
+}
+
 // ResolveProjectRoot finds the alice-agent project root by looking for alice_cli/main.py
 func (pm *PythonManager) ResolveProjectRoot() string {
 	// 1. Check explicit override
@@ -314,7 +336,15 @@ func (pm *PythonManager) ResolveProjectRoot() string {
 		}
 	}
 
-	// 3. Fallback: assume we're in apps/desktop-wails and go up two levels
+	// 3. Installer-managed install: the tree ships beside the exe and there is
+	// no checkout to prefer. Checked AFTER the checkout probes so an
+	// install.ps1 install always runs the code it just cloned, not the copy
+	// baked into the installer.
+	if root := installerRuntimeRoot(); root != "" {
+		return root
+	}
+
+	// 4. Fallback: assume we're in apps/desktop-wails and go up two levels
 	return filepath.Clean(filepath.Join(execDir, "..", ".."))
 }
 
@@ -705,13 +735,32 @@ func (pm *PythonManager) StartGateway() error {
 	// backend's own error surface.
 	webDist := filepath.Join(projectRoot, "apps", "desktop", "dist")
 	if _, err := os.Stat(filepath.Join(webDist, "index.html")); err != nil {
-		if err := extractEmbeddedFrontend(webDist); err != nil {
-			if debugFile != nil {
-				fmt.Fprintf(debugFile, "[Wails] could not extract embedded frontend to %s: %v\n", webDist, err)
+		// No source build on disk: extract the embedded SPA. Always into a
+		// per-user dir first — an installer-managed install may live somewhere
+		// read-only, and the backend only needs a path to serve.
+		candidates := []string{
+			filepath.Join(pm.aliceHome, "desktop-dist"),
+			filepath.Join(projectRoot, "apps", "desktop", "dist"),
+		}
+
+		webDist = ""
+
+		for _, dst := range candidates {
+			if err := extractEmbeddedFrontend(dst); err != nil {
+				if debugFile != nil {
+					fmt.Fprintf(debugFile, "[Wails] could not extract embedded frontend to %s: %v\n", dst, err)
+				}
+
+				continue
 			}
-			webDist = "" // don't pass a dead ALICE_WEB_DIST
-		} else if debugFile != nil {
-			fmt.Fprintf(debugFile, "[Wails] extracted embedded frontend to %s\n", webDist)
+
+			if debugFile != nil {
+				fmt.Fprintf(debugFile, "[Wails] extracted embedded frontend to %s\n", dst)
+			}
+
+			webDist = dst
+
+			break
 		}
 	}
 
@@ -808,7 +857,7 @@ func (pm *PythonManager) StartGateway() error {
 			FakeMode:  false,
 			Message:   "Starting Alice backend",
 			Phase:     "backend.spawn",
-			Progress: 20,
+			Progress:  20,
 			Running:   true,
 			Timestamp: time.Now().UnixMilli(),
 		})
@@ -817,6 +866,11 @@ func (pm *PythonManager) StartGateway() error {
 	if debugFile != nil {
 		fmt.Fprintf(debugFile, "[Wails] Spawning backend process: %s %v\n", pythonPath, cmd.Args)
 	}
+	// tryParsePort reads this under pm.mu, so write it under the lock too
+	// (the mutex was released above, right before the boot-progress emit).
+	pm.mu.Lock()
+	pm.spawnStartedAt = time.Now()
+	pm.mu.Unlock()
 	if err := cmd.Start(); err != nil {
 		pm.mu.Lock()
 		pm.running = false
@@ -930,7 +984,14 @@ func (pm *PythonManager) tryParsePort(line string) {
 		return
 	}
 	pm.port = p
-	log.Printf("[Wails] Backend announced port=%d", p)
+	if !pm.spawnStartedAt.IsZero() {
+		log.Printf(
+			"[Wails] Backend announced port=%d (spawn→announce %.2fs)",
+			p, time.Since(pm.spawnStartedAt).Seconds(),
+		)
+	} else {
+		log.Printf("[Wails] Backend announced port=%d", p)
+	}
 	close(pm.portReady)
 	// Move the boot bar to "connecting" once the port lands; the renderer's
 	// gateway.connect + handshake steps take it the rest of the way.

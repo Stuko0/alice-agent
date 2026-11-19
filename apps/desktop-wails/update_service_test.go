@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,11 +12,11 @@ import (
 
 func TestShellQuote(t *testing.T) {
 	cases := map[string]string{
-		"simple":     "'simple'",
-		"has space":  "'has space'",
-		"it's":       `'it'\''s'`,
-		"a'b'c":      `'a'\''b'\''c'`,
-		`/tmp/x.sh`:  `'/tmp/x.sh'`,
+		"simple":      "'simple'",
+		"has space":   "'has space'",
+		"it's":        `'it'\''s'`,
+		"a'b'c":       `'a'\''b'\''c'`,
+		`/tmp/x.sh`:   `'/tmp/x.sh'`,
 		"under_score": "'under_score'",
 	}
 	for in, want := range cases {
@@ -50,14 +52,63 @@ func TestResolveAliceCliBinaryPrefersVenv(t *testing.T) {
 	}
 }
 
-func TestCheckNotAGitCheckout(t *testing.T) {
+func TestCheckInstallerModeReadsRelease(t *testing.T) {
+	// Installer-managed installs have no .git: updates come from the release
+	// assets, not from git. The API root is swappable so this stays offline.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"tag_name": "v0.24.0",
+			"assets": [
+				{"name": "alice-desktop-amd64-installer.exe", "browser_download_url": "https://example.test/i.exe"},
+				{"name": "alice-desktop-amd64-installer.exe.sha256", "browser_download_url": "https://example.test/i.exe.sha256"}
+			]
+		}`))
+	}))
+	defer server.Close()
+
+	previous := desktopReleaseAPI
+	desktopReleaseAPI = server.URL
+	defer func() { desktopReleaseAPI = previous }()
+
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "alice_cli"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "alice_cli", "__init__.py"), []byte("__version__ = \"0.23.4\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	us := &UpdateService{projectRoot: root}
+	st := us.Check()
+
+	if !st.Supported || st.Mode != "installer" {
+		t.Fatalf("expected installer mode supported, got %+v", st)
+	}
+	if !st.UpdateAvailable || st.LatestVersion != "v0.24.0" || st.CurrentVersion != "0.23.4" {
+		t.Fatalf("unexpected update state: %+v", st)
+	}
+	if st.InstallerURL == "" || st.Behind != 1 {
+		t.Fatalf("installer url/behind missing: %+v", st)
+	}
+}
+
+func TestCheckInstallerModeWithoutAssetIsUnsupported(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"tag_name": "v0.24.0", "assets": []}`))
+	}))
+	defer server.Close()
+
+	previous := desktopReleaseAPI
+	desktopReleaseAPI = server.URL
+	defer func() { desktopReleaseAPI = previous }()
+
 	us := &UpdateService{projectRoot: t.TempDir()}
 	st := us.Check()
-	if st.Supported {
-		t.Errorf("expected supported=false for non-git dir, got %+v", st)
-	}
-	if st.Reason != "not-a-git-checkout" {
-		t.Errorf("expected reason not-a-git-checkout, got %q", st.Reason)
+
+	if st.Supported || st.Reason != "no-installer-asset" {
+		t.Fatalf("expected no-installer-asset, got %+v", st)
 	}
 }
 

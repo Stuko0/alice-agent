@@ -14,8 +14,18 @@
 #   - uv on PATH (only for the embedded python bundle; optional)
 #
 # Produces: apps/desktop-wails/build/bin/alice-desktop.exe
-#   + apps/desktop-wails/build/bin/resources/python/ (embedded backend)
-#   + apps/desktop-wails/build/bin/resources/python.tar.gz (distributable)
+#   + apps/desktop-wails/build/bin/resources/python/ (embedded Python runtime)
+#   + apps/desktop-wails/build/bin/resources/alice/  (agent runtime tree)
+#   + apps/desktop-wails/build/bin/resources/icon.ico (shortcut/window icon)
+#   + apps/desktop-wails/build/bin/resources.zip      (distributable backend)
+#   + apps/desktop-wails/build/bin/alice-desktop-amd64-installer.exe  (-Nsis)
+#
+# -Nsis also builds the NSIS installer (requires makensis on PATH). The
+# installer is user-scoped so install/update never raises UAC.
+
+param(
+    [switch]$Nsis
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -68,9 +78,11 @@ try {
     # does not depend on a system venv. Takes minutes (PyPI pull); best-effort
     # (never fails the build). tools/install.ps1 places a prebuilt bundle here
     # for the prebuilt-download path, so this only matters for local builds.
+    $resourcesDir = Join-Path $WailsDir "build\bin\resources"
+
     if ($env:ALICE_SKIP_PYTHON_BUNDLE -ne "1" -and (Get-Command uv -ErrorAction SilentlyContinue)) {
         Write-Host "=== Bundling embedded Python backend ==="
-        & ./scripts/bundle-python.ps1 -Dest (Join-Path $WailsDir "build\bin\resources\python")
+        & ./scripts/bundle-python.ps1 -Dest (Join-Path $resourcesDir "python") -SkipZip
         if ($LASTEXITCODE -ne 0) {
             Write-Warn "!! python bundle failed (build continues; desktop needs a system venv)"
         }
@@ -78,8 +90,51 @@ try {
         Write-Host "=== Skipping embedded Python backend (uv absent or ALICE_SKIP_PYTHON_BUNDLE=1) ==="
     }
 
+    # Runtime tree: makes the installer self-sufficient (no checkout, no CLI).
+    Write-Host "=== Staging agent runtime tree ==="
+    & ./scripts/stage-runtime.ps1 -Dest (Join-Path $resourcesDir "alice")
+    if ($LASTEXITCODE -ne 0) { throw "runtime staging failed (exit $LASTEXITCODE)" }
+
+    # Standalone icon beside the exe: shortcuts reference it by path so a
+    # re-stamped exe never shows a stale cached icon after an update.
+    $iconSrc = Join-Path $DesktopDir "assets/icon.ico"
+    if (Test-Path $iconSrc) {
+        Copy-Item -Force $iconSrc (Join-Path $resourcesDir "icon.ico")
+    }
+
+    # One distributable zip for install.ps1's prebuilt path: resources/python +
+    # resources/alice + resources/icon.ico.
+    $zipPath = Join-Path $WailsDir "build\bin\resources.zip"
+    Write-Host "=== Packaging $zipPath ==="
+    if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
+    Compress-Archive -Path $resourcesDir -DestinationPath $zipPath -CompressionLevel Fastest -Force
+    if (-not (Test-Path $zipPath)) { throw "resources.zip packaging failed" }
+
+    if ($Nsis) {
+        Write-Host "=== Building NSIS installer ==="
+        if (-not (Get-Command makensis -ErrorAction SilentlyContinue)) {
+            throw "makensis not found on PATH (install NSIS: choco install nsis -y)"
+        }
+
+        # build/ is gitignored, so the canonical scripts live under installer/.
+        # wails build -nsis reads build/windows/installer/project.nsi.
+        $installerDir = Join-Path $WailsDir "build\windows\installer"
+        New-Item -ItemType Directory -Force -Path $installerDir | Out-Null
+        Copy-Item -Force (Join-Path $WailsDir "installer/project.nsi") (Join-Path $installerDir "project.nsi")
+        if (Test-Path $iconSrc) {
+            Copy-Item -Force $iconSrc (Join-Path $WailsDir "build\windows\icon.ico")
+        }
+
+        & wails build -platform windows/amd64 -nsis -installscope user
+        if ($LASTEXITCODE -ne 0) { throw "wails nsis build failed (exit $LASTEXITCODE)" }
+    }
+
     Write-Host "=== Done ==="
     Write-Host "Binary: $(Join-Path $WailsDir 'build/bin/alice-desktop.exe')"
+    Write-Host "Backend: $(Join-Path $WailsDir 'build/bin/resources.zip')"
+    if ($Nsis) {
+        Write-Host "Installer: $(Join-Path $WailsDir 'build/bin/alice-desktop-amd64-installer.exe')"
+    }
 } finally {
     Pop-Location
 }

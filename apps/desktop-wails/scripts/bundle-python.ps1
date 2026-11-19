@@ -11,11 +11,13 @@
 # project and its deps installed into Lib\site-packages.
 #
 # Usage:
-#   .\bundle-python.ps1 [[-PythonVersion 3.13] [-Dest <dir>] [-SkipInstall]]
-#     PythonVersion  default 3.13
-#     Dest           default <repo>/apps/desktop-wails/build/bin/resources/python
-#     -SkipInstall   only stage the CPython layout (no pip install of alice) —
-#                    used for a quick layout-smoke in CI before the slow install
+#   .\bundle-python.ps1 [[-PythonVersion 3.13] [-Dest <dir>] [-SkipInstall] [-SkipZip]]
+#     PythonVersion       default 3.13
+#     Dest                default <repo>/apps/desktop-wails/build/bin/resources/python
+#     -SkipInstall        only stage the CPython layout (no pip install of alice) —
+#                         used for a quick layout-smoke in CI before the slow install
+#     -SkipZip            do not emit resources.zip (build.ps1 zips once, after
+#                         the runtime tree is staged beside the bundle)
 #
 # Requires: uv on PATH (provisions the standalone CPython). The project+deps
 # install pulls from PyPI and takes several minutes — run in the background.
@@ -27,7 +29,8 @@
 param(
     [string]$PythonVersion = "3.13",
     [string]$Dest = "",
-    [switch]$SkipInstall
+    [switch]$SkipInstall,
+    [switch]$SkipZip
 )
 
 $ErrorActionPreference = "Stop"
@@ -78,6 +81,11 @@ try {
         try {
             # --break-system-packages: python-build-standalone ships PEP 668
             # EXTERNALLY-MANAGED; this bundle IS the managed package.
+            #
+            # The installer also ships the same sources as a runtime tree
+            # (resources/alice) and puts that root first on PYTHONPATH, so the
+            # tree — not this copy — is what actually imports at runtime. Keeping
+            # the install here guarantees every dependency lands in one step.
             & $PyExe -m pip install --break-system-packages --no-input --quiet .
             if ($LASTEXITCODE -ne 0) { throw "pip install of alice-agent failed" }
         } finally {
@@ -107,6 +115,13 @@ try {
     #    NOTE the earlier bug: Split-Path -Parent $Dest is ...\resources, not
     #    ...\build\bin — that off-by-one made every tar/zip target
     #    ...\resources\resources (didn't exist) → "Couldn't visit directory".
+    if ($SkipZip) {
+        Write-Host "bundle ready (zip skipped): $Dest"
+        Write-Host "  python: $PyExe"
+
+        return
+    }
+
     $resourcesDir = Split-Path -Parent $Dest          # ...\build\bin\resources
     $container = Split-Path -Parent $resourcesDir      # ...\build\bin
     $zipPath = Join-Path $container "resources.zip"    # ...\build\bin\resources.zip
