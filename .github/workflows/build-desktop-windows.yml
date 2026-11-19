@@ -51,6 +51,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Compute artifact suffix
+        # github.ref_name contains "/" on branch dispatches, which is invalid in
+        # an artifact name; publish_tag is slash-free.
+        id: meta
+        run: |
+          $suffix = "${{ inputs.publish_tag }}"
+          if (-not $suffix) { $suffix = "${{ github.ref_name }}" }
+          $suffix = $suffix -replace '[^A-Za-z0-9._-]', '-'
+          "suffix=$suffix" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        shell: pwsh
+
       - name: Install Node.js
         uses: actions/setup-node@v5  # v5.0.0
         with:
@@ -192,7 +203,7 @@ jobs:
       - name: Upload Wails binary artifact
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
-          name: alice-desktop-wails-windows-${{ github.ref_name }}
+          name: alice-desktop-wails-windows-${{ steps.meta.outputs.suffix }}
           path: |
             apps/desktop-wails/build/bin/alice-desktop.exe
             apps/desktop-wails/build/bin/alice-desktop.exe.sha256
@@ -202,7 +213,7 @@ jobs:
       - name: Upload embedded Python bundle artifact
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
-          name: alice-desktop-python-bundle-windows-${{ github.ref_name }}
+          name: alice-desktop-python-bundle-windows-${{ steps.meta.outputs.suffix }}
           path: |
             apps/desktop-wails/build/bin/resources.zip
             apps/desktop-wails/build/bin/resources.zip.sha256
@@ -212,7 +223,7 @@ jobs:
       - name: Upload NSIS installer artifact
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
-          name: alice-desktop-windows-installer-${{ github.ref_name }}
+          name: alice-desktop-windows-installer-${{ steps.meta.outputs.suffix }}
           path: |
             apps/desktop-wails/build/bin/alice-desktop-amd64-installer.exe
             apps/desktop-wails/build/bin/alice-desktop-amd64-installer.exe.sha256
@@ -252,7 +263,7 @@ jobs:
       - name: Download the installer artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: alice-desktop-windows-installer-${{ github.ref_name }}
+          name: alice-desktop-windows-installer-${{ steps.meta.outputs.suffix }}
           path: installer
 
       # The smoke machine must look like a normal desktop install: no repo, no
