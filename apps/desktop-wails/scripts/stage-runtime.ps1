@@ -109,3 +109,6 @@ if (-not (Test-Path $entry)) { throw "runtime tree is missing alice_cli\main.py 
 
 $size = (Get-ChildItem -Recurse -File $Dest | Measure-Object -Property Length -Sum).Sum
 Write-Host ("runtime tree ready: {0} ({1:N1} MB)" -f $Dest, ($size / 1MB))
+
+# robocopy exits 1/3 on success; make the script exit code explicit.
+exit 0

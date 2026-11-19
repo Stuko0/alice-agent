@@ -119,7 +119,8 @@ try {
         Write-Host "bundle ready (zip skipped): $Dest"
         Write-Host "  python: $PyExe"
 
-        return
+        # robocopy/uv leave LASTEXITCODE non-zero on success; be explicit.
+        exit 0
     }
 
     $resourcesDir = Split-Path -Parent $Dest          # ...\build\bin\resources
@@ -137,3 +138,5 @@ try {
 } finally {
     Remove-Item -Recurse -Force $Staging -ErrorAction SilentlyContinue
 }
+
+exit 0
