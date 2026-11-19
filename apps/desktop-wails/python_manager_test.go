@@ -189,7 +189,11 @@ func TestBuildBackendEnv(t *testing.T) {
 	}
 
 	path := env["PATH"]
-	if !strings.HasPrefix(path, filepath.Join(venv, "bin")) {
+	venvBin := filepath.Join(venv, "bin")
+	if runtime.GOOS == "windows" {
+		venvBin = filepath.Join(venv, "Scripts")
+	}
+	if !strings.HasPrefix(path, venvBin) {
 		t.Fatalf("PATH should start with venv bin, got %q", path)
 	}
 }
