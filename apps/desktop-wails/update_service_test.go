@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -40,7 +41,11 @@ func TestVenvBinOnPathIncludesVenvBin(t *testing.T) {
 
 func TestResolveAliceCliBinaryPrefersVenv(t *testing.T) {
 	root := t.TempDir()
-	bin := filepath.Join(root, "venv", "bin", "alice")
+	binDir, name := "bin", "alice"
+	if runtime.GOOS == "windows" {
+		binDir, name = "Scripts", "alice.exe"
+	}
+	bin := filepath.Join(root, "venv", binDir, name)
 	if err := os.MkdirAll(filepath.Dir(bin), 0o755); err != nil {
 		t.Fatal(err)
 	}

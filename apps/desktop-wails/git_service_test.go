@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -37,6 +38,23 @@ func makeGitRepo(t *testing.T) string {
 	return dir
 }
 
+// samePath compares two paths after resolving symlinks / Windows 8.3 short
+// names (git reports C:\Users\RUNNER~1\... while t.TempDir returns the long
+// form). Case-insensitive on Windows.
+func samePath(a, b string) bool {
+	if resolved, err := filepath.EvalSymlinks(a); err == nil {
+		a = resolved
+	}
+	if resolved, err := filepath.EvalSymlinks(b); err == nil {
+		b = resolved
+	}
+	a, b = filepath.Clean(a), filepath.Clean(b)
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(a, b)
+	}
+	return a == b
+}
+
 func TestGitGetRootAndBranch(t *testing.T) {
 	dir := makeGitRepo(t)
 	g := NewGitService()
@@ -44,7 +62,7 @@ func TestGitGetRootAndBranch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetGitRoot: %v", err)
 	}
-	if filepath.Clean(root) != filepath.Clean(dir) {
+	if !samePath(root, dir) {
 		t.Fatalf("root = %q, want %q", root, dir)
 	}
 	branch, err := g.GetCurrentBranch(dir)
@@ -152,7 +170,7 @@ func TestGitWorktrees(t *testing.T) {
 	}
 	found := false
 	for _, w := range wts {
-		if filepath.Clean(w) == wt {
+		if samePath(w, wt) {
 			found = true
 		}
 	}

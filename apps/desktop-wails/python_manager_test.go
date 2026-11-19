@@ -157,6 +157,10 @@ func TestBuildBackendEnv(t *testing.T) {
 	root := t.TempDir()
 	venv := filepath.Join(root, ".venv")
 	sp := filepath.Join(venv, "lib", "python3.12", "site-packages")
+	if runtime.GOOS == "windows" {
+		// getVenvSitePackages() probes the Windows layout first.
+		sp = filepath.Join(venv, "Lib", "site-packages")
+	}
 	if err := os.MkdirAll(sp, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -299,6 +303,9 @@ with socketserver.TCPServer(("127.0.0.1", 0), H) as s:
 // fake python announces its port on stdout, the manager's watchPort parses it,
 // IsHealthy probes the live HTTP server, and StopGateway tears it down.
 func TestStartGatewayBootE2E(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture is a POSIX executable script (shebang); covered on Linux")
+	}
 	// Fresh process-level state.
 	activeCmdMu.Lock()
 	activeCmd = nil
@@ -359,6 +366,9 @@ func TestStartGatewayBootE2E(t *testing.T) {
 // TestStartGatewayIdempotent: calling StartGateway twice must not spawn a second
 // backend (guarded by the started flag).
 func TestStartGatewayIdempotent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture is a POSIX executable script (shebang); covered on Linux")
+	}
 	activeCmdMu.Lock()
 	activeCmd = nil
 	activeCmdMu.Unlock()
