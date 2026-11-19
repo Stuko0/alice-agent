@@ -67,6 +67,7 @@ export function useOverlayRouting() {
     agentsOpen,
     chatOpen,
     closeOverlayToPreviousRoute,
+    overlayOpen,
     commandCenterInitialSection,
     commandCenterOpen,
     cronOpen,

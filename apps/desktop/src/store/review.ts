@@ -1,15 +1,18 @@
 import { atom, computed } from 'nanostores'
 
-import { SIDEBAR_COLLAPSE_MEDIA_QUERY } from '@/app/layout-constants'
-import { PANE_TOGGLE_REVEAL_EVENT } from '@/components/pane-shell'
 import type { AliceReviewFile, AliceReviewShipInfo } from '@/global'
-import { matchesQuery } from '@/hooks/use-media-query'
 import { desktopGit } from '@/lib/desktop-git'
 import { isExcludedPath } from '@/lib/excluded-paths'
+import { startInteraction } from '@/lib/interaction-telemetry'
+import { SIDEBAR_COLLAPSE_MEDIA_QUERY } from '@/lib/layout-constants'
+import { matchesQuery } from '@/lib/media-query'
 import { requestOneShot } from '@/lib/oneshot'
+import { PANE_TOGGLE_REVEAL_EVENT } from '@/lib/pane-events'
 import { Codecs, persistentAtom } from '@/lib/persisted'
+import { persistedKey } from '@/lib/persisted-keys'
 
 import { refreshRepoStatus } from './coding-status'
+import { bindPaneGate } from './panes'
 import { $busy, $currentCwd } from './session'
 import { $workspaceChangeTick } from './workspace-events'
 
@@ -26,15 +29,20 @@ import { $workspaceChangeTick } from './workspace-events'
 // event is addressed by pane id).
 export const REVIEW_PANE_ID = 'review'
 
-const OPEN_KEY = 'alice.desktop.reviewOpen'
-const COMMIT_DEFAULT_KEY = 'alice.desktop.reviewCommitDefault'
-const TREE_MODE_KEY = 'alice.desktop.reviewTreeMode'
-const SELECTED_KEY = 'alice.desktop.reviewSelectedPath'
+const OPEN_KEY = persistedKey('reviewOpen')
+const COMMIT_DEFAULT_KEY = persistedKey('reviewCommitDefault')
+const TREE_MODE_KEY = persistedKey('reviewTreeMode')
+const SELECTED_KEY = persistedKey('reviewSelectedPath')
 const REVIEW_REFRESH_DEBOUNCE_MS = 100
+const REVIEW_LIST_STALE_MS = 3_000
 const SHIP_INFO_STALE_MS = 30_000
 
 // Persisted so the pane stays open across reloads (like the other rail panes).
 export const $reviewOpen = persistentAtom(OPEN_KEY, false, Codecs.bool)
+
+// Mirror the gate into `$paneStates` so `$paneOpen('review')` is truthful and
+// `togglePane('review')` works like every other pane.
+bindPaneGate(REVIEW_PANE_ID, $reviewOpen)
 
 // The split-button's remembered default action ('commit' | 'commitPush').
 export type CommitAction = 'commit' | 'commitPush'
@@ -62,6 +70,16 @@ export const $reviewLoading = atom(false)
 // remote backend). Lets the pane say "not a repo" instead of stranding on a
 // skeleton or implying a clean repo with "no changes".
 export const $reviewIsRepo = atom(true)
+// Whether the active session has a workspace at all. "No workspace" and "workspace
+// but not a repo" are different states and must not share a message.
+export const $reviewHasWorkspace = computed($currentCwd, cwd => Boolean(cwd.trim()))
+// Single source of truth for "the git pane can be shown": the statusbar button's
+// `hidden` and the <Pane>'s `disabled` MUST use this, or the button becomes a
+// dead end (visible with nowhere to open / missing where it could open).
+export const $reviewAvailable = computed(
+  [$currentCwd, $reviewHasWorkspace],
+  (cwd, hasWorkspace) => hasWorkspace && Boolean(desktopGit()?.review) && Boolean(cwd.trim())
+)
 
 // Largest single-file churn (added + removed) in the current diff. Drives the
 // per-row data bars: each file's bar is its churn relative to this max, so the
@@ -99,6 +117,7 @@ const repoCwd = (): null | string => $currentCwd.get()?.trim() || null
 type ReviewBridge = NonNullable<NonNullable<NonNullable<Window['aliceDesktop']>['git']>['review']>
 let reviewRefreshSeq = 0
 let reviewRefreshTimer: ReturnType<typeof setTimeout> | null = null
+let reviewListRefreshedAt = 0
 let shipInfoSeq = 0
 let shipInfoLastCheckedAt = 0
 
@@ -119,7 +138,13 @@ export async function refreshReview(): Promise<void> {
 
   if (!$reviewOpen.get() || !ctx) {
     $reviewFiles.set([])
-    $reviewIsRepo.set(Boolean(ctx))
+
+    // Only a workspace can answer the repo question. Without one, leave the
+    // flag alone: the pane is hidden, and "not a repo" would be a lie the user
+    // sees the moment a project opens.
+    if (repoCwd()) {
+      $reviewIsRepo.set(false)
+    }
 
     // Critical: clear loading on the no-cwd / not-a-repo path too. It's set
     // true (optimistically) before a refresh is scheduled, so skipping it here
@@ -149,6 +174,7 @@ export async function refreshReview(): Promise<void> {
     const files = result.files.filter(file => !isExcludedPath(file.path))
 
     $reviewFiles.set(files)
+    reviewListRefreshedAt = Date.now()
 
     // Drop the selection if the file is gone (staged away, reverted) so the diff
     // pane doesn't strand on a ghost; otherwise lazily fetch its diff so a
@@ -161,6 +187,7 @@ export async function refreshReview(): Promise<void> {
     } else if (selectedFile && $reviewDiff.get() === null) {
       void selectReviewFile(selectedFile)
     }
+
     // Keep the provider chip fresh alongside the file list.
     refreshReviewRemoteInfoIfStale()
   } catch {
@@ -185,6 +212,12 @@ function scheduleReviewRefresh(): void {
 
   reviewRefreshTimer = setTimeout(() => {
     reviewRefreshTimer = null
+
+    // Skip mid-switch work; the busy→idle edge re-schedules it.
+    if ($busy.get()) {
+      return
+    }
+
     void refreshReview()
   }, REVIEW_REFRESH_DEBOUNCE_MS)
 }
@@ -239,10 +272,13 @@ export async function refreshReviewRemoteInfo(): Promise<void> {
 
   if (!ctx) {
     $reviewRemoteInfo.set(null)
+
     return
   }
+
   try {
     const info = await desktopGit()?.remoteInfo(ctx.cwd)
+
     if (seq === remoteInfoSeq && repoCwd() === ctx.cwd && info) {
       $reviewRemoteInfo.set(info)
       remoteInfoLastCheckedAt = Date.now()
@@ -293,13 +329,42 @@ function refreshShipInfoIfStale(): void {
   }
 }
 
+/** Dispatch the forced-reveal pin so a `forceCollapsed` (narrow) pane slides in. */
+export function revealReviewPane(): void {
+  window.dispatchEvent(new CustomEvent(PANE_TOGGLE_REVEAL_EVENT, { detail: { id: REVIEW_PANE_ID } }))
+}
+
 export function openReview(): void {
+  const stopTiming = startInteraction('toggle-git')
+
+  // No workspace → nothing to review. Arming the persisted flag here made the
+  // pane pop open later, in an unrelated repo session (B3).
+  if (!$reviewAvailable.get()) {
+    stopTiming()
+
+    return
+  }
+
+  const wasOpen = $reviewOpen.get()
+
   $reviewOpen.set(true)
+  // Required in narrow windows: the pane is force-collapsed there, so setting
+  // the store alone changes nothing visible (the "click does nothing" report).
+  revealReviewPane()
+
+  if (wasOpen && Date.now() - reviewListRefreshedAt < REVIEW_LIST_STALE_MS) {
+    // Repeat click on an already-open, fresh pane: no git IPC, no `gh` spawn.
+    stopTiming({ paint: true })
+
+    return
+  }
+
   void refreshReview()
   void refreshShipInfo()
   // Refresh the provider chip in the same open-cycle so the user sees a
   // GitHub/GitLab/Gitea/... badge in the header on first open.
   void refreshReviewRemoteInfo()
+  stopTiming({ paint: true })
 }
 
 export function closeReview(): void {
@@ -503,48 +568,67 @@ export async function createOrOpenPr(): Promise<void> {
   })
 }
 
-// ── Triggers (module-scope, mirror coding-status.ts) ─────────────────────────
+// ── Triggers ─────────────────────────────────────────────────────────────────
+// Wired explicitly by `wireStores()` (main.tsx) instead of at module load:
+// importing a store must not schedule git/gh IPC.
 
-// A file-mutating tool finished (event-driven, not polled) → refresh the open
-// pane's changed-file list. gh/PR re-check is NOT here (gh is slow); it runs on
-// the settle edge below.
-$workspaceChangeTick.subscribe(() => {
-  if ($reviewOpen.get()) {
-    scheduleReviewRefresh()
-  }
-})
+let wired = false
 
-// Turn settled: final list refresh + the slower gh/PR re-check.
-let prevBusy = $busy.get()
-
-$busy.subscribe(busy => {
-  if (prevBusy && !busy && $reviewOpen.get()) {
-    scheduleReviewRefresh()
-    refreshShipInfoIfStale()
+/** Idempotent: safe to call from every entry point and from tests. */
+export function wireReview(): void {
+  if (wired) {
+    return
   }
 
-  prevBusy = busy
-})
+  wired = true
 
-// The active session's cwd changed → the repo changed under the pane. Clear the
-// stale file list + selection up front so the pane drops straight to its loading
-// skeleton instead of blipping the previous repo's diff into the new one.
-$currentCwd.subscribe(() => {
-  if ($reviewOpen.get()) {
+  // A file-mutating tool finished (event-driven, not polled) → refresh the open
+  // pane's changed-file list. gh/PR re-check is NOT here (gh is slow); it runs on
+  // the settle edge below.
+  $workspaceChangeTick.listen(() => {
+    if ($reviewOpen.get()) {
+      scheduleReviewRefresh()
+    }
+  })
+
+  // Turn settled: final list refresh + the slower gh/PR re-check.
+  let prevBusy = $busy.get()
+
+  // `listen`: the initial value is already captured above; an immediate callback
+  // would schedule a refresh for no reason.
+  $busy.listen(busy => {
+    if (prevBusy && !busy && $reviewOpen.get()) {
+      scheduleReviewRefresh()
+      refreshShipInfoIfStale()
+    }
+
+    prevBusy = busy
+  })
+
+  // The active session's cwd changed → the repo changed under the pane. Clear
+  // the stale file list + selection up front so the pane drops straight to its
+  // loading skeleton instead of blipping the previous repo's diff into the new one.
+  $currentCwd.subscribe(() => {
+    // A switch flips cwd while the transcript is still resuming; the busy→idle
+    // edge below issues the refresh once the user can actually see the pane.
+    if (!$reviewOpen.get() || $busy.get()) {
+      return
+    }
+
     clearReviewSelection()
     $reviewFiles.set([])
     $reviewLoading.set(true)
     scheduleReviewRefresh()
     void refreshShipInfo()
-  }
-})
-
-// An outside terminal may have changed the tree while we were away.
-if (typeof window !== 'undefined') {
-  window.addEventListener('focus', () => {
-    if ($reviewOpen.get()) {
-      scheduleReviewRefresh()
-      refreshShipInfoIfStale()
-    }
   })
+
+  // An outside terminal may have changed the tree while we were away.
+  if (typeof window !== 'undefined') {
+    window.addEventListener('focus', () => {
+      if ($reviewOpen.get()) {
+        scheduleReviewRefresh()
+        refreshShipInfoIfStale()
+      }
+    })
+  }
 }

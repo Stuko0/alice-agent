@@ -25,7 +25,7 @@ function load(): number {
 
 export const $completionSoundVariantId = atom(load())
 
-$completionSoundVariantId.subscribe(id => persistString(STORAGE_KEY, String(id)))
+$completionSoundVariantId.listen(id => persistString(STORAGE_KEY, String(id)))
 
 export function setCompletionSoundVariantId(variantId: number) {
   $completionSoundVariantId.set(resolveCompletionSoundVariantId(variantId))

@@ -138,6 +138,13 @@ function httpAskpassRespond(requestId: string, answer: string): Promise<{ status
 }
 
 export function desktopGit(): GitBridge | undefined {
+  // A debounced probe can outlive the page (test teardown, window close). Without
+  // this guard it throws `ReferenceError: window is not defined` from inside a
+  // timer — an unhandled rejection with no caller to catch it.
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
   if (isDesktopFsRemoteMode()) {
     return remoteGit
   }

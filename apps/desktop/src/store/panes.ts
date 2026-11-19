@@ -1,4 +1,7 @@
-import { atom, computed, type ReadableAtom } from 'nanostores'
+import { atom, computed, type ReadableAtom, type WritableAtom } from 'nanostores'
+
+import { persistedKey } from '@/lib/persisted-keys'
+import { persistCoalesced } from '@/lib/storage'
 
 export interface PaneStateSnapshot {
   open: boolean
@@ -12,7 +15,7 @@ export interface PaneRegisterDefaults {
   widthOverride?: number
 }
 
-const STORAGE_KEY = 'alice.desktop.paneStates.v1'
+const STORAGE_KEY = persistedKey('paneStates')
 
 function isSnapshot(value: unknown): value is PaneStateSnapshot {
   if (!value || typeof value !== 'object') {
@@ -65,21 +68,14 @@ function load(): Record<string, PaneStateSnapshot> {
 }
 
 // Persists both open state and resize width; load() validates each snapshot.
-function persist(states: Record<string, PaneStateSnapshot>) {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(states))
-  } catch {
-    // Storage failures are nonfatal.
-  }
-}
-
+// Coalesced: a sash drag emits a state per pointermove, and a synchronous
+// localStorage write in that loop is main-thread work on the drag path.
 export const $paneStates = atom<Record<string, PaneStateSnapshot>>(load())
 
-$paneStates.subscribe(persist)
+
+// `listen`, not `subscribe`: subscribing fires immediately and would rewrite the
+// loaded state on import for no reason.
+$paneStates.listen(states => persistCoalesced(STORAGE_KEY, JSON.stringify(states)))
 
 // Cached per-pane derived atoms keep useStore subscriptions referentially stable.
 function memoized<T>(
@@ -128,6 +124,22 @@ export function setPaneOpen(id: string, open: boolean) {
   $paneStates.set({ ...current, [id]: { ...existing, open } })
 }
 
+/**
+ * Drop a pane id from the persisted state. Used when a pane is retired: a stale
+ * `{open:true}` row would otherwise keep describing a view that no longer
+ * exists (and reappear if the id is ever reused).
+ */
+export function forgetPane(id: string) {
+  const current = $paneStates.get()
+
+  if (current[id] === undefined) {
+    return
+  }
+
+  const { [id]: _removed, ...rest } = current
+  $paneStates.set(rest)
+}
+
 export function togglePane(id: string) {
   const current = $paneStates.get()
   const existing = current[id]
@@ -154,6 +166,32 @@ export function setPaneHeightOverride(id: string, height: number | undefined) {
   }
 
   $paneStates.set({ ...current, [id]: { ...existing, heightOverride: height } })
+}
+
+/**
+ * Two-way bridge between a pane's "gate" atom and the pane store.
+ *
+ * Some panes (terminal, browser tabs, review) historically expressed visibility
+ * only through a `disabled` prop fed by their own atom, never through
+ * `$paneStates`. That left `$paneOpen(id)` lying and made `togglePane(id)` a
+ * no-op for them. Binding the gate into the store gives one observable open
+ * state per pane while keeping the existing atom as the public API.
+ */
+export function bindPaneGate(id: string, gate: WritableAtom<boolean>): void {
+  // Reconcile (not "register if missing"): the pane store is persisted, so a
+  // stale `open:true` from a previous run would otherwise contradict a gate that
+  // is now false — and every consumer reading `$paneStates` would be wrong.
+  setPaneOpen(id, gate.get())
+
+  // gate → store
+  gate.listen(open => setPaneOpen(id, open))
+
+  // store → gate (keybinds / togglePane / future callers)
+  $paneOpen(id).listen(open => {
+    if (gate.get() !== open) {
+      gate.set(open)
+    }
+  })
 }
 
 export const clearPaneWidthOverride = (id: string) => setPaneWidthOverride(id, undefined)

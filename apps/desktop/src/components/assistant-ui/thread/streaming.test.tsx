@@ -1,7 +1,7 @@
 import { AssistantRuntimeProvider, type ThreadMessage, useExternalStoreRuntime } from '@assistant-ui/react'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useEffect, useState } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { Thread } from '.'
 
@@ -43,11 +43,37 @@ class TestResizeObserver {
   }
 }
 
+// Track every rAF-backed timer: `useStickToBottom` (and React's scheduler)
+// can leave one pending past the end of a test, and firing it after teardown
+// threw "ReferenceError: window is not defined" as an unhandled error.
+const rafTimers = new Set<number>()
+
 vi.stubGlobal('ResizeObserver', TestResizeObserver)
-vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
-  window.setTimeout(() => callback(performance.now()), 0)
-)
-vi.stubGlobal('cancelAnimationFrame', (id: number) => window.clearTimeout(id))
+vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+  const id = window.setTimeout(() => {
+    rafTimers.delete(id)
+    callback(performance.now())
+  }, 0)
+
+  rafTimers.add(id)
+
+  return id
+})
+vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+  rafTimers.delete(id)
+  window.clearTimeout(id)
+})
+
+afterEach(() => {
+  cleanup()
+  resizeObservers.clear()
+
+  for (const id of rafTimers) {
+    window.clearTimeout(id)
+  }
+
+  rafTimers.clear()
+})
 
 Element.prototype.scrollTo = function scrollTo() {}
 
@@ -242,28 +268,29 @@ function assistantImageMessage(running = false): ThreadMessage {
   } as ThreadMessage
 }
 
+// Chunk delivery is driven explicitly by the test instead of by wall-clock
+// timers: under a loaded parallel suite an 80ms sleep could easily outlast the
+// 500ms "second chunk" timer, which made the incremental-render assertion flaky.
+let emitStreamStage: (stage: 0 | 1 | 2) => void = () => undefined
+
 function StreamingHarness() {
   const [messages, setMessages] = useState<ThreadMessage[]>([userMessage()])
   const [isRunning, setIsRunning] = useState(true)
 
   useEffect(() => {
-    const first = window.setTimeout(() => {
-      setMessages([userMessage(), assistantMessage('first chunk')])
-    }, 50)
-
-    const second = window.setTimeout(() => {
-      setMessages([userMessage(), assistantMessage('first chunk second chunk')])
-    }, 500)
-
-    const complete = window.setTimeout(() => {
-      setMessages([userMessage(), assistantMessage('first chunk second chunk', false)])
-      setIsRunning(false)
-    }, 700)
+    emitStreamStage = stage => {
+      if (stage === 0) {
+        setMessages([userMessage(), assistantMessage('first chunk')])
+      } else if (stage === 1) {
+        setMessages([userMessage(), assistantMessage('first chunk second chunk')])
+      } else {
+        setMessages([userMessage(), assistantMessage('first chunk second chunk', false)])
+        setIsRunning(false)
+      }
+    }
 
     return () => {
-      window.clearTimeout(first)
-      window.clearTimeout(second)
-      window.clearTimeout(complete)
+      emitStreamStage = () => undefined
     }
   }, [])
 
@@ -397,12 +424,15 @@ describe('assistant-ui streaming renderer', () => {
     resizeObservers.clear()
   })
 
-  it('renders assistant text incrementally before completion', async () => {
+  it('renders assistant text incrementally before completion', { timeout: 15_000 }, async () => {
     const { container } = render(<StreamingHarness />)
 
     expect(screen.getByRole('status', { name: 'Alice is loading a response' })).toBeTruthy()
 
-    await wait(80)
+    // First chunk: the running bubble must show partial text, not the loader.
+    await act(async () => {
+      emitStreamStage(0)
+    })
 
     await waitFor(() => {
       expect(container.textContent).toContain('first chunk')
@@ -410,13 +440,19 @@ describe('assistant-ui streaming renderer', () => {
     expect(container.textContent).not.toContain('second chunk')
     expect(screen.queryByRole('status', { name: 'Alice is loading a response' })).toBeNull()
 
-    await wait(500)
+    // Second chunk appends to the same bubble (no remount, no flash).
+    await act(async () => {
+      emitStreamStage(1)
+    })
 
     await waitFor(() => {
       expect(container.textContent).toContain('first chunk second chunk')
     })
 
-    await wait(250)
+    // Completion keeps the text and clears the running state.
+    await act(async () => {
+      emitStreamStage(2)
+    })
 
     await waitFor(() => {
       expect(container.textContent).toContain('first chunk second chunk')

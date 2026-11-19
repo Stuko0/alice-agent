@@ -5,6 +5,7 @@
 
 import { atom } from 'nanostores'
 
+import { checkAliceUpdate, getActionStatus, updateAlice } from '@/alice'
 import type {
   DesktopUpdateApplyOptions,
   DesktopUpdateApplyResult,
@@ -13,7 +14,6 @@ import type {
   DesktopUpdateStatus,
   DesktopVersionInfo
 } from '@/global'
-import { checkAliceUpdate, getActionStatus, updateAlice } from '@/alice'
 import { translateNow } from '@/i18n'
 import { persistString, storedString } from '@/lib/storage'
 import { dismissNotification, notify } from '@/store/notifications'
@@ -176,6 +176,13 @@ export function maybeNotifyUpdateAvailable(status: DesktopUpdateStatus | null) {
 
   const behind = status.behind ?? 0
 
+  // Installer installs ship whole releases: "1 new change" is misleading, so
+  // name the version instead (still localized around the version number).
+  const message =
+    status.mode === 'installer' && status.latestVersion
+      ? `${translateNow('updates.availableTitle')}: ${status.latestVersion}`
+      : translateNow('notifications.updateReadyMessage', behind)
+
   notify({
     action: {
       label: translateNow('notifications.seeWhatsNew'),
@@ -187,7 +194,7 @@ export function maybeNotifyUpdateAvailable(status: DesktopUpdateStatus | null) {
     durationMs: 0,
     id: UPDATE_TOAST_ID,
     kind: 'info',
-    message: translateNow('notifications.updateReadyMessage', behind),
+    message,
     onDismiss: () => snoozeUpdateToast(),
     title: translateNow('notifications.updateReadyTitle')
   })

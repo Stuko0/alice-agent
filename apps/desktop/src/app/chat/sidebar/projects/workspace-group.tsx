@@ -1,8 +1,8 @@
 import type * as React from 'react'
 import { useState } from 'react'
 
-import { Codicon } from '@/components/ui/codicon'
 import type { SessionInfo } from '@/alice'
+import { Codicon } from '@/components/ui/codicon'
 import { useI18n } from '@/i18n'
 import { notifyError } from '@/store/notifications'
 import { newSessionInProfile } from '@/store/profile'

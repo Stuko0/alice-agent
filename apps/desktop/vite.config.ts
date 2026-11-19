@@ -73,7 +73,19 @@ export default defineConfig({
       'react/jsx-dev-runtime': path.resolve(__dirname, '../../node_modules/react/jsx-dev-runtime.js'),
       'react/jsx-runtime': path.resolve(__dirname, '../../node_modules/react/jsx-runtime.js')
     },
-    dedupe: ['react', 'react-dom']
+    dedupe: [
+      'react',
+      'react-dom',
+      // Two module-resolution paths into shiki in one build emitted every
+      // grammar twice (emacs-lisp x2 ~1.5MB, cpp x2 ~1.4MB, wasm x2, wolfram
+      // x2 — ~2.9MB of duplicate chunks riding into the embedded frontend).
+      // Forcing a single resolved copy collapses the pairs.
+      'shiki',
+      '@shikijs/core',
+      '@shikijs/engine-javascript',
+      '@shikijs/langs',
+      '@shikijs/themes'
+    ]
   },
   server: {
     host: '127.0.0.1',

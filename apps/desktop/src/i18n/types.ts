@@ -306,6 +306,10 @@ export interface Translations {
       toolViewDesc: string
       translucencyTitle: string
       translucencyDesc: string
+      displayScaleTitle: string
+      displayScaleDesc: string
+      reduceMotionTitle: string
+      reduceMotionDesc: string
       embedsTitle: string
       embedsDesc: string
       embedsAsk: string
@@ -368,6 +372,17 @@ export interface Translations {
     }
     fieldLabels: Record<string, string>
     fieldDescriptions: Record<string, string>
+    interactionStats: {
+      clear: string
+      copy: string
+      description: string
+      empty: string
+      name: string
+      p50: string
+      p95: string
+      samples: string
+      title: string
+    }
     about: {
       heading: string
       version: (value: string) => string
@@ -652,7 +667,6 @@ export interface Translations {
       noProviderOptions: string
       noProviders: string
       ready: string
-      nousIncluded: string
       noApiKeyRequired: string
       postSetupHint: (step: string) => string
       postSetupRun: string
@@ -887,7 +901,6 @@ export interface Translations {
     openSetupGuide: string
     required: string
     recommended: string
-
     advanced: (count: number) => string
     noTokenNeeded: string
     enabled: string
@@ -1435,7 +1448,6 @@ export interface Translations {
     chooseLater: string
     recommended: string
     connected: string
-    featuredPitch: string
     freeProviderTitle: string
     freeProviderBadge: string
     freeProviderPitch: string
@@ -1445,6 +1457,8 @@ export interface Translations {
     freeProviderRetry: string
     freeProviderForce: string
     freeProviderVerifying: string
+
+    featuredPitch: string
     openRouterPitch: string
     apiKeyOptions: Record<string, { short: string; description: string }>
     backToSignIn: string
@@ -1477,8 +1491,6 @@ export interface Translations {
     reopenVerification: string
     copy: string
     defaultModel: string
-    freeTier: string
-    pro: string
     free: string
     price: (input: string, output: string) => string
     change: string
@@ -1495,10 +1507,7 @@ export interface Translations {
     addProvider: string
     loadFailed: string
     noAuthenticatedProviders: string
-    pro: string
-    proNeedsSubscription: string
     free: string
-    freeTier: string
     priceTitle: string
   }
 
@@ -1680,6 +1689,13 @@ export interface Translations {
     largeBody: (label: string, size: string) => string
     previewAnyway: string
     truncated: string
+    largeImageTitle: string
+    largeImageBody: (label: string, size: string) => string
+    plainBecauseLarge: string
+    highlightAnyway: string
+    diffEmptyTitle: string
+    diffEmptyBody: string
+    diffLoading: string
     noInlineTitle: string
     noInlineBody: (mimeType: string) => string
     edit: string
@@ -1741,6 +1757,10 @@ export interface Translations {
       moduleMimeDescription: string
       loadFailedConsole: (code: number | undefined, message: string) => string
       unreachableDescription: string
+      viewSource: string
+      loadTimeout: string
+      localServer: (url: string) => string
+      localServerStopped: string
       openTarget: (url: string) => string
       fallbackTitle: string
     }

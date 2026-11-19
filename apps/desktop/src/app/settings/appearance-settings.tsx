@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { Button } from '@/components/ui/button'
 import { SegmentedControl } from '@/components/ui/segmented-control'
+import { Switch } from '@/components/ui/switch'
 import type { DesktopMarketplaceSearchItem } from '@/global'
 import { useI18n } from '@/i18n'
 import { desktopSupports } from '@/lib/desktop-capabilities'
@@ -12,8 +13,10 @@ import { triggerHaptic } from '@/lib/haptics'
 import { Check, Download, Loader2, Palette, Trash2 } from '@/lib/icons'
 import { selectableCardClass } from '@/lib/selectable-card'
 import { cn } from '@/lib/utils'
+import { $displayScale, DISPLAY_SCALES, setDisplayScale } from '@/store/display-scale'
 import { $embedAllowed, $embedMode, clearEmbedAllowed, type EmbedMode, setEmbedMode } from '@/store/embed-consent'
 import { $activeGatewayProfile, $profiles, normalizeProfileKey } from '@/store/profile'
+import { $reduceMotion, setReduceMotion } from '@/store/reduce-motion'
 import { $toolViewMode, setToolViewMode } from '@/store/tool-view'
 import { $translucency, setTranslucency } from '@/store/translucency'
 import { getBaseColors, useTheme } from '@/themes/context'
@@ -237,6 +240,8 @@ export function AppearanceSettings() {
   const embedMode = useStore($embedMode)
   const embedAllowed = useStore($embedAllowed)
   const translucency = useStore($translucency)
+  const reduceMotion = useStore($reduceMotion)
+  const displayScale = useStore($displayScale)
   const installs = useStore($marketplaceInstalls)
   const profiles = useStore($profiles)
   const activeProfileKey = normalizeProfileKey(useStore($activeGatewayProfile))
@@ -268,6 +273,11 @@ export function AppearanceSettings() {
     profiles.find(profile => normalizeProfileKey(profile.name) === activeProfileKey)?.name ?? activeProfileKey
 
   const modeOptions = MODE_OPTIONS.map(({ id, icon }) => ({ icon, id, label: t.settings.modeOptions[id].label }))
+
+  const scaleOptions = DISPLAY_SCALES.map(scale => ({
+    id: String(scale),
+    label: `${Math.round(scale * 100)}%`
+  }))
 
   const toolOptions = [
     { id: 'product', label: a.product },
@@ -421,6 +431,36 @@ export function AppearanceSettings() {
             }
             description={a.translucencyDesc}
             title={a.translucencyTitle}
+          />
+
+          <ListRow
+            action={
+              <SegmentedControl
+                onChange={id => {
+                  triggerHaptic('selection')
+                  setDisplayScale(Number(id))
+                }}
+                options={scaleOptions}
+                value={String(displayScale)}
+              />
+            }
+            description={a.displayScaleDesc}
+            title={a.displayScaleTitle}
+          />
+
+          <ListRow
+            action={
+              <Switch
+                aria-label={a.reduceMotionTitle}
+                checked={reduceMotion}
+                onCheckedChange={next => {
+                  triggerHaptic('selection')
+                  setReduceMotion(next)
+                }}
+              />
+            }
+            description={a.reduceMotionDesc}
+            title={a.reduceMotionTitle}
           />
 
           <ListRow

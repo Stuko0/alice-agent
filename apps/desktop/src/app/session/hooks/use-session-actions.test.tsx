@@ -3,7 +3,7 @@ import type { MutableRefObject } from 'react'
 import { useEffect } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getSessionMessages, type SessionInfo } from '@/alice'
+import { deleteSession, getSessionMessages, type SessionInfo } from '@/alice'
 import { createClientSessionState } from '@/lib/chat-runtime'
 import { $activeGatewayProfile, $newChatProfile } from '@/store/profile'
 import {
@@ -166,11 +166,13 @@ function ResumeHarness({
   onReady,
   requestGateway,
   runtimeIdByStoredSessionIdRef,
+  selectedStoredSessionId = null,
   sessionStateByRuntimeIdRef
 }: {
   onReady: (resume: (storedSessionId: string, replaceRoute?: boolean) => Promise<unknown>) => void
   requestGateway: <T>(method: string, params?: Record<string, unknown>) => Promise<T>
   runtimeIdByStoredSessionIdRef?: MutableRefObject<Map<string, string>>
+  selectedStoredSessionId?: string | null
   sessionStateByRuntimeIdRef?: MutableRefObject<Map<string, ClientSessionState>>
 }) {
   const ref = <T,>(value: T): MutableRefObject<T> => ({ current: value })
@@ -185,8 +187,8 @@ function ResumeHarness({
     navigate: vi.fn() as never,
     requestGateway,
     runtimeIdByStoredSessionIdRef: runtimeIdByStoredSessionIdRef ?? ref(new Map<string, string>()),
-    selectedStoredSessionId: null,
-    selectedStoredSessionIdRef: ref<string | null>(null),
+    selectedStoredSessionId,
+    selectedStoredSessionIdRef: ref<string | null>(selectedStoredSessionId),
     sessionStateByRuntimeIdRef: sessionStateByRuntimeIdRef ?? ref(new Map<string, ClientSessionState>()),
     syncSessionStateToView: vi.fn(),
     updateSessionState: (_sessionId, updater) => updater({} as ClientSessionState)
@@ -511,5 +513,151 @@ describe('resumeSession warm-cache mapping integrity', () => {
     const methods = requestGateway.mock.calls.map(([method]) => method)
     expect(methods).not.toContain('session.resume')
     expect(runtimeIdByStoredSessionIdRef.current.get('stored-A')).toBe('rt-A')
+  })
+})
+
+
+// ── removeSession: failure path ──────────────────────────────────────────────
+
+function RemoveHarness({
+  onReady,
+  requestGateway
+}: {
+  onReady: (remove: (storedSessionId: string) => Promise<void>) => void
+  requestGateway: <T>(method: string, params?: Record<string, unknown>) => Promise<T>
+}) {
+  const ref = <T,>(value: T): MutableRefObject<T> => ({ current: value })
+  const activeRef = ref<string | null>(RUNTIME_SESSION_ID)
+  const selectedRef = ref<string | null>('stored-1')
+
+  const actions = useSessionActions({
+    activeSessionId: RUNTIME_SESSION_ID,
+    activeSessionIdRef: activeRef,
+    busyRef: ref(false),
+    creatingSessionRef: ref(false),
+    ensureSessionState: () => ({}) as ClientSessionState,
+    getRouteToken: () => 'token',
+    navigate: vi.fn() as never,
+    requestGateway,
+    runtimeIdByStoredSessionIdRef: ref(new Map<string, string>()),
+    selectedStoredSessionId: 'stored-1',
+    selectedStoredSessionIdRef: selectedRef,
+    sessionStateByRuntimeIdRef: ref(new Map<string, ClientSessionState>()),
+    syncSessionStateToView: vi.fn(),
+    updateSessionState: () => ({}) as ClientSessionState
+  })
+
+  useEffect(() => {
+    onReady(actions.removeSession)
+  }, [actions.removeSession, onReady])
+
+  return null
+}
+
+describe('removeSession failure handling', () => {
+  afterEach(() => {
+    cleanup()
+    setMessages([])
+    setSessions([])
+    setActiveSessionId(null)
+    vi.restoreAllMocks()
+  })
+
+  it('keeps the runtime alive when the delete fails (never re-binds a closed id)', async () => {
+    // Regression: the old order closed the runtime BEFORE deleting. A failed
+    // delete then restored $activeSessionId to that already-closed runtime, so
+    // the very next send hit "session not found" (and a pooled backend could
+    // recycle the id onto a different session).
+    const requestGateway = vi.fn(async () => ({}) as never)
+
+    vi.mocked(deleteSession).mockRejectedValueOnce(new Error('delete failed'))
+
+    setSessions([storedSession({ id: 'stored-1' })])
+    setActiveSessionId(RUNTIME_SESSION_ID)
+    setMessages([{ content: 'hello', id: 'm1', role: 'user' } as never])
+
+    let remove: ((storedSessionId: string) => Promise<void>) | null = null
+
+    render(<RemoveHarness onReady={handler => (remove = handler)} requestGateway={requestGateway} />)
+
+    await waitFor(() => expect(remove).not.toBeNull())
+
+    await remove!('stored-1')
+
+    expect(requestGateway).not.toHaveBeenCalledWith('session.close', expect.anything())
+    expect($activeSessionId.get()).toBe(RUNTIME_SESSION_ID)
+  })
+})
+
+
+// ── resumeSession: supersede + abort ─────────────────────────────────────────
+
+describe('resumeSession supersede', () => {
+  afterEach(() => {
+    cleanup()
+    setMessages([])
+    setSessions([])
+    setActiveSessionId(null)
+    vi.restoreAllMocks()
+  })
+
+  it('a newer resume wins and the older prefetch is aborted', async () => {
+    const deferred = new Map<string, (value: unknown) => void>()
+    const signals = new Map<string, AbortSignal | undefined>()
+
+    vi.mocked(getSessionMessages).mockImplementation(((
+      id: string,
+      _profile?: string | null,
+      _limit?: number,
+      signal?: AbortSignal
+    ) =>
+      new Promise(resolve => {
+        signals.set(id, signal)
+        deferred.set(id, resolve)
+      })) as never)
+
+    let runtimeSeq = 0
+    const requestGateway = vi.fn(async (method: string) => {
+      if (method === 'session.resume') {
+        runtimeSeq += 1
+
+        return { info: {}, messages: [], running: false, session_id: `rt-${runtimeSeq}` } as never
+      }
+
+      return {} as never
+    })
+
+    setSessions([storedSession({ id: 'A' }), storedSession({ id: 'B' })])
+
+    let resume: ((storedSessionId: string, replaceRoute?: boolean) => Promise<unknown>) | null = null
+
+    render(
+      <ResumeHarness onReady={handler => (resume = handler)} requestGateway={requestGateway} selectedStoredSessionId="B" />
+    )
+
+    await waitFor(() => expect(resume).not.toBeNull())
+
+    // User clicks A, then B before A's transcript lands.
+    const first = resume!('A')
+    await waitFor(() => expect(deferred.has('A')).toBe(true))
+
+    const second = resume!('B')
+    await waitFor(() => expect(deferred.has('B')).toBe(true))
+
+    // A was superseded → its cooperative signal is aborted.
+    expect(signals.get('A')?.aborted).toBe(true)
+
+    // Resolve out of order: B first, then the stale A payload.
+    deferred.get('B')!({ messages: [{ content: 'from-b', id: 'b1', role: 'user' }], total: 1 })
+    deferred.get('A')!({ messages: [{ content: 'from-a', id: 'a1', role: 'user' }], total: 1 })
+
+    await Promise.allSettled([first, second])
+
+    // ChatMessage carries its text in `parts`, so compare the serialized
+    // transcript rather than a single field.
+    const transcript = JSON.stringify($messages.get())
+
+    expect(transcript).toContain('from-b')
+    expect(transcript).not.toContain('from-a')
   })
 })

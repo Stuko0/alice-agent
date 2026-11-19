@@ -555,6 +555,17 @@ export const zhHant = defineLocale({
           'Alice 從應用程式內更新自身時，保留本機原始碼變更（stash）或丟棄（discard）。終端機更新一律會詢問。'
       }
     }),
+    interactionStats: {
+      clear: 'Clear',
+      copy: 'Copy JSON',
+      description: 'Dev-only: p50/p95 of the interactions the performance plan targets.',
+      empty: 'No interactions recorded yet.',
+      name: 'Interaction',
+      p50: 'p50',
+      p95: 'p95',
+      samples: 'n',
+      title: 'Interaction latency'
+    },
     about: {
       heading: 'Alice Desktop',
       version: value => `版本 ${value}`,
@@ -800,7 +811,6 @@ export const zhHant = defineLocale({
       noProviderOptions: '此工具集沒有提供方選項；啟用後即可使用目前設定。',
       noProviders: '此工具集目前沒有可用提供方。',
       ready: '就緒',
-      nousIncluded: '包含在 Nous 訂閱中；登入 Nous Portal 即可啟用。',
       noApiKeyRequired: '不需要 API 金鑰。',
       postSetupHint: step => `此後端需要一次性安裝 (${step})。將在此機器上執行，可能需要幾分鐘。`,
       postSetupRun: '執行設定',
@@ -1425,8 +1435,7 @@ export const zhHant = defineLocale({
       copyPath: '複製路徑',
       removeFromSidebar: '從側邊欄移除',
       createFailed: '無法建立專案',
-      staleBackend:
-        '請更新 Alice 後端以建立專案——目前後端比桌面應用舊（設定 → 更新 → 後端）。',
+      staleBackend: '請更新 Alice 後端以建立專案——目前後端比桌面應用舊（設定 → 更新 → 後端）。',
       deleteConfirm: '這會從 Alice 中移除已儲存的專案。檔案、git 儲存庫和工作樹維持不變。',
       startWork: '新增工作樹',
       newWorktreeTitle: '新增工作樹',
@@ -1710,8 +1719,7 @@ export const zhHant = defineLocale({
     copy: '複製',
     copied: '已複製',
     done: '完成',
-    applyingBody:
-      'Alice 更新程式會在自己的視窗中接管，並在完成後自動重新開啟 Alice。更新期間請勿自行重新開啟 Alice。',
+    applyingBody: 'Alice 更新程式會在自己的視窗中接管，並在完成後自動重新開啟 Alice。更新期間請勿自行重新開啟 Alice。',
     applyingBodyBackend: '遠端後端正在套用更新並將重新啟動。恢復後 Alice 會自動重新連線。',
     applyingClose: '此視窗會在更新期間關閉，隨後 Alice 會自動重新開啟。',
     errorTitle: '更新未完成',
@@ -1780,11 +1788,9 @@ export const zhHant = defineLocale({
     featuredPitch: '一個訂閱，300+ 前沿模型 — 執行 Alice 的建議方式',
     freeProviderTitle: 'Free — no account needed',
     freeProviderBadge: 'Try it now',
-    freeProviderPitch:
-      'Uses a public endpoint that answers without a key or an account. Nothing to install.',
+    freeProviderPitch: 'Uses a public endpoint that answers without a key or an account. Nothing to install.',
     freeProviderStarting: 'Checking the free endpoint…',
-    freeProviderFailed:
-      'The free endpoint did not answer. Pick another provider below, or try again.',
+    freeProviderFailed: 'The free endpoint did not answer. Pick another provider below, or try again.',
     freeProviderBadgeBusy: 'Working',
     freeProviderRetry: 'Try again',
     freeProviderForce: 'Use it anyway',
@@ -1834,8 +1840,6 @@ export const zhHant = defineLocale({
     reopenVerification: '重新開啟驗證頁面',
     copy: '複製',
     defaultModel: '預設模型',
-    freeTier: '免費層',
-    pro: 'Pro',
     free: '免費',
     price: (input, output) => `${input} 輸入 / ${output} 輸出 每 Mtok`,
     change: '變更',
@@ -1852,10 +1856,7 @@ export const zhHant = defineLocale({
     addProvider: '新增提供方',
     loadFailed: '無法載入模型',
     noAuthenticatedProviders: '沒有已驗證的提供方。',
-    pro: 'Pro',
-    proNeedsSubscription: 'Pro 模型需要付費 Nous 訂閱。',
     free: '免費',
-    freeTier: '免費層',
     priceTitle: '每百萬 Token 的輸入/輸出價格'
   },
 
@@ -2037,6 +2038,13 @@ export const zhHant = defineLocale({
     largeBody: (label, size) => `${label} 大小為 ${size}。Alice 只會顯示前 512 KB。`,
     previewAnyway: '仍然預覽',
     truncated: '顯示前 512 KB。',
+    largeImageTitle: '圖片過大',
+    largeImageBody: (label, size) => `${label} 為 ${size}。請在瀏覽器或圖片檢視器中開啟。`,
+    plainBecauseLarge: '檔案較大：已關閉語法醒目提示。',
+    highlightAnyway: '仍然醒目提示',
+    diffEmptyTitle: '沒有未提交的變更',
+    diffEmptyBody: '此檔案與工作區最後一次提交一致。',
+    diffLoading: '正在載入差異',
     noInlineTitle: '沒有行內預覽',
     noInlineBody: mimeType => `${mimeType || '此檔案類型'} 仍可作為脈絡附件。`,
     edit: '編輯',
@@ -2099,6 +2107,10 @@ export const zhHant = defineLocale({
         '模組指令碼使用了錯誤的 MIME 類型。這通常表示靜態檔案伺服器正在服務 Vite/React 應用程式，而不是專案開發伺服器。',
       loadFailedConsole: (code, message) => `載入失敗${code ? ` (${code})` : ''}：${message}`,
       unreachableDescription: '無法連線至預覽頁面。',
+      viewSource: '檢視原始碼',
+      loadTimeout: '預覽頁面未能載入完成。',
+      localServer: url => `正在從 ${url} 提供本機預覽`,
+      localServerStopped: '本機預覽伺服器已停止',
       openTarget: url => `開啟 ${url}`,
       fallbackTitle: '預覽'
     }

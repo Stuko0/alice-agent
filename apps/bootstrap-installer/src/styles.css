@@ -53,36 +53,35 @@
 }
 
 /*
- * Dark appearance — Nous dark seeds.
+ * Dark appearance — Alice's Madness dark seeds ("Vale of Tears").
  *
  * The imported desktop :root.dark only flips the per-mode mix knobs + neutral
  * chrome; the seed COLORS are normally painted at runtime by the desktop's
  * applyTheme(). The installer has no theme runtime, so we mirror them here from
- * apps/desktop/src/themes/presets.ts (nousTheme.darkColors). The whole
+ * apps/desktop/src/themes/presets.ts (madnessTheme.darkColors). The whole
  * --ui-* / --dt-* chain in the imported stylesheet derives from these seeds, so
  * flipping them is enough — we only additionally override the few tokens
- * applyTheme() sets inline that DON'T derive from a seed (primary-foreground on
- * the cream accent, destructive). Unlayered on purpose so it wins over the
- * imported @layer base :root light seeds. Keep in sync with nousTheme.darkColors
- * if that palette is retuned.
+ * applyTheme() sets inline that DON'T derive from a seed. Unlayered on purpose
+ * so it wins over the imported @layer base :root light seeds. Keep in sync with
+ * madnessTheme.darkColors if that palette is retuned.
  */
 :root.dark {
   color-scheme: dark;
 
-  --theme-foreground: #ffe6cb;
-  --theme-primary: #ffe6cb;
-  --theme-secondary: #1b45a4;
-  --theme-accent-soft: #1540b1;
-  --theme-midground: #0053fd;
-  --theme-warm: #ffe6cb;
-  --theme-background-seed: #0d2f86;
-  --theme-sidebar-seed: #09286f;
-  --theme-card-seed: #12378f;
-  --theme-elevated-seed: #123a96;
-  --theme-bubble-seed: #143b91;
+  --theme-foreground: #e7e0d2;
+  --theme-primary: #8e2233;
+  --theme-secondary: #241f2e;
+  --theme-accent-soft: #2a2436;
+  --theme-midground: #2f6f63;
+  --theme-warm: #8e2233;
+  --theme-background-seed: #0b0a0f;
+  --theme-sidebar-seed: #0b0a0f;
+  --theme-card-seed: #15121b;
+  --theme-elevated-seed: #1a1622;
+  --theme-bubble-seed: #15121b;
 
-  /* Non-derived shadcn tokens applyTheme() paints inline (Nous dark values). */
-  --dt-primary-foreground: #0d2f86;
-  --dt-destructive: #c0473a;
-  --dt-destructive-foreground: #fef2f2;
+  /* Non-derived shadcn tokens applyTheme() paints inline (Madness dark values). */
+  --dt-primary-foreground: #f3ece0;
+  --dt-destructive: #a8213a;
+  --dt-destructive-foreground: #f3ece0;
 }

@@ -1,18 +1,49 @@
-import { atom } from 'nanostores'
+import { atom, computed } from 'nanostores'
 
-import { persistBoolean, storedBoolean } from '@/lib/storage'
+import { startInteraction } from '@/lib/interaction-telemetry'
+import { persistedKey } from '@/lib/persisted-keys'
+import { persistCoalesced, storedBoolean } from '@/lib/storage'
+import { $fileBrowserOpen } from '@/store/layout'
+import { bindPaneGate } from '@/store/panes'
+import { $reviewOpen } from '@/store/review'
 
-const TAKEOVER_KEY = 'alice.desktop.terminalTakeover'
-const BROWSER_OPEN_KEY = 'alice.desktop.browserTabsOpen'
+const TAKEOVER_KEY = persistedKey('terminalTakeover')
+const BROWSER_OPEN_KEY = persistedKey('browserTabsOpen')
 
 export const $terminalTakeover = atom(storedBoolean(TAKEOVER_KEY, false))
 export const $browserTabsOpen = atom(storedBoolean(BROWSER_OPEN_KEY, false))
 
-$terminalTakeover.subscribe(active => persistBoolean(TAKEOVER_KEY, active))
-$browserTabsOpen.subscribe(open => persistBoolean(BROWSER_OPEN_KEY, open))
+// Coalesced + `listen`: toggling a pane must not do synchronous storage work in
+// the click commit, and subscribing at import rewrote both seeds on boot.
+$terminalTakeover.listen(active => persistCoalesced(TAKEOVER_KEY, String(active)))
+$browserTabsOpen.listen(open => persistCoalesced(BROWSER_OPEN_KEY, String(open)))
 
-export const setTerminalTakeover = (active: boolean) => $terminalTakeover.set(active)
-export const setBrowserTabsOpen = (open: boolean) => $browserTabsOpen.set(open)
+// One observable open state per pane (see bindPaneGate).
+bindPaneGate('terminal-sidebar', $terminalTakeover)
+bindPaneGate('browser-tabs', $browserTabsOpen)
+
+export const setTerminalTakeover = (active: boolean) => {
+  const stopTiming = startInteraction('toggle-terminal')
+
+  $terminalTakeover.set(active)
+  stopTiming({ paint: true })
+}
+
+export const setBrowserTabsOpen = (open: boolean) => {
+  const stopTiming = startInteraction('toggle-browser')
+
+  $browserTabsOpen.set(open)
+  stopTiming({ paint: true })
+}
+
+// The terminal moves to a full-width row once any other rail pane is docked,
+// so the rail never over-subscribes into a sliver. An atom (not a controller
+// derivation) so `<Pane bottomRowAtom>` can follow it without the shell root
+// re-rendering on every toggle.
+export const $terminalAsRow = computed(
+  [$terminalTakeover, $fileBrowserOpen, $reviewOpen, $browserTabsOpen],
+  (takeover, files, review, browser) => takeover && (files || review || browser)
+)
 
 /** A command queued to run in the embedded terminal. The terminal pane flushes
  *  (and clears) it once its session is live, so a value set before the pane

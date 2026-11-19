@@ -388,6 +388,11 @@ export const en: Translations = {
       toolViewDesc: 'Product hides raw tool payloads; Technical shows full input/output.',
       translucencyTitle: 'Window Translucency',
       translucencyDesc: 'See your desktop through the whole window. macOS and Windows only.',
+      displayScaleTitle: 'Display Scale',
+      displayScaleDesc: 'Magnify the whole window. The layout reflows to the space that is left.',
+      reduceMotionTitle: 'Reduce Motion',
+      reduceMotionDesc:
+        'Quiet every animation and transition. Follows your system setting until you switch it either way.',
       embedsTitle: 'Inline Embeds',
       embedsDesc:
         'Rich previews load from third-party sites (YouTube, X, …). Ask shows a placeholder until you allow each one; Always loads them automatically; Off keeps plain links.',
@@ -454,6 +459,17 @@ export const en: Translations = {
     },
     fieldLabels: FIELD_LABELS,
     fieldDescriptions: FIELD_DESCRIPTIONS,
+    interactionStats: {
+      clear: 'Clear',
+      copy: 'Copy JSON',
+      description: 'Dev-only: p50/p95 of the interactions the performance plan targets.',
+      empty: 'No interactions recorded yet.',
+      name: 'Interaction',
+      p50: 'p50',
+      p95: 'p95',
+      samples: 'n',
+      title: 'Interaction latency'
+    },
     about: {
       heading: 'Alice Desktop',
       version: value => `Version ${value}`,
@@ -531,8 +547,7 @@ export const en: Translations = {
       profileConnection: profile =>
         `Connection used only when “${profile}” is the active profile. Set it to Local to inherit the default.`,
       envOverrideTitle: 'Environment variables are controlling this desktop session.',
-      envOverrideDesc:
-        'Unset ALICE_DESKTOP_REMOTE_URL and ALICE_DESKTOP_REMOTE_TOKEN to use the saved setting below.',
+      envOverrideDesc: 'Unset ALICE_DESKTOP_REMOTE_URL and ALICE_DESKTOP_REMOTE_TOKEN to use the saved setting below.',
       localTitle: 'Local gateway',
       localDesc: 'Start a private Alice backend on localhost. This is the default and works offline.',
       remoteTitle: 'Remote gateway',
@@ -670,7 +685,8 @@ export const en: Translations = {
       noKeysMatch: 'No providers match your search.',
       loading: 'Loading providers...',
       customTitle: 'Custom providers',
-      customIntro: 'Endpoints you added (OpenAI-compatible or Anthropic). They appear in the model picker like built-ins.',
+      customIntro:
+        'Endpoints you added (OpenAI-compatible or Anthropic). They appear in the model picker like built-ins.',
       customAdd: 'Add custom provider',
       customName: 'Name',
       customNamePlaceholder: 'e.g. Together AI',
@@ -757,7 +773,6 @@ export const en: Translations = {
       noProviderOptions: 'This toolset has no provider options — enable it and it works with your current setup.',
       noProviders: 'No providers are available for this toolset right now.',
       ready: 'Ready',
-      nousIncluded: 'Included with a Nous subscription — sign in to Nous Portal to activate.',
       noApiKeyRequired: 'No API key required.',
       postSetupHint: step =>
         `This backend needs a one-time install (${step}). Runs on this machine — may take a few minutes.`,
@@ -1770,11 +1785,9 @@ export const en: Translations = {
     featuredPitch: 'Free with your GitHub account — no API key needed. Includes GPT-4o, Claude, and more.',
     freeProviderTitle: 'Free — no account needed',
     freeProviderBadge: 'Try it now',
-    freeProviderPitch:
-      'Uses a public endpoint that answers without a key or an account. Nothing to install.',
+    freeProviderPitch: 'Uses a public endpoint that answers without a key or an account. Nothing to install.',
     freeProviderStarting: 'Checking the free endpoint…',
-    freeProviderFailed:
-      'The free endpoint did not answer. Pick another provider below, or try again.',
+    freeProviderFailed: 'The free endpoint did not answer. Pick another provider below, or try again.',
     freeProviderBadgeBusy: 'Working',
     freeProviderRetry: 'Try again',
     freeProviderForce: 'Use it anyway',
@@ -1830,8 +1843,6 @@ export const en: Translations = {
     reopenVerification: 'Re-open verification page',
     copy: 'Copy',
     defaultModel: 'Default model',
-    freeTier: 'Free tier',
-    pro: 'Pro',
     free: 'Free',
     price: (input, output) => `${input} in / ${output} out per Mtok`,
     change: 'Change',
@@ -1848,10 +1859,7 @@ export const en: Translations = {
     addProvider: 'Add provider',
     loadFailed: 'Could not load models',
     noAuthenticatedProviders: 'No authenticated providers.',
-    pro: 'Pro',
-    proNeedsSubscription: 'Pro models need a paid Nous subscription.',
     free: 'Free',
-    freeTier: 'Free tier',
     priceTitle: 'Input / Output price per million tokens'
   },
 
@@ -2033,6 +2041,13 @@ export const en: Translations = {
     largeBody: (label, size) => `${label} is ${size}. Alice will only show the first 512 KB.`,
     previewAnyway: 'Preview anyway',
     truncated: 'Showing first 512 KB.',
+    largeImageTitle: 'This image is too large',
+    largeImageBody: (label, size) => `${label} is ${size}. Open it in your browser or image viewer.`,
+    plainBecauseLarge: 'Large file: rendered without syntax highlighting.',
+    highlightAnyway: 'Highlight anyway',
+    diffEmptyTitle: 'No uncommitted changes',
+    diffEmptyBody: 'This file matches the last commit in the working tree.',
+    diffLoading: 'Loading diff',
     noInlineTitle: 'No inline preview',
     noInlineBody: mimeType => `${mimeType || 'This file type'} can still be attached as context.`,
     edit: 'Edit',
@@ -2097,6 +2112,10 @@ export const en: Translations = {
         'Module scripts are being served with the wrong MIME type. This usually means a static file server is serving a Vite/React app instead of the project dev server.',
       loadFailedConsole: (code, message) => `Load failed${code ? ` (${code})` : ''}: ${message}`,
       unreachableDescription: 'The preview page could not be reached.',
+      viewSource: 'View source',
+      loadTimeout: 'The preview page did not finish loading.',
+      localServer: url => `Serving local preview from ${url}`,
+      localServerStopped: 'Local preview server stopped',
       openTarget: url => `Open ${url}`,
       fallbackTitle: 'Preview'
     }

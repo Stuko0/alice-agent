@@ -5,6 +5,8 @@ import type { NavigateFunction } from 'react-router-dom'
 import { deleteSession, getSessionMessages, setSessionArchived } from '@/alice'
 import { useI18n } from '@/i18n'
 import { preserveLocalAssistantErrors, toChatMessages } from '@/lib/chat-messages'
+import { deferToIdle } from '@/lib/defer'
+import { startInteraction } from '@/lib/interaction-telemetry'
 import { setSessionYolo } from '@/lib/yolo-session'
 import { clearQueuedPrompts } from '@/store/composer-queue'
 import { $pinnedSessionIds } from '@/store/layout'
@@ -72,6 +74,16 @@ import {
   upsertOptimisticSession
 } from './utils'
 
+// How many of a session's most recent messages the switch prefetch paints.
+// The prefetch is the dominant transcript source (when it hydrates, the more
+// expensive resume conversion is skipped), so this caps the worst-case
+// payload on huge sessions. Measured on a real 560-message/2.25MB session:
+// limit=200 → 723KB (−68%), limit=150 → 519KB (−77%). Recent turns carry the
+// heavy tool_calls/reasoning, so 200 is the balance between a fast switch and
+// a generous visible window; older scroll-back still arrives via the resume
+// RPC fallback when the prefetch comes back empty.
+const TRANSCRIPT_PREFETCH_LIMIT = 200
+
 interface SessionActionsOptions {
   activeSessionId: string | null
   activeSessionIdRef: MutableRefObject<string | null>
@@ -112,6 +124,7 @@ export function useSessionActions({
   const { t } = useI18n()
   const copy = t.desktop
   const resumeRequestRef = useRef(0)
+  const resumeAbortRef = useRef<AbortController | null>(null)
 
   const startFreshSessionDraft = useCallback(
     (replaceRoute = false) => {
@@ -293,6 +306,22 @@ export function useSessionActions({
       const isCurrentResume = () =>
         resumeRequestRef.current === requestId && selectedStoredSessionIdRef.current === storedSessionId
 
+      // Abort the previous switch's prefetch so a 200-message payload for a
+      // session the user already left is never converted/painted.
+      resumeAbortRef.current?.abort()
+      const abortController = new AbortController()
+      resumeAbortRef.current = abortController
+
+      // Dev-only: measures click → transcript paint for the latency harness.
+      const stopTiming = startInteraction('switch-session')
+      let timingFinished = false
+      const finishTiming = () => {
+        if (!timingFinished) {
+          timingFinished = true
+          stopTiming({ paint: true })
+        }
+      }
+
       // Paint the click before the profile-resolve / gateway-swap awaits below,
       // so there's zero dead air: highlight the row instantly (the sidebar reads
       // $selectedStoredSessionId) and, for a cold target, drop the previous
@@ -411,6 +440,8 @@ export function useSessionActions({
               setCurrentUsage(current => ({ ...current, ...usage }))
             }
 
+            finishTiming()
+
             return
           } catch {
             // The cached runtime id was minted by a prior backend instance. A
@@ -445,12 +476,19 @@ export function useSessionActions({
       applyStoredSessionPreviewRuntimeInfo(stored)
 
       if (stored) {
-        setCurrentUsage(current => ({
-          ...current,
-          input: stored.input_tokens || 0,
-          output: stored.output_tokens || 0,
-          total: (stored.input_tokens || 0) + (stored.output_tokens || 0)
-        }))
+        // UI chrome only — not worth a synchronous update inside the switch.
+        deferToIdle(() => {
+          if (!isCurrentResume()) {
+            return
+          }
+
+          setCurrentUsage(current => ({
+            ...current,
+            input: stored.input_tokens || 0,
+            output: stored.output_tokens || 0,
+            total: (stored.input_tokens || 0) + (stored.output_tokens || 0)
+          }))
+        })
       }
 
       let resumedRunning = false
@@ -462,9 +500,16 @@ export function useSessionActions({
         // REST transcript prefetch and the gateway resume RPC are independent
         // — run them concurrently so a big session's wall time is
         // max(prefetch, resume) instead of their sum. The prefetch paints the
-        // transcript as soon as it lands; the RPC binds the runtime id.
+        // the transcript as soon as it lands; the RPC binds the runtime id.
         // Watch windows skip the prefetch — lazy resume attaches the live mirror.
-        const prefetchPromise = watchWindow ? null : getSessionMessages(storedSessionId, sessionProfile)
+        // The prefetch is capped to the most recent TRANSCRIPT_PREFETCH_LIMIT
+        // messages: it is the dominant transcript source (when it hydrates,
+        // the resume conversion below is skipped entirely), so an uncapped
+        // 2MB+ history dominated switch latency. Older scroll-back still loads
+        // via the resume RPC fallback when the prefetch comes back empty.
+        const prefetchPromise = watchWindow
+          ? null
+          : getSessionMessages(storedSessionId, sessionProfile, TRANSCRIPT_PREFETCH_LIMIT, abortController.signal)
 
         const resumePromise = requestGateway<SessionResumeResponse>('session.resume', {
           session_id: storedSessionId,
@@ -625,6 +670,8 @@ export function useSessionActions({
           setBusy(resumedRunning)
           setAwaitingResponse(resumedRunning)
         }
+
+        finishTiming()
       }
     },
     [
@@ -798,8 +845,11 @@ export function useSessionActions({
       clearNotifications()
 
       const removed = $sessions.get().find(session => sessionMatchesStoredId(session, storedSessionId))
-      const wasSelected = selectedStoredSessionId === storedSessionId
-      const closingRuntimeId = wasSelected ? activeSessionId : null
+      // Refs, not props: a delete fired from a context menu opened before a
+      // session switch must still act on the row it was opened for, and must
+      // never tear down the newly-selected session's runtime.
+      const wasSelected = selectedStoredSessionIdRef.current === storedSessionId
+      const closingRuntimeId = wasSelected ? activeSessionIdRef.current : null
       const previousMessages = $messages.get()
       const previousPinned = $pinnedSessionIds.get()
       // Pins are keyed on the durable lineage-root id; the stored id may be the
@@ -823,14 +873,15 @@ export function useSessionActions({
       }
 
       try {
-        if (closingRuntimeId) {
-          await requestGateway('session.close', { session_id: closingRuntimeId }).catch(() => undefined)
-        }
-
+        // Delete FIRST. Closing the runtime before a delete that can fail left
+        // the failure path restoring `$activeSessionId` to a runtime that was
+        // already closed (a dead id: the next send 404s, and a pooled backend
+        // can recycle it onto a different session).
         await deleteSession(storedSessionId, removed?.profile)
         clearQueuedPrompts(storedSessionId)
 
         if (closingRuntimeId) {
+          await requestGateway('session.close', { session_id: closingRuntimeId }).catch(() => undefined)
           clearQueuedPrompts(closingRuntimeId)
         }
       } catch (err) {
@@ -870,12 +921,10 @@ export function useSessionActions({
       }
     },
     [
-      activeSessionId,
       activeSessionIdRef,
       copy,
       navigate,
       requestGateway,
-      selectedStoredSessionId,
       selectedStoredSessionIdRef,
       startFreshSessionDraft
     ]

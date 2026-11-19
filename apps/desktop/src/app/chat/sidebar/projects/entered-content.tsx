@@ -2,6 +2,7 @@ import { useStore } from '@nanostores/react'
 import type * as React from 'react'
 import { useMemo, useState } from 'react'
 
+import type { SessionInfo } from '@/alice'
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
 import {
@@ -13,7 +14,6 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import type { AliceGitWorktree } from '@/global'
-import type { SessionInfo } from '@/alice'
 import { useI18n } from '@/i18n'
 import { $dismissedWorktreeIds, dismissWorktree } from '@/store/layout'
 import { notifyError } from '@/store/notifications'

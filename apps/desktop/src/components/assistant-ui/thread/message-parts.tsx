@@ -1,6 +1,8 @@
 import { type ToolCallMessagePartProps, useAuiState } from '@assistant-ui/react'
+import { useStore } from '@nanostores/react'
 import { type ComponentProps, type FC, type ReactNode, useEffect, useRef, useState } from 'react'
 
+import { getMessageReasoning } from '@/alice'
 import { ClarifyTool } from '@/components/assistant-ui/clarify-tool'
 import { MarkdownText, MarkdownTextContent } from '@/components/assistant-ui/markdown-text'
 import { ToolFallback, ToolGroupSlot } from '@/components/assistant-ui/tool/fallback'
@@ -9,8 +11,10 @@ import { ActivityTimerText } from '@/components/chat/activity-timer-text'
 import { DisclosureRow } from '@/components/chat/disclosure-row'
 import { GeneratedImage } from '@/components/chat/generated-image-result'
 import { useI18n } from '@/i18n'
+import { lazyReasoningId } from '@/lib/chat-messages'
 import { useEnterAnimation } from '@/lib/use-enter-animation'
 import { cn } from '@/lib/utils'
+import { $selectedStoredSessionId, $sessions } from '@/store/session'
 
 const ImageGenerateTool: FC<ToolCallMessagePartProps> = ({ args, result }) => {
   const aspectRatio = typeof args?.aspect_ratio === 'string' ? args.aspect_ratio : undefined
@@ -174,10 +178,66 @@ const ReasoningAccordionGroup: FC<{ children?: ReactNode; endIndex: number; star
   )
 }
 
+// Reasoning fetched on demand: keyed by `<stored session>:<message id>` so a
+// re-expand (or a remount after a scroll) never refetches the same text.
+const reasoningTextCache = new Map<string, string>()
+
+const LazyReasoningText: FC<{ messageId: number }> = ({ messageId }) => {
+  const sessionId = useStore($selectedStoredSessionId)
+  const cacheKey = `${sessionId ?? ''}:${messageId}`
+  const cached = reasoningTextCache.get(cacheKey) ?? ''
+  const [text, setText] = useState(cached)
+
+  useEffect(() => {
+    if (text || !sessionId) {
+      return
+    }
+
+    let alive = true
+
+    const profile = $sessions
+      .get()
+      .find(session => session.id === sessionId || session._lineage_root_id === sessionId)?.profile
+
+    void getMessageReasoning(sessionId, [messageId], profile)
+      .then(next => {
+        const value = next[String(messageId)] ?? ''
+        reasoningTextCache.set(cacheKey, value)
+
+        if (alive) {
+          setText(value)
+        }
+      })
+      .catch(() => {
+        // Best-effort: the disclosure simply stays empty.
+      })
+
+    return () => {
+      alive = false
+    }
+  }, [cacheKey, messageId, sessionId, text])
+
+  if (!text) {
+    return (
+      <span aria-live="polite" className="text-(--ui-text-tertiary)">
+        …
+      </span>
+    )
+  }
+
+  return <ReasoningTextPart text={text} />
+}
+
 const ReasoningTextPart: FC<{ text: string; status?: { type: string } }> = ({ text, status }) => {
+  // Hooks stay unconditional: the lazy sentinel is just a different body.
   const displayText = text.trimStart()
   const messageRunning = useAuiState(s => s.message.status?.type === 'running')
   const isRunning = status?.type === 'running' || messageRunning
+  const lazyId = lazyReasoningId(text)
+
+  if (lazyId !== null) {
+    return <LazyReasoningText messageId={lazyId} />
+  }
 
   return (
     <MarkdownTextContent

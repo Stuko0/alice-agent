@@ -42,11 +42,16 @@ func main() {
 	app.PythonManager = pm
 	gitService := NewGitService()
 	fsService := NewFSService()
+	fsWatchService := NewFileWatchService()
+	app.FileWatchService = fsWatchService
+	previewServerService := NewPreviewServerService()
+	app.PreviewServerService = previewServerService
 	logService := NewLogService()
 	ptyService := NewPTYService()
 	updateService := NewUpdateService(pm)
 	connectionService := NewConnectionService(pm.aliceHome)
 	app.ConnectionService = connectionService
+	browserService := NewBrowserService(pm.aliceHome)
 
 	err := wails.Run(&options.App{
 		Title:  "Alice Agent Desktop",
@@ -58,6 +63,7 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 27, B: 27, A: 1},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)
+			browserService.startup(ctx)
 			// Wire the runtime context BEFORE StartGateway so boot-progress
 			// and backend-exit events emitted during spawn reach the renderer.
 			pm.SetContext(ctx)
@@ -76,6 +82,7 @@ func main() {
 			}
 			updateService.SetContext(ctx, pm.ResolveProjectRoot())
 			fsService.SetContext(ctx)
+			fsWatchService.SetContext(ctx)
 			connectionService.SetContext(ctx)
 			restoreWindowState(ctx, pm.aliceHome)
 			if !connectionService.IsRemote() {
@@ -84,6 +91,8 @@ func main() {
 		},
 		OnShutdown: func(ctx context.Context) {
 			saveWindowState(ctx, pm.aliceHome)
+			fsWatchService.Shutdown()
+			previewServerService.Shutdown()
 			app.shutdown(ctx)
 		},
 		Bind: []interface{}{
@@ -91,10 +100,12 @@ func main() {
 			pm,
 			gitService,
 			fsService,
+			fsWatchService,
 			logService,
 			ptyService,
 			updateService,
 			connectionService,
+			browserService,
 		},
 	})
 
@@ -105,12 +116,14 @@ func main() {
 
 // App struct
 type App struct {
-	PythonManager    *PythonManager
-	GitService       *GitService
-	FSService        *FSService
-	LogService       *LogService
-	PTYService       *PTYService
-	ConnectionService *ConnectionService
+	PythonManager        *PythonManager
+	GitService           *GitService
+	FSService            *FSService
+	LogService           *LogService
+	PTYService           *PTYService
+	ConnectionService    *ConnectionService
+	FileWatchService     *FileWatchService
+	PreviewServerService *PreviewServerService
 }
 
 // NewApp creates a new App application struct
@@ -204,9 +217,45 @@ func (a *App) GetRecentLogs(maxLines int) ([]string, error) {
 	return a.LogService.GetRecentLogs(maxLines)
 }
 
-// ReadFileText reads a text file and returns its contents
-func (a *App) ReadFileText(filePath string) (string, error) {
+// ReadFileText reads a bounded prefix of a text file (512KB by default) and
+// reports whether the content was truncated. Large files must never be read
+// whole just to be refused by the preview UI.
+func (a *App) ReadFileText(filePath string) (ReadTextResult, error) {
 	return a.FSService.ReadFileText(filePath)
+}
+
+// ReadFileTextLimited reads at most maxBytes (0 → default limit).
+func (a *App) ReadFileTextLimited(filePath string, maxBytes int) (ReadTextResult, error) {
+	return a.FSService.ReadFileTextLimited(filePath, int64(maxBytes))
+}
+
+// StatFile returns metadata (size/mtime/binary) without reading the body.
+func (a *App) StatFile(filePath string) (FileStat, error) {
+	return a.FSService.StatFile(filePath)
+}
+
+// NormalizePreviewTarget classifies a preview reference like the Electron main
+// process does, so both shells agree on kind/previewKind/language.
+func (a *App) NormalizePreviewTarget(target string, baseDir string) (*PreviewTarget, error) {
+	return a.FSService.NormalizePreviewTarget(target, baseDir)
+}
+
+// PreviewStartForFile serves a local HTML file (and its directory) from a
+// token-scoped loopback origin. The Wails iframe loads that URL instead of
+// file:// so relative assets, ES modules and fetch work.
+func (a *App) PreviewStartForFile(filePath string) (map[string]string, error) {
+	return a.PreviewServerService.StartForFile(filePath)
+}
+
+// PreviewStartForImage serves a local image from the same loopback origin,
+// downscaling oversized rasters instead of base64-ing them through the bridge.
+func (a *App) PreviewStartForImage(filePath string) (map[string]string, error) {
+	return a.PreviewServerService.StartForImage(filePath)
+}
+
+// PreviewStop tears down a preview origin started by PreviewStartFor*.
+func (a *App) PreviewStop(id string) (bool, error) {
+	return a.PreviewServerService.Stop(id)
 }
 
 // ReadFileDataUrl reads a file and returns it as a data URL
@@ -217,6 +266,17 @@ func (a *App) ReadFileDataUrl(filePath string) (string, error) {
 // WriteTextFile writes a text file
 func (a *App) WriteTextFile(filePath string, content string) error {
 	return a.FSService.WriteTextFile(filePath, content)
+}
+
+// StartFileWatch watches a previewed file and emits alice:preview:file-changed
+// when it changes. Restores the Electron shell's live preview reload.
+func (a *App) StartFileWatch(target string) (map[string]string, error) {
+	return a.FileWatchService.StartFileWatch(target)
+}
+
+// StopFileWatch releases a preview watch started by StartFileWatch
+func (a *App) StopFileWatch(id string) (bool, error) {
+	return a.FileWatchService.StopFileWatch(id)
 }
 
 // TrashPath moves a file/directory to the trash

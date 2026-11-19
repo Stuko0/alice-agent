@@ -1,5 +1,8 @@
 import './styles.css'
-// Side-effect: applies the persisted window translucency on load.
+// Side-effects: apply the persisted display scale, window translucency and
+// reduced-motion preference before the first paint.
+import './store/display-scale'
+import './store/reduce-motion'
 import './store/translucency'
 
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -12,13 +15,17 @@ import { ErrorBoundary } from './components/error-boundary'
 import { HapticsProvider } from './components/haptics-provider'
 import { I18nProvider } from './i18n'
 import { installClipboardShim } from './lib/clipboard'
-import { isWailsShell } from './lib/desktop-capabilities'
+import { desktopSupports } from './lib/desktop-capabilities'
 import { queryClient } from './lib/query-client'
 import { initWailsBridge } from './lib/wails-bridge'
+import { wireStores } from './store/wire'
 import { ThemeProvider } from './themes/context'
 
 initWailsBridge()
 installClipboardShim()
+// Store-level edge subscriptions (git/gh probes, profile routing). Explicit and
+// idempotent: importing a store must not schedule IPC on its own.
+wireStores()
 
 // Dev-only: install __PERF_DRIVE__ + __PERF_PROBE__ on window so the
 // scripts/ harnesses can drive a synthetic stream + record render cost.
@@ -34,7 +41,7 @@ if (import.meta.env.MODE !== 'production') {
 // app-shell work so the overlay window stays cheap.
 // The overlay window only exists in Electron. In Wails the bundle mounts the
 // full app — never route to the overlay root from the Wails shell.
-if (!isWailsShell() && (new URLSearchParams(window.location.search).get('win') === 'overlay' || window.location.href.includes('win=overlay'))) {
+if (desktopSupports('petOverlay') && (new URLSearchParams(window.location.search).get('win') === 'overlay' || window.location.href.includes('win=overlay'))) {
   void import('./app/pet-overlay/overlay-root').then(({ mountPetOverlay }) => mountPetOverlay())
 } else {
   createRoot(document.getElementById('root')!).render(

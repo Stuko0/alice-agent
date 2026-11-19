@@ -185,29 +185,10 @@ function unwrapRefValue(raw: string): string {
   return raw.replace(TRAILING_PUNCTUATION_RE, '')
 }
 
-function needsQuoting(value: string): boolean {
-  return /[\s()[\]{}<>"'`]/.test(value)
-}
-
-export function formatRefValue(value: string): string {
-  if (!needsQuoting(value)) {
-    return value
-  }
-
-  if (!value.includes('`')) {
-    return `\`${value}\``
-  }
-
-  if (!value.includes('"')) {
-    return `"${value}"`
-  }
-
-  if (!value.includes("'")) {
-    return `'${value}'`
-  }
-
-  return value
-}
+// Moved to `lib/directive-text.ts` (D2: lib/chat-runtime.ts uses it); re-exported
+// for existing call sites in the renderer.
+export { formatRefValue } from '@/lib/directive-text'
+import { formatRefValue } from '@/lib/directive-text'
 
 export const aliceDirectiveFormatter: Unstable_DirectiveFormatter = {
   serialize(item: Unstable_TriggerItem): string {

@@ -1,10 +1,14 @@
 import { atom, type WritableAtom } from 'nanostores'
 
-import { readKey, writeKey } from './storage'
+import { persistCoalesced, readKey } from './storage'
 
 // A nanostore that auto-persists. Reads its seed from localStorage through the
 // storage choke point (so every read/write is observable in one place) and
-// writes back on every change — no per-atom subscribe boilerplate.
+// writes back on change — no per-atom subscribe boilerplate.
+//
+// Writes use `listen` (not `subscribe`): `subscribe` fires immediately, which
+// rewrote every persisted seed synchronously on import. Writes are coalesced so
+// a burst (e.g. a sash drag) costs one localStorage write, not one per event.
 //
 //   export const $foo = persistentAtom('alice.desktop.foo', false, Codecs.bool)
 
@@ -72,7 +76,7 @@ export function persistentAtom<T>(key: string, fallback: T, codec: Codec<T> = Co
 
   const $value = atom<T>(initial)
 
-  $value.subscribe(value => writeKey(key, codec.encode(value)))
+  $value.listen(value => persistCoalesced(key, codec.encode(value)))
 
   return $value
 }

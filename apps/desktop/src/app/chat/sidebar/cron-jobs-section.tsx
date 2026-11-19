@@ -1,12 +1,12 @@
 import { useStore } from '@nanostores/react'
 import { useEffect, useMemo, useState } from 'react'
 
+import { getCronJobRuns, type SessionInfo } from '@/alice'
 import { Codicon } from '@/components/ui/codicon'
 import { DisclosureCaret } from '@/components/ui/disclosure-caret'
 import { GlyphSpinner } from '@/components/ui/glyph-spinner'
 import { SidebarGroup, SidebarGroupContent } from '@/components/ui/sidebar'
 import { Tip } from '@/components/ui/tooltip'
-import { getCronJobRuns, type SessionInfo } from '@/alice'
 import { useI18n } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { $selectedStoredSessionId } from '@/store/session'
@@ -160,7 +160,7 @@ export function SidebarCronJobsSection({
           onClick={onToggle}
           type="button"
         >
-          <SidebarPanelLabel>{label}</SidebarPanelLabel>
+          <SidebarPanelLabel motif="club">{label}</SidebarPanelLabel>
           <span className="text-[0.6875rem] font-medium text-(--ui-text-quaternary)">{countLabel}</span>
           <DisclosureCaret
             className="text-(--ui-text-tertiary) opacity-0 transition group-hover/section-label:opacity-100"

@@ -15,6 +15,7 @@ export function ReviewProviderChip({ remoteInfo }: { remoteInfo: RemoteInfo }) {
   if (!remoteInfo || remoteInfo.provider === 'none') {
     return null
   }
+
   const label =
     remoteInfo.provider === 'github'
       ? 'GitHub'

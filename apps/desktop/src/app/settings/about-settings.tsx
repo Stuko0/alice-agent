@@ -18,6 +18,7 @@ import {
   startActiveUpdate
 } from '@/store/updates'
 
+import { InteractionStatsPanel } from './interaction-stats-panel'
 import { ListRow, SectionHeading, SettingsContent } from './primitives'
 import { UninstallSection } from './uninstall-section'
 
@@ -186,6 +187,9 @@ export function AboutSettings() {
         />
 
         <UninstallSection />
+
+        {/* Dev-only: renders nothing in a production build. */}
+        <InteractionStatsPanel />
       </div>
     </SettingsContent>
   )

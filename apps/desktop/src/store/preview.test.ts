@@ -1,24 +1,31 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { $rightRailActiveTabId, PREVIEW_PANE_ID, RIGHT_RAIL_PREVIEW_TAB_ID } from './layout'
-import { $paneOpen } from './panes'
+import * as desktopFs from '@/lib/desktop-fs'
+import { flushCoalescedPersistence } from '@/lib/storage'
+
+import { $browserOpen, setBrowserOpen } from './browser'
+import { $browserTabs, clearBrowserTabs, closeBrowserTab, openWebTab } from './browser-tabs'
 import {
-  $filePreviewTabs,
-  $filePreviewTarget,
-  $previewServerRestart,
-  $previewServerRestartStatus,
+  $previewTabOpen,
+  $previewTabUrl,
   $previewTarget,
   $sessionPreviewRegistry,
-  beginPreviewServerRestart,
   clearSessionPreviewRegistry,
-  closeActiveRightRailTab,
   dismissPreviewTarget,
   getSessionPreviewRecord,
   type PreviewTarget,
-  progressPreviewServerRestart,
-  setCurrentSessionPreviewTarget
+  setCurrentSessionPreviewTarget,
+  setSessionPreviewTarget
 } from './preview'
 import { $activeSessionId, $selectedStoredSessionId } from './session'
+
+vi.mock('@/lib/desktop-fs', async importOriginal => {
+  const actual = await importOriginal<typeof desktopFs>()
+
+  return { ...actual, startDesktopPreviewServer: vi.fn(async () => null) }
+})
+
+const startDesktopPreviewServer = () => desktopFs.startDesktopPreviewServer
 
 function previewTarget(source: string): PreviewTarget {
   return {
@@ -31,108 +38,139 @@ function previewTarget(source: string): PreviewTarget {
   }
 }
 
-function withRenderMode(target: PreviewTarget, renderMode: PreviewTarget['renderMode']): PreviewTarget {
-  return { ...target, renderMode }
+function urlTarget(url: string): PreviewTarget {
+  return { kind: 'url', label: url, source: url, url }
+}
+
+function codeTarget(path: string): PreviewTarget {
+  return { kind: 'file', label: path.split('/').pop() ?? path, path, previewKind: 'text', source: path, url: `file://${path}` }
 }
 
 describe('preview store', () => {
   beforeEach(() => {
-    $previewServerRestart.set(null)
+    setBrowserOpen(false)
+    clearBrowserTabs()
+    $previewTabUrl.set(null)
     $activeSessionId.set('session-1')
     $selectedStoredSessionId.set(null)
     window.localStorage.clear()
     clearSessionPreviewRegistry()
+    vi.mocked(startDesktopPreviewServer()).mockResolvedValue(null)
   })
 
   afterEach(() => {
-    $previewServerRestart.set(null)
+    setBrowserOpen(false)
+    clearBrowserTabs()
+    $previewTabUrl.set(null)
     $activeSessionId.set(null)
     $selectedStoredSessionId.set(null)
     window.localStorage.clear()
     clearSessionPreviewRegistry()
+    vi.mocked(startDesktopPreviewServer()).mockReset()
   })
 
-  it('does not notify status subscribers for restart progress text', () => {
-    const statuses: string[] = []
-    const unsubscribe = $previewServerRestartStatus.subscribe(status => statuses.push(status))
+  it('opens a url preview as a web tab and opens the browser drawer', async () => {
+    const target = urlTarget('https://example.com/report')
 
-    beginPreviewServerRestart('task-1', 'http://localhost:5174')
-    progressPreviewServerRestart('task-1', 'first line')
-    progressPreviewServerRestart('task-1', 'second line')
-    unsubscribe()
+    setCurrentSessionPreviewTarget(target, 'explicit-link')
+    await vi.waitFor(() => expect($browserTabs.get()).toHaveLength(1))
 
-    expect(statuses).toEqual(['idle', 'running'])
+    expect($browserTabs.get()[0]?.kind).toBe('web')
+    expect($browserTabs.get()[0]?.url).toBe('https://example.com/report')
+    expect($previewTabUrl.get()).toBe('https://example.com/report')
+    expect($browserOpen.get()).toBe(true)
+    expect($previewTabOpen.get()).toBe(true)
+    expect($previewTarget.get()).toEqual(target)
   })
 
-  it('persists registered previews and dismissal per session', () => {
+  it('serves an html artifact from the loopback preview server in the native engine', async () => {
+    vi.mocked(startDesktopPreviewServer()).mockResolvedValue({
+      id: 'preview-1',
+      url: 'http://127.0.0.1:41234/__preview/demo.html'
+    })
+
+    await setSessionPreviewTarget('session-1', previewTarget('/work/demo.html'), 'tool-result')
+
+    await vi.waitFor(() => expect($browserTabs.get()).toHaveLength(1))
+
+    expect(vi.mocked(startDesktopPreviewServer())).toHaveBeenCalledWith('/work/demo.html', 'file')
+    expect($browserTabs.get()[0]?.kind).toBe('web')
+    expect($browserTabs.get()[0]?.url).toContain('127.0.0.1:41234')
+    expect($previewTabUrl.get()).toContain('127.0.0.1:41234')
+  })
+
+  it('falls back to a file tab when the loopback server is unavailable', async () => {
+    await setSessionPreviewTarget('session-1', previewTarget('/work/demo.html'), 'tool-result')
+
+    await vi.waitFor(() => expect($browserTabs.get()).toHaveLength(1))
+
+    expect($browserTabs.get()[0]?.kind).toBe('file')
+    expect($browserTabs.get()[0]?.url).toBe('/work/demo.html')
+  })
+
+  it('opens code files as file tabs rendered by the local previewer', async () => {
+    await setSessionPreviewTarget('session-1', codeTarget('/work/notes.md'), 'file-browser')
+
+    await vi.waitFor(() => expect($browserTabs.get()).toHaveLength(1))
+
+    expect($browserTabs.get()[0]?.kind).toBe('file')
+    expect($browserTabs.get()[0]?.title).toBe('notes.md')
+    expect($previewTabUrl.get()).toBe('/work/notes.md')
+  })
+
+  it('persists registered previews and dismissal per session', async () => {
     const target = previewTarget('/work/demo.html')
 
     setCurrentSessionPreviewTarget(target, 'tool-result')
+    await vi.waitFor(() => expect(getSessionPreviewRecord('session-1')).not.toBeNull())
 
-    expect($previewTarget.get()).toEqual(withRenderMode(target, 'preview'))
-    expect($paneOpen(PREVIEW_PANE_ID).get()).toBe(true)
-    expect(getSessionPreviewRecord('session-1')?.normalized).toEqual(withRenderMode(target, 'preview'))
+    expect(getSessionPreviewRecord('session-1')?.normalized).toEqual({ ...target, renderMode: 'preview' })
+    // Persistence is coalesced: flush before reading storage.
+    flushCoalescedPersistence()
     expect(window.localStorage.getItem('alice.desktop.sessionPreviews.v1')).toContain('/work/demo.html')
 
     dismissPreviewTarget()
 
     expect($previewTarget.get()).toBeNull()
-    expect($paneOpen(PREVIEW_PANE_ID).get()).toBe(false)
     expect(getSessionPreviewRecord('session-1')).toBeNull()
     expect($sessionPreviewRegistry.get()['session-1']?.[0]?.dismissedAt).toEqual(expect.any(Number))
-
-    setCurrentSessionPreviewTarget(target, 'tool-result')
-
-    expect(getSessionPreviewRecord('session-1')?.dismissedAt).toBeUndefined()
   })
 
-  it('replaces the session preview instead of keeping a back stack', () => {
-    const first = previewTarget('/work/first.html')
-    const second = previewTarget('/work/second.html')
-
-    setCurrentSessionPreviewTarget(first, 'tool-result')
-    setCurrentSessionPreviewTarget(second, 'tool-result')
-
-    expect($sessionPreviewRegistry.get()['session-1']).toHaveLength(1)
-    expect(getSessionPreviewRecord('session-1')?.normalized).toEqual(withRenderMode(second, 'preview'))
+  it('closes the preview tab when the preview is dismissed', async () => {
+    await setSessionPreviewTarget('session-1', codeTarget('/work/notes.md'), 'file-browser')
+    await vi.waitFor(() => expect($browserTabs.get()).toHaveLength(1))
 
     dismissPreviewTarget()
 
-    expect($previewTarget.get()).toBeNull()
-    expect(getSessionPreviewRecord('session-1')).toBeNull()
-    expect($sessionPreviewRegistry.get()['session-1']?.map(record => record.normalized.url)).toEqual([
-      'file:///work/second.html'
-    ])
+    expect($browserTabs.get()).toHaveLength(0)
+    expect($previewTabUrl.get()).toBeNull()
+    expect($previewTabOpen.get()).toBe(false)
   })
 
-  it('keeps file inspection separate from live preview', () => {
-    const target = previewTarget('/work/demo.html')
-    const preview = previewTarget('/work/live.html')
+  it('reports the preview as closed once its tab is closed by hand', async () => {
+    await setSessionPreviewTarget('session-1', codeTarget('/work/notes.md'), 'file-browser')
+    await vi.waitFor(() => expect($browserTabs.get()).toHaveLength(1))
 
-    setCurrentSessionPreviewTarget(preview, 'tool-result')
+    closeBrowserTab($browserTabs.get()[0]!.id)
 
-    setCurrentSessionPreviewTarget(target, 'manual')
-
-    expect($filePreviewTarget.get()).toEqual(withRenderMode(target, 'source'))
-    expect($previewTarget.get()).toEqual(withRenderMode(preview, 'preview'))
-    expect(getSessionPreviewRecord('session-1')?.normalized).toEqual(withRenderMode(preview, 'preview'))
-
-    closeActiveRightRailTab()
-
-    expect($filePreviewTarget.get()).toBeNull()
-    expect($previewTarget.get()).toEqual(withRenderMode(preview, 'preview'))
+    expect($previewTabOpen.get()).toBe(false)
   })
 
-  it('keeps file tabs when a live preview opens', () => {
-    const file = previewTarget('/work/file.html')
-    const live = previewTarget('/work/live.html')
+  it('replaces the session preview instead of keeping a back stack', async () => {
+    await setSessionPreviewTarget('session-1', previewTarget('/work/first.html'), 'tool-result')
+    await setSessionPreviewTarget('session-1', previewTarget('/work/second.html'), 'tool-result')
 
-    setCurrentSessionPreviewTarget(file, 'manual')
-    setCurrentSessionPreviewTarget(live, 'tool-result')
+    expect($sessionPreviewRegistry.get()['session-1']).toHaveLength(1)
+    expect(getSessionPreviewRecord('session-1')?.normalized.url).toBe('file:///work/second.html')
+  })
 
-    expect($filePreviewTabs.get().map(tab => tab.target)).toEqual([withRenderMode(file, 'source')])
-    expect($filePreviewTarget.get()).toBeNull()
-    expect($rightRailActiveTabId.get()).toBe(RIGHT_RAIL_PREVIEW_TAB_ID)
-    expect($previewTarget.get()).toEqual(withRenderMode(live, 'preview'))
+  it('does not take over an existing web tab', async () => {
+    setBrowserOpen(true)
+    openWebTab('https://example.com/keep')
+
+    await setSessionPreviewTarget('session-1', codeTarget('/work/notes.md'), 'manual')
+    await vi.waitFor(() => expect($browserTabs.get()).toHaveLength(2))
+
+    expect($browserTabs.get().map(tab => tab.url)).toEqual(['https://example.com/keep', '/work/notes.md'])
   })
 })

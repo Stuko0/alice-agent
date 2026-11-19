@@ -44,6 +44,8 @@ export function SessionSwitcher() {
       {/* Transparent click-catcher: click-away closes, but no dim/blur. */}
       <div
         className="fixed inset-0 z-[219]"
+        data-overlay-root=""
+        data-surface-layer="open"
         onMouseDown={e => {
           e.preventDefault()
           closeSwitcher()

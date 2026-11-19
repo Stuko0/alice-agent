@@ -14,8 +14,6 @@ const PROVIDER_DISPLAY: Record<string, { order: number; title: string }> = {
   // API-key providers
   anthropic: { order: 5, title: 'Anthropic API Key' },
   'claude-code': { order: 6, title: 'Anthropic OAuth: Requires Extra Usage Credits' },
-  // Legacy/third-party providers (available but not recommended)
-  nous: { order: 99, title: 'Nous Portal' },
 }
 
 const assetPath = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
@@ -42,7 +40,6 @@ export function FeaturedProviderRow({
       onClick={() => onSelect(provider)}
       type="button"
     >
-      <span aria-hidden className="arc-border arc-reverse arc-nous" />
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <img alt="" className="size-5 shrink-0 rounded" src={assetPath('apple-touch-icon.png')} />

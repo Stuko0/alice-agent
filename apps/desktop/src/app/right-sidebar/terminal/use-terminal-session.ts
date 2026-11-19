@@ -8,11 +8,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 
 import { triggerHaptic } from '@/lib/haptics'
-import { $filePreviewTarget, $previewTarget } from '@/store/preview'
+import { $previewTarget } from '@/store/preview'
 import { useTheme } from '@/themes/context'
 
 import { $terminalInjection } from '../store'
 
+import { maybeOfferBannerHint } from './banner-hint'
 import { makeTerminalReader, registerTerminalReader } from './buffer'
 import {
   isAddSelectionShortcut,
@@ -57,7 +58,7 @@ type TerminalStatus = 'closed' | 'open' | 'starting'
 // file's name instead of the shell, so the composer ref reads as a file quote
 // rather than a bogus "zsh:N lines".
 function previewSelectionLabel(): string {
-  const target = $filePreviewTarget.get() ?? $previewTarget.get()
+  const target = $previewTarget.get()
   const source = target?.path || target?.url || ''
 
   return source.split(/[\\/]/).filter(Boolean).pop() || target?.label?.trim() || ''
@@ -429,7 +430,13 @@ export function useTerminalSession({
       allowTransparency: false,
       convertEol: true,
       cursorBlink: true,
-      fontFamily: "'JetBrains Mono', 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace",
+      // JetBrains Mono first for the app's voice, then a Nerd Font for the
+      // glyphs it lacks (braille and block art in shell banners: fastfetch,
+      // neofetch, btop). Without a MONOSPACED fallback the browser picks a
+      // proportional symbol face, those cells overflow their grid slot and the
+      // logo paints on top of the labels.
+      fontFamily:
+        "'JetBrains Mono', 'FiraCode Nerd Font', 'Symbols Nerd Font Mono', 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace",
       fontSize: 11,
       // VS Code's terminal renders 'normal'/'bold' (400/700); we were using Medium
       // (500) as the base, which reads a touch heavy at this size.
@@ -467,6 +474,7 @@ export function useTerminalSession({
     // Stripping the boot gap still applies to the live shell output that follows,
     // so the fresh prompt lands flush under the restored block.
     const initialReviveBuffer = initialReviveBufferRef.current
+
 
     if (initialReviveBuffer) {
       term.write(initialReviveBuffer)
@@ -590,7 +598,11 @@ export function useTerminalSession({
     }
 
     const fitAndResize = () => {
-      if (disposed || !host.isConnected || host.clientWidth <= 0 || host.clientHeight <= 0) {
+      if (disposed || !host.isConnected) {
+        return
+      }
+
+      if (host.clientWidth <= 0 || host.clientHeight <= 0) {
         return
       }
 
@@ -599,6 +611,7 @@ export function useTerminalSession({
       } catch {
         return
       }
+
 
       const id = sessionIdRef.current
 
@@ -683,6 +696,7 @@ export function useTerminalSession({
 
           cleanup.push(
             terminalApi.onData(session.id, data => {
+              maybeOfferBannerHint({ cols: term.cols, data, sessionId: session.id, terminalId: id })
               armedWrite(data)
               scheduleSnapshot()
             }),
@@ -737,8 +751,45 @@ export function useTerminalSession({
         console.warn('[alice-terminal] WebGL unavailable; falling back to DOM', err)
       }
 
-      fitAndResize()
-      startSession()
+      // Start the shell only once the host width has settled. The pane chrome
+      // (tab rail) is mounted in the same commit, and reading clientWidth on the
+      // very first frame can still catch the pre-rail width: the PTY then boots
+      // at N columns, the rail lands, SIGWINCH fires, and the shell's startup
+      // banner is reflowed into unreadable art (fastfetch/neofetch). Two
+      // consecutive agreeing frames is the cheapest reliable settle signal.
+      let startFrame = 0
+      let lastWidth = 0
+      let lastHeight = 0
+      let stableFrames = 0
+
+      const startWhenStable = () => {
+        if (disposed) {
+          return
+        }
+
+        const width = host.clientWidth
+        const height = host.clientHeight
+
+        stableFrames = width > 0 && height > 0 && width === lastWidth && height === lastHeight ? stableFrames + 1 : 0
+        lastWidth = width
+        lastHeight = height
+
+        if (stableFrames >= 2) {
+          fitAndResize()
+          startSession()
+
+          return
+        }
+
+        startFrame = window.requestAnimationFrame(startWhenStable)
+      }
+
+      startFrame = window.requestAnimationFrame(startWhenStable)
+      cleanup.push(() => {
+        if (startFrame) {
+          window.cancelAnimationFrame(startFrame)
+        }
+      })
     }
 
     // fonts.ready settles only already-requested faces; the regular (400),

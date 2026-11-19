@@ -1,12 +1,13 @@
 import { useStore } from '@nanostores/react'
+import { memo } from 'react'
 import type * as React from 'react'
 
+import type { SessionInfo } from '@/alice'
 import { writeSessionDrag } from '@/app/chat/composer/inline-refs'
 import { PlatformAvatar } from '@/app/messaging/platform-icon'
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
 import { Tip } from '@/components/ui/tooltip'
-import type { SessionInfo } from '@/alice'
 import { type Translations, useI18n } from '@/i18n'
 import { sessionTitle } from '@/lib/chat-runtime'
 import { desktopSupports } from '@/lib/desktop-capabilities'
@@ -54,7 +55,7 @@ function formatAge(seconds: number, r: Translations['sidebar']['row']): string {
   return r.ageNow
 }
 
-export function SidebarSessionRow({
+function SidebarSessionRowInner({
   session,
   branchStem,
   isPinned,
@@ -289,3 +290,30 @@ function SidebarRowDot({
     />
   )
 }
+
+/**
+ * Rows are memoized on their VISIBLE inputs. Handler identity is deliberately
+ * ignored: every list render recreates `onDelete`/`onPin`/… closures, so a
+ * shallow compare would always fail and the whole list would re-render on a
+ * single `$workingSessionIds` tick. The handlers only capture the session id
+ * (compared via `session`) and stable store actions.
+ */
+export function sessionRowPropsEqual(
+  prev: SidebarSessionRowProps,
+  next: SidebarSessionRowProps
+): boolean {
+  return (
+    prev.session === next.session &&
+    prev.branchStem === next.branchStem &&
+    prev.isPinned === next.isPinned &&
+    prev.isSelected === next.isSelected &&
+    prev.isWorking === next.isWorking &&
+    prev.reorderable === next.reorderable &&
+    prev.dragging === next.dragging &&
+    prev.className === next.className &&
+    prev.style === next.style &&
+    prev.dragHandleProps === next.dragHandleProps
+  )
+}
+
+export const SidebarSessionRow = memo(SidebarSessionRowInner, sessionRowPropsEqual)

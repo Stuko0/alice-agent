@@ -285,7 +285,7 @@ export function HelpFab({ onClick }: { onClick: () => void }): ReactNode {
   return (
     <button
       aria-label={t.settings.providers.helpOpen}
-      className="fixed bottom-5 right-5 z-50 flex size-10 items-center justify-center rounded-full border border-(--stroke-nous) bg-(--ui-chat-bubble-background) text-base font-semibold text-(--theme-primary) shadow-nous transition-transform hover:scale-105"
+      className="fixed bottom-5 right-5 z-50 flex size-10 items-center justify-center rounded-full border border-(--stroke-hairline) bg-(--ui-chat-bubble-background) text-base font-semibold text-(--theme-primary) shadow-ink transition-transform hover:scale-105"
       onClick={onClick}
       title={t.settings.providers.helpOpen}
       type="button"

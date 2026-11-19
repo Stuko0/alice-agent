@@ -33,8 +33,9 @@ describe('AttachmentList', () => {
   it('renders empty list without error', () => {
     renderWithI18n(<AttachmentList attachments={[]} />)
 
+    // The wrapper is a data-slot now; getByTestId would throw, not fall back.
     const container =
-      screen.getByTestId?.('composer-attachments') ?? document.querySelector('[data-slot="composer-attachments"]')
+      screen.queryByTestId('composer-attachments') ?? document.querySelector('[data-slot="composer-attachments"]')
 
     expect(container).toBeDefined()
   })

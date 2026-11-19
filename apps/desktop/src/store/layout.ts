@@ -3,7 +3,7 @@ import { atom, computed, type ReadableAtom } from 'nanostores'
 import { Codecs, persistentAtom } from '@/lib/persisted'
 import { arraysEqual, insertUniqueId } from '@/lib/storage'
 
-import { $paneStates, ensurePaneRegistered, setPaneOpen, setPaneWidthOverride, togglePane } from './panes'
+import { $paneStates, ensurePaneRegistered, forgetPane, setPaneOpen, setPaneWidthOverride, togglePane } from './panes'
 
 export const SIDEBAR_DEFAULT_WIDTH = 237
 export const SIDEBAR_MAX_WIDTH = 360
@@ -29,18 +29,28 @@ const SIDEBAR_WORKSPACE_COLLAPSED_STORAGE_KEY = 'alice.desktop.workspaceCollapse
 const SIDEBAR_DISMISSED_AUTO_PROJECTS_STORAGE_KEY = 'alice.desktop.dismissedAutoProjects'
 const SIDEBAR_DISMISSED_WORKTREES_STORAGE_KEY = 'alice.desktop.dismissedWorktrees'
 const PANES_FLIPPED_STORAGE_KEY = 'alice.desktop.panesFlipped'
-const RIGHT_RAIL_ACTIVE_TAB_STORAGE_KEY = 'alice.desktop.rightRailActiveTab'
+
+/** Pane id the preview rail used before Fase 3 absorbed it into the browser. */
+const RETIRED_PREVIEW_PANE_ID = 'preview'
+/** Persisted active-tab key of the same retired rail. */
+const RETIRED_RIGHT_RAIL_TAB_STORAGE_KEY = 'alice.desktop.rightRailActiveTab'
 
 export const CHAT_SIDEBAR_PANE_ID = 'chat-sidebar'
 export const FILE_BROWSER_PANE_ID = 'file-browser'
-export const PREVIEW_PANE_ID = 'preview'
-export const RIGHT_RAIL_PREVIEW_TAB_ID = 'preview'
-
-export type RightRailTabId = typeof RIGHT_RAIL_PREVIEW_TAB_ID | `file:${string}`
 
 ensurePaneRegistered(CHAT_SIDEBAR_PANE_ID, { open: true })
 ensurePaneRegistered(FILE_BROWSER_PANE_ID, { open: false })
-ensurePaneRegistered(PREVIEW_PANE_ID, { open: true })
+
+// Migration: the right-hand preview rail was absorbed by the browser drawer, so
+// a persisted `preview: {open:true}` (and its tab key) would describe a pane
+// that no longer exists. Drop both once, on boot.
+forgetPane(RETIRED_PREVIEW_PANE_ID)
+
+try {
+  window.localStorage.removeItem(RETIRED_RIGHT_RAIL_TAB_STORAGE_KEY)
+} catch {
+  // Storage can be unavailable (private mode); nothing to migrate then.
+}
 
 export const $sidebarOpen: ReadableAtom<boolean> = computed(
   $paneStates,
@@ -52,13 +62,6 @@ export const $fileBrowserOpen: ReadableAtom<boolean> = computed(
   states => states[FILE_BROWSER_PANE_ID]?.open ?? false
 )
 
-// Persisted so a relaunch reopens the same rail tab. A restored file-tab id with
-// no matching tab is reconciled back to the preview tab in the preview store.
-export const $rightRailActiveTabId = persistentAtom<RightRailTabId>(
-  RIGHT_RAIL_ACTIVE_TAB_STORAGE_KEY,
-  RIGHT_RAIL_PREVIEW_TAB_ID,
-  { decode: raw => raw as RightRailTabId, encode: tabId => tabId }
-)
 
 export const $sidebarWidth: ReadableAtom<number> = computed($paneStates, states => {
   const override = states[CHAT_SIDEBAR_PANE_ID]?.widthOverride
@@ -223,10 +226,6 @@ export function requestSessionSearchFocus() {
 
 export function togglePanesFlipped() {
   $panesFlipped.set(!$panesFlipped.get())
-}
-
-export function selectRightRailTab(id: RightRailTabId) {
-  $rightRailActiveTabId.set(id)
 }
 
 export function setSidebarPinsOpen(open: boolean) {

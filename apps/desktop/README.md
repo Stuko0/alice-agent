@@ -111,7 +111,7 @@ rm "$HOME/.alice/alice-agent/.alice-bootstrap-complete"
 # Rebuild a broken Python venv
 rm -rf "$HOME/.alice/alice-agent/venv"
 # Reset a stuck macOS microphone prompt (macOS only)
-tccutil reset Microphone com.nousresearch.alice
+tccutil reset Microphone dev.stuko.alice
 ```
 
 **Windows (PowerShell):**

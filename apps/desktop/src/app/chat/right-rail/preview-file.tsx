@@ -7,7 +7,6 @@ import type {
   ReactNode
 } from 'react'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import ShikiHighlighter from 'react-shiki'
 import { Streamdown } from 'streamdown'
 
 import { requestComposerFocus, requestComposerInsertRefs } from '@/app/chat/composer/focus'
@@ -19,26 +18,41 @@ import { FileDiffPanel } from '@/components/chat/diff-lines'
 import { chunkTextLines, useFixedRowWindow } from '@/components/chat/fixed-row-window'
 import { PageLoader } from '@/components/page-loader'
 import { translateNow, useI18n } from '@/i18n'
+import { desktopSupports } from '@/lib/desktop-capabilities'
 import {
   desktopFileDiff,
   desktopGitRoot,
   readDesktopFileDataUrl,
   readDesktopFileText,
+  startDesktopPreviewServer,
+  statDesktopFile,
+  stopDesktopPreviewServer,
   writeDesktopFileText
 } from '@/lib/desktop-fs'
 import { Check, Pencil, X } from '@/lib/icons'
+import { previewFilePath } from '@/lib/local-preview'
 import { shikiLanguageForFilename } from '@/lib/markdown-code'
+import { recordPreviewEvent } from '@/lib/preview-telemetry'
+import { getCachedPreviewText, previewTextCacheKey, putCachedPreviewText } from '@/lib/preview-text-cache'
+import { highlightCode } from '@/lib/shiki-cache'
 import { cn } from '@/lib/utils'
 import type { PreviewTarget } from '@/store/preview'
 import { setPreviewDirty } from '@/store/preview-edit'
 import { $currentCwd } from '@/store/session'
 import { notifyWorkspaceChanged } from '@/store/workspace-events'
 
-const SHIKI_THEME = { dark: 'github-dark-default', light: 'github-light-default' } as const
+import { LazySections } from './lazy-sections'
+
 const TEXT_PREVIEW_MAX_BYTES = 512 * 1024
+const IMAGE_INLINE_MAX_BYTES = 8 * 1024 * 1024
+const IMAGE_SERVER_MAX_BYTES = 64 * 1024 * 1024
 const SOURCE_CHUNK_LINES = 200
 const SOURCE_LINE_PX = 20
 const SOURCE_OVERSCAN_LINES = 400
+// Above this size a syntax-highlight pass costs more than it helps: render
+// plain text by default and let the user opt into highlighting.
+const SOURCE_HIGHLIGHT_MAX_CHARS = 1_000_000
+const SOURCE_HIGHLIGHT_MAX_LINES = 20_000
 
 type EmptyStateTone = 'neutral' | 'warning'
 
@@ -83,6 +97,9 @@ interface PreviewEmptyStateProps {
   secondaryAction?: { disabled?: boolean; label: string; onClick: () => void }
   title: string
   tone?: EmptyStateTone
+  // Tertiary affordance (e.g. "view source" on a failed web preview). Rendered
+  // as a quiet link below the primary/secondary buttons.
+  trailingAction?: { disabled?: boolean; label: string; onClick: () => void }
 }
 
 export function PreviewEmptyState({
@@ -91,7 +108,8 @@ export function PreviewEmptyState({
   primaryAction,
   secondaryAction,
   title,
-  tone = 'neutral'
+  tone = 'neutral',
+  trailingAction
 }: PreviewEmptyStateProps) {
   const styles = TONE_STYLES[tone]
 
@@ -133,6 +151,16 @@ export function PreviewEmptyState({
             )}
           </div>
         )}
+        {trailingAction && (
+          <button
+            className="text-[0.6875rem] font-medium text-muted-foreground underline decoration-current/20 underline-offset-4 transition-colors hover:text-foreground disabled:cursor-default disabled:text-muted-foreground/55 disabled:no-underline"
+            disabled={trailingAction.disabled}
+            onClick={trailingAction.onClick}
+            type="button"
+          >
+            {trailingAction.label}
+          </button>
+        )}
       </div>
     </div>
   )
@@ -142,11 +170,16 @@ interface LocalPreviewState {
   binary?: boolean
   byteSize?: number
   dataUrl?: string
+  /** Loopback URL for an image served by the Wails shell. */
+  imageUrl?: string
+  /** The image is too large for an inline preview and no server is available. */
+  tooLargeImage?: boolean
   /** Working-tree-vs-HEAD unified diff, when the file has uncommitted changes. */
   diff?: string
   error?: string
   language?: string
   loading: boolean
+  mtimeMs?: number
   text?: string
   truncated?: boolean
 }
@@ -162,20 +195,6 @@ function isTypableElement(el: Element | null): boolean {
   const tag = el.tagName
 
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el as HTMLElement).isContentEditable
-}
-
-function filePathForTarget(target: PreviewTarget) {
-  if (target.path) {
-    return target.path
-  }
-
-  try {
-    const url = new URL(target.url)
-
-    return url.protocol === 'file:' ? decodeURIComponent(url.pathname) : target.url
-  } catch {
-    return target.url
-  }
 }
 
 function formatBytes(bytes: number | undefined) {
@@ -291,18 +310,40 @@ function MarkdownCode({ className, children, ...props }: ComponentProps<'code'>)
     )
   }
 
+  return <HighlightedCode code={String(children).replace(/\n$/, '')} language={language} />
+}
+
+// Shiki-backed code block with a bounded result cache and a plain-text first
+// paint. Re-mounting a chunk (virtual scroll, markdown re-render) reuses the
+// cached HTML instead of re-tokenising it.
+function HighlightedCode({ code, language }: { code: string; language: string }) {
+  const [rendered, setRendered] = useState<null | { code: string; html: string }>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    void highlightCode(code, language).then(html => {
+      if (!cancelled) {
+        setRendered({ code, html })
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [code, language])
+
+  if (!rendered || rendered.code !== code) {
+    return <pre className="m-0 overflow-x-auto p-3 font-mono text-xs leading-relaxed">{code}</pre>
+  }
+
   return (
-    <ShikiHighlighter
-      addDefaultStyles={false}
-      as="div"
-      defaultColor="light-dark()"
-      delay={80}
-      language={language}
-      showLanguage={false}
-      theme={SHIKI_THEME}
-    >
-      {String(children).replace(/\n$/, '')}
-    </ShikiHighlighter>
+    <div
+      className="overflow-x-auto p-3 font-mono text-xs leading-relaxed [&_pre]:m-0 [&_pre]:bg-transparent! [&_pre]:p-0"
+      // Shiki output is generated from escaped source text; it contains no
+      // user HTML, only spans and inline styles.
+      dangerouslySetInnerHTML={{ __html: rendered.html }}
+    />
   )
 }
 
@@ -323,9 +364,14 @@ const MARKDOWN_COMPONENTS = {
 function MarkdownPreview({ text }: { text: string }) {
   return (
     <div className="preview-markdown mx-auto max-w-3xl px-4 py-3 text-sm text-foreground" data-selectable-text="true">
-      <Streamdown components={MARKDOWN_COMPONENTS} controls={false} mode="static" parseIncompleteMarkdown={false}>
-        {text}
-      </Streamdown>
+      <LazySections
+        renderSection={section => (
+          <Streamdown components={MARKDOWN_COMPONENTS} controls={false} mode="static" parseIncompleteMarkdown={false}>
+            {section}
+          </Streamdown>
+        )}
+        text={text}
+      />
     </div>
   )
 }
@@ -446,6 +492,9 @@ function SourceView({ filePath, language, text }: { filePath: string; language: 
 
   const visibleChunks = chunks.slice(startChunk, endChunk + 1)
   const [selection, setSelection] = useState<LineSelection | null>(null)
+  const tooLargeToHighlight = text.length > SOURCE_HIGHLIGHT_MAX_CHARS || totalLines > SOURCE_HIGHLIGHT_MAX_LINES
+  const [allowHighlight, setAllowHighlight] = useState(false)
+  const plainMode = tooLargeToHighlight && !allowHighlight
   const inSelection = (line: number) => selection != null && line >= selection.start && line <= selection.end
 
   const handleLineClick = (event: ReactMouseEvent, line: number) => {
@@ -501,51 +550,59 @@ function SourceView({ filePath, language, text }: { filePath: string; language: 
   }, [filePath, selection])
 
   return (
-    <div className="h-full overflow-auto" onScroll={onScroll} ref={scrollerRef}>
-      <div className="grid min-w-max grid-cols-[auto_minmax(0,1fr)] font-mono text-[0.7rem] leading-relaxed">
-        {beforeRows > 0 && <div aria-hidden className="col-span-2" style={{ height: beforeRows * SOURCE_LINE_PX }} />}
-        {visibleChunks.map(chunk => (
-          <Fragment key={chunk.start}>
-            <div className="select-none text-right text-muted-foreground/55">
-              {chunk.lines.map((_lineText, offset) => {
-                const line = chunk.start + offset + 1
-                const selected = inSelection(line)
+    <div className="flex h-full flex-col">
+      {tooLargeToHighlight && !allowHighlight && (
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-muted/35 px-3 py-1.5 text-[0.68rem] text-muted-foreground">
+          <span>{t.preview.plainBecauseLarge}</span>
+          <button
+            className="shrink-0 font-bold underline underline-offset-4 transition-opacity hover:opacity-80"
+            onClick={() => setAllowHighlight(true)}
+            type="button"
+          >
+            {t.preview.highlightAnyway}
+          </button>
+        </div>
+      )}
+      <div className="h-full overflow-auto" onScroll={onScroll} ref={scrollerRef}>
+        <div className="grid min-w-max grid-cols-[auto_minmax(0,1fr)] font-mono text-[0.7rem] leading-relaxed">
+          {beforeRows > 0 && <div aria-hidden className="col-span-2" style={{ height: beforeRows * SOURCE_LINE_PX }} />}
+          {visibleChunks.map(chunk => (
+            <Fragment key={chunk.start}>
+              <div className="select-none text-right text-muted-foreground/55">
+                {chunk.lines.map((_lineText, offset) => {
+                  const line = chunk.start + offset + 1
+                  const selected = inSelection(line)
 
-                return (
-                  <div
-                    className={cn(
-                      'h-5 w-9 cursor-pointer pr-2 leading-5 tabular-nums transition-colors',
-                      selected
-                        ? 'bg-amber-200/45 text-amber-900 dark:bg-amber-300/20 dark:text-amber-100'
-                        : 'hover:text-foreground'
-                    )}
-                    draggable
-                    key={line}
-                    onClick={event => handleLineClick(event, line)}
-                    onDragStart={event => handleDragStart(event, line)}
-                    title={t.preview.sourceLineTitle}
-                  >
-                    {line}
-                  </div>
-                )
-              })}
-            </div>
-            <div className="preview-source-code min-w-0 [&_pre]:m-0" data-selectable-text="true">
-              <ShikiHighlighter
-                addDefaultStyles={false}
-                as="div"
-                defaultColor="light-dark()"
-                delay={80}
-                language={language || 'text'}
-                showLanguage={false}
-                theme={SHIKI_THEME}
-              >
-                {chunk.text}
-              </ShikiHighlighter>
-            </div>
-          </Fragment>
-        ))}
-        {afterRows > 0 && <div aria-hidden className="col-span-2" style={{ height: afterRows * SOURCE_LINE_PX }} />}
+                  return (
+                    <div
+                      className={cn(
+                        'h-5 w-9 cursor-pointer pr-2 leading-5 tabular-nums transition-colors',
+                        selected
+                          ? 'bg-amber-200/45 text-amber-900 dark:bg-amber-300/20 dark:text-amber-100'
+                          : 'hover:text-foreground'
+                      )}
+                      draggable
+                      key={line}
+                      onClick={event => handleLineClick(event, line)}
+                      onDragStart={event => handleDragStart(event, line)}
+                      title={t.preview.sourceLineTitle}
+                    >
+                      {line}
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="preview-source-code min-w-0 [&_pre]:m-0" data-selectable-text="true">
+                {plainMode ? (
+                  <pre className="m-0 overflow-x-auto p-3 font-mono text-xs leading-relaxed">{chunk.text}</pre>
+                ) : (
+                  <HighlightedCode code={chunk.text} language={language || 'text'} />
+                )}
+              </div>
+            </Fragment>
+          ))}
+          {afterRows > 0 && <div aria-hidden className="col-span-2" style={{ height: afterRows * SOURCE_LINE_PX }} />}
+        </div>
       </div>
     </div>
   )
@@ -557,8 +614,9 @@ export function LocalFilePreview({ reloadKey, target }: { reloadKey: number; tar
   const { t } = useI18n()
   const [state, setState] = useState<LocalPreviewState>({ loading: true })
   const [forcePreview, setForcePreview] = useState(false)
-  // User-picked view; null = auto (diff when changed, else rendered markdown,
-  // else source). Reset when the previewed file changes.
+  // User-picked view; null = auto (rendered markdown, else source). The diff
+  // view is user-triggered only — fetching it eagerly cost a full read + git
+  // call on every open even when nobody looked at it.
   const [userMode, setUserMode] = useState<null | PreviewViewMode>(null)
   // Spot-editor state. The editor owns its buffer (keyed by `editorKey`); the
   // live draft + the snapshot the user started from live in refs so typing
@@ -574,11 +632,17 @@ export function LocalFilePreview({ reloadKey, target }: { reloadKey: number; tar
   const [saveError, setSaveError] = useState<null | string>(null)
   const [conflict, setConflict] = useState(false)
   const [selfReload, setSelfReload] = useState(0)
+
+  const [diffState, setDiffState] = useState<{ status: 'idle' | 'loading' | 'ready'; diff?: string }>({
+    status: 'idle'
+  })
+
   // For the bare-`e` shortcut: the read-view root (to detect focus-within) and a
   // hover flag (no state — only the keydown handler reads it).
   const readViewRef = useRef<HTMLDivElement>(null)
   const hoverRef = useRef(false)
-  const filePath = filePathForTarget(target)
+  const imageServerRef = useRef('')
+  const filePath = previewFilePath(target)
   const isImage = target.previewKind === 'image'
 
   useEffect(() => {
@@ -590,7 +654,21 @@ export function LocalFilePreview({ reloadKey, target }: { reloadKey: number; tar
     setConflict(false)
     draftRef.current = ''
     baselineRef.current = ''
+    setDiffState({ status: 'idle' })
   }, [filePath, reloadKey])
+
+  // Image servers are per-preview-target: closing the tab (unmount) or moving
+  // to another file must release the listener, not leak a port per click.
+  useEffect(() => {
+    return () => {
+      const id = imageServerRef.current
+      imageServerRef.current = ''
+
+      if (id) {
+        void stopDesktopPreviewServer(id)
+      }
+    }
+  }, [filePath])
 
   // HTML files are rendered as source code, not in a webview - so they take
   // the same path as plain text files. `previewKind === 'binary'` arrives
@@ -598,6 +676,11 @@ export function LocalFilePreview({ reloadKey, target }: { reloadKey: number; tar
   const isText = target.previewKind === 'text' || target.previewKind === 'binary' || target.previewKind === 'html'
 
   const blockedByTarget = !isImage && !forcePreview && (target.binary || target.large)
+
+  const isMarkdown = (state.language || target.language) === 'markdown'
+  const modes: PreviewViewMode[] = isText ? (isMarkdown ? ['rendered', 'source', 'diff'] : ['source', 'diff']) : []
+  const autoMode: PreviewViewMode = isMarkdown ? 'rendered' : 'source'
+  const mode = userMode && modes.includes(userMode) ? userMode : autoMode
 
   useEffect(() => {
     let active = true
@@ -616,12 +699,54 @@ export function LocalFilePreview({ reloadKey, target }: { reloadKey: number; tar
       }
 
       setState({ loading: true })
+      const startedAt = performance.now()
 
       try {
+        const stat = await statDesktopFile(filePath).catch(() => null)
+
         if (isImage) {
           // Prefer bytes the caller already handed us (a pasted/dropped
           // screenshot) over re-reading a path that may be transient/unreadable.
-          const dataUrl = target.dataUrl || (await readDesktopFileDataUrl(filePath))
+          if (target.dataUrl) {
+            if (active) {
+              setState({ dataUrl: target.dataUrl, loading: false })
+            }
+
+            return
+          }
+
+          // Wails: stream the image from the loopback server (downscaled for
+          // large rasters) instead of base64-ing megabytes through the bridge.
+          const canServe = desktopSupports('previewLocalServer') && Boolean(window.aliceDesktop?.previewStartForImage)
+          const byteSize = stat?.byteSize ?? 0
+
+          if (canServe && byteSize <= IMAGE_SERVER_MAX_BYTES) {
+            const server = await startDesktopPreviewServer(filePath, 'image').catch(() => null)
+
+            if (server) {
+              if (!active) {
+                void stopDesktopPreviewServer(server.id)
+
+                return
+              }
+
+              imageServerRef.current = server.id
+              setState({ byteSize, imageUrl: server.url, loading: false })
+              recordPreviewEvent('preview.image.server', { bytes: byteSize, path: filePath })
+
+              return
+            }
+          }
+
+          if (byteSize > IMAGE_INLINE_MAX_BYTES) {
+            if (active) {
+              setState({ byteSize, loading: false, tooLargeImage: true })
+            }
+
+            return
+          }
+
+          const dataUrl = await readDesktopFileDataUrl(filePath)
 
           if (active) {
             setState({ dataUrl, loading: false })
@@ -630,7 +755,15 @@ export function LocalFilePreview({ reloadKey, target }: { reloadKey: number; tar
           return
         }
 
-        const result = await readTextPreview(filePath)
+        // Reuse a recent read when the file has not changed. Only possible
+        // with a stat-capable shell (Wails); the key includes mtime.
+        const cacheKey = stat ? previewTextCacheKey(filePath, stat.mtimeMs) : ''
+        const cached = cacheKey ? getCachedPreviewText(cacheKey) : null
+        const result = cached ?? (await readTextPreview(filePath))
+
+        if (cacheKey && !cached) {
+          putCachedPreviewText(cacheKey, result)
+        }
 
         if (active) {
           const shouldBlock = !forcePreview && (result.binary || (result.byteSize ?? 0) > TEXT_PREVIEW_MAX_BYTES)
@@ -640,25 +773,18 @@ export function LocalFilePreview({ reloadKey, target }: { reloadKey: number; tar
             byteSize: result.byteSize,
             language: result.language || target.language || 'text',
             loading: false,
+            mtimeMs: stat?.mtimeMs,
             text: shouldBlock ? undefined : result.text,
             truncated: result.truncated
           })
 
-          // Best-effort: fetch the file's working-tree-vs-HEAD diff so the
-          // preview can offer a DIFF view when there are uncommitted changes.
-          // Empty (clean file / not a repo / remote) just hides the option.
-          if (!shouldBlock) {
-            try {
-              const root = await desktopGitRoot(filePath)
-              const diff = root ? await desktopFileDiff(root, filePath) : ''
-
-              if (active && diff.trim()) {
-                setState(prev => (prev.text === result.text ? { ...prev, diff } : prev))
-              }
-            } catch {
-              // No diff available; the preview just shows source.
-            }
-          }
+          recordPreviewEvent('preview.read', {
+            bytes: result.byteSize ?? 0,
+            cached: Boolean(cached),
+            ms: Math.round(performance.now() - startedAt),
+            path: filePath,
+            truncated: Boolean(result.truncated)
+          })
         }
       } catch (error) {
         if (active) {
@@ -676,6 +802,39 @@ export function LocalFilePreview({ reloadKey, target }: { reloadKey: number; tar
       active = false
     }
   }, [blockedByTarget, filePath, forcePreview, isImage, isText, reloadKey, selfReload, target.dataUrl, target.language])
+
+  // Diff is fetched on demand and memoised for this file/mtime. An unchanged
+  // file costs one git call per preview, not one per open + watcher tick.
+  useEffect(() => {
+    if (mode !== 'diff' || diffState.status !== 'idle' || state.text === undefined) {
+      return
+    }
+
+    let active = true
+    const startedAt = performance.now()
+
+    setDiffState({ status: 'loading' })
+
+    void (async () => {
+      try {
+        const root = await desktopGitRoot(filePath)
+        const diff = root ? await desktopFileDiff(root, filePath) : ''
+
+        if (active) {
+          setDiffState({ diff, status: 'ready' })
+          recordPreviewEvent('preview.diff', { ms: Math.round(performance.now() - startedAt), path: filePath })
+        }
+      } catch {
+        if (active) {
+          setDiffState({ diff: '', status: 'ready' })
+        }
+      }
+    })()
+
+    return () => {
+      active = false
+    }
+  }, [diffState.status, filePath, mode, state.text])
 
   // Editing is only offered for whole, readable text — never images, binaries,
   // or files we only loaded the first 512 KB of (saving would drop the tail).
@@ -884,38 +1043,35 @@ export function LocalFilePreview({ reloadKey, target }: { reloadKey: number; tar
     )
   }
 
-  if (isImage && state.dataUrl) {
+  if (isImage && state.tooLargeImage) {
+    return (
+      <PreviewEmptyState
+        body={t.preview.largeImageBody(target.label, formatBytes(state.byteSize))}
+        primaryAction={{
+          label: t.preview.openInBrowser,
+          onClick: () => void window.aliceDesktop?.openExternal(target.url)
+        }}
+        title={t.preview.largeImageTitle}
+        tone="warning"
+      />
+    )
+  }
+
+  if (isImage && (state.imageUrl || state.dataUrl)) {
     return (
       <div className="flex h-full w-full items-center justify-center overflow-auto bg-transparent p-4">
         <img
           alt={target.label}
           className="max-h-full max-w-full rounded-lg object-contain shadow-sm"
+          decoding="async"
           draggable={false}
-          src={state.dataUrl}
+          src={state.imageUrl || state.dataUrl}
         />
       </div>
     )
   }
 
   if (isText && state.text !== undefined) {
-    const isMarkdown = (state.language || target.language) === 'markdown'
-    const hasDiff = Boolean(state.diff && state.diff.trim())
-    // Order the toggle reads left→right; default lands on the most useful view.
-    const modes: PreviewViewMode[] = []
-
-    if (isMarkdown) {
-      modes.push('rendered')
-    }
-
-    modes.push('source')
-
-    if (hasDiff) {
-      modes.push('diff')
-    }
-
-    const autoMode: PreviewViewMode = hasDiff ? 'diff' : isMarkdown ? 'rendered' : 'source'
-    const mode = userMode && modes.includes(userMode) ? userMode : autoMode
-
     return (
       <div
         className="flex h-full flex-col overflow-hidden bg-transparent"
@@ -954,13 +1110,19 @@ export function LocalFilePreview({ reloadKey, target }: { reloadKey: number; tar
           {mode === 'rendered' ? (
             <MarkdownPreview text={state.text} />
           ) : mode === 'diff' ? (
-            <FileDiffPanel
-              className="mx-0 mb-0 h-full max-h-none"
-              diff={state.diff ?? ''}
-              fullText={state.text}
-              path={filePath}
-              showLineNumbers
-            />
+            diffState.status === 'ready' && diffState.diff?.trim() ? (
+              <FileDiffPanel
+                className="mx-0 mb-0 h-full max-h-none"
+                diff={diffState.diff}
+                fullText={state.text}
+                path={filePath}
+                showLineNumbers
+              />
+            ) : diffState.status === 'ready' ? (
+              <PreviewEmptyState body={t.preview.diffEmptyBody} title={t.preview.diffEmptyTitle} />
+            ) : (
+              <PageLoader label={t.preview.diffLoading} />
+            )
           ) : (
             <SourceView
               filePath={filePath}

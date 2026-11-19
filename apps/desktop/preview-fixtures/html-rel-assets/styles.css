@@ -1,0 +1,9 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 2rem;
+  color: #1f2933;
+}
+
+#title {
+  color: rgb(180, 24, 96);
+}

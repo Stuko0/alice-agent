@@ -11,6 +11,7 @@ import { playCompletionSound } from '@/lib/completion-sound'
 import { gatewayEventRequiresSessionId } from '@/lib/gateway-events'
 import { triggerHaptic } from '@/lib/haptics'
 import { isProviderSetupErrorMessage } from '@/lib/provider-setup-errors'
+import { upsertBrowserTab } from '@/store/browser-tabs'
 import { clearClarifyRequest, setClarifyRequest } from '@/store/clarify'
 import { setSessionCompacting } from '@/store/compaction'
 import { refreshBackgroundProcesses } from '@/store/composer-status'
@@ -18,8 +19,6 @@ import { $gateway } from '@/store/gateway'
 import { dispatchNativeNotification } from '@/store/native-notifications'
 import { notify } from '@/store/notifications'
 import { requestDesktopOnboarding } from '@/store/onboarding'
-import { upsertBrowserTab } from '@/store/browser-tabs'
-import { setBrowserTabsOpen } from '@/app/right-sidebar/store'
 import { flashPetActivity, markPetUnread, setPetActivity } from '@/store/pet'
 import { followActiveSessionCwd } from '@/store/projects'
 import { clearAllPrompts, setApprovalRequest, setAskpassRequest, setSecretRequest, setSudoRequest } from '@/store/prompts'
@@ -118,6 +117,7 @@ export function useGatewayEventHandler(deps: GatewayEventDeps) {
         const matchesActiveRuntime =
           !!activeSessionIdRef.current &&
           (event.session_id ?? payload?.session_id) === activeSessionIdRef.current
+
         const apply = explicitSid ? isActiveEvent : (!activeSessionIdRef.current || matchesActiveRuntime)
         const statePatch = sessionInfoStatePatch(payload)
         const hasStatePatch = hasSessionInfoStatePatch(statePatch)
@@ -367,14 +367,14 @@ export function useGatewayEventHandler(deps: GatewayEventDeps) {
         flushQueuedDeltas(sessionId)
         upsertToolCall(sessionId, toTodoPayload(payload) ?? payload, 'running', event.type)
 
-        // Auto-show browser panel + add tab when the agent navigates
+        // The agent navigated: record the tab and badge the spine. Opening the
+        // pane is always the user's call.
         if (event.type === 'tool.start' && payload?.name === 'browser_navigate') {
           const args = (payload.args ?? payload.input) as Record<string, string> | undefined
           const url = String(args?.url ?? '')
+
           if (url) {
             upsertBrowserTab(url)
-            // Auto-open browser pane when agent navigates
-            setBrowserTabsOpen(true)
           }
         }
 

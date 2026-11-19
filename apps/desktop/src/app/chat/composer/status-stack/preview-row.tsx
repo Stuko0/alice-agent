@@ -8,10 +8,8 @@ import { Tip } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n'
 import { normalizeOrLocalPreviewTarget } from '@/lib/local-preview'
 import { cn } from '@/lib/utils'
-import { PREVIEW_PANE_ID } from '@/store/layout'
 import { notifyError } from '@/store/notifications'
-import { $paneOpen } from '@/store/panes'
-import { $previewTarget, dismissPreviewTarget, setCurrentSessionPreviewTarget } from '@/store/preview'
+import { $previewTabOpen, $previewTarget, dismissPreviewTarget, setCurrentSessionPreviewTarget } from '@/store/preview'
 import { type PreviewArtifact } from '@/store/preview-status'
 
 interface PreviewStatusRowProps {
@@ -23,9 +21,10 @@ interface PreviewStatusRowProps {
 export const PreviewStatusRow = memo(function PreviewStatusRow({ item, onDismiss }: PreviewStatusRowProps) {
   const { t } = useI18n()
   const activePreview = useStore($previewTarget)
-  const previewPaneOpen = useStore($paneOpen(PREVIEW_PANE_ID))
+  // "Open" now means "its browser tab is open" — the preview rail is gone.
+  const previewTabOpen = useStore($previewTabOpen)
   const [opening, setOpening] = useState(false)
-  const isOpen = activePreview?.source === item.target && previewPaneOpen
+  const isOpen = activePreview?.source === item.target && previewTabOpen
 
   const resolveTarget = async () => {
     const target = await normalizeOrLocalPreviewTarget(item.target, item.cwd || undefined)
@@ -83,8 +82,8 @@ export const PreviewStatusRow = memo(function PreviewStatusRow({ item, onDismiss
           size="0.8rem"
         />
       }
-      // Plain click opens the link in the browser; ⌘/Ctrl-click opens it in the
-      // in-app preview pane instead. (isOpen still toggles the pane closed.)
+      // Plain click opens the link in the external browser; ⌘/Ctrl-click opens
+      // it in the embedded browser drawer instead (and toggles it closed).
       onActivate={event => {
         if (event.metaKey || event.ctrlKey) {
           void togglePreview()

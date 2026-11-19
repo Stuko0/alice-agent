@@ -1,47 +1,34 @@
 import { useStore } from '@nanostores/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
-import { BootFailureOverlay } from '@/components/boot-failure-overlay'
-
-import { HelpFab, HelpOverlay } from '@/components/help-overlay'
-
-import { MigrationWizard } from '@/components/migration-wizard'
-
-import { DesktopInstallOverlay } from '@/components/desktop-install-overlay'
-import { GatewayConnectingOverlay } from '@/components/gateway-connecting-overlay'
-import { DesktopOnboardingOverlay } from '@/components/onboarding'
+import { BrowserPane as NativeBrowserPane } from '@/app/browser'
 import { Pane, PaneMain } from '@/components/pane-shell'
-import { RemoteDisplayBanner } from '@/components/remote-display-banner'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { isFocusWithin } from '@/lib/keybinds/combo'
-import { cn } from '@/lib/utils'
+import { $browserOpen, setBrowserOpen } from '@/store/browser'
+import { $activeBrowserTabId, closeBrowserTab } from '@/store/browser-tabs'
+import { $sidebarOpen, setSidebarOpen, toggleFileBrowserOpen } from '@/store/layout'
+import { $toolViewMode } from '@/store/tool-view'
 import { useSkinCommand } from '@/themes/use-skin-command'
 
-import { formatRefValue } from '../components/assistant-ui/directive-text'
 import { getSessionMessages, triggerCronJob } from '../alice'
+import { formatRefValue } from '../components/assistant-ui/directive-text'
 import { type ChatMessage, chatMessageText, preserveLocalAssistantErrors, toChatMessages } from '../lib/chat-messages'
 import { storedSessionIdForNotification } from '../lib/session-ids'
 import { latestSessionTodos } from '../lib/todos'
 import { setCronFocusJobId } from '../store/cron'
 import {
-  $fileBrowserOpen,
   $panesFlipped,
   $pinnedSessionIds,
-  FILE_BROWSER_DEFAULT_WIDTH,
   FILE_BROWSER_MAX_WIDTH,
   FILE_BROWSER_MIN_WIDTH,
   pinSession,
-  PREVIEW_PANE_ID,
   restoreWorktree,
-  setSidebarOverlayMounted,
-  SIDEBAR_DEFAULT_WIDTH,
-  SIDEBAR_MAX_WIDTH,
   unpinSession
 } from '../store/layout'
 import { respondToApprovalAction } from '../store/native-notifications'
-import { $paneOpen } from '../store/panes'
 import { setPetActivity } from '../store/pet'
 import { setPetScale } from '../store/pet-gallery'
 import {
@@ -49,15 +36,9 @@ import {
   setPetOverlayScaleHandler,
   setPetOverlaySubmitHandler
 } from '../store/pet-overlay'
-import { $filePreviewTarget, $previewTarget, closeActiveRightRailTab } from '../store/preview'
-import {
-  $activeGatewayProfile,
-  $freshSessionRequest,
-  $profileScope,
-  refreshActiveProfile
-} from '../store/profile'
+import { $activeGatewayProfile, $freshSessionRequest, $profileScope, refreshActiveProfile } from '../store/profile'
 import { $startWorkSessionRequest, followActiveSessionCwd, resolveNewSessionCwd } from '../store/projects'
-import { $reviewOpen, REVIEW_PANE_ID } from '../store/review'
+import { $reviewOpen, REVIEW_PANE_ID, toggleReview } from '../store/review'
 import {
   $activeSessionId,
   $attentionSessionIds,
@@ -75,8 +56,6 @@ import {
   setBusy,
   setCurrentBranch,
   setCurrentCwd,
-  setCurrentModel,
-  setCurrentProvider,
   setMessages,
   setRememberedSessionId
 } from '../store/session'
@@ -88,53 +67,50 @@ import { isSecondaryWindow } from '../store/windows'
 import { ChatView } from './chat'
 import { requestComposerFocus, requestComposerInsert } from './chat/composer/focus'
 import { useComposerActions } from './chat/hooks/use-composer-actions'
-import {
-  ChatPreviewRail,
-  PREVIEW_RAIL_MAX_WIDTH,
-  PREVIEW_RAIL_MIN_WIDTH,
-  PREVIEW_RAIL_PANE_WIDTH
-} from './chat/right-rail'
 import { ChatSidebar } from './chat/sidebar'
-import { CommandPalette } from './command-palette'
 import { useGatewayBoot } from './gateway/hooks/use-gateway-boot'
 import { useGatewayRequest } from './gateway/hooks/use-gateway-request'
 import { useKeybinds } from './hooks/use-keybinds'
 import { SIDEBAR_COLLAPSE_MEDIA_QUERY } from './layout-constants'
-import { ModelPickerOverlay } from './model-picker-overlay'
-import { ModelVisibilityOverlay } from './model-visibility-overlay'
-import { PetGenerateOverlay } from './pet-generate/pet-generate-overlay'
 import { RightSidebarPane } from './right-sidebar'
-import { FileActionDialogs } from './right-sidebar/file-actions'
-import { RemoteFolderPicker } from './right-sidebar/files/remote-picker'
-import { ReviewPane } from './right-sidebar/review'
 import { BrowserPane } from './right-sidebar/browser'
-import { $terminalTakeover, $browserTabsOpen } from './right-sidebar/store'
-import { TerminalPaneChrome } from './right-sidebar/terminal/chrome'
+import { ReviewPane } from './right-sidebar/review'
+import { $browserTabsOpen, $terminalAsRow, $terminalTakeover, setTerminalTakeover } from './right-sidebar/store'
+import { TerminalPaneBody } from './right-sidebar/terminal/pane-body'
 import { PersistentTerminal } from './right-sidebar/terminal/persistent'
 import { closeActiveTerminal } from './right-sidebar/terminal/terminals'
-import { CRON_ROUTE, NEW_CHAT_ROUTE, routeSessionId, sessionRoute, SETTINGS_ROUTE } from './routes'
-import { SessionPickerOverlay } from './session-picker-overlay'
-import { SessionSwitcher } from './session-switcher'
+import { CRON_ROUTE, NEW_CHAT_ROUTE, PROFILES_ROUTE, routeSessionId, sessionRoute, SETTINGS_ROUTE } from './routes'
+import { useAliceConfig } from './session/hooks/use-alice-config'
 import { useContextSuggestions } from './session/hooks/use-context-suggestions'
 import { useCwdActions } from './session/hooks/use-cwd-actions'
-import { useAliceConfig } from './session/hooks/use-alice-config'
 import { useMessageStream } from './session/hooks/use-message-stream'
 import { useModelControls } from './session/hooks/use-model-controls'
 import { usePreviewRouting } from './session/hooks/use-preview-routing'
 import { usePromptActions } from './session/hooks/use-prompt-actions'
 import { useRouteResume } from './session/hooks/use-route-resume'
 import { useSessionActions } from './session/hooks/use-session-actions'
+import { useSessionFollow } from './session/hooks/use-session-follow'
 import { useSessionListActions } from './session/hooks/use-session-list-actions'
 import { useSessionStateCache } from './session/hooks/use-session-state-cache'
 import { AppShell } from './shell/app-shell'
 import { useOverlayRouting } from './shell/hooks/use-overlay-routing'
 import { useStatusSnapshot } from './shell/hooks/use-status-snapshot'
-import { useStatusbarItems } from './shell/hooks/use-statusbar-items'
+import { MainPaneRoutes } from './shell/main-pane-routes'
 import { ModelMenuPanel } from './shell/model-menu-panel'
+import { OverlaysHost } from './shell/overlays-host'
+import { RunningHead } from './shell/running-head'
+import { Spine } from './shell/spine'
 import type { StatusbarItem } from './shell/statusbar-controls'
+import {
+  $pinnedDrawers,
+  closeOtherStudyDrawers,
+  migrateStudyLayoutOnce,
+  openPinnedDrawersOnce,
+  reconcileStudyDrawersOnce,
+  toggleDrawerPin
+} from './shell/study-layout'
 import type { TitlebarTool } from './shell/titlebar-controls'
 import { useGroupRegistry } from './shell/use-group-registry'
-import { UpdatesOverlay } from './updates-overlay'
 
 const AgentsView = lazy(async () => ({ default: (await import('./agents')).AgentsView }))
 const ArtifactsView = lazy(async () => ({ default: (await import('./artifacts')).ArtifactsView }))
@@ -143,6 +119,10 @@ const CronView = lazy(async () => ({ default: (await import('./cron')).CronView 
 const StarmapView = lazy(async () => ({ default: (await import('./starmap')).StarmapView }))
 const MessagingView = lazy(async () => ({ default: (await import('./messaging')).MessagingView }))
 const ProfilesView = lazy(async () => ({ default: (await import('./profiles')).ProfilesView }))
+migrateStudyLayoutOnce()
+reconcileStudyDrawersOnce()
+openPinnedDrawersOnce()
+
 const SettingsView = lazy(async () => ({ default: (await import('./settings')).SettingsView }))
 const SkillsView = lazy(async () => ({ default: (await import('./skills')).SkillsView }))
 
@@ -172,16 +152,13 @@ export function DesktopController() {
   const freshDraftReady = useStore($freshDraftReady)
   const resumeFailedSessionId = useStore($resumeFailedSessionId)
   const resumeExhaustedSessionId = useStore($resumeExhaustedSessionId)
-  const filePreviewTarget = useStore($filePreviewTarget)
-  const previewTarget = useStore($previewTarget)
   const selectedStoredSessionId = useStore($selectedStoredSessionId)
-  const terminalTakeover = useStore($terminalTakeover)
-  const reviewOpen = useStore($reviewOpen)
-  const browserTabsOpen = useStore($browserTabsOpen)
-  const fileBrowserOpen = useStore($fileBrowserOpen)
-  const previewPaneOpen = useStore($paneOpen(PREVIEW_PANE_ID))
-  const panesFlipped = useStore($panesFlipped)
   const profileScope = useStore($profileScope)
+  const panesFlipped = useStore($panesFlipped)
+  // Flipped layout mirrors the default: sessions sidebar → right, file
+  // browser + preview rail → left. Same panes, swapped sides.
+  const sidebarSide = panesFlipped ? 'right' : 'left'
+  const railSide = panesFlipped ? 'left' : 'right'
   // Below SIDEBAR_COLLAPSE_BREAKPOINT_PX there's no room for a docked rail —
   // collapse both sidebars (without touching their stored open state) so the
   // hover-reveal overlay becomes the way in. Restores once it's wide again.
@@ -203,13 +180,20 @@ export function DesktopController() {
     currentView,
     openAgents,
     openCommandCenterSection,
+    overlayOpen,
     profilesOpen,
     settingsOpen,
     starmapOpen,
     toggleCommandCenter
   } = useOverlayRouting()
 
-  const terminalSidebarOpen = chatOpen && terminalTakeover
+
+  // Delta cursor for the follow poll: the highest SQLite message id this
+  // window has hydrated for a given stored session. Keyed by session so a
+  // switch (or a compression rotation) falls back to a full hydrate.
+  const tailCursorRef = useRef<{ lastId: number; sessionId: string } | null>(null)
+  const pinnedDrawers = useStore($pinnedDrawers)
+  const browserOpen = useStore($browserOpen)
 
   const titlebarToolGroups = useGroupRegistry<TitlebarTool>()
   const statusbarItemGroups = useGroupRegistry<StatusbarItem>()
@@ -235,9 +219,23 @@ export function DesktopController() {
 
   const { connectionRef, gatewayRef, requestGateway } = useGatewayRequest()
 
+  // The native "close preview" menu/shortcut now targets the browser drawer's
+  // active tab (Fase 3 absorbed the preview rail).
   useEffect(() => {
-    window.aliceDesktop?.setPreviewShortcutActive?.(Boolean(chatOpen && (filePreviewTarget || previewTarget)))
-  }, [chatOpen, filePreviewTarget, previewTarget])
+    const push = () => {
+      window.aliceDesktop?.setPreviewShortcutActive?.(Boolean($browserOpen.get() && $activeBrowserTabId.get()))
+    }
+
+    push()
+
+    const unsubscribers = [$browserOpen.listen(push), $activeBrowserTabId.listen(push)]
+
+    return () => {
+      for (const unsubscribe of unsubscribers) {
+        unsubscribe()
+      }
+    }
+  }, [])
 
   useEffect(() => {
     startUpdatePoller()
@@ -352,15 +350,29 @@ export function DesktopController() {
         return
       }
 
-      // Otherwise ⌘/Ctrl+W closes the active preview tab when one is open.
-      if ($filePreviewTarget.get() || $previewTarget.get()) {
-        event.preventDefault()
-        event.stopPropagation()
-        closeActiveRightRailTab()
+      // Otherwise ⌘/Ctrl+W closes the active browser tab when the browser is
+      // open. (The preview rail that used to own this shortcut was absorbed by
+      // the browser drawer in Fase 3.)
+      if ($browserOpen.get()) {
+        const activeTabId = $activeBrowserTabId.get()
+
+        if (activeTabId) {
+          event.preventDefault()
+          event.stopPropagation()
+          closeBrowserTab(activeTabId)
+        }
       }
     }
 
-    const unsubscribe = window.aliceDesktop?.onClosePreviewRequested?.(closeActiveRightRailTab)
+    const unsubscribe = window.aliceDesktop?.onClosePreviewRequested?.(() => {
+      if ($browserOpen.get()) {
+        const activeTabId = $activeBrowserTabId.get()
+
+        if (activeTabId) {
+          closeBrowserTab(activeTabId)
+        }
+      }
+    })
 
     window.addEventListener('keydown', onKeyDown, { capture: true })
 
@@ -387,6 +399,26 @@ export function DesktopController() {
     }
 
     return onSessionsChanged(() => void refreshSessions().catch(() => undefined))
+  }, [refreshSessions])
+
+  // Sessions created/advanced by the messaging gateway live in another
+  // process; this window only learns about them through the session list. Poll
+  // while visible so rows (new WhatsApp/Telegram chats, titles, previews)
+  // appear without a manual refresh or a session switch.
+  useEffect(() => {
+    if (isSecondaryWindow()) {
+      return
+    }
+
+    const tick = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshSessions().catch(() => undefined)
+      }
+    }
+
+    const handle = window.setInterval(tick, 10_000)
+
+    return () => window.clearInterval(handle)
   }, [refreshSessions])
 
   const toggleSelectedPin = useCallback(() => {
@@ -484,7 +516,14 @@ export function DesktopController() {
 
       for (let index = 0; index < Math.max(1, attempts); index += 1) {
         try {
-          const latest = await getSessionMessages(storedSessionId, storedProfile)
+          const latest = await getSessionMessages(storedSessionId, storedProfile, undefined, undefined, {
+            reasoning: $toolViewMode.get() === 'technical'
+          })
+
+          tailCursorRef.current = {
+            lastId: latest.messages.reduce((max, message) => Math.max(max, Number(message.id ?? 0)), 0),
+            sessionId: storedSessionId
+          }
           const messages = toChatMessages(latest.messages)
           updateSessionState(
             runtimeSessionId,
@@ -519,6 +558,68 @@ export function DesktopController() {
     [activeSessionIdRef, selectedStoredSessionIdRef, updateSessionState]
   )
 
+  // Delta hydration for the follow poll. Re-reading the whole transcript on
+  // every 2s tick is what made a 739-message session cost 2.8 MB per poll;
+  // asking for rows after our cursor drops that to the bytes the sibling
+  // process actually wrote. Falls back to the full hydrate when:
+  //   - we have no cursor for this session (first load, after a switch),
+  //   - the delta starts on a `tool` row (its assistant call landed in the
+  //     previous batch, and the tool-part merger expects the pair together),
+  //   - anything throws.
+  const hydrateTail = useCallback(
+    async (storedSessionId: string, runtimeSessionId: null | string) => {
+      const cursor = tailCursorRef.current
+
+      if (!runtimeSessionId || !cursor || cursor.sessionId !== storedSessionId || !cursor.lastId) {
+        await hydrateFromStoredSession(1, storedSessionId, runtimeSessionId)
+
+        return
+      }
+
+      const storedProfile = $sessions
+        .get()
+        .find(session => session.id === storedSessionId || session._lineage_root_id === storedSessionId)?.profile
+
+      try {
+        const delta = await getSessionMessages(storedSessionId, storedProfile, undefined, undefined, {
+          reasoning: $toolViewMode.get() === 'technical',
+          sinceId: cursor.lastId
+        })
+
+        if (!delta.messages.length) {
+          return
+        }
+
+        if (delta.messages[0]?.role === 'tool') {
+          await hydrateFromStoredSession(1, storedSessionId, runtimeSessionId)
+
+          return
+        }
+
+        updateSessionState(
+          runtimeSessionId,
+          state => ({
+            ...state,
+            messages: preserveLocalAssistantErrors(
+              [...state.messages, ...toChatMessages(delta.messages)],
+              state.messages
+            )
+          }),
+          storedSessionId
+        )
+
+        const lastId =
+          delta.last_id ??
+          delta.messages.reduce((max, message) => Math.max(max, Number(message.id ?? 0)), cursor.lastId)
+
+        tailCursorRef.current = { lastId, sessionId: storedSessionId }
+      } catch {
+        await hydrateFromStoredSession(1, storedSessionId, runtimeSessionId)
+      }
+    },
+    [hydrateFromStoredSession, updateSessionState]
+  )
+
   const { handleGatewayEvent } = useMessageStream({
     activeSessionIdRef,
     hydrateFromStoredSession,
@@ -529,14 +630,22 @@ export function DesktopController() {
     updateSessionState
   })
 
-  const { handleDesktopGatewayEvent, restartPreviewServer } = usePreviewRouting({
+  // A sibling process (the messaging gateway) can advance the selected
+  // session while this window only sees SQLite. Follow the stored row so the
+  // transcript updates without a session switch.
+  useSessionFollow({
     activeSessionIdRef,
-    baseHandleGatewayEvent: handleGatewayEvent,
-    currentCwd,
-    currentView,
+    busyRef,
+    hydrateFromStoredSession,
+    hydrateTail,
     requestGateway,
-    routedSessionId,
+    sessionStateByRuntimeIdRef,
     selectedStoredSessionId
+  })
+
+  const { handleDesktopGatewayEvent } = usePreviewRouting({
+    activeSessionIdRef,
+    baseHandleGatewayEvent: handleGatewayEvent
   })
 
   const {
@@ -881,44 +990,95 @@ export function DesktopController() {
     startFreshSessionDraft
   })
 
-  const { leftStatusbarItems, statusbarItems } = useStatusbarItems({
-    agentsOpen,
-    chatOpen,
-    commandCenterOpen,
-    extraLeftItems: statusbarItemGroups.flat.left,
-    extraRightItems: statusbarItemGroups.flat.right,
-    gatewayState,
-    inferenceStatus,
-    openAgents,
-    freshDraftReady,
-    openCommandCenterSection,
-    requestGateway,
-    statusSnapshot,
-    toggleCommandCenter
-  })
 
-  const sidebar = (
-    <ChatSidebar
-      currentView={currentView}
-      onArchiveSession={sessionId => void archiveSession(sessionId)}
-      onBranchSession={sessionId => void branchStoredSession(sessionId)}
-      onDeleteSession={sessionId => void removeSession(sessionId)}
-      onLoadMoreMessaging={loadMoreMessagingForPlatform}
-      onLoadMoreProfileSessions={loadMoreSessionsForProfile}
-      onLoadMoreSessions={loadMoreSessions}
-      onManageCronJob={jobId => {
+  // Stable identities so <ChatSidebar> (memoized in its module) bails out when
+  // a pane toggle re-renders this composition root. Rebuilding the session tree
+  // on every terminal/git/browser click is what made the UI feel like a reload.
+  const sidebarHandlers = useMemo(
+    () => ({
+      onArchiveSession: (sessionId: string) => void archiveSession(sessionId),
+      onBranchSession: (sessionId: string) => void branchStoredSession(sessionId),
+      onDeleteSession: (sessionId: string) => void removeSession(sessionId),
+      onLoadMoreMessaging: loadMoreMessagingForPlatform,
+      onLoadMoreProfileSessions: loadMoreSessionsForProfile,
+      onLoadMoreSessions: loadMoreSessions,
+      onManageCronJob: (jobId: string) => {
         setCronFocusJobId(jobId)
         navigate(CRON_ROUTE)
-      }}
-      onNavigate={selectSidebarItem}
-      onNewSessionInWorkspace={startSessionInWorkspace}
-      onResumeSession={sessionId => navigate(sessionRoute(sessionId))}
-      onTriggerCronJob={jobId => {
+      },
+      onNavigate: selectSidebarItem,
+      onNewSessionInWorkspace: startSessionInWorkspace,
+      onResumeSession: (sessionId: string) => navigate(sessionRoute(sessionId)),
+      onTriggerCronJob: (jobId: string) => {
         void triggerCronJob(jobId)
           .then(() => refreshCronJobs())
           .catch(() => undefined)
-      }}
-    />
+      }
+    }),
+    [
+      archiveSession,
+      branchStoredSession,
+      loadMoreMessagingForPlatform,
+      loadMoreSessions,
+      loadMoreSessionsForProfile,
+      navigate,
+      refreshCronJobs,
+      removeSession,
+      selectSidebarItem,
+      startSessionInWorkspace
+    ]
+  )
+
+  const sidebar = useMemo(
+    () => <ChatSidebar catalogMode currentView={currentView} {...sidebarHandlers} />,
+    [currentView, sidebarHandlers]
+  )
+
+  const spine = useMemo(
+    () => (
+      <Spine
+        onBrowser={() => {
+          const next = !$browserOpen.get()
+          closeOtherStudyDrawers('browser')
+          setBrowserOpen(next)
+        }}
+        onCatalog={() => {
+          const next = !$sidebarOpen.get()
+          closeOtherStudyDrawers('sessions')
+          setSidebarOpen(next)
+        }}
+        onFiles={() => {
+          closeOtherStudyDrawers('files')
+          toggleFileBrowserOpen()
+        }}
+        onNewSession={() => startFreshSessionDraft()}
+        onProfiles={() => navigate(PROFILES_ROUTE)}
+        onReview={() => {
+          closeOtherStudyDrawers('review')
+          toggleReview()
+        }}
+        onSettings={openSettings}
+        onTerminal={() => {
+          closeOtherStudyDrawers('terminal')
+          setTerminalTakeover(!$terminalTakeover.get())
+        }}
+      />
+    ),
+    [navigate, openSettings, startFreshSessionDraft]
+  )
+
+  const runningHead = useMemo(
+    () => (
+      <RunningHead
+        onDeleteSession={() => {
+          if (selectedStoredSessionId) {
+            void removeSession(selectedStoredSessionId)
+          }
+        }}
+        onTogglePin={toggleSelectedPin}
+      />
+    ),
+    [openSettings, removeSession, selectedStoredSessionId, toggleSelectedPin]
   )
 
   // The persistent xterm layer (one host per terminal tab), CSS-overlaid onto the
@@ -926,187 +1086,146 @@ export function DesktopController() {
   // layer) so pane resize handles still paint above it. Terminals own their state
   // (incl. a snapshotted cwd) independent of the session, so switching sessions
   // never rebuilds or closes them; toggling the pane never rebuilds the shells.
-  const mainOverlays = <PersistentTerminal onAddSelectionToChat={composer.addTerminalSelectionAttachment} />
+  const mainOverlays = useMemo(
+    () => <PersistentTerminal onAddSelectionToChat={composer.addTerminalSelectionAttachment} />,
+    [composer.addTerminalSelectionAttachment]
+  )
 
-  const overlays = (
-    <>
-      <RemoteDisplayBanner />
-      {!isSecondaryWindow() && <DesktopInstallOverlay />}
-      {!isSecondaryWindow() && (
-        <DesktopOnboardingOverlay
-          enabled={gatewayState === 'open'}
-          onCompleted={() => {
-            void refreshAliceConfig()
-            void refreshCurrentModel()
-            void queryClient.invalidateQueries({ queryKey: ['model-options'] })
-          }}
-          requestGateway={requestGateway}
-        />
-      )}
-      <ModelPickerOverlay gateway={gatewayRef.current || undefined} onSelect={selectModel} />
-      <SessionPickerOverlay onResume={resumeSession} />
-      <ModelVisibilityOverlay gateway={gatewayRef.current || undefined} onOpenProviders={openProviderSettings} />
-      <UpdatesOverlay />
-      <GatewayConnectingOverlay />
-      <BootFailureOverlay />
-      <HelpFab onClick={() => setHelpOpen(true)} />
-      <HelpOverlay
-        onClose={() => setHelpOpen(false)}
-        onOpenMigration={() => {
-          setHelpOpen(false)
-          setMigrationOpen(true)
-        }}
-        open={helpOpen}
+  const overlays = useMemo(
+    () => (
+      <OverlaysHost
+        agentsOpen={agentsOpen}
+        closeOverlayToPreviousRoute={closeOverlayToPreviousRoute}
+        commandCenterInitialSection={commandCenterInitialSection}
+        commandCenterOpen={commandCenterOpen}
+        cronOpen={cronOpen}
+        gateway={gatewayRef.current || undefined}
+        gatewayState={gatewayState}
+        helpOpen={helpOpen}
+        migrationOpen={migrationOpen}
+        navigate={navigate}
+        openProviderSettings={openProviderSettings}
+        profilesOpen={profilesOpen}
+        refreshAliceConfig={refreshAliceConfig}
+        refreshCurrentModel={refreshCurrentModel}
+        removeSession={removeSession}
+        requestGateway={requestGateway}
+        resumeSession={resumeSession}
+        selectModel={selectModel}
+        setHelpOpen={setHelpOpen}
+        setMigrationOpen={setMigrationOpen}
+        settingsOpen={settingsOpen}
+        starmapOpen={starmapOpen}
+        updateModelOptionsCache={updateModelOptionsCache}
       />
-      <MigrationWizard onClose={() => setMigrationOpen(false)} open={migrationOpen} />
-      <CommandPalette />
-      <PetGenerateOverlay />
-      <SessionSwitcher />
-      <FileActionDialogs />
-      <RemoteFolderPicker />
-
-      {settingsOpen && (
-        <Suspense fallback={null}>
-          <SettingsView
-            gateway={gatewayRef.current}
-            onClose={closeOverlayToPreviousRoute}
-            onConfigSaved={() => {
-              void refreshAliceConfig()
-              void refreshCurrentModel()
-              void queryClient.invalidateQueries({ queryKey: ['model-options'] })
-            }}
-            onMainModelChanged={(provider, model) => {
-              setCurrentProvider(provider)
-              setCurrentModel(model)
-              updateModelOptionsCache(provider, model, true)
-              void refreshCurrentModel()
-              void queryClient.invalidateQueries({ queryKey: ['model-options'] })
-            }}
-          />
-        </Suspense>
-      )}
-
-      {commandCenterOpen && (
-        <Suspense fallback={null}>
-          <CommandCenterView
-            initialSection={commandCenterInitialSection}
-            onClose={closeOverlayToPreviousRoute}
-            onDeleteSession={removeSession}
-            onNavigateRoute={path => navigate(path)}
-            onOpenSession={sessionId => navigate(sessionRoute(sessionId))}
-          />
-        </Suspense>
-      )}
-
-      {agentsOpen && (
-        <Suspense fallback={null}>
-          <AgentsView onClose={closeOverlayToPreviousRoute} />
-        </Suspense>
-      )}
-
-      {cronOpen && (
-        <Suspense fallback={null}>
-          <CronView
-            onClose={closeOverlayToPreviousRoute}
-            onOpenSession={sessionId => navigate(sessionRoute(sessionId))}
-          />
-        </Suspense>
-      )}
-
-      {profilesOpen && (
-        <Suspense fallback={null}>
-          <ProfilesView onClose={closeOverlayToPreviousRoute} />
-        </Suspense>
-      )}
-
-      {starmapOpen && (
-        <Suspense fallback={null}>
-          <StarmapView onClose={closeOverlayToPreviousRoute} />
-        </Suspense>
-      )}
-    </>
+    ),
+    [
+      agentsOpen,
+      closeOverlayToPreviousRoute,
+      commandCenterInitialSection,
+      commandCenterOpen,
+      cronOpen,
+      gatewayState,
+      helpOpen,
+      migrationOpen,
+      navigate,
+      openProviderSettings,
+      profilesOpen,
+      refreshAliceConfig,
+      refreshCurrentModel,
+      removeSession,
+      requestGateway,
+      resumeSession,
+      selectModel,
+      settingsOpen,
+      starmapOpen,
+      updateModelOptionsCache
+    ]
   )
 
-  const chatView = (
-    <ChatView
-      gateway={gatewayRef.current}
-      maxVoiceRecordingSeconds={voiceMaxRecordingSeconds}
-      modelMenuContent={modelMenuContent}
-      onAddContextRef={composer.addContextRefAttachment}
-      onAddUrl={url => composer.addContextRefAttachment(`@url:${formatRefValue(url)}`, url)}
-      onAttachDroppedItems={composer.attachDroppedItems}
-      onAttachImageBlob={composer.attachImageBlob}
-      onBranchInNewChat={branchInNewChat}
-      onCancel={cancelRun}
-      onDeleteSelectedSession={() => {
-        if (selectedStoredSessionId) {
-          void removeSession(selectedStoredSessionId)
-        }
-      }}
-      onDismissError={dismissError}
-      onEdit={editMessage}
-      onPasteClipboardImage={opts => composer.pasteClipboardImage(opts)}
-      onPickFiles={() => void composer.pickContextPaths('file')}
-      onPickFolders={() => void composer.pickContextPaths('folder')}
-      onPickImages={() => void composer.pickImages()}
-      onReload={reloadFromMessage}
-      onRemoveAttachment={id => void composer.removeAttachment(id)}
-      onRestoreToMessage={restoreToMessage}
-      onRetryResume={sessionId => void resumeSession(sessionId, true)}
-      onSteer={steerPrompt}
-      onSubmit={submitText}
-      onThreadMessagesChange={handleThreadMessagesChange}
-      onToggleSelectedPin={toggleSelectedPin}
-      onTranscribeAudio={transcribeVoiceAudio}
-    />
+  // The chat element is memoized on the values that can actually change its
+  // output. Pane state (open/closed, preview target, sash widths) is deliberately
+  // NOT a dependency: a pane toggle re-renders this composition root, and a fresh
+  // <ChatView> element would re-render the whole transcript and defeat
+  // ChatRuntimeBoundary's element-identity bailout. With a stable element React
+  // skips the chat subtree entirely on those re-renders.
+  const chatView = useMemo(
+    () => (
+      <ChatView
+        gateway={gatewayRef.current}
+        maxVoiceRecordingSeconds={voiceMaxRecordingSeconds}
+        modelMenuContent={modelMenuContent}
+        onAddContextRef={composer.addContextRefAttachment}
+        onAddUrl={url => composer.addContextRefAttachment(`@url:${formatRefValue(url)}`, url)}
+        onAttachDroppedItems={composer.attachDroppedItems}
+        onAttachImageBlob={composer.attachImageBlob}
+        onBranchInNewChat={branchInNewChat}
+        onCancel={cancelRun}
+        onDeleteSelectedSession={() => {
+          if (selectedStoredSessionId) {
+            void removeSession(selectedStoredSessionId)
+          }
+        }}
+        onDismissError={dismissError}
+        onEdit={editMessage}
+        onPasteClipboardImage={opts => composer.pasteClipboardImage(opts)}
+        onPickFiles={() => void composer.pickContextPaths('file')}
+        onPickFolders={() => void composer.pickContextPaths('folder')}
+        onPickImages={() => void composer.pickImages()}
+        onReload={reloadFromMessage}
+        onRemoveAttachment={id => void composer.removeAttachment(id)}
+        onRestoreToMessage={restoreToMessage}
+        onRetryResume={sessionId => void resumeSession(sessionId, true)}
+        onSteer={steerPrompt}
+        onSubmit={submitText}
+        onThreadMessagesChange={handleThreadMessagesChange}
+        onToggleSelectedPin={toggleSelectedPin}
+        onTranscribeAudio={transcribeVoiceAudio}
+      />
+    ),
+    [
+      branchInNewChat,
+      cancelRun,
+      composer.addContextRefAttachment,
+      composer.attachDroppedItems,
+      composer.attachImageBlob,
+      composer.pasteClipboardImage,
+      composer.pickContextPaths,
+      composer.pickImages,
+      composer.removeAttachment,
+      dismissError,
+      editMessage,
+      gatewayRef,
+      handleThreadMessagesChange,
+      modelMenuContent,
+      reloadFromMessage,
+      removeSession,
+      resumeSession,
+      restoreToMessage,
+      selectedStoredSessionId,
+      steerPrompt,
+      submitText,
+      toggleSelectedPin,
+      transcribeVoiceAudio,
+      voiceMaxRecordingSeconds
+    ]
   )
 
-  // Flipped layout mirrors the default: sessions sidebar → right, file
-  // browser + preview rail → left. Same panes, swapped sides.
-  const sidebarSide = panesFlipped ? 'right' : 'left'
-  const railSide = panesFlipped ? 'left' : 'right'
-
-  // Other sidebars docked as real columns on the terminal's rail. Force-collapsed
-  // hover-reveal overlays (narrow window) don't take a column, so they don't count.
-  const railColumnOpen =
-    (chatOpen && Boolean(previewTarget || filePreviewTarget) && previewPaneOpen) ||
-    (chatOpen && !narrowViewport && fileBrowserOpen) ||
-    (chatOpen && Boolean(currentCwd.trim()) && !narrowViewport && reviewOpen)
-
-  // Once the terminal would share its rail with another sidebar, drop it to a
-  // full-width row beneath them rather than cramming in one more skinny column.
-  const terminalAsRow = terminalSidebarOpen && railColumnOpen
-
-  const previewPane = (
-    <Pane
-      disabled={!chatOpen || (!previewTarget && !filePreviewTarget)}
-      id={PREVIEW_PANE_ID}
-      key="preview"
-      maxWidth={PREVIEW_RAIL_MAX_WIDTH}
-      minWidth={PREVIEW_RAIL_MIN_WIDTH}
-      resizable
-      side={railSide}
-      width={PREVIEW_RAIL_PANE_WIDTH}
-    >
-      {chatOpen ? (
-        <ChatPreviewRail onRestartServer={restartPreviewServer} setTitlebarToolGroup={setTitlebarToolGroup} />
-      ) : null}
-    </Pane>
-  )
-
-  const fileBrowserPane = (
+  const fileBrowserPane = useMemo(
+    () => (
     <Pane
       defaultOpen={false}
       disabled={!chatOpen}
-      forceCollapsed={narrowViewport}
-      hoverReveal
+      drawer
+      drawerWidth={380}
       id="file-browser"
       key="file-browser"
       maxWidth={FILE_BROWSER_MAX_WIDTH}
       minWidth={FILE_BROWSER_MIN_WIDTH}
+      onTogglePin={() => toggleDrawerPin('files')}
+      pinned={pinnedDrawers.includes('files')}
       resizable
-      side={railSide}
-      width={FILE_BROWSER_DEFAULT_WIDTH}
+      side="right"
     >
       {/* Key on the project (cwd) so switching projects unmounts the old tree and
           mounts a fresh one straight into its skeleton — no stale-then-blip. */}
@@ -1116,9 +1235,13 @@ export function DesktopController() {
         onActivateFolder={path => composer.insertContextPathInlineRef(path, true)}
       />
     </Pane>
+  
+    ),
+    [chatOpen, narrowViewport, railSide, currentCwd, composer.insertContextPathInlineRef, pinnedDrawers]
   )
 
-  const reviewPane = (
+  const reviewPane = useMemo(
+    () => (
     <Pane
       defaultOpen
       // The diff pane only makes sense in a workspace, so force it shut when the
@@ -1128,45 +1251,56 @@ export function DesktopController() {
       // gate so the pane stays mounted as a collapsed overlay — `toggleReview`
       // then slides it in/out via the forced-reveal pin, exactly like ⌘B for the
       // sidebar. Still requires a repo (no diffs to show otherwise).
-      disabled={!chatOpen || !currentCwd.trim() || (!narrowViewport && !reviewOpen)}
-      forceCollapsed={narrowViewport}
-      hoverReveal
+      disabled={!chatOpen || !currentCwd.trim()}
+      drawer
+      drawerWidth={390}
       id={REVIEW_PANE_ID}
       key="review"
       maxWidth={FILE_BROWSER_MAX_WIDTH}
       minWidth={FILE_BROWSER_MIN_WIDTH}
-      // Mobile overlay sits at its min width — compact, doesn't bury the chat.
-      overlayWidth={FILE_BROWSER_MIN_WIDTH}
+      onTogglePin={() => toggleDrawerPin('review')}
+      openAtom={$reviewOpen}
+      pinned={pinnedDrawers.includes('review')}
       resizable
-      side={railSide}
-      width={FILE_BROWSER_DEFAULT_WIDTH}
+      // Mobile overlay sits at its min width — compact, doesn't bury the chat.
+      side="right"
     >
       <ReviewPane key={currentCwd || 'no-cwd'} />
     </Pane>
+  
+    ),
+    [chatOpen, currentCwd, pinnedDrawers]
   )
 
-  const browserPane = (
+  const browserPane = useMemo(
+    () => (
     <Pane
       defaultOpen
-      disabled={!browserTabsOpen}
       id="browser-tabs"
       key="browser-tabs"
       maxWidth={FILE_BROWSER_MAX_WIDTH}
       minWidth={220}
+      openAtom={$browserTabsOpen}
       resizable
       side={railSide}
       width={320}
     >
       <BrowserPane />
     </Pane>
+  
+    ),
+    [railSide]
   )
 
-  const terminalPane = (
+  const terminalPane = useMemo(
+    () => (
     <Pane
-      bottomRow={terminalAsRow}
+      bottomRowAtom={$terminalAsRow}
       defaultOpen
-      disabled={!terminalSidebarOpen}
+      disabled={!chatOpen}
       divider
+      drawer
+      drawerWidth={560}
       height="38vh"
       id="terminal-sidebar"
       key="terminal-sidebar"
@@ -1174,107 +1308,91 @@ export function DesktopController() {
       maxWidth="80vw"
       minHeight="8rem"
       minWidth="22vw"
+      onTogglePin={() => toggleDrawerPin('terminal')}
+      openAtom={$terminalTakeover}
+      pinned={pinnedDrawers.includes('terminal')}
       resizable
-      side={railSide}
-      width="42vw"
+      side="right"
     >
-      {/* As a column the terminal clears the titlebar; as a bottom row it sits
-          below the rail's panes (so it fills its row edge-to-edge) and gets a
-          left border separating it from the chat — the column-mode separator
-          lives on the resize sash, which moves to the top edge as a row. */}
-      <div
-        className={cn(
-          'relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-(--ui-editor-surface-background)',
-          terminalAsRow ? 'border-l border-(--ui-stroke-secondary) pt-0' : 'pt-(--titlebar-height)'
-        )}
-      >
-        <TerminalPaneChrome />
-      </div>
+      <TerminalPaneBody />
     </Pane>
+  
+    ),
+    [chatOpen, pinnedDrawers]
   )
 
   return (
     <AppShell
-      leftStatusbarItems={leftStatusbarItems}
-      leftTitlebarTools={titlebarToolGroups.flat.left}
       mainOverlays={mainOverlays}
       onOpenSettings={openSettings}
       overlays={overlays}
-      previewPaneOpen={chatOpen && Boolean(previewTarget || filePreviewTarget)}
-      statusbarItems={statusbarItems}
-      terminalPaneOpen={terminalSidebarOpen}
-      titlebarTools={titlebarToolGroups.flat.right}
+      runningHead={runningHead}
+      spine={spine}
     >
       {!isSecondaryWindow() && (
         <Pane
-          forceCollapsed={narrowViewport}
-          hoverReveal
+          drawer
+          drawerWidth={540}
           id="chat-sidebar"
-          maxWidth={SIDEBAR_MAX_WIDTH}
-          minWidth={SIDEBAR_DEFAULT_WIDTH}
-          onOverlayActiveChange={setSidebarOverlayMounted}
+          maxWidth={720}
+          minWidth={280}
+          onTogglePin={() => toggleDrawerPin('sessions')}
+          openAtom={$sidebarOpen}
+          pinned={pinnedDrawers.includes('sessions')}
           resizable
-          side={sidebarSide}
-          width={`${SIDEBAR_DEFAULT_WIDTH}px`}
+          side="left"
+          warmOnIdle
         >
           {sidebar}
         </Pane>
       )}
+      {!isSecondaryWindow() && (
+        <Pane
+          drawer
+          drawerWidth={720}
+          id="browser"
+          maxWidth={1100}
+          minWidth={360}
+          openAtom={$browserOpen}
+          side="left"
+        >
+          <NativeBrowserPane visible={browserOpen && chatOpen && !overlayOpen} />
+        </Pane>
+      )}
       <PaneMain>
-        <Routes>
-          <Route element={chatView} index />
-          <Route element={chatView} path=":sessionId" />
-          <Route
-            element={
-              <Suspense fallback={null}>
-                <SkillsView setStatusbarItemGroup={setStatusbarItemGroup} />
-              </Suspense>
-            }
-            path="skills"
-          />
-          <Route
-            element={
-              <Suspense fallback={null}>
-                <MessagingView setStatusbarItemGroup={setStatusbarItemGroup} />
-              </Suspense>
-            }
-            path="messaging"
-          />
-          <Route
-            element={
+        <MainPaneRoutes
+          chat={chatView}
+          chatVisible={chatOpen || overlayOpen}
+          pages={{
+            artifacts: (
               <Suspense fallback={null}>
                 <ArtifactsView setStatusbarItemGroup={setStatusbarItemGroup} />
               </Suspense>
-            }
-            path="artifacts"
-          />
-          <Route element={null} path="cron" />
-          <Route element={null} path="profiles" />
-          <Route element={null} path="settings" />
-          <Route element={null} path="command-center" />
-          <Route element={null} path="agents" />
-          <Route element={<Navigate replace to={NEW_CHAT_ROUTE} />} path="new" />
-          <Route element={<LegacySessionRedirect />} path="sessions/:sessionId" />
-          <Route element={<Navigate replace to={NEW_CHAT_ROUTE} />} path="*" />
-        </Routes>
+            ),
+            messaging: (
+              <Suspense fallback={null}>
+                <MessagingView setStatusbarItemGroup={setStatusbarItemGroup} />
+              </Suspense>
+            ),
+            skills: (
+              <Suspense fallback={null}>
+                <SkillsView setStatusbarItemGroup={setStatusbarItemGroup} />
+              </Suspense>
+            )
+          }}
+        />
       </PaneMain>
       {/*
         Order within a side maps to column order. Default (rail on the right):
-        main | terminal | preview | file-browser. Flipped (rail on the left):
-        mirror to file-browser | preview | terminal | main so terminal stays
-        adjacent to the chat.
+        main | terminal | file-browser. Flipped (rail on the left): mirror to
+        file-browser | terminal | main so terminal stays adjacent to the chat.
+        The preview rail that used to sit between terminal and file-browser was
+        absorbed by the browser drawer (left side) in Fase 3.
       */}
       {panesFlipped ? fileBrowserPane : terminalPane}
       {browserPane}
-      {previewPane}
       {reviewPane}
       {panesFlipped ? terminalPane : fileBrowserPane}
     </AppShell>
   )
-}
-
-function LegacySessionRedirect() {
-  const { sessionId } = useParams()
-
-  return <Navigate replace to={sessionId ? sessionRoute(sessionId) : NEW_CHAT_ROUTE} />
 }
