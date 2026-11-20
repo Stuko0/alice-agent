@@ -194,6 +194,69 @@ def _host_derived_api_key(base_url: str) -> str:
     return (_getenv(env_name, "") or "").strip()
 
 
+def _custom_auth_source(
+    base_url: str,
+    api_key: str,
+    explicit_api_key: Optional[str],
+) -> str:
+    """Name where a ``custom`` endpoint's key came from — never the key itself.
+
+    "429 from the right endpoint" and "429 because Alice sent the
+    ``no-key-required`` placeholder" (a missed key, answered as anonymous
+    traffic) look identical in an error message and have different fixes.
+    """
+    if not api_key:
+        return "placeholder:no-key-required"
+
+    if (explicit_api_key or "").strip():
+        return "explicit"
+
+    host = base_url_hostname(base_url) or ""
+
+    if base_url_host_matches(base_url, "openai.com") or base_url_host_matches(base_url, "openai.azure.com"):
+        if (_getenv("OPENAI_API_KEY", "") or "").strip() == api_key:
+            return "env:OPENAI_API_KEY"
+
+    if base_url_host_matches(base_url, "openrouter.ai"):
+        if (_getenv("OPENROUTER_API_KEY", "") or "").strip() == api_key:
+            return "env:OPENROUTER_API_KEY"
+
+    if _host_derived_api_key(base_url) == api_key:
+        labels = [lbl for lbl in host.split(".") if lbl]
+        while labels and labels[0] in ("api", "www"):
+            labels.pop(0)
+        vendor = (labels[-2] if len(labels) >= 2 else host).upper().replace("-", "_")
+        return f"env:{vendor}_API_KEY"
+
+    return "config"
+
+
+def _warn_custom_without_key(base_url: str) -> None:
+    """Log (agent.log) that a hosted custom endpoint is about to go keyless.
+
+    Local/self-hosted endpoints legitimately need no key. A public host with
+    the ``no-key-required`` placeholder is usually a key that never arrived —
+    the gateway then treats the call as anonymous traffic (401/429).
+    """
+    host = base_url_hostname(base_url) or ""
+
+    if not host or host in ("localhost", "127.0.0.1", "::1") or host.endswith(".local"):
+        return
+
+    labels = [lbl for lbl in host.split(".") if lbl]
+    while labels and labels[0] in ("api", "www"):
+        labels.pop(0)
+    vendor = (labels[-2] if len(labels) >= 2 else host).upper().replace("-", "_")
+    hint = f" or {vendor}_API_KEY" if vendor else ""
+
+    logger.warning(
+        "custom endpoint %s has no usable API key: requests go out with the "
+        "'no-key-required' placeholder, which hosted gateways treat as "
+        "anonymous traffic (401/429). Set model.api_key%s.",
+        base_url, hint,
+    )
+
+
 def _anthropic_base_url_override_ok(base_url: str) -> bool:
     """Decide whether a configured ``model.base_url`` may back native Anthropic.
 
@@ -913,12 +976,17 @@ def _resolve_named_custom_runtime(
         api_key = next(
             (c for c in api_key_candidates if has_usable_secret(c)),
             "",
-        ) or "no-key-required"
+        )
+
+        if not api_key:
+            _warn_custom_without_key(base_url)
+
         return {
             "provider": "custom",
             "api_mode": _detect_api_mode_for_url(base_url) or "chat_completions",
             "base_url": base_url,
-            "api_key": api_key,
+            "api_key": api_key or "no-key-required",
+            "auth_source": _custom_auth_source(base_url, api_key, explicit_api_key),
             "source": "direct-alias",
             "requested_provider": requested_provider,
         }
@@ -968,6 +1036,9 @@ def _resolve_named_custom_runtime(
     ]
     api_key = next((candidate for candidate in api_key_candidates if has_usable_secret(candidate)), "")
 
+    if not api_key:
+        _warn_custom_without_key(base_url)
+
     result = {
         "provider": "custom",
         "api_mode": custom_provider.get("api_mode")
@@ -975,6 +1046,9 @@ def _resolve_named_custom_runtime(
         or "chat_completions",
         "base_url": base_url,
         "api_key": api_key or "no-key-required",
+        "auth_source": (
+            "custom_providers" if api_key else "placeholder:no-key-required"
+        ),
         "source": f"custom_provider:{custom_provider.get('name', requested_provider)}",
     }
     # Propagate the model name so callers can override self.model when the
@@ -1115,8 +1189,13 @@ def _resolve_openrouter_runtime(
         if pool_result:
             return pool_result
 
-    if effective_provider == "custom" and not api_key and not _is_openrouter_url:
-        api_key = "no-key-required"
+    auth_source = ""
+    if effective_provider == "custom":
+        auth_source = _custom_auth_source(base_url, api_key, explicit_api_key)
+
+        if not api_key and not _is_openrouter_url:
+            _warn_custom_without_key(base_url)
+            api_key = "no-key-required"
 
     return {
         "provider": effective_provider,
@@ -1127,6 +1206,7 @@ def _resolve_openrouter_runtime(
         or "chat_completions",
         "base_url": base_url,
         "api_key": api_key,
+        **({"auth_source": auth_source} if auth_source else {}),
         "source": source,
     }
 

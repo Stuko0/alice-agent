@@ -3770,7 +3770,12 @@ def run_conversation(
                         # undiagnosable — the same 429 means "provider rate
                         # limit" for a real endpoint and "you are still
                         # talking to the free preview endpoint" for another.
-                        _via = f"provider={_provider or '?'} model={_model or '?'}"
+                        _agent_key = str(getattr(agent, "api_key", "") or "").strip()
+                        _auth = "placeholder" if _agent_key in {"", "no-key-required"} else "set"
+                        _via = (
+                            f"provider={_provider or '?'} model={_model or '?'}"
+                            f" auth={_auth}"
+                        )
                         _endpoint = str(getattr(agent, "base_url", "") or "").strip()
                         if _endpoint:
                             _via += f" endpoint={_endpoint}"
