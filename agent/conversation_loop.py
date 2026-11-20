@@ -3771,10 +3771,19 @@ def run_conversation(
                         # limit" for a real endpoint and "you are still
                         # talking to the free preview endpoint" for another.
                         _agent_key = str(getattr(agent, "api_key", "") or "").strip()
-                        _auth = "placeholder" if _agent_key in {"", "no-key-required"} else "set"
+                        # Name the credential's shape, never the credential:
+                        # a 401 "missing authentication header" means the key
+                        # went out under a header the endpoint ignores (e.g.
+                        # x-api-key on an OpenAI-compatible gateway).
+                        if _agent_key in {"", "no-key-required"}:
+                            _auth = "placeholder"
+                        else:
+                            _auth = f"set(len={len(_agent_key)})"
+                        _wire = str(getattr(agent, "api_mode", "") or "chat_completions")
+                        _auth_header = "x-api-key" if _wire == "anthropic_messages" else "authorization"
                         _via = (
                             f"provider={_provider or '?'} model={_model or '?'}"
-                            f" auth={_auth}"
+                            f" auth={_auth} api_mode={_wire} header={_auth_header}"
                         )
                         _endpoint = str(getattr(agent, "base_url", "") or "").strip()
                         if _endpoint:

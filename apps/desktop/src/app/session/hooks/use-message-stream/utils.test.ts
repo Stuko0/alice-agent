@@ -17,6 +17,11 @@ describe('completionErrorText', () => {
     expect(completionErrorText('API call failed after 3 retries: boom')).toMatch(/^API call failed/)
     expect(completionErrorText('HTTP 500 upstream')).toMatch(/^HTTP 500/)
     expect(completionErrorText('Gateway error: nope')).toMatch(/^Gateway error/)
+    // Provider bodies that reach the stream as plain text must stay visible
+    // instead of being replaced by the hydrate pass.
+    expect(completionErrorText('Error: HTTP 401: Missing Authentication header')).toMatch(/^Error: HTTP 401/)
+    expect(completionErrorText('Error: Provider error: upstream unavailable')).toMatch(/^Error: Provider error/)
+    expect(completionErrorText('Error handling in Rust uses Result.')).toBeNull()
     expect(completionErrorText('here is your answer')).toBeNull()
     expect(completionErrorText('   ')).toBeNull()
   })

@@ -72,7 +72,13 @@ export const STREAM_DELTA_FLUSH_MS = 33
 const COMPLETION_ERROR_PATTERNS = [
   /^API call failed after \d+ retries:/i,
   /^HTTP\s+\d{3}\b/i,
-  /^(Provider|Gateway)\s+error:/i
+  // Providers often answer with a textual body that reaches the stream as
+  // ordinary assistant text; without these the bubble is replaced by the
+  // hydrate pass and the error flashes for a few hundred milliseconds
+  // (reported as "the message disappears before I can read it").
+  /^Error:\s*HTTP\s+\d{3}\b/i,
+  /^Error:\s*(?:Provider|Gateway)\b/i,
+  /^(?:Provider|Gateway)\s+error:/i
 ]
 
 export function completionErrorText(finalText: string): string | null {
