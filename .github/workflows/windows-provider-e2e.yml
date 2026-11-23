@@ -67,6 +67,11 @@ jobs:
           PYTHONPATH: ${{ runner.temp }}\bundle\resources\alice
           PYTHONUNBUFFERED: '1'
           PYTHONDONTWRITEBYTECODE: '1'
+          # Scenario D: a real model from the OpenCode Go subscription. The
+          # value is a repository secret (masked in logs by Actions); when it
+          # is absent the scenario reports SKIP instead of failing.
+          OPENCODE_GO_API_KEY: ${{ secrets.ALICE_E2E_OPENCODE_API_KEY }}
+          ALICE_E2E_OPENCODE_MODEL: ${{ vars.ALICE_E2E_OPENCODE_MODEL }}
         run: |
           New-Item -ItemType Directory -Force -Path $env:E2E_ALICE_HOME | Out-Null
           & "$env:PACKAGED_PY" scripts/provider_e2e.py 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/provider-e2e.log"

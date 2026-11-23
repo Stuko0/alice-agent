@@ -255,6 +255,35 @@ def scenario_c(home: Path) -> None:
     print("SKIP: the public endpoint did not answer (rate limit or blocked network)")
 
 
+def scenario_d(home: Path) -> bool:
+    """OpenCode Go with a real (free-tier) model — the sibling of scenario A.
+
+    Unlike A/C this needs a credential, so it only runs when the harness is
+    given one (``OPENCODE_GO_API_KEY``); CI supplies it as a secret. A failure
+    here is fatal: it is the "does Alice talk to a real model" proof.
+    """
+    print("\n=== D. OpenCode Go (real model, free tier) ===")
+
+    key = (os.environ.get("OPENCODE_GO_API_KEY") or "").strip()
+    if not key:
+        print("SKIP: OPENCODE_GO_API_KEY is not set")
+        return True
+
+    model = (os.environ.get("ALICE_E2E_OPENCODE_MODEL") or "hy4-flash-free").strip()
+    write_config(home, f"model:\n  provider: opencode-go\n  default: {model}\n")
+
+    reply = run_agent_once(model, "Reply with exactly: WINDOWS-OK")
+    text = (reply or "").strip()
+    print(f"model={model} reply={text[:120]!r}")
+
+    if not text or "api call failed" in text.lower() or "error:" in text.lower()[:12]:
+        print("FAIL: the OpenCode Go model did not answer")
+        return False
+
+    print("PASS")
+    return True
+
+
 # ── entry point ────────────────────────────────────────────────────────────
 
 
@@ -277,12 +306,14 @@ def main() -> int:
         passed = scenario_a(home, mock_log)
         scenario_b(home, mock_log)
         scenario_c(home)
+        real_model = scenario_d(home)
     finally:
         server.terminate()
 
     print("\n=== summary ===")
     print(f"custom+key: {'PASS' if passed else 'FAIL'}")
-    return 0 if passed else 1
+    print(f"opencode-go real model: {'PASS' if real_model else 'FAIL'}")
+    return 0 if passed and real_model else 1
 
 
 if __name__ == "__main__":
