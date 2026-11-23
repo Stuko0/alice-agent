@@ -1,0 +1,90 @@
+# windows-provider-e2e.yml
+#
+# Runs scripts/provider_e2e.py on a real Windows runner against the *packaged*
+# runtime (the same tree + embedded Python the installer ships), so provider
+# wiring is proven where users actually run it:
+#
+#   A. custom endpoint + API key  -> key leaves as Authorization: Bearer, the
+#      agent completes a turn (every API-key provider uses this path).
+#   B. api_mode=anthropic_messages -> reports which header went out (diagnoses
+#      "missing authentication header" against OpenAI-compatible gateways).
+#   C. the keyless free endpoint -> a real reply over the public network.
+#
+# A failing A fails the job; B and C report (B documents a trap, C depends on
+# a third-party endpoint).
+
+name: Windows provider E2E
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/provider_e2e.py'
+      - 'alice_cli/runtime_provider.py'
+      - 'alice_cli/free_endpoints.py'
+      - 'alice_cli/auth.py'
+      - 'agent/agent_init.py'
+      - 'run_agent.py'
+  push:
+    branches:
+      - 'feat/**'
+      - 'release/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: provider-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  provider-e2e:
+    name: Provider wiring (Windows, packaged runtime)
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Download the packaged runtime
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'resources.zip'
+          Invoke-WebRequest -Uri 'https://github.com/Stuko0/alice-agent/releases/latest/download/resources.zip' -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath (Join-Path $env:RUNNER_TEMP 'bundle') -Force
+          $py = Join-Path $env:RUNNER_TEMP 'bundle/resources/python/python.exe'
+          if (-not (Test-Path $py)) { throw "packaged python missing at $py" }
+          $tree = Join-Path $env:RUNNER_TEMP 'bundle/resources/alice'
+          if (-not (Test-Path (Join-Path $tree 'alice_cli/main.py'))) { throw "packaged agent tree missing" }
+          "PACKAGED_PY=$py" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "PACKAGED_TREE=$tree" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Run provider scenarios
+        shell: pwsh
+        env:
+          E2E_ALICE_HOME: ${{ runner.temp }}\e2e-home
+          PYTHONPATH: ${{ runner.temp }}\bundle\resources\alice
+          PYTHONUNBUFFERED: '1'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:E2E_ALICE_HOME | Out-Null
+          & "$env:PACKAGED_PY" scripts/provider_e2e.py 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/provider-e2e.log"
+          $code = $LASTEXITCODE
+          Write-Host "exit=$code"
+          if ($code -ne 0) { throw "provider scenarios failed (exit $code)" }
+
+      - name: Show the exchange
+        if: always()
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'provider-e2e.log'
+          if (Test-Path $log) { Get-Content $log -Tail 120 }
+
+      - name: Upload the scenario log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: provider-e2e-log
+          path: ${{ runner.temp }}/provider-e2e.log
+          if-no-files-found: warn
