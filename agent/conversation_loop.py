@@ -3781,10 +3781,26 @@ def run_conversation(
                             _auth = f"set(len={len(_agent_key)})"
                         _wire = str(getattr(agent, "api_mode", "") or "chat_completions")
                         _auth_header = "x-api-key" if _wire == "anthropic_messages" else "authorization"
+
+                        # A key minted for one service sent to another is the
+                        # most common "valid key, 401" report. The prefixes are
+                        # distinctive; the value is never printed.
+                        _key_service = ""
+                        if _agent_key.startswith("sk-or-v1-"):
+                            _key_service = "openrouter"
+                        elif _agent_key.startswith("sk-ant-"):
+                            _key_service = "anthropic"
+
+                        _endpoint_host = str(getattr(agent, "base_url", "") or "").lower()
+                        _key_mismatch = bool(
+                            _key_service and _key_service not in _endpoint_host
+                        )
                         _via = (
                             f"provider={_provider or '?'} model={_model or '?'}"
                             f" auth={_auth} api_mode={_wire} header={_auth_header}"
                         )
+                        if _key_mismatch:
+                            _via += f" key_hint={_key_service}-key-on-other-endpoint"
                         _endpoint = str(getattr(agent, "base_url", "") or "").strip()
                         if _endpoint:
                             _via += f" endpoint={_endpoint}"
