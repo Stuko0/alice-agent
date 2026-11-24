@@ -88,7 +88,8 @@ def test_installs_once_when_go_is_available(tmp_path, monkeypatch):
     monkeypatch.setattr(alice_main.subprocess, "run", fake_run)
 
     assert alice_main.ensure_wails_binary() == str(bindir / "wails")
-    assert calls and calls[0][:2] == ["go", "install"]
+    assert calls and Path(calls[0][0]).name == "go"
+    assert calls[0][1] == "install"
     assert "github.com/wailsapp/wails/v2/cmd/wails@v" in calls[0][2]
 
 
@@ -112,3 +113,59 @@ def test_build_uses_the_resolved_binary(tmp_path, monkeypatch):
     build_calls = [argv for argv, _kw in calls if argv[0] != "npm"]
     assert build_calls and build_calls[0][0] == "/opt/go/bin/wails"
     assert build_calls[0][1:] == ["build"]
+
+
+# ── Go toolchain resolution ────────────────────────────────────────────────
+# Wails shells out to `go`; a terminal whose PATH predates a tarball install
+# answers "unable to find compiler: go" even though /usr/local/go/bin/go exists.
+
+
+def test_go_from_path(monkeypatch):
+    monkeypatch.setattr(alice_main.shutil, "which", lambda name: "/usr/bin/go" if name == "go" else None)  # type: ignore[attr-defined]
+
+    assert alice_main.resolve_go_binary() == "/usr/bin/go"
+
+
+def test_go_from_goroot(tmp_path, monkeypatch):
+    exe = _fake_wails(tmp_path / "goroot" / "bin")
+    exe.rename(exe.with_name("go"))
+    monkeypatch.setenv("GOROOT", str(tmp_path / "goroot"))
+
+    assert alice_main.resolve_go_binary() == str(tmp_path / "goroot" / "bin" / "go")
+
+
+def test_go_candidates_prefer_goroot(tmp_path, monkeypatch):
+    monkeypatch.setenv("GOROOT", str(tmp_path / "goroot"))
+
+    assert alice_main._go_candidate_paths()[0] == tmp_path / "goroot" / "bin" / "go"
+
+
+def test_build_prepends_the_go_dir_to_path(tmp_path, monkeypatch):
+    desktop_dir = tmp_path / "desktop"
+    wails_dir = tmp_path / "wails"
+    (desktop_dir / "dist").mkdir(parents=True)
+    (desktop_dir / "dist" / "index.html").write_text("<html></html>", encoding="utf-8")
+    (wails_dir / "frontend").mkdir(parents=True)
+
+    monkeypatch.setattr(alice_main, "ensure_wails_binary", lambda: "/opt/wails/bin/wails")
+    monkeypatch.setattr(alice_main, "resolve_go_binary", lambda: "/usr/local/go/bin/go")
+    monkeypatch.setenv("PATH", "/usr/bin:/bin")
+
+    seen = {}
+
+    class Done:
+        returncode = 0
+
+    def fake_run(argv, **kwargs):
+        if argv[0] != "npm":
+            seen["argv"] = argv
+            seen["path"] = kwargs.get("env", {}).get("PATH", "")
+        return Done()
+
+    monkeypatch.setattr(alice_main.subprocess, "run", fake_run)
+
+    alice_main._build_wails_desktop("npm", desktop_dir, wails_dir)
+
+    assert seen["argv"][0] == "/opt/wails/bin/wails"
+    assert seen["path"].split(os.pathsep)[0] == "/usr/local/go/bin"
+    assert "/usr/bin" in seen["path"].split(os.pathsep)

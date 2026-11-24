@@ -255,6 +255,7 @@ if _try_termux_ultrafast_version():
     raise SystemExit(0)
 
 import argparse
+import glob
 import hashlib
 import json
 import shlex
@@ -5870,6 +5871,56 @@ def resolve_wails_binary() -> str | None:
     return None
 
 
+def _go_candidate_paths() -> list[Path]:
+    """Places a Go toolchain is installed when it is not on PATH."""
+    candidates: list[Path] = []
+
+    goroot = os.getenv("GOROOT", "").strip()
+    if goroot:
+        candidates.append(Path(goroot).expanduser() / "bin" / "go")
+
+    candidates.extend([
+        Path("/usr/local/go/bin/go"),
+        Path("/usr/lib/go/bin/go"),
+        Path("/usr/lib64/go/bin/go"),
+        Path.home() / ".local" / "go" / "bin" / "go",
+        Path.home() / "go" / "bin" / "go",
+    ])
+
+    # Versioned layouts: gvm (~/sdk/go1.22/bin/go), distro packages
+    # (/usr/lib/go-1.22/bin/go), asdf/mise shims.
+    for pattern in (
+        str(Path.home() / "sdk" / "go*" / "bin" / "go"),
+        str(Path.home() / ".local" / "share" / "mise" / "installs" / "go" / "*" / "bin" / "go"),
+        "/usr/lib/go-*/bin/go",
+    ):
+        candidates.extend(Path(p).expanduser() for p in sorted(glob.glob(pattern), reverse=True))
+
+    shim = Path.home() / ".asdf" / "shims" / "go"
+    if shim.is_file():
+        candidates.append(shim)
+
+    return candidates
+
+
+def resolve_go_binary() -> str | None:
+    """Locate the Go toolchain Wails needs to compile the shell.
+
+    Wails shells out to `go`; a terminal (or a launcher) whose PATH predates a
+    tarball install of Go answers "unable to find compiler: go" even though the
+    toolchain is present under /usr/local/go or $GOROOT.
+    """
+    found = shutil.which("go")
+    if found:
+        return found
+
+    for candidate in _go_candidate_paths():
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+
+    return None
+
+
 def _wails_module_version() -> str:
     """Wails version pinned by apps/desktop-wails/go.mod (fallback v2.15.0)."""
     go_mod = PROJECT_ROOT / "apps" / "desktop-wails" / "go.mod"
@@ -5887,13 +5938,14 @@ def ensure_wails_binary() -> str | None:
     if resolved:
         return resolved
 
-    if not shutil.which("go"):
+    go = resolve_go_binary()
+    if not go:
         return None
 
     version = _wails_module_version()
     target = f"github.com/wailsapp/wails/v2/cmd/wails@v{version}"
     print(f"→ Wails CLI not found; installing it with `go install {target}`...")
-    res = subprocess.run(["go", "install", target])
+    res = subprocess.run([go, "install", target])
     if res.returncode != 0:
         return None
 
@@ -5927,7 +5979,21 @@ def _build_wails_desktop(npm: str, desktop_dir: Path, wails_dir: Path) -> None:
         print("  (or point WAILS_BIN at the binary).")
         sys.exit(1)
 
-    res = subprocess.run([wails, "build"], cwd=wails_dir)
+    go = resolve_go_binary()
+    if not go:
+        print("✗ Go toolchain not found — Wails needs `go` to compile the shell.")
+        print("  Install Go 1.21+ from https://go.dev/dl/ (or make sure $GOROOT/bin is on PATH).")
+        sys.exit(1)
+
+    # Wails looks up `go` itself; prepend the directory we resolved so a PATH
+    # without the toolchain still builds.
+    build_env = dict(os.environ)
+    go_dir = str(Path(go).parent)
+    path_parts = [part for part in build_env.get("PATH", "").split(os.pathsep) if part]
+    if go_dir not in path_parts:
+        build_env["PATH"] = os.pathsep.join([go_dir, *path_parts])
+
+    res = subprocess.run([wails, "build"], cwd=wails_dir, env=build_env)
     if res.returncode != 0:
         print("✗ Wails build failed")
         sys.exit(res.returncode)
