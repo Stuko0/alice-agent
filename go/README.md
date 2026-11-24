@@ -27,7 +27,41 @@ make install      # -> ~/.local/bin/alice (PREFIX to override)
 | `alice host logs [name] [-n N] [-f]` | Tail `agent` (default), `errors`, `gateway`, `tui` or `host` logs |
 | `alice host rpc <method> [json]` | Spawn the gateway, wait for `gateway.ready`, call one RPC, print the result |
 | `alice host supervise [--max-restarts N] [--backoff-max 30s] -- <cmd...>` | Run a child and restart it with exponential backoff |
+| `alice cli [--resume ID] [--model NAME] [--cwd DIR] [--plain]` | The Go classic CLI (M2) |
 | `alice host help` | Help generated from the command table |
+
+### Classic CLI
+
+The Go frontend over the same JSON-RPC gateway the TUI and desktop use.
+
+```bash
+alice cli                 # full-screen TUI when stdout is a terminal
+alice cli --plain         # line mode (pipes, scripts, CI)
+alice cli --resume <id>   # attach to a stored session
+alice cli --model <name>  # model override for a new session
+alice cli --cwd <dir>     # session working directory (default: $PWD)
+```
+
+Local commands: `/help`, `/new`, `/resume`, `/sessions`, `/model`,
+`/interrupt`, `/clear`, `/status`, `/quit`. Everything else is forwarded to
+`slash.exec`, so skills, plugins and backend commands work without being
+reimplemented.
+
+Keys: `enter` submits, `ctrl+j` inserts a newline, `ctrl+c` interrupts the turn
+(or quits when idle), `ctrl+d` quits, `esc` clears the input. Blocking prompts
+render inline: approvals take `y`/`a`/`n`, clarify accepts a choice number,
+sudo/secret mask the input.
+
+`internal/cli` holds the engine (session lifecycle, typed event stream, slash
+dispatch) plus two frontends — a bubbletea TUI and a line REPL — so both share
+one implementation of the behaviour.
+
+E2E against the real backend (one real model call):
+
+```bash
+ALICE_CLI_E2E=1 go test ./internal/cli -run Gateway -v
+```
+
 
 Examples:
 
@@ -111,7 +145,7 @@ Two tests keep the contract honest:
 
 ## Scope boundary
 
-M1 (this host) covers the operations layer: routing, profiles, diagnostics,
-logs, RPC access and supervision. Business subcommands (`setup`, `config`,
-`auth`, `model`, `cron`, `kanban`) are still Python and will be ported one at a
-time, each deleting its Python counterpart in the same change.
+M1 (host operations) and M2 (classic CLI) are complete. Business subcommands
+(`setup`, `config`, `auth`, `model`, `cron`, `kanban`) are still Python and will
+be ported one at a time, each deleting its Python counterpart in the same
+change.

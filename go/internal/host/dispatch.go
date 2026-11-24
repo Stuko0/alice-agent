@@ -60,6 +60,18 @@ func Main(opts Options) int {
 
 	// Only leading global flags are understood; anything else is Python's job.
 	global := ParseGlobalArgs(opts.Args)
+	if global.OK && len(global.Rest) > 0 && global.Rest[0] == "cli" {
+		if global.Profile != "" {
+			home, err := opts.Resolver.ResolveProfile(global.Profile)
+			if err != nil {
+				fmt.Fprintf(opts.Stderr, "alice: %v\n", err)
+				return 1
+			}
+			opts.Resolver.HomeOverride = home
+			opts.Resolver.HomeOverrideSource = "profile:" + strings.ToLower(strings.TrimSpace(global.Profile))
+		}
+		return runCLI(opts, global.Rest[1:])
+	}
 	if global.OK && len(global.Rest) > 0 && global.Rest[0] == "host" {
 		if global.Profile != "" {
 			home, err := opts.Resolver.ResolveProfile(global.Profile)
