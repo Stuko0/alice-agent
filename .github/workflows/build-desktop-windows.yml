@@ -455,6 +455,8 @@ jobs:
           public class AliceWin {
             [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
             [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+            [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+            [DllImport("user32.dll")] public static extern void mouse_event(int flags, int dx, int dy, int data, int extra);
           }
           "@
 
@@ -480,7 +482,23 @@ jobs:
           Save-Desktop "alice-windows-1.png"
           Start-Sleep -Seconds 20
           Save-Desktop "alice-windows-2.png"
-          Start-Sleep -Seconds 20
+
+          # Dismiss the tour and ask a question, so the last capture proves the
+          # packaged app talks to the model on this machine (not just that a
+          # window opens). Coordinates are for the runner's 1024x768 desktop.
+          function Click-At([int]$x, [int]$y) {
+            [AliceWin]::SetCursorPos($x, $y) | Out-Null
+            Start-Sleep -Milliseconds 200
+            [AliceWin]::mouse_event(0x02, 0, 0, 0, 0)
+            [AliceWin]::mouse_event(0x04, 0, 0, 0, 0)
+          }
+
+          Click-At 190 501          # "Skip the tour"
+          Start-Sleep -Seconds 2
+          Click-At 400 664          # composer
+          Start-Sleep -Seconds 1
+          [System.Windows.Forms.SendKeys]::SendWait("Hola, responde solo OK{ENTER}")
+          Start-Sleep -Seconds 25
           Save-Desktop "alice-windows-3.png"
 
           # Kill the app AND the backend it spawned: the bundled python holds
