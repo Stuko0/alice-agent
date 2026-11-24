@@ -155,3 +155,40 @@ func mappingNode(node *yaml.Node) *yaml.Node {
 	}
 	return node
 }
+
+// Map decodes the document into a plain map (comments are not part of the
+// value). A malformed tree yields an empty map.
+func (d *Document) Map() map[string]any {
+	var out map[string]any
+	if err := d.mapping().Decode(&out); err != nil || out == nil {
+		return map[string]any{}
+	}
+	return out
+}
+
+// RawVersion reads the on-disk `_config_version` (0 when absent).
+func (d *Document) RawVersion() int {
+	value, ok := d.Get("_config_version")
+	if !ok {
+		return 0
+	}
+	switch typed := value.(type) {
+	case int:
+		return typed
+	case int64:
+		return int(typed)
+	case float64:
+		return int(typed)
+	case string:
+		n := 0
+		for _, r := range typed {
+			if r < '0' || r > '9' {
+				return 0
+			}
+			n = n*10 + int(r-'0')
+		}
+		return n
+	default:
+		return 0
+	}
+}
