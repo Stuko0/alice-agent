@@ -226,3 +226,24 @@ func TestManagedConfigKeys(t *testing.T) {
 		t.Fatal("non-leaf key should not be pinned")
 	}
 }
+
+func TestUnsetPrunesEmptyParents(t *testing.T) {
+	doc, err := Load(filepath.Join(t.TempDir(), "missing.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := doc.Set("agent.deep.key", "x"); err != nil {
+		t.Fatal(err)
+	}
+	if removed, err := doc.Unset("agent.deep.key"); err != nil || !removed {
+		t.Fatalf("removed=%v err=%v", removed, err)
+	}
+
+	out, err := doc.Bytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(out), "agent") || strings.Contains(string(out), "deep") {
+		t.Fatalf("empty parents were kept:\n%s", out)
+	}
+}

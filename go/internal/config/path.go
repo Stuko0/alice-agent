@@ -111,7 +111,14 @@ func setPath(root *yaml.Node, parts []string, value *yaml.Node) error {
 	return nil
 }
 
+type pathLevel struct {
+	mapping *yaml.Node
+	keyIdx  int
+}
+
 func unsetPath(root *yaml.Node, parts []string) (bool, error) {
+	var chain []pathLevel
+
 	current := root
 
 	for i, part := range parts {
@@ -125,12 +132,14 @@ func unsetPath(root *yaml.Node, parts []string) (bool, error) {
 			}
 			if last {
 				current.Content = append(current.Content[:idx], current.Content[idx+2:]...)
+				pruneEmptyAncestors(chain)
 				return true, nil
 			}
 			child, _ := mappingChild(current, part)
 			if child == nil {
 				return false, nil
 			}
+			chain = append(chain, pathLevel{mapping: current, keyIdx: idx})
 			current = child
 
 		case yaml.SequenceNode:
@@ -149,6 +158,22 @@ func unsetPath(root *yaml.Node, parts []string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// pruneEmptyAncestors removes mappings left empty by an unset, walking back up
+// the path that was traversed. Unrelated empty mappings are left alone.
+func pruneEmptyAncestors(chain []pathLevel) {
+	for j := len(chain) - 1; j >= 0; j-- {
+		lvl := chain[j]
+		if lvl.keyIdx+1 >= len(lvl.mapping.Content) {
+			return
+		}
+		child := lvl.mapping.Content[lvl.keyIdx+1]
+		if child.Kind != yaml.MappingNode || len(child.Content) != 0 {
+			return
+		}
+		lvl.mapping.Content = append(lvl.mapping.Content[:lvl.keyIdx], lvl.mapping.Content[lvl.keyIdx+2:]...)
+	}
 }
 
 // replaceValue swaps a node's payload while keeping the comments and the
