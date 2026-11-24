@@ -4828,6 +4828,87 @@ def _nixos_build_env() -> dict[str, str] | None:
         pass  # nix-shell not available — caller will get None
 
     return None
+def _desktop_deps_hash(root: Path) -> str:
+    """Hash the manifests that decide the workspace dependency tree."""
+    h = hashlib.sha256()
+
+    for rel in (
+        "package.json",
+        "package-lock.json",
+        "apps/desktop/package.json",
+        "apps/shared/package.json",
+        "web/package.json",
+        "ui-tui/package.json",
+    ):
+        path = root / rel
+        if path.is_file():
+            h.update(rel.encode())
+            h.update(path.read_bytes())
+
+    return h.hexdigest()
+
+
+def _install_desktop_deps(
+    npm: str,
+    root: Path,
+    *,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess:
+    """Install the desktop workspace deps, skipping when the tree is current.
+
+    Two problems this solves:
+
+    * ``npm ci`` removes and recreates node_modules. Running it on every source
+      edit (the build stamp already tracks sources) is slow, and npm's cleanup
+      occasionally races another process and fails with
+      ``ENOTEMPTY: directory not empty`` — the whole rebuild then aborts for a
+      dependency tree that was already correct.
+    * When that race does happen, retrying blindly fails the same way; the
+      leftovers have to go first.
+
+    The marker lives inside node_modules, so wiping the tree naturally
+    invalidates it.
+    """
+    marker = root / "node_modules" / ".alice-deps-hash"
+    wanted = _desktop_deps_hash(root)
+
+    if (root / "node_modules").is_dir() and marker.is_file():
+        try:
+            if marker.read_text(encoding="utf-8").strip() == wanted:
+                print("✓ Desktop npm dependencies are up to date")
+                return subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+        except OSError:
+            pass
+
+    result = _run_npm_install_deterministic(npm, root, capture_output=True, env=env)
+    output = f"{result.stdout or ''}{result.stderr or ''}"
+
+    if result.returncode != 0 and "ENOTEMPTY" in output:
+        print("⚠ npm could not replace node_modules (ENOTEMPTY) — cleaning and retrying once")
+        for rel in (
+            "node_modules",
+            "apps/desktop/node_modules",
+            "apps/shared/node_modules",
+            "web/node_modules",
+            "ui-tui/node_modules",
+        ):
+            shutil.rmtree(root / rel, ignore_errors=True)
+        result = _run_npm_install_deterministic(npm, root, capture_output=True, env=env)
+        output = f"{result.stdout or ''}{result.stderr or ''}"
+
+    if output:
+        print(output, end="" if output.endswith("\n") else "\n")
+
+    if result.returncode == 0:
+        try:
+            marker.parent.mkdir(parents=True, exist_ok=True)
+            marker.write_text(wanted, encoding="utf-8")
+        except OSError:
+            pass
+
+    return result
+
+
 def _run_npm_install_deterministic(
     npm: str,
     cwd: Path,
@@ -5909,7 +5990,7 @@ def _cmd_gui_wails(args: argparse.Namespace, desktop_dir: Path) -> None:
         print("✓ Desktop Wails build is up to date (content stamp matches)")
     else:
         print("→ Installing desktop workspace dependencies...")
-        install_result = _run_npm_install_deterministic(npm, PROJECT_ROOT, capture_output=False, env=None)
+        install_result = _install_desktop_deps(npm, PROJECT_ROOT)
         if install_result.returncode != 0:
             print("✗ Desktop dependency install failed")
             print(f"  Run manually:  cd {PROJECT_ROOT} && npm ci")
@@ -5997,7 +6078,7 @@ def _cmd_gui_electron(args: argparse.Namespace, desktop_dir: Path) -> None:
         else:
             print("→ Installing desktop workspace dependencies...")
             nixos_env = _nixos_build_env()
-            install_result = _run_npm_install_deterministic(npm, PROJECT_ROOT, capture_output=False, env=nixos_env)
+            install_result = _install_desktop_deps(npm, PROJECT_ROOT, env=nixos_env)
             if install_result.returncode != 0:
                 if not _electron_pkg_staged_missing_dist(PROJECT_ROOT):
                     print("✗ Desktop dependency install failed")
