@@ -560,8 +560,7 @@ same auth gate as the rest of `/api/`.
 When the dashboard is bound to a public or non-loopback address — anything other than `127.0.0.1` / `localhost` — Alice Agent engages an auth gate. Every request must carry a verified session cookie or it's bounced to the login page. Three providers ship in the box:
 
 - **[Username/password](#usernamepassword-provider-no-oauth-idp)** — the simplest way to put auth on a self-hosted / on-prem / homelab dashboard. No external identity provider. **Use it only on a trusted network or behind a VPN — not for public-internet exposure.**
-- **[OAuth (Nous Portal)](#default-provider-nous-research)** — for hosted deployments and any dashboard reachable over the public internet, and the recommended path for a [remote Alice Desktop connection](#connecting-alice-desktop-to-a-remote-backend). Every login is verified against your Nous account, so this is the provider suitable for internet-facing use.
-- **[Self-hosted OIDC](#self-hosted-oidc-provider)** — for bringing your own identity provider via standard OpenID Connect (Keycloak, Auth0, Okta, Google, GitHub via an OIDC bridge, etc.). No Nous Portal involved; suitable for public-internet exposure when fronted by a conformant OIDC server.
+- **[Self-hosted OIDC](#self-hosted-oidc-provider)** — for bringing your own identity provider via standard OpenID Connect (Keycloak, Auth0, Okta, Google, GitHub via an OIDC bridge, etc.). This is the recommended provider for public-internet exposure.
 
 Operator-owned dashboards bound to loopback are unaffected — no auth, no login page.
 
@@ -583,98 +582,13 @@ The gate is on if and only if:
 
 ### Fail-closed semantics
 
-If the gate would engage but **no** `DashboardAuthProvider` is registered (no Nous plugin, no custom plugin), `alice dashboard` refuses to bind with an explicit error message. There is no "default-deny but accept everything" fallback — a misconfigured gated dashboard never starts.
+If the gate would engage but **no** `DashboardAuthProvider` is registered (no OIDC/basic config, no custom plugin), `alice dashboard` refuses to bind with an explicit error message. There is no "default-deny but accept everything" fallback — a misconfigured gated dashboard never starts.
 
-When you run `alice dashboard --host 0.0.0.0` **interactively** (a real terminal) and no provider is configured yet, Alice doesn't just fail — it offers to set one up on the spot: pick **username & password** (writes `dashboard.basic_auth` to `config.yaml` and you're running in seconds) or **OAuth** (points you at `alice dashboard register`). Non-interactive callers — Docker/s6, CI, piped runs — skip the prompt and hit the fail-closed error above, so an unattended deploy still never starts without auth.
+When you run `alice dashboard --host 0.0.0.0` **interactively** (a real terminal) and no provider is configured yet, Alice doesn't just fail — it offers to set one up on the spot: pick **username & password** (writes `dashboard.basic_auth` to `config.yaml` and you're running in seconds) or **OAuth** (points you at the self-hosted OIDC configuration). Non-interactive callers — Docker/s6, CI, piped runs — skip the prompt and hit the fail-closed error above, so an unattended deploy still never starts without auth.
 
-### Default provider: Stuko
+### Nous Portal dashboard auth (retired)
 
-The bundled `plugins/dashboard_auth/nous` plugin is **always installed** and auto-loaded. It auto-registers a `DashboardAuthProvider` named `nous` when a client ID is configured.
-
-Because every login is verified against Nous Portal and protected by your Nous account, **the Nous provider is the one suitable for exposing a dashboard to the public internet.**
-
-#### Registering a dashboard
-
-To use the Nous provider you need an OAuth client ID (shape `agent:{id}`). There are two ways to get one:
-
-- **CLI — `alice dashboard register`.** Run it on the host where the dashboard lives. It resolves your existing Nous login (run `alice setup` first if you're not logged in), registers a self-hosted OAuth client with the Portal, and writes `ALICE_DASHBOARD_OAUTH_CLIENT_ID` into `~/.alice/.env` for you. Optional flags: `--name` (a human-readable label, otherwise auto-generated) and `--redirect-uri` (a public HTTPS callback URL for an internet-facing host).
-
-  ```bash
-  alice dashboard register
-  # ✓ Registered dashboard "swift_falcon"
-  # …writes ALICE_DASHBOARD_OAUTH_CLIENT_ID to ~/.alice/.env
-  ```
-
-- **GUI — the Local Dashboards page.** Open [`/local-dashboards`](https://stuko.dev/local-dashboards) in the Nous Portal to register, name, manage, and revoke self-hosted dashboards from the browser. Copy the resulting `agent:{id}` client ID into `ALICE_DASHBOARD_OAUTH_CLIENT_ID` (env) or `dashboard.oauth.client_id` (config.yaml). This is also where you revoke a dashboard registered via the CLI.
-
-#### Configuration
-
-The plugin reads from two surfaces, with the environment variable winning when set non-empty:
-
-**`config.yaml`** — the canonical surface:
-
-```yaml
-dashboard:
-  oauth:
-    client_id: agent:01HXYZ…             # required to engage the gate
-```
-
-**Environment variables** — operator overrides:
-
-| Env var | Overrides | Format | Provisioned by |
-|---------|-----------|--------|----------------|
-| `ALICE_DASHBOARD_OAUTH_CLIENT_ID` | `dashboard.oauth.client_id` | `agent:{instance_id}` | `alice dashboard register` |
-
-Per the Alice Agent convention (`~/.alice/.env` is for API keys / secrets only), **`config.yaml` is the recommended place to set these values** for local dev, on-prem, and any deployment you control directly. The environment-variable path exists so a hosting platform's secret injection can push per-deploy `client_id`s without anyone having to edit `config.yaml` inside the image — that's its primary purpose.
-
-Empty environment values are treated as unset, so a provisioned-but-not-populated platform secret can't accidentally shadow a valid `config.yaml` entry.
-
-If neither source provides a client_id, the plugin reports the specific reason and the dashboard's fail-closed bind error tells you exactly what to fix:
-
-```
-Refusing to bind dashboard to 0.0.0.0 — the OAuth auth gate engages on
-non-loopback binds, but no auth providers are registered.
-
-Bundled providers reported these issues:
-  • nous: ALICE_DASHBOARD_OAUTH_CLIENT_ID is not set (and
-    dashboard.oauth.client_id in config.yaml is empty). The Nous Portal
-    provisions this env var (shape 'agent:{instance_id}') when it
-    deploys a Alice Agent instance — set it to your provisioned
-    client id (either as an env var or under dashboard.oauth.client_id
-    in config.yaml), or pass --insecure to skip the OAuth gate entirely.
-
-Or pass --insecure to skip the auth gate (NOT recommended on untrusted
-networks).
-```
-
-#### Worked example: Stuko
-
-From a logged-in Alice install to a Nous-gated dashboard in three steps.
-
-**1. Log in and register the dashboard.** `alice dashboard register` uses your existing Nous login to provision an OAuth client and writes `ALICE_DASHBOARD_OAUTH_CLIENT_ID` into `~/.alice/.env` for you:
-
-```bash
-alice setup            # if you're not already logged into Nous Portal
-alice dashboard register
-# ✓ Registered dashboard "swift_falcon"
-# …writes ALICE_DASHBOARD_OAUTH_CLIENT_ID to ~/.alice/.env
-```
-
-**2. Run the dashboard on a reachable address.** A non-loopback bind without `--insecure` engages the OAuth gate, and the `client_id` just written activates the `nous` provider:
-
-```bash
-alice dashboard --host 0.0.0.0 --port 9119 --no-open
-```
-
-**3. Log in.** Open `http://<host>:9119/`, you'll be bounced to `/login`. Click **Sign in with Stuko** → authenticate at the Portal → land back on the authenticated dashboard. Verify the gate from any machine:
-
-```bash
-curl -s http://<host>:9119/api/status | jq '.auth_required, .auth_providers'
-# true
-# ["nous"]
-```
-
-`GET /api/auth/me` then returns the verified session (`provider: nous`). For an internet-facing host, register with `--redirect-uri https://alice.example.com/auth/callback` and set `ALICE_DASHBOARD_PUBLIC_URL` so the OAuth callback resolves to your public URL (see [Public URL override](#public-url-override)).
+The former bundled `nous` dashboard-auth provider was removed with the Nous Portal integration. Existing deployments should move to the **[self-hosted OIDC provider](#self-hosted-oidc-provider)** (any conformant IdP) or the **[username/password provider](#usernamepassword-provider-no-oauth-idp)** on a trusted network. `ALICE_DASHBOARD_OAUTH_CLIENT_ID` and `alice dashboard register` no longer register a provider.
 
 ### Username/password provider (no OAuth IDP)
 

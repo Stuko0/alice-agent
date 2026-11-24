@@ -123,6 +123,22 @@ The app closes to finish the job (the cleanup runs after it exits so it can remo
 
 You can do the same from the terminal — `alice uninstall --gui` for the GUI alone, or `alice uninstall` / `alice uninstall --full` for the agent too.
 
+## Windows: installer and in-app updates
+
+On Windows the desktop also ships as a **per-user NSIS installer**
+(`alice-desktop-amd64-installer.exe`). It installs to
+`%LOCALAPPDATA%\Programs\Alice`, needs no admin rights (no UAC prompt) and
+carries everything the app needs: the Wails shell, a self-contained Python
+runtime and the agent runtime tree. After installing, launch **Alice** from the
+Desktop/Start-Menu shortcut — there is no `alice desktop` command to run and no
+git checkout or CLI install required.
+
+Updates run from inside the app. The update toast (or **Settings → About →
+Check for updates**) shows the new version; **Update now** downloads the next
+installer, verifies its SHA-256, runs it silently in user scope and relaunches
+Alice. A source/CLI install keeps updating with git (`alice update`) — the app
+detects which mode it is in and offers the matching flow.
+
 :::note
 Running `alice uninstall --gui` from a **source checkout** (a `alice desktop` dev build) also removes the workspace `node_modules` and `apps/desktop/{dist,release}` build output, since those are GUI build artifacts. They're recoverable with `alice desktop` (or `npm install` + a rebuild) — but if you're actively hacking on the desktop app, expect to reinstall dependencies afterward.
 :::
@@ -136,9 +152,10 @@ launches it. The legacy Electron shell is still available via `--electron`.
 :::note
 **Electron is end-of-life on Windows.** Since Alice 0.19.0 the desktop
 self-update runs inside the Wails shell (`UpdateService`), the electron-builder
-NSIS/MSI installer pipeline is deprecated, and the Windows installer
-(Alice-Setup.exe) only produces/launches the Wails binary. The `--electron`
-flag remains only as a temporary escape hatch for source checkouts.
+NSIS/MSI installer pipeline is deprecated, and Windows ships a per-user NSIS
+installer built from `apps/desktop-wails/installer/project.nsi`. The
+`--electron` flag remains only as a temporary escape hatch for source
+checkouts.
 ::: 
 
 | Flag                 | Description                                                                               |
@@ -156,7 +173,8 @@ flag remains only as a temporary escape hatch for source checkouts.
 
 ## How it works
 
-The packaged app ships the Electron shell and a native React chat surface. On first launch it can install the Alice Agent runtime into `ALICE_HOME` (`~/.alice`, or `%LOCALAPPDATA%\alice` on Windows) — **the same layout a CLI install uses**, which is why the two are interchangeable. Backend resolution first honours `ALICE_DESKTOP_ALICE_ROOT`, then a completed managed install, then a probed `alice` on `PATH` (unless `--ignore-existing` / `ALICE_DESKTOP_IGNORE_EXISTING=1` is set), and finally an explicit `ALICE_DESKTOP_ALICE` command override for packagers such as Nix. The React renderer talks to a headless backend the app launches for you — a `alice serve` process that serves the `tui_gateway` JSON-RPC/WebSocket API — and reuses the agent runtime rather than embedding `alice --tui`. The desktop app is **self-contained**: it runs its own `alice serve` backend and never opens or requires the [web dashboard](./features/web-dashboard.md). (Runtimes older than the `serve` command fall back to a headless `dashboard --no-open` automatically, so an app update never outruns its backend.) Install, backend-resolution, and self-update logic live in the Electron main process.
+The packaged app ships the Electron shell and a native React chat surface. On first launch it can install the Alice Agent runtime into `ALICE_HOME` (`~/.alice`, or `%LOCALAPPDATA%\alice` on Windows) — **the same layout a CLI install uses**, which is why the two are interchangeable. Backend resolution first honours `ALICE_DESKTOP_ALICE_ROOT`, then a completed managed install, then a probed `alice` on `PATH` (unless `--ignore-existing` / `ALICE_DESKTOP_IGNORE_EXISTING=1` is set), and finally an explicit `ALICE_DESKTOP_ALICE` command override for packagers such as Nix. The React renderer talks to a headless backend the app launches for you — a `alice serve` process that serves the `tui_gateway` JSON-RPC/WebSocket API — and reuses the agent runtime rather than embedding `alice --tui`. The desktop app is **self-contained**: it runs its own `alice serve` backend and never opens or requires the [web dashboard](./features/web-dashboard.md). (Runtimes older than the `serve` command fall back to a headless `dashboard --no-open` automatically, so an app update never outruns its backend.) Install, backend resolution and self-update logic live in the Wails Go shell
+(`apps/desktop-wails/`).
 
 ## Connecting to a remote backend
 
