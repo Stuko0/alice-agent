@@ -120,12 +120,24 @@ jobs:
         # ship it. Chocolatey installs it under Program Files (x86). GITHUB_PATH
         # only affects LATER steps, so validate with the absolute path here.
         run: |
-          choco install nsis -y --no-progress
-          $nsis = "C:\Program Files (x86)\NSIS"
-          if (-not (Test-Path (Join-Path $nsis "makensis.exe"))) {
-            $nsis = (Get-ChildItem "C:\Program Files*\NSIS" -Directory -ErrorAction SilentlyContinue |
-              Select-Object -First 1).FullName
+          # Same flaky-feed guard as mingw: retry, and accept a copy the image
+          # happens to ship instead of assuming choco succeeded.
+          function Find-Nsis {
+            $dirs = @("C:\Program Files (x86)\NSIS", "C:\Program Files\NSIS") + @(
+              Get-ChildItem "C:\Program Files*\NSIS" -Directory -ErrorAction SilentlyContinue |
+                ForEach-Object { $_.FullName }
+            )
+            $dirs | Where-Object { Test-Path (Join-Path $_ "makensis.exe") } | Select-Object -First 1
           }
+
+          $nsis = Find-Nsis
+          for ($i = 1; -not $nsis -and $i -le 3; $i++) {
+            Write-Host "choco install nsis (attempt $i)"
+            choco install nsis -y --no-progress
+            Start-Sleep -Seconds 5
+            $nsis = Find-Nsis
+          }
+
           if (-not $nsis -or -not (Test-Path (Join-Path $nsis "makensis.exe"))) {
             throw "NSIS not found after choco install"
           }
