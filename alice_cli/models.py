@@ -343,8 +343,10 @@ _PROVIDER_MODELS: dict[str, list[str]] = {
         "openai/gpt-5.4",
     ],
     "opencode-zen": [
-        "kimi-k2.5",
-        "kimi-k2.6",
+        # Verified against /zen/v1: the free-tier ids ("*-free", big-pickle) are
+        # listed but answer 429 FreeUsageLimitError ("subscribe to OpenCode Go"),
+        # and kimi-k2.5/k2.6 answer 410 ModelDeprecated. They belong to the Go
+        # profile, which serves them without the gate.
         "gpt-5.5",
         "gpt-5.5-pro",
         "gpt-5.4-pro",
@@ -377,20 +379,13 @@ _PROVIDER_MODELS: dict[str, list[str]] = {
         "gemini-3-flash",
         "minimax-m2.7",
         "minimax-m2.5",
-        "minimax-m3-free",
         "glm-5.1",
         "glm-5",
         "deepseek-v4-pro",
         "deepseek-v4-flash",
-        "deepseek-v4-flash-free",
         "qwen3.6-plus",
-        "qwen3.6-plus-free",
         "qwen3.5-plus",
         "grok-build-0.1",
-        "big-pickle",
-        "mimo-v2.5-free",
-        "north-mini-code-free",
-        "nemotron-3-ultra-free",
     ],
     "opencode-go": [
         # Checked against https://opencode.ai/zen/go/v1/models: the previous

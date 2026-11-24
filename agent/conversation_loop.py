@@ -3823,6 +3823,15 @@ def run_conversation(
                             provider=_provider,
                             model=_model,
                         )
+                    elif "free usage limit" in str(_final_summary).lower():
+                        # OpenCode Zen lists free models but gates them behind
+                        # the Go subscription; picking one from the Zen catalog
+                        # produces a bare 429 that looks like a rate limit.
+                        _final_response += (
+                            "\n\nThose free models are included with the OpenCode Go "
+                            "subscription, not Zen. Switch the provider to \"OpenCode Go\" "
+                            "(endpoint https://opencode.ai/zen/go/v1) or pick a paid model."
+                        )
                     elif _is_stream_drop:
                         _final_response += (
                             "\n\nThe provider's stream connection keeps "
