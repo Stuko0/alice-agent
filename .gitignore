@@ -171,3 +171,20 @@ apps/desktop-wails/alice-desktop
 apps/desktop-wails/alice-desktop.exe
 apps/desktop-wails/build/bin/
 apps/desktop-wails/resources.zip
+
+# Local agent planning state (Hermes / Lydia plan vaults)
+.hermes/
+.lydia/
+
+# Private audit material — never publish (public repo)
+AUDITORIA-*.md
+reports/
+
+# Generated desktop preview fixtures. Deterministic to regenerate with
+# `node apps/desktop/scripts/gen-preview-fixtures.mjs`; only the small
+# committed fixtures (html-rel-assets/, html-form-demo.html) belong in git.
+apps/desktop/preview-fixtures/large/
+
+# Local interaction captures. The README stays committed; captures are
+# per-machine JSON files dropped in by the perf harness.
+apps/desktop/perf-captures/*.json
