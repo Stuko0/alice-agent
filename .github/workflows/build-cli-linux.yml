@@ -112,10 +112,17 @@ jobs:
           cd release-out && tar -czf ../alice-linux-x86_64.tar.gz alice README.txt && cd ..
           ls -lh alice-linux-x86_64.tar.gz
 
+      - name: Compute artifact suffix
+        id: suffix
+        shell: bash
+        # Branch names contain '/', which upload-artifact rejects. Same
+        # sanitisation the Windows workflow already applies.
+        run: echo "value=$(echo '${{ github.ref_name }}' | tr '/ ' '--')" >> "$GITHUB_OUTPUT"
+
       - name: Upload CLI artifacts
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
-          name: alice-cli-linux-${{ github.ref_name }}
+          name: alice-cli-linux-${{ steps.suffix.outputs.value }}
           path: alice-linux-x86_64.tar.gz
           if-no-files-found: error
           retention-days: 90
