@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/Stuko0/alice-agent/go/internal/rpcclient"
@@ -57,8 +58,19 @@ func Main(opts Options) int {
 		opts.Resolver = DefaultResolver()
 	}
 
-	if len(opts.Args) > 0 && opts.Args[0] == "host" {
-		return hostCommand(opts, opts.Args[1:])
+	// Only leading global flags are understood; anything else is Python's job.
+	global := ParseGlobalArgs(opts.Args)
+	if global.OK && len(global.Rest) > 0 && global.Rest[0] == "host" {
+		if global.Profile != "" {
+			home, err := opts.Resolver.ResolveProfile(global.Profile)
+			if err != nil {
+				fmt.Fprintf(opts.Stderr, "alice: %v\n", err)
+				return 1
+			}
+			opts.Resolver.HomeOverride = home
+			opts.Resolver.HomeOverrideSource = "profile:" + strings.ToLower(strings.TrimSpace(global.Profile))
+		}
+		return dispatchHost(opts, global.Rest[1:])
 	}
 	return delegate(opts)
 }
@@ -84,26 +96,6 @@ func delegate(opts Options) int {
 		}
 	}
 	return code
-}
-
-func hostCommand(opts Options, args []string) int {
-	if len(args) == 0 {
-		printHostHelp(opts.Stdout)
-		return 0
-	}
-	switch args[0] {
-	case "env":
-		return hostEnv(opts)
-	case "rpc":
-		return hostRPC(opts, args[1:])
-	case "help", "--help", "-h":
-		printHostHelp(opts.Stdout)
-		return 0
-	default:
-		fmt.Fprintf(opts.Stderr, "alice host: unknown subcommand %q\n\n", args[0])
-		printHostHelp(opts.Stderr)
-		return 2
-	}
 }
 
 type envReport struct {
@@ -150,18 +142,6 @@ func hostEnv(opts Options) int {
 		return 1
 	}
 	return 0
-}
-
-func printHostHelp(w io.Writer) {
-	fmt.Fprint(w, `alice host — Go host diagnostics
-
-Usage:
-  alice host env                  Print the resolved ALICE_HOME, Python runtime and build info (JSON)
-  alice host rpc <method> [json]  Call one gateway RPC and print the result
-  alice host help                 Show this help
-
-Every other command is delegated to the Python backend unchanged.
-`)
 }
 
 // hostRPC is the first production consumer of the protocol client: spawn the

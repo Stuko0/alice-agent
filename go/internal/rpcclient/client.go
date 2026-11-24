@@ -33,6 +33,8 @@ type Options struct {
 	Dir string
 	// Env replaces the child environment when non-nil; nil inherits os.Environ.
 	Env []string
+	// Stderr receives the backend's stderr; nil inherits os.Stderr.
+	Stderr io.Writer
 	// EventBuffer is the events channel capacity (default 64).
 	EventBuffer int
 }
@@ -84,7 +86,10 @@ func Start(ctx context.Context, opts Options) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("rpcclient: stdout: %w", err)
 	}
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = opts.Stderr
+	if cmd.Stderr == nil {
+		cmd.Stderr = os.Stderr
+	}
 
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("rpcclient: start gateway: %w", err)

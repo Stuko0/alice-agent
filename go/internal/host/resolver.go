@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -21,8 +22,20 @@ type Resolver struct {
 	AliceHomeEnv string
 	PythonEnv    string
 
+	// Profile is an explicitly selected profile (`-p name`). Empty means
+	// "whatever ALICE_HOME / active_profile says".
+	Profile string
+	// HomeOverride, when set, wins over every other rule. The dispatcher
+	// fills it after validating an explicit profile.
+	HomeOverride       string
+	HomeOverrideSource string
+	// SupervisedChild mirrors ALICE_S6_SUPERVISED_CHILD: a supervised slot
+	// must not follow the sticky active_profile.
+	SupervisedChild bool
+
 	LookPath   func(string) (string, error)
 	Stat       func(string) (os.FileInfo, error)
+	ReadFile   func(string) ([]byte, error)
 	Executable func() (string, error)
 	WorkingDir func() (string, error)
 }
@@ -31,40 +44,154 @@ type Resolver struct {
 func DefaultResolver() Resolver {
 	home, _ := os.UserHomeDir()
 	return Resolver{
-		GOOS:         runtime.GOOS,
-		HomeDir:      home,
-		LocalAppData: os.Getenv("LOCALAPPDATA"),
-		AliceHomeEnv: os.Getenv("ALICE_HOME"),
-		PythonEnv:    os.Getenv("ALICE_PYTHON"),
-		LookPath:     exec.LookPath,
-		Stat:         os.Stat,
-		Executable:   os.Executable,
-		WorkingDir:   os.Getwd,
+		GOOS:            runtime.GOOS,
+		HomeDir:         home,
+		LocalAppData:    os.Getenv("LOCALAPPDATA"),
+		AliceHomeEnv:    os.Getenv("ALICE_HOME"),
+		PythonEnv:       os.Getenv("ALICE_PYTHON"),
+		SupervisedChild: os.Getenv("ALICE_S6_SUPERVISED_CHILD") != "",
+		LookPath:        exec.LookPath,
+		Stat:            os.Stat,
+		ReadFile:        os.ReadFile,
+		Executable:      os.Executable,
+		WorkingDir:      os.Getwd,
 	}
 }
 
 // Home returns the active ALICE_HOME and where the value came from.
 //
-// This mirrors alice_constants.get_alice_home():
-//   - ALICE_HOME wins when set;
-//   - Windows defaults to %LOCALAPPDATA%\alice;
-//   - everything else defaults to ~/.alice.
-//
-// Profiles (-p/--profile) are deliberately NOT interpreted here. The Python
-// entry point owns that parsing (including the `mcp add --args` passthrough
-// region), and duplicating it in Go is how the two implementations drift.
+// Precedence (mirrors alice_cli.main._apply_profile_override +
+// alice_constants.get_alice_home):
+//  1. an explicit profile validated by the dispatcher (HomeOverride);
+//  2. a sticky `active_profile` file under the default root, unless disabled;
+//  3. ALICE_HOME;
+//  4. the platform default (%LOCALAPPDATA%\alice on Windows, ~/.alice elsewhere).
 func (r Resolver) Home() (string, string) {
+	if r.HomeOverride != "" {
+		return r.HomeOverride, r.HomeOverrideSource
+	}
+	if p := r.activeProfile(); p != "" {
+		return filepath.Join(r.ProfilesRoot(), p), "profile:" + p
+	}
 	if v := strings.TrimSpace(r.AliceHomeEnv); v != "" {
 		return filepath.Clean(v), "ALICE_HOME"
 	}
+	return r.NativeHome(), "default"
+}
+
+// NativeHome is the platform default install root, ignoring ALICE_HOME.
+func (r Resolver) NativeHome() string {
 	if r.GOOS == "windows" {
 		base := strings.TrimSpace(r.LocalAppData)
 		if base == "" {
 			base = filepath.Join(r.HomeDir, "AppData", "Local")
 		}
-		return filepath.Join(base, "alice"), "default"
+		return filepath.Join(base, "alice")
 	}
-	return filepath.Join(r.HomeDir, ".alice"), "default"
+	return filepath.Join(r.HomeDir, ".alice")
+}
+
+// DefaultRoot is the pre-profile root: the native home, or ALICE_HOME when it
+// points outside it (Docker/custom deployments), with `<root>/profiles/<name>`
+// collapsed back to `<root>`.
+func (r Resolver) DefaultRoot() string {
+	native := r.NativeHome()
+	env := strings.TrimSpace(r.AliceHomeEnv)
+	if env == "" {
+		return native
+	}
+	env = filepath.Clean(env)
+	if isUnder(env, native) {
+		return native
+	}
+	if filepath.Base(filepath.Dir(env)) == "profiles" && filepath.Base(env) != "profiles" {
+		return filepath.Dir(filepath.Dir(env))
+	}
+	return env
+}
+
+// ProfilesRoot is where named profiles live.
+func (r Resolver) ProfilesRoot() string {
+	return filepath.Join(r.DefaultRoot(), "profiles")
+}
+
+// activeProfile returns the sticky profile to use, if any. An ALICE_HOME that
+// already points at a profile wins (same heuristic as Python: the immediate
+// parent directory is named "profiles").
+func (r Resolver) activeProfile() string {
+	if r.Profile != "" {
+		return r.Profile
+	}
+	env := strings.TrimSpace(r.AliceHomeEnv)
+	if env != "" && filepath.Base(filepath.Dir(filepath.Clean(env))) == "profiles" {
+		return ""
+	}
+	if r.SupervisedChild || r.ReadFile == nil {
+		return ""
+	}
+	data, err := r.ReadFile(filepath.Join(r.DefaultRoot(), "active_profile"))
+	if err != nil {
+		return ""
+	}
+	name := strings.TrimSpace(string(data))
+	if name == "" || name == "default" {
+		return ""
+	}
+	return name
+}
+
+var profileIDRe = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
+
+// ValidateProfileName mirrors alice_cli.profiles._PROFILE_ID_RE. Python also
+// accepts "default" case-insensitively as an alias.
+func ValidateProfileName(name string) error {
+	canon := strings.ToLower(strings.TrimSpace(name))
+	if canon == "default" {
+		return nil
+	}
+	if !profileIDRe.MatchString(canon) {
+		return fmt.Errorf("invalid profile name %q", name)
+	}
+	return nil
+}
+
+// ResolveProfile maps a profile name to its ALICE_HOME directory. It does not
+// check existence for "default".
+func (r Resolver) ResolveProfile(name string) (string, error) {
+	canon := strings.ToLower(strings.TrimSpace(name))
+	if err := ValidateProfileName(canon); err != nil {
+		return "", err
+	}
+	if canon == "default" {
+		return r.DefaultRoot(), nil
+	}
+	dir := filepath.Join(r.ProfilesRoot(), canon)
+	if !r.isDir(dir) {
+		return "", fmt.Errorf(
+			"profile %q does not exist (create it with: alice profile create %s)",
+			canon, canon,
+		)
+	}
+	return dir, nil
+}
+
+func isUnder(path, root string) bool {
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return false
+	}
+	if rel == "." {
+		return true
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+func (r Resolver) isDir(path string) bool {
+	if r.Stat == nil {
+		return false
+	}
+	info, err := r.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 // Runtime is a resolved Python interpreter and the argv prefix that runs the
@@ -101,20 +228,26 @@ func (r Resolver) Python() (Runtime, error) {
 
 	var candidates []candidate
 
-	if exe, err := r.Executable(); err == nil && exe != "" {
-		// go/bin/alice -> go/bin -> go -> repo root.
-		root := filepath.Dir(filepath.Dir(filepath.Dir(exe)))
-		candidates = append(candidates, r.venvCandidates(root, "checkout")...)
+	if r.Executable != nil {
+		if exe, err := r.Executable(); err == nil && exe != "" {
+			// go/bin/alice -> go/bin -> go -> repo root.
+			root := filepath.Dir(filepath.Dir(filepath.Dir(exe)))
+			candidates = append(candidates, r.venvCandidates(root, "checkout")...)
+		}
 	}
-	if wd, err := r.WorkingDir(); err == nil && wd != "" {
-		candidates = append(candidates, r.venvCandidates(wd, "workdir")...)
+	if r.WorkingDir != nil {
+		if wd, err := r.WorkingDir(); err == nil && wd != "" {
+			candidates = append(candidates, r.venvCandidates(wd, "workdir")...)
+		}
 	}
 	if home, _ := r.Home(); home != "" {
 		candidates = append(candidates, r.venvCandidates(filepath.Join(home, "alice-agent"), "ALICE_HOME")...)
 	}
-	for _, name := range []string{"python3", "python"} {
-		if p, err := r.LookPath(name); err == nil && p != "" {
-			candidates = append(candidates, candidate{path: p, source: "PATH"})
+	if r.LookPath != nil {
+		for _, name := range []string{"python3", "python"} {
+			if p, err := r.LookPath(name); err == nil && p != "" {
+				candidates = append(candidates, candidate{path: p, source: "PATH"})
+			}
 		}
 	}
 
