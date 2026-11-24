@@ -274,6 +274,7 @@ export interface Translations {
       archivedChats: string
       about: string
       notifications: string
+      advanced: string
     }
     notifications: {
       title: string
@@ -295,6 +296,31 @@ export interface Translations {
       completionSoundPreview: string
     }
     sections: Record<string, string>
+advancedSetup: {
+      intro: string
+      loading: string
+      allDone: string
+      pendingCount: (count: number) => string
+      refresh: string
+      open: string
+      statusDone: string
+      statusPending: string
+      providerHint: string
+      providerLabel: string
+      providerDesc: string
+      toolKeysLabel: string
+      toolKeysDesc: string
+      memoryLabel: string
+      memoryDesc: string
+      voiceLabel: string
+      voiceDesc: string
+      mcpLabel: string
+      mcpDesc: string
+      gatewayLabel: string
+      gatewayDesc: string
+      terminalLabel: string
+      terminalDesc: string
+    }
     searchPlaceholder: Record<'about' | 'config' | 'gateway' | 'keys' | 'mcp' | 'sessions', string>
     modeOptions: Record<'light' | 'dark' | 'system', ModeOptionCopy>
     appearance: {

@@ -1,3 +1,4 @@
+import { useStore } from '@nanostores/react'
 import { useRef } from 'react'
 
 import { getAliceConfigDefaults, getAliceConfigRecord, saveAliceConfig } from '@/alice'
@@ -7,6 +8,7 @@ import { useI18n } from '@/i18n'
 import { triggerHaptic } from '@/lib/haptics'
 import { Archive, Bell, Download, Globe, Info, KeyRound, RefreshCw, Settings2, Upload, Wrench, Zap } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { $advancedSetupPending } from '@/store/advanced-setup'
 import { notifyError } from '@/store/notifications'
 
 import { useRouteEnumParam } from '../hooks/use-route-enum-param'
@@ -16,6 +18,7 @@ import { OverlayMain, OverlayNavItem, OverlaySidebar, OverlaySplitLayout } from 
 import { OverlayView } from '../overlays/overlay-view'
 
 import { AboutSettings } from './about-settings'
+import { AdvancedSetupSettings } from './advanced-setup'
 import { AppearanceSettings } from './appearance-settings'
 import { ConfigSettings } from './config-settings'
 import { SECTIONS } from './constants'
@@ -40,6 +43,7 @@ const SETTINGS_VIEWS: readonly SettingsViewId[] = [
   'keys',
   'mcp',
   'sessions',
+  'advanced',
   'about'
 ]
 
@@ -50,6 +54,7 @@ function numberOf(view: SettingsViewId): string {
 export function SettingsView({ gateway, onClose, onConfigSaved, onMainModelChanged }: SettingsPageProps) {
   const { t } = useI18n()
   const [activeView, setActiveView] = useRouteEnumParam('tab', SETTINGS_VIEWS, 'config:model' as SettingsViewId)
+  const advancedPending = useStore($advancedSetupPending)
   // Providers subnav (Accounts vs API keys) lives in its own param so each
   // sub-view is deep-linkable and survives a refresh.
   const [providerView, setProviderView] = useRouteEnumParam<ProviderView>('pview', PROVIDER_VIEWS, 'accounts')
@@ -81,7 +86,9 @@ export function SettingsView({ gateway, onClose, onConfigSaved, onMainModelChang
               ? t.settings.nav.mcp
               : activeView === 'sessions'
                 ? t.settings.nav.archivedChats
-                : t.settings.nav.about
+                : activeView === 'advanced'
+                  ? t.settings.nav.advanced
+                  : t.settings.nav.about
 
   const importInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -217,6 +224,20 @@ export function SettingsView({ gateway, onClose, onConfigSaved, onMainModelChang
           />
           <div className="my-2.5 h-px bg-(--ui-stroke-quaternary)" />
           <OverlayNavItem
+            active={activeView === 'advanced'}
+            icon={Settings2}
+            index={numberOf('advanced')}
+            label={t.settings.nav.advanced}
+            onClick={() => setActiveView('advanced')}
+            trailing={
+              advancedPending > 0 ? (
+                <span className="rounded-full bg-amber-500/15 px-1.5 text-[0.625rem] font-semibold text-amber-500 tabular-nums">
+                  {advancedPending}
+                </span>
+              ) : null
+            }
+          />
+          <OverlayNavItem
             active={activeView === 'about'}
             icon={Info}
             index={numberOf('about')}
@@ -263,30 +284,32 @@ export function SettingsView({ gateway, onClose, onConfigSaved, onMainModelChang
             </h2>
           </header>
           <div className="flex min-h-0 flex-1 flex-col">
-          {activeView === 'config:appearance' ? (
-            <AppearanceSettings />
-          ) : activeView === 'about' ? (
-            <AboutSettings />
-          ) : activeView === 'gateway' ? (
-            <GatewaySettings />
-          ) : activeView.startsWith('config:') ? (
-            <ConfigSettings
-              activeSectionId={activeView.slice('config:'.length)}
-              importInputRef={importInputRef}
-              onConfigSaved={onConfigSaved}
-              onMainModelChanged={onMainModelChanged}
-            />
-          ) : activeView === 'providers' ? (
-            <ProvidersSettings onClose={onClose} onViewChange={setProviderView} view={providerView} />
-          ) : activeView === 'keys' ? (
-            <KeysSettings view={keysView} />
-          ) : activeView === 'mcp' ? (
-            <McpSettings gateway={gateway} onConfigSaved={onConfigSaved} />
-          ) : activeView === 'notifications' ? (
-            <NotificationsSettings />
-          ) : (
-            <SessionsSettings />
-          )}
+            {activeView === 'advanced' ? (
+              <AdvancedSetupSettings />
+            ) : activeView === 'config:appearance' ? (
+              <AppearanceSettings />
+            ) : activeView === 'about' ? (
+              <AboutSettings />
+            ) : activeView === 'gateway' ? (
+              <GatewaySettings />
+            ) : activeView.startsWith('config:') ? (
+              <ConfigSettings
+                activeSectionId={activeView.slice('config:'.length)}
+                importInputRef={importInputRef}
+                onConfigSaved={onConfigSaved}
+                onMainModelChanged={onMainModelChanged}
+              />
+            ) : activeView === 'providers' ? (
+              <ProvidersSettings onClose={onClose} onViewChange={setProviderView} view={providerView} />
+            ) : activeView === 'keys' ? (
+              <KeysSettings view={keysView} />
+            ) : activeView === 'mcp' ? (
+              <McpSettings gateway={gateway} onConfigSaved={onConfigSaved} />
+            ) : activeView === 'notifications' ? (
+              <NotificationsSettings />
+            ) : (
+              <SessionsSettings />
+            )}
           </div>
         </OverlayMain>
       </OverlaySplitLayout>
