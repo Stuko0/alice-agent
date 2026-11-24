@@ -83,9 +83,33 @@ jobs:
           version: 'latest'
 
       - name: Install mingw-w64 GCC (Wails v2 links CGO on Windows)
-        uses: egor-tensin/setup-mingw@41b837e47d7f85214629d255b9c4bc3fcbe9fd63 # v3.0
-        with:
-          platform: x64
+        shell: pwsh
+        # The third-party action shelled out to `choco install mingw` once; a
+        # flaky community feed ("Unable to find package 'mingw'") failed the
+        # whole release. Retry the install, and accept a copy already on the
+        # image instead of assuming the action's install path.
+        run: |
+          $candidates = @(
+            'C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin',
+            'C:\ProgramData\mingw64\mingw64\bin',
+            'C:\mingw64\bin'
+          )
+
+          function Find-Mingw {
+            $candidates | Where-Object { Test-Path (Join-Path $_ 'gcc.exe') } | Select-Object -First 1
+          }
+
+          $bin = Find-Mingw
+          for ($i = 1; -not $bin -and $i -le 3; $i++) {
+            Write-Host "choco install mingw (attempt $i)"
+            choco install mingw -y --no-progress
+            Start-Sleep -Seconds 5
+            $bin = Find-Mingw
+          }
+
+          if (-not $bin) { throw "MinGW gcc not found (package feed unavailable)" }
+          Write-Host "mingw bin: $bin"
+          $bin | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
