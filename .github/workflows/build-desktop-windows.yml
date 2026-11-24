@@ -376,16 +376,16 @@ jobs:
         # A configured install skips the onboarding picker and lands on the
         # first-run tour — the thing these screenshots are meant to prove.
         run: |
-          $home = Join-Path $env:USERPROFILE '.alice'
-          New-Item -ItemType Directory -Force -Path $home | Out-Null
+          $aliceHome = Join-Path $env:USERPROFILE '.alice'
+          New-Item -ItemType Directory -Force -Path $aliceHome | Out-Null
           if ($env:OPENCODE_GO_API_KEY) {
-            "OPENCODE_GO_API_KEY=$env:OPENCODE_GO_API_KEY" | Out-File -FilePath (Join-Path $home '.env') -Encoding utf8
+            "OPENCODE_GO_API_KEY=$env:OPENCODE_GO_API_KEY" | Out-File -FilePath (Join-Path $aliceHome '.env') -Encoding utf8
             $config = @(
               'model:'
               '  provider: opencode-go'
               '  default: hy4-flash-free'
             ) -join "`n"
-            $config | Out-File -FilePath (Join-Path $home 'config.yaml') -Encoding utf8
+            $config | Out-File -FilePath (Join-Path $aliceHome 'config.yaml') -Encoding utf8
             Write-Host "preconfigured opencode-go / hy4-flash-free"
           } else {
             Write-Host "no OPENCODE_GO_API_KEY secret — leaving the first-run picker"
