@@ -41,22 +41,50 @@ param(
     [string]$Ensure = "",
     [switch]$PostInstall,
 
-    # --- Desktop GUI build (opt-in) ---
-    # When set, install.ps1 includes Stage-Desktop in the manifest and
-    # produces a launchable Wails desktop binary
-    # (apps/desktop-wails/build/bin/alice-desktop.exe).
+    # --- Desktop GUI build ---
+    # Stage-Desktop produces a launchable Wails desktop binary
+    # (apps/desktop-wails/build/bin/alice-desktop.exe) plus its Escritorio /
+    # menú Inicio shortcuts, so the user never has to run `alice desktop` from
+    # a terminal.
     #
-    # Why opt-in:
-    #   * Alice-Setup.exe (the signed Tauri bootstrap installer) passes
-    #     -IncludeDesktop so a user who installed via the GUI ends up
-    #     with a launchable desktop binary.
-    #   * The canonical CLI one-liner (irm | iex) omits the flag too;
-    #     terminal users don't need a desktop binary built for them, and
-    #     `alice desktop` already builds on demand.
-    [switch]$IncludeDesktop
+    # Default: install the desktop whenever the install runs inside a graphical
+    # session (interactive desktop with the Explorer shell). Servers, SSH and
+    # CI stay CLI-only. Overrides:
+    #   * -IncludeDesktop  force it on (the Tauri bootstrap installer passes it)
+    #   * -NoDesktop       force it off (headless/automation installs)
+    #   * ALICE_FORCE_GRAPHICAL_SESSION=1|0 pins the detection (CI/tests)
+    [switch]$IncludeDesktop,
+    [switch]$NoDesktop
 )
 
 $ErrorActionPreference = "Stop"
+
+# Test-GraphicalSession reports whether a human can see and click a window in
+# this session. Session 0 is the service session (never a desktop), and a
+# graphical session has the Explorer shell running in it.
+function Test-GraphicalSession {
+    switch ($env:ALICE_FORCE_GRAPHICAL_SESSION) {
+        "1" { return $true }
+        "0" { return $false }
+    }
+
+    if (-not [Environment]::UserInteractive) { return $false }
+
+    try {
+        $sessionId = (Get-Process -Id $PID).SessionId
+        if ($sessionId -eq 0) { return $false }
+
+        $explorer = Get-Process explorer -ErrorAction SilentlyContinue |
+            Where-Object { $_.SessionId -eq $sessionId }
+
+        return [bool]$explorer
+    } catch {
+        return $false
+    }
+}
+
+# Resolve once: every later stage list / shortcut decision reads this.
+$script:InstallDesktop = (-not $NoDesktop) -and ($IncludeDesktop -or (Test-GraphicalSession))
 
 # Suppress Invoke-WebRequest's per-chunk progress bar.  Windows PowerShell
 # 5.1's progress UI repaints synchronously on every received byte, which
@@ -2379,53 +2407,26 @@ function Install-NodeDeps {
 
 function Install-Desktop {
     # Produce a launchable Alice desktop binary. Priority:
-    #   1. Prebuilt Wails binary downloaded from the GitHub release (fast, no
-    #      toolchain; only available when the checkout sits exactly on a tag)
-    #   2. Local Wails build (Go + wails CLI + mingw-w64 GCC present) via
+    #   1. Prebuilt Wails binary + backend bundle from the GitHub release
+    #      (fast, no toolchain, no Node needed: the shell embeds its SPA and
+    #      resources.zip now carries both the Python runtime and the agent
+    #      runtime tree — `resources/alice`)
+    #   2. Local Wails build (Go + wails CLI + mingw-w64 GCC + Node) via
     #      apps/desktop-wails/build.ps1
-    # The Tauri bootstrap installer's launch_alice_desktop command resolves
-    # the binary; Start-Menu/Desktop shortcuts always point at whichever
-    # binary won.
-
-    # Always re-resolve Node here. Stages run in separate PowerShell processes,
-    # so $script:HasNode from Stage-Node isn't visible; more importantly Test-Node
-    # enforces the build floor (^20.19 || >=22.12) and prepends the Alice-managed
-    # Node to PATH, so the build never runs on a too-old system Node -- the cause
-    # of the opaque "Build desktop app ... exit code 1" failure (Vite crashes on
-    # old Node).
-    Test-Node | Out-Null
-    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        Write-Warn "Skipping desktop build (Node.js / npm not on PATH)"
-        $script:_StageSkippedReason = "Node.js not available"
-        return
-    }
+    # Start-Menu/Desktop shortcuts always point at whichever binary won, so the
+    # user never has to run `alice desktop`.
 
     $desktopDir = "$InstallDir\apps\desktop"
     $wailsDir = "$InstallDir\apps\desktop-wails"
-    if (-not (Test-Path "$desktopDir\package.json")) {
-        Write-Warn "Skipping desktop build (apps/desktop not present in checkout)"
-        $script:_StageSkippedReason = "apps/desktop not present"
-        return
-    }
     if (-not (Test-Path "$wailsDir\go.mod")) {
-        Write-Warn "Skipping desktop build (apps/desktop-wails not present in checkout)"
+        Write-Warn "Skipping desktop install (apps/desktop-wails not present in checkout)"
         $script:_StageSkippedReason = "apps/desktop-wails not present"
         return
     }
 
-    $npmCmd = Get-Command npm -ErrorAction SilentlyContinue
-    if (-not $npmCmd) {
-        Write-Warn "Skipping desktop build (npm not on PATH)"
-        $script:_StageSkippedReason = "npm not found"
-        return
-    }
-    $npmExe = $npmCmd.Source
-    if ($npmExe -like "*.ps1") {
-        $sibling = Join-Path (Split-Path $npmExe -Parent) "npm.cmd"
-        if (Test-Path $sibling) { $npmExe = $sibling }
-    }
-
     # --- 1. Prebuilt Wails binary from the GitHub release ---------------------
+    # No toolchain required, so try it before touching Node/npm (a CLI-only
+    # machine without Node still gets the desktop this way).
     $wailsExe = Install-DesktopWailsPrebuilt -WailsDir $wailsDir
     if ($wailsExe) {
         Write-Success "Desktop ready: $wailsExe"
@@ -2433,12 +2434,54 @@ function Install-Desktop {
         return
     }
 
-    # --- 2. Local Wails build (Go toolchain + mingw) --------------------------
+    # --- 2. Local Wails build (Go toolchain + mingw + Node) -------------------
+    # Always re-resolve Node here. Stages run in separate PowerShell processes,
+    # so $script:HasNode from Stage-Node isn't visible; more importantly Test-Node
+    # enforces the build floor (^20.19 || >=22.12) and prepends the Alice-managed
+    # Node to PATH, so the build never runs on a too-old system Node -- the cause
+    # of the opaque "Build desktop app ... exit code 1" failure (Vite crashes on
+    # old Node).
+    Test-Node | Out-Null
+    $npmCmd = Get-Command npm -ErrorAction SilentlyContinue
+    if (-not $npmCmd) {
+        Write-Warn "Skipping desktop build (Node.js / npm not on PATH, and no prebuilt binary for this tag)"
+        $script:_StageSkippedReason = "Node.js not available"
+        return
+    }
+
+    if (-not (Test-Path "$desktopDir\package.json")) {
+        Write-Warn "Skipping desktop build (apps/desktop not present in checkout)"
+        $script:_StageSkippedReason = "apps/desktop not present"
+        return
+    }
+
+    $npmExe = $npmCmd.Source
+    if ($npmExe -like "*.ps1") {
+        $sibling = Join-Path (Split-Path $npmExe -Parent) "npm.cmd"
+        if (Test-Path $sibling) { $npmExe = $sibling }
+    }
+
     $wailsExe = Install-DesktopWailsLocal -DesktopDir $desktopDir -WailsDir $wailsDir -NpmExe $npmExe
     if ($wailsExe) {
         Write-Success "Desktop ready: $wailsExe"
         New-DesktopShortcuts -TargetExe $wailsExe
         return
+    }
+
+    # --- 2.5 Prebuilt from the LATEST release (checkout isn't on a tag) -------
+    # A `main`/SHA install has no matching release asset. Rather than requiring
+    # Go + mingw on the user's machine, fall back to the newest published shell.
+    # The backend still comes from this checkout (ResolveProjectRoot prefers it
+    # over the shipped tree), so only the GUI shell lags until the next update.
+    $latestTag = Get-LatestDesktopReleaseTag
+    if ($latestTag) {
+        Write-Info "No local toolchain matched this checkout; installing the $latestTag desktop shell..."
+        $wailsExe = Install-DesktopWailsPrebuilt -WailsDir $wailsDir -Tag $latestTag
+        if ($wailsExe) {
+            Write-Success "Desktop ready: $wailsExe"
+            New-DesktopShortcuts -TargetExe $wailsExe
+            return
+        }
     }
 
     # --- 3. No Wails binary available -----------------------------------------
@@ -2447,8 +2490,25 @@ function Install-Desktop {
     # deprecation — surface an actionable message instead of building a shell
     # we no longer ship.
     Write-Warn "Could not build the Wails desktop app (prebuilt download and local Go toolchain both failed)."
-    Write-Info "  Install Go + mingw-w64 and re-run the installer, or launch it later with: alice desktop"
-    $script:_StageSkippedReason = "Wails desktop build unavailable"
+    Write-Info "  Install Go + mingw-w64 and re-run the installer; a Start-Menu/Desktop shortcut named 'Alice' appears once it succeeds."
+    Write-Info "  (Terminal fallback: alice desktop)"
+}
+
+# Get-LatestDesktopReleaseTag returns the newest published release tag, used as
+# the prebuilt fallback when the checkout isn't exactly on a tag (a `main`
+# install without a Go toolchain still gets a working desktop instead of a
+# "run alice desktop" dead end).
+function Get-LatestDesktopReleaseTag {
+    try {
+        $repo = $RepoUrlHttps -replace '\.git$', ''
+        $resp = Invoke-RestMethod -Uri "$repo/releases/latest" `
+            -Headers @{ 'User-Agent' = 'alice-installer'; 'Accept' = 'application/vnd.github+json' } `
+            -TimeoutSec 20
+        if ($resp -and $resp.tag_name) { return [string]$resp.tag_name }
+    } catch {
+        Write-Info "  (could not resolve the latest release tag: $($_.Exception.Message))"
+    }
+    return $null
 }
 
 # Get-DesktopWailsReleaseTag resolves the exact tag the checkout sits on.
@@ -2466,8 +2526,11 @@ function Get-DesktopWailsReleaseTag {
 # from the GitHub release for the exact checkout tag. Returns the binary path
 # on success, $null on any failure (caller falls back).
 function Install-DesktopWailsPrebuilt {
-    param([string]$WailsDir)
-    $tag = Get-DesktopWailsReleaseTag
+    param([string]$WailsDir, [string]$Tag = "")
+    $tag = $Tag
+    if (-not $tag) {
+        $tag = Get-DesktopWailsReleaseTag
+    }
     if (-not $tag) {
         Write-Info "  (checkout is not exactly a release tag — skipping prebuilt Wails download)"
         return $null
@@ -3063,10 +3126,10 @@ $InstallStages = @(
     @{ Name = "dependencies";     Title = "Installing Python dependencies";       Category = "install";      NeedsUserInput = $false; Worker = "Stage-Dependencies" }
     @{ Name = "node-deps";        Title = "Installing Node.js dependencies";      Category = "install";      NeedsUserInput = $false; Worker = "Stage-NodeDeps" }
 )
-if ($IncludeDesktop) {
-    # Insert AFTER node-deps so workspace npm is already installed when
-    # the desktop build runs. Inserted only when explicitly requested
-    # (Alice-Setup.exe), never via the irm|iex CLI one-liner.
+if ($script:InstallDesktop) {
+    # Insert AFTER node-deps so workspace npm is already installed when the
+    # desktop build runs. Runs by default in graphical sessions, so a normal
+    # Windows install lands with a working desktop shortcut.
     $InstallStages += @{ Name = "desktop"; Title = "Building desktop app"; Category = "install"; NeedsUserInput = $false; Worker = "Stage-Desktop" }
 }
 $InstallStages += @(

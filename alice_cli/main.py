@@ -255,9 +255,11 @@ if _try_termux_ultrafast_version():
     raise SystemExit(0)
 
 import argparse
+import glob
 import hashlib
 import json
 import shlex
+import re
 import shutil
 import stat
 import subprocess
@@ -4827,6 +4829,87 @@ def _nixos_build_env() -> dict[str, str] | None:
         pass  # nix-shell not available — caller will get None
 
     return None
+def _desktop_deps_hash(root: Path) -> str:
+    """Hash the manifests that decide the workspace dependency tree."""
+    h = hashlib.sha256()
+
+    for rel in (
+        "package.json",
+        "package-lock.json",
+        "apps/desktop/package.json",
+        "apps/shared/package.json",
+        "web/package.json",
+        "ui-tui/package.json",
+    ):
+        path = root / rel
+        if path.is_file():
+            h.update(rel.encode())
+            h.update(path.read_bytes())
+
+    return h.hexdigest()
+
+
+def _install_desktop_deps(
+    npm: str,
+    root: Path,
+    *,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess:
+    """Install the desktop workspace deps, skipping when the tree is current.
+
+    Two problems this solves:
+
+    * ``npm ci`` removes and recreates node_modules. Running it on every source
+      edit (the build stamp already tracks sources) is slow, and npm's cleanup
+      occasionally races another process and fails with
+      ``ENOTEMPTY: directory not empty`` — the whole rebuild then aborts for a
+      dependency tree that was already correct.
+    * When that race does happen, retrying blindly fails the same way; the
+      leftovers have to go first.
+
+    The marker lives inside node_modules, so wiping the tree naturally
+    invalidates it.
+    """
+    marker = root / "node_modules" / ".alice-deps-hash"
+    wanted = _desktop_deps_hash(root)
+
+    if (root / "node_modules").is_dir() and marker.is_file():
+        try:
+            if marker.read_text(encoding="utf-8").strip() == wanted:
+                print("✓ Desktop npm dependencies are up to date")
+                return subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+        except OSError:
+            pass
+
+    result = _run_npm_install_deterministic(npm, root, capture_output=True, env=env)
+    output = f"{result.stdout or ''}{result.stderr or ''}"
+
+    if result.returncode != 0 and "ENOTEMPTY" in output:
+        print("⚠ npm could not replace node_modules (ENOTEMPTY) — cleaning and retrying once")
+        for rel in (
+            "node_modules",
+            "apps/desktop/node_modules",
+            "apps/shared/node_modules",
+            "web/node_modules",
+            "ui-tui/node_modules",
+        ):
+            shutil.rmtree(root / rel, ignore_errors=True)
+        result = _run_npm_install_deterministic(npm, root, capture_output=True, env=env)
+        output = f"{result.stdout or ''}{result.stderr or ''}"
+
+    if output:
+        print(output, end="" if output.endswith("\n") else "\n")
+
+    if result.returncode == 0:
+        try:
+            marker.parent.mkdir(parents=True, exist_ok=True)
+            marker.write_text(wanted, encoding="utf-8")
+        except OSError:
+            pass
+
+    return result
+
+
 def _run_npm_install_deterministic(
     npm: str,
     cwd: Path,
@@ -5742,6 +5825,133 @@ def _wails_build_needed(wails_dir: Path, desktop_dir: Path, project_root: Path) 
     return _compute_desktop_content_hash(project_root) != saved_hash
 
 
+def _go_env_path(name: str) -> str:
+    """Return a `go env` value, or "" when Go is unavailable."""
+    try:
+        res = subprocess.run(["go", "env", name], capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+    return res.stdout.strip() if res.returncode == 0 else ""
+
+
+def resolve_wails_binary() -> str | None:
+    """Locate the Wails CLI, or None when it cannot be found.
+
+    `go install` drops the binary in $(go env GOBIN || GOPATH)/bin, which is
+    often not on PATH (a fresh shell, a launcher, the desktop's own update
+    path). Assuming a bare `wails` on PATH made `alice desktop` die with
+    FileNotFoundError on machines where the CLI was installed correctly.
+    """
+    override = os.getenv("WAILS_BIN", "").strip()
+    if override and Path(override).expanduser().is_file():
+        return str(Path(override).expanduser())
+
+    found = shutil.which("wails")
+    if found:
+        return found
+
+    candidates: list[Path] = []
+    gobin = os.getenv("GOBIN", "").strip()
+    if gobin:
+        candidates.append(Path(gobin).expanduser() / "wails")
+
+    gopath = os.getenv("GOPATH", "").strip() or _go_env_path("GOPATH")
+    if gopath:
+        for entry in gopath.split(os.pathsep):
+            if entry.strip():
+                candidates.append(Path(entry).expanduser() / "bin" / "wails")
+
+    candidates.append(Path.home() / "go" / "bin" / "wails")
+
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+
+    return None
+
+
+def _go_candidate_paths() -> list[Path]:
+    """Places a Go toolchain is installed when it is not on PATH."""
+    candidates: list[Path] = []
+
+    goroot = os.getenv("GOROOT", "").strip()
+    if goroot:
+        candidates.append(Path(goroot).expanduser() / "bin" / "go")
+
+    candidates.extend([
+        Path("/usr/local/go/bin/go"),
+        Path("/usr/lib/go/bin/go"),
+        Path("/usr/lib64/go/bin/go"),
+        Path.home() / ".local" / "go" / "bin" / "go",
+        Path.home() / "go" / "bin" / "go",
+    ])
+
+    # Versioned layouts: gvm (~/sdk/go1.22/bin/go), distro packages
+    # (/usr/lib/go-1.22/bin/go), asdf/mise shims.
+    for pattern in (
+        str(Path.home() / "sdk" / "go*" / "bin" / "go"),
+        str(Path.home() / ".local" / "share" / "mise" / "installs" / "go" / "*" / "bin" / "go"),
+        "/usr/lib/go-*/bin/go",
+    ):
+        candidates.extend(Path(p).expanduser() for p in sorted(glob.glob(pattern), reverse=True))
+
+    shim = Path.home() / ".asdf" / "shims" / "go"
+    if shim.is_file():
+        candidates.append(shim)
+
+    return candidates
+
+
+def resolve_go_binary() -> str | None:
+    """Locate the Go toolchain Wails needs to compile the shell.
+
+    Wails shells out to `go`; a terminal (or a launcher) whose PATH predates a
+    tarball install of Go answers "unable to find compiler: go" even though the
+    toolchain is present under /usr/local/go or $GOROOT.
+    """
+    found = shutil.which("go")
+    if found:
+        return found
+
+    for candidate in _go_candidate_paths():
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+
+    return None
+
+
+def _wails_module_version() -> str:
+    """Wails version pinned by apps/desktop-wails/go.mod (fallback v2.15.0)."""
+    go_mod = PROJECT_ROOT / "apps" / "desktop-wails" / "go.mod"
+    try:
+        match = re.search(r"github\.com/wailsapp/wails/v2 v(\d+\.\d+\.\d+)", go_mod.read_text(encoding="utf-8"))
+    except OSError:
+        match = None
+
+    return match.group(1) if match else "2.15.0"
+
+
+def ensure_wails_binary() -> str | None:
+    """Resolve the Wails CLI, installing it once when Go is available."""
+    resolved = resolve_wails_binary()
+    if resolved:
+        return resolved
+
+    go = resolve_go_binary()
+    if not go:
+        return None
+
+    version = _wails_module_version()
+    target = f"github.com/wailsapp/wails/v2/cmd/wails@v{version}"
+    print(f"→ Wails CLI not found; installing it with `go install {target}`...")
+    res = subprocess.run([go, "install", target])
+    if res.returncode != 0:
+        return None
+
+    return resolve_wails_binary()
+
+
 def _build_wails_desktop(npm: str, desktop_dir: Path, wails_dir: Path) -> None:
     """Build the shared React frontend, copy it into the Wails tree, then build the Go shell."""
     print("→ Building frontend...")
@@ -5760,7 +5970,30 @@ def _build_wails_desktop(npm: str, desktop_dir: Path, wails_dir: Path) -> None:
     shutil.copytree(dist_src, dist_dst)
 
     print("→ Building Wails binary...")
-    res = subprocess.run(["wails", "build"], cwd=wails_dir)
+    wails = ensure_wails_binary()
+    if not wails:
+        print("✗ Wails CLI not found.")
+        print("  Install it with:")
+        print(f"    go install github.com/wailsapp/wails/v2/cmd/wails@v{_wails_module_version()}")
+        print("  then make sure $(go env GOPATH)/bin is on PATH")
+        print("  (or point WAILS_BIN at the binary).")
+        sys.exit(1)
+
+    go = resolve_go_binary()
+    if not go:
+        print("✗ Go toolchain not found — Wails needs `go` to compile the shell.")
+        print("  Install Go 1.21+ from https://go.dev/dl/ (or make sure $GOROOT/bin is on PATH).")
+        sys.exit(1)
+
+    # Wails looks up `go` itself; prepend the directory we resolved so a PATH
+    # without the toolchain still builds.
+    build_env = dict(os.environ)
+    go_dir = str(Path(go).parent)
+    path_parts = [part for part in build_env.get("PATH", "").split(os.pathsep) if part]
+    if go_dir not in path_parts:
+        build_env["PATH"] = os.pathsep.join([go_dir, *path_parts])
+
+    res = subprocess.run([wails, "build"], cwd=wails_dir, env=build_env)
     if res.returncode != 0:
         print("✗ Wails build failed")
         sys.exit(res.returncode)
@@ -5823,7 +6056,7 @@ def _cmd_gui_wails(args: argparse.Namespace, desktop_dir: Path) -> None:
         print("✓ Desktop Wails build is up to date (content stamp matches)")
     else:
         print("→ Installing desktop workspace dependencies...")
-        install_result = _run_npm_install_deterministic(npm, PROJECT_ROOT, capture_output=False, env=None)
+        install_result = _install_desktop_deps(npm, PROJECT_ROOT)
         if install_result.returncode != 0:
             print("✗ Desktop dependency install failed")
             print(f"  Run manually:  cd {PROJECT_ROOT} && npm ci")
@@ -5911,7 +6144,7 @@ def _cmd_gui_electron(args: argparse.Namespace, desktop_dir: Path) -> None:
         else:
             print("→ Installing desktop workspace dependencies...")
             nixos_env = _nixos_build_env()
-            install_result = _run_npm_install_deterministic(npm, PROJECT_ROOT, capture_output=False, env=nixos_env)
+            install_result = _install_desktop_deps(npm, PROJECT_ROOT, env=nixos_env)
             if install_result.returncode != 0:
                 if not _electron_pkg_staged_missing_dist(PROJECT_ROOT):
                     print("✗ Desktop dependency install failed")
@@ -11788,7 +12021,7 @@ def _maybe_setup_dashboard_auth_interactively(args) -> None:
     ``DashboardAuthProvider`` is registered. Rather than greet an interactive
     operator with that hard error, prompt them to set up the bundled
     username/password provider on the spot — or point them at
-    ``alice dashboard register`` for OAuth.
+    the self-hosted OIDC provider.
 
     No-ops (so the existing fail-closed ``SystemExit`` remains the backstop)
     when:
@@ -11829,7 +12062,7 @@ def _maybe_setup_dashboard_auth_interactively(args) -> None:
     print()
     print("  How do you want to authenticate the dashboard?")
     print("    [1] Username & password (quickest; for a trusted LAN / VPN)")
-    print("    [2] OAuth via Nous Portal (run `alice dashboard register`)")
+    print("    [2] OAuth via a self-hosted OIDC provider")
     print("    [3] Cancel")
     print()
 
@@ -11842,11 +12075,12 @@ def _maybe_setup_dashboard_auth_interactively(args) -> None:
     if choice == "2":
         print()
         print(
-            "  Run this on the host where the dashboard lives, then start "
-            "the dashboard again:\n"
-            "    alice dashboard register\n"
-            "  It provisions a Nous Portal OAuth client and writes "
-            "ALICE_DASHBOARD_OAUTH_CLIENT_ID into ~/.alice/.env for you.\n"
+            "  Configure a conformant OpenID Connect identity provider, then "
+            "start the dashboard again:\n"
+            "    ALICE_DASHBOARD_OIDC_ISSUER=https://your-idp.example.com\n"
+            "    ALICE_DASHBOARD_OIDC_CLIENT_ID=alice-dashboard\n"
+            "  (or set dashboard.oauth.self_hosted.{issuer,client_id} in "
+            "config.yaml)\n"
             "  Docs: https://alice-agent.stuko.dev/docs/"
             "user-guide/features/web-dashboard#authentication-gated-mode"
         )
@@ -12074,7 +12308,7 @@ def cmd_dashboard(args):
         print(f"→ Skipping web UI build (--skip-build); using dist at {_dist_root}")
 
     # Discover and load plugins so any DashboardAuthProvider plugin
-    # (e.g. plugins/dashboard_auth/nous) registers BEFORE start_server's
+    # (e.g. plugins/dashboard_auth/self_hosted) registers BEFORE start_server's
     # fail-closed gate check runs. The top-level argparse setup skips
     # plugin discovery for built-in subcommands like ``dashboard`` to
     # save ~500ms startup; we have to trigger it explicitly here because
@@ -12193,7 +12427,7 @@ def _build_provider_choices() -> list[str]:
     except Exception:
         # Fallback: static list guarantees the CLI always works
         return [
-            "auto", "openrouter", "nous", "openai-codex", "xai-oauth", "copilot-acp", "copilot",
+            "auto", "openrouter", "openai-codex", "xai-oauth", "copilot-acp", "copilot",
             "anthropic", "gemini", "xai", "bedrock", "azure-foundry",
             "ollama-cloud", "huggingface", "zai", "kimi-coding", "kimi-coding-cn",
             "stepfun", "minimax", "minimax-cn", "kilocode", "novita", "xiaomi", "arcee",
@@ -12218,7 +12452,7 @@ _BUILTIN_SUBCOMMANDS = frozenset(
         "dump", "fallback", "gateway", "hooks", "import", "insights",
         "gui", "desktop", "kanban", "login", "logout", "logs", "lsp", "mcp", "memory", "migrate", "moa",
         "journey", "memory-graph", "learning",
-        "model", "pairing", "pets", "plugins", "portal", "postinstall", "profile",
+        "model", "pairing", "pets", "plugins", "postinstall", "profile",
         "project", "proxy",
         "prompt-size",
         "send", "sessions", "setup",
@@ -12969,12 +13203,6 @@ def main():
     # webhook command  (parser built in alice_cli/subcommands/webhook.py)
     # =========================================================================
     build_webhook_parser(subparsers, cmd_webhook=cmd_webhook)
-
-    # =========================================================================
-    # portal command — Nous Portal status + Tool Gateway routing
-    # =========================================================================
-    from alice_cli.portal_cli import add_parser as _add_portal_parser
-    _add_portal_parser(subparsers)
 
     # =========================================================================
     # kanban command — multi-profile collaboration board
