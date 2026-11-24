@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -60,6 +61,15 @@ func Run(ctx context.Context, opts Options) error {
 
 	engine := NewEngine(client)
 	defer engine.Close()
+
+	if payload := client.Ready.Payload(); payload != nil {
+		if raw, ok := payload["skin"]; ok {
+			var skin string
+			if json.Unmarshal(raw, &skin) == nil {
+				engine.SetSkin(skin)
+			}
+		}
+	}
 
 	cwd := opts.Cwd
 	if cwd == "" {

@@ -24,8 +24,8 @@ func TestTUIStreamsAndRenders(t *testing.T) {
 	model.Update(eventMsg{ev: Event{Kind: EventTextDelta, Text: " world"}})
 	model.Update(eventMsg{ev: Event{Kind: EventMessageComplete}})
 
-	if !strings.Contains(model.transcript.String(), "hello world") {
-		t.Fatalf("transcript = %q", model.transcript.String())
+	if !strings.Contains(model.transcript, "hello world") {
+		t.Fatalf("transcript = %q", model.transcript)
 	}
 	view := model.View()
 	if !strings.Contains(view, "hello world") || !strings.Contains(view, "alice") {
@@ -52,8 +52,8 @@ func TestTUISubmitsOnEnter(t *testing.T) {
 	if !strings.Contains(string(submit[0].Params), "hi there") {
 		t.Fatalf("params = %s", submit[0].Params)
 	}
-	if !strings.Contains(model.transcript.String(), "hi there") {
-		t.Fatalf("transcript = %q", model.transcript.String())
+	if !strings.Contains(model.transcript, "hi there") {
+		t.Fatalf("transcript = %q", model.transcript)
 	}
 }
 
@@ -118,8 +118,8 @@ func TestTUISlashCommandRuns(t *testing.T) {
 	}
 	model.Update(msg)
 
-	if !strings.Contains(model.transcript.String(), "ok from backend") {
-		t.Fatalf("transcript = %q", model.transcript.String())
+	if !strings.Contains(model.transcript, "ok from backend") {
+		t.Fatalf("transcript = %q", model.transcript)
 	}
 }
 
@@ -161,8 +161,8 @@ func TestTUIPickerSessions(t *testing.T) {
 	if len(client.callsTo("session.resume")) != 1 {
 		t.Fatalf("session.resume calls = %d", len(client.callsTo("session.resume")))
 	}
-	if !strings.Contains(model.transcript.String(), "old question") {
-		t.Fatalf("transcript = %q", model.transcript.String())
+	if !strings.Contains(model.transcript, "old question") {
+		t.Fatalf("transcript = %q", model.transcript)
 	}
 }
 
@@ -201,5 +201,32 @@ func TestTUIPickerCancel(t *testing.T) {
 	model.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	if model.mode != modeChat {
 		t.Fatalf("mode = %v", model.mode)
+	}
+}
+
+func TestTUIAppliesMarkdownOnComplete(t *testing.T) {
+	model, _ := newTestTUI(t)
+	model.Update(eventMsg{ev: Event{Kind: EventMessageStart}})
+	model.Update(eventMsg{ev: Event{Kind: EventTextDelta, Text: "**bold**"}})
+	model.Update(eventMsg{ev: Event{Kind: EventMessageComplete, Text: "**bold**"}})
+
+	if strings.Contains(model.transcript, "**") {
+		t.Fatalf("markdown markers left in transcript: %q", model.transcript)
+	}
+	if !strings.Contains(model.transcript, "bold") {
+		t.Fatalf("transcript = %q", model.transcript)
+	}
+}
+
+func TestPaletteForSkins(t *testing.T) {
+	// Compare the configured colours, not the rendered string: lipgloss
+	// strips ANSI when the test process has no TTY.
+	def := paletteFor("default").user.GetForeground()
+	ares := paletteFor("ares").user.GetForeground()
+	if def == ares {
+		t.Fatal("default and ares must not share a palette")
+	}
+	if paletteFor("nope").user.GetForeground() != def {
+		t.Fatal("unknown skin must fall back to default")
 	}
 }

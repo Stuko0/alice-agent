@@ -34,6 +34,7 @@ type Engine struct {
 	sessionID string
 	model     string
 	cwd       string
+	skin      string
 	defaults  CreateOptions
 }
 
@@ -78,6 +79,20 @@ func (e *Engine) SetModel(model string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.model = model
+}
+
+// SetSkin records the skin announced by gateway.ready.
+func (e *Engine) SetSkin(skin string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.skin = skin
+}
+
+// Skin is the backend's active skin name ("" when unknown).
+func (e *Engine) Skin() string {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.skin
 }
 
 func (e *Engine) pump() {

@@ -28,6 +28,7 @@ make install      # -> ~/.local/bin/alice (PREFIX to override)
 | `alice host rpc <method> [json]` | Spawn the gateway, wait for `gateway.ready`, call one RPC, print the result |
 | `alice host supervise [--max-restarts N] [--backoff-max 30s] -- <cmd...>` | Run a child and restart it with exponential backoff |
 | `alice cli [--resume ID] [--model NAME] [--cwd DIR] [--plain]` | The Go classic CLI (M2) |
+| `alice config path` / `alice config env-path` | Print the resolved config / .env path |
 | `alice host help` | Help generated from the command table |
 
 ### Classic CLI
@@ -68,8 +69,8 @@ Parity with `cli.py`:
 | Model picker + per-session switch | implemented |
 | Slash commands (skills, plugins, backend) | delegated to `slash.exec` |
 | Interrupt / stop | implemented |
-| Markdown rendering | plain text (TUI styles roles/tools only) |
-| Skin palettes | neutral ANSI palette (no `/skin` styling) |
+| Markdown rendering | headings, lists, quotes, rules, code fences, bold/italic/inline code, links |
+| Skin palettes | `default`, `ares`, `mono`, `slate` from `gateway.ready`; unknown → default |
 | Voice, pets, journey overlays, inline images | not implemented (TUI-only Python features) |
 
 Flipping the default `alice` behaviour to this CLI is a one-line routing change
@@ -165,6 +166,17 @@ Two tests keep the contract honest:
 ## Scope boundary
 
 M1 (host operations) and M2 (classic CLI) are complete. Business subcommands
-(`setup`, `config`, `auth`, `model`, `cron`, `kanban`) are still Python and will
-be ported one at a time, each deleting its Python counterpart in the same
-change.
+are **not** incremental on top of the host: each depends on a Python core that
+has to be ported first, and doing it without parity tests would violate this
+repo's own rules (port = delete, E2E validation, no change-detector tests).
+
+| Command | Blocker | Rough size |
+|---|---|---|
+| `config set/edit/check/migrate` | comment-preserving YAML round-trip, defaults merge, 32 config migrations, managed scope | 2–3 dev-months |
+| `setup` | interactive wizard over config + auth + model catalog | 2–3 |
+| `auth`, `model` | OAuth device flows, credential pool, keychain, 28 provider profiles | 3–4 |
+| `cron` mutations | schedule parser, job schema, cross-process locking, delivery targets | 1–2 |
+| `kanban` | SQLite board + dispatcher + worker protocol | 2–3 |
+
+Read-only slices that need no config core are already native:
+`alice config path`, `alice config env-path`.

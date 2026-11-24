@@ -13,7 +13,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // TUIOptions configures the full-screen frontend.
@@ -21,14 +20,6 @@ type TUIOptions struct {
 	In  io.Reader
 	Out io.Writer
 }
-
-var (
-	styleUser      = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
-	styleAssistant = lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Bold(true)
-	styleDim       = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	styleErr       = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-	stylePrompt    = lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true)
-)
 
 type tuiMode int
 
@@ -87,9 +78,13 @@ type tuiModel struct {
 	pickerKind    pickerKind
 	pickerCurrent string
 
-	transcript strings.Builder
-	streaming  bool
-	streamed   bool
+	transcript      string
+	assistantStart  int
+	assistantText   string
+	assistantActive bool
+	styles          palette
+	streaming       bool
+	streamed        bool
 
 	width, height int
 	ready         bool
@@ -127,14 +122,16 @@ func newTUIModel(engine *Engine, history []Message) *tuiModel {
 	secret.Prompt = "› "
 	secret.EchoMode = textinput.EchoPassword
 
+	styles := paletteFor(engine.Skin())
 	m := &tuiModel{
 		engine: engine,
 		vp:     viewport.New(0, 0),
 		input:  input,
 		secret: secret,
+		styles: styles,
 	}
 	if len(history) > 0 {
-		m.transcript.WriteString(styleDim.Render(RenderHistory(history, 20)))
+		m.transcript = styles.dim.Render(RenderHistory(history, 20))
 	}
 	return m
 }
@@ -182,7 +179,7 @@ func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		if msg.exec.Clear {
-			m.transcript.Reset()
+			m.transcript = ""
 		}
 		if msg.exec.Output != "" {
 			m.appendSystem(msg.exec.Output)
@@ -220,9 +217,9 @@ func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.kind {
 		case pickerSessions:
 			if msg.session != nil {
-				m.transcript.Reset()
+				m.transcript = ""
 				if len(msg.session.Messages) > 0 {
-					m.transcript.WriteString(styleDim.Render(RenderHistory(msg.session.Messages, 20)))
+					m.write(m.styles.dim.Render(RenderHistory(msg.session.Messages, 20)))
 				}
 				m.appendSystem("resumed " + msg.session.ID)
 			}
@@ -348,19 +345,33 @@ func (m *tuiModel) handleEvent(ev Event) tea.Cmd {
 	switch ev.Kind {
 	case EventMessageStart:
 		m.streaming = true
-		m.transcript.WriteString("\n" + styleAssistant.Render("alice") + " ")
+		m.assistantActive = true
+		m.assistantText = ""
+		m.transcript += "\n" + m.styles.assistant.Render("alice") + " "
+		m.assistantStart = len(m.transcript)
 
 	case EventTextDelta:
 		m.streamed = true
-		m.transcript.WriteString(ev.Text)
+		m.assistantText += ev.Text
+		m.write(ev.Text)
 
 	case EventMessageComplete:
-		if !m.streamed && ev.Text != "" {
-			m.transcript.WriteString(ev.Text)
+		final := ev.Text
+		if final == "" {
+			final = m.assistantText
 		}
-		m.transcript.WriteString("\n")
+		switch {
+		case m.assistantActive && final != "" && m.assistantStart <= len(m.transcript):
+			// Replace the plain streamed text with the rendered markdown.
+			m.transcript = m.transcript[:m.assistantStart] + renderMarkdown(final, m.styles.render)
+		case !m.streamed && final != "":
+			m.write(final)
+		}
+		m.transcript += "\n"
 		m.streaming = false
 		m.streamed = false
+		m.assistantActive = false
+		m.assistantText = ""
 
 	case EventReasoningAvailable:
 		if text := strings.TrimSpace(ev.Text); text != "" {
@@ -595,7 +606,7 @@ func (m *tuiModel) pickerView() string {
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s  %s\n", stylePrompt.Render(title), styleDim.Render("↑/↓ · enter · esc"))
+	fmt.Fprintf(&b, "%s  %s\n", m.styles.prompt.Render(title), m.styles.dim.Render("↑/↓ · enter · esc"))
 
 	const window = 10
 	start := 0
@@ -608,9 +619,9 @@ func (m *tuiModel) pickerView() string {
 		if row.ID == m.pickerCurrent {
 			marker = "* "
 		}
-		line := fmt.Sprintf("%s%-24s %s", marker, row.Label, styleDim.Render(row.Detail))
+		line := fmt.Sprintf("%s%-24s %s", marker, row.Label, m.styles.dim.Render(row.Detail))
 		if i == m.pickerIndex {
-			line = styleUser.Render("› ") + line
+			line = m.styles.user.Render("› ") + line
 		} else {
 			line = "  " + line
 		}
@@ -633,27 +644,31 @@ func (m *tuiModel) layout() {
 }
 
 func (m *tuiModel) sync() {
-	m.vp.SetContent(m.transcript.String())
+	m.vp.SetContent(m.transcript)
 	m.vp.GotoBottom()
 }
 
+func (m *tuiModel) write(s string) {
+	m.transcript += s
+}
+
 func (m *tuiModel) appendUser(text string) {
-	m.transcript.WriteString("\n" + styleUser.Render("you") + " " + text + "\n")
+	m.write("\n" + m.styles.user.Render("you") + " " + text + "\n")
 	m.sync()
 }
 
 func (m *tuiModel) appendSystem(text string) {
-	m.transcript.WriteString("\n" + styleDim.Render(text) + "\n")
+	m.write("\n" + m.styles.dim.Render(text) + "\n")
 	m.sync()
 }
 
 func (m *tuiModel) appendDim(text string) {
-	m.transcript.WriteString("\n" + styleDim.Render(text))
+	m.write("\n" + m.styles.dim.Render(text))
 	m.sync()
 }
 
 func (m *tuiModel) appendError(text string) {
-	m.transcript.WriteString("\n" + styleErr.Render("error: "+text) + "\n")
+	m.write("\n" + m.styles.err.Render("error: "+text) + "\n")
 	m.sync()
 }
 
@@ -670,7 +685,7 @@ func (m *tuiModel) View() string {
 
 	switch m.mode {
 	case modeApproval:
-		b.WriteString(stylePrompt.Render("[y] once · [a] always · [n] deny"))
+		b.WriteString(m.styles.prompt.Render("[y] once · [a] always · [n] deny"))
 	case modeClarify:
 		b.WriteString(m.input.View())
 	case modeSudo, modeSecret:
@@ -694,5 +709,5 @@ func (m *tuiModel) statusLine() string {
 	if m.streaming {
 		parts = append(parts, "…")
 	}
-	return styleDim.Render(strings.Join(parts, " · "))
+	return m.styles.dim.Render(strings.Join(parts, " · "))
 }
