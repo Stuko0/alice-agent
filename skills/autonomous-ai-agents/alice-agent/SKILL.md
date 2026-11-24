@@ -243,7 +243,6 @@ alice update               Update to latest version
 alice desktop / gui        Launch the native desktop app
 alice dashboard            Web admin panel + embedded chat
 alice proxy                OpenAI-compatible local proxy backed by an OAuth provider
-alice portal               Quick setup / sign in via Nous Portal
 alice kanban <verb>        Multi-agent work-queue board (init/create/list/show/assign/…)
 alice pairing list/approve/revoke  DM authorization
 alice plugins list/install/remove  Plugin management
