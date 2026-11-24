@@ -9998,8 +9998,8 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
 
         if not view.logged_in:
             print()
-            _cprint(f"  💳 {_d('Not logged into Nous Portal.')}")
-            print("  Run `alice portal` to log in, then /credits.")
+            _cprint(f"  💳 {_d('Nous billing is no longer available.')}")
+            print("  Pick a provider with `alice model` instead.")
             return
 
         print()
@@ -10091,8 +10091,8 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
                 _msg = f"Couldn't load billing: {state.error}"
                 _cprint(f"  💳 {_d(_msg)}")
             else:
-                _cprint(f"  💳 {_d('Not logged into Nous Portal.')}")
-                print("  Run `alice portal` to log in, then /billing.")
+                _cprint(f"  💳 {_d('Nous billing is no longer available.')}")
+                print("  Pick a provider with `alice model` instead.")
             return
 
         # Any sub-arg is intentionally ignored — always open the menu.
@@ -10470,7 +10470,7 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
         )
         _cprint(f"  {_d(_scope_msg)}")
         if not getattr(self, "_app", None):
-            print("  Run `alice portal` and approve terminal billing, then retry.")
+            print("  Nous terminal billing is no longer available.")
             return
         confirm_choices = [
             ("yes", "Re-authorize now", "open the portal to grant billing access"),

@@ -86,27 +86,6 @@ def test_show_status_omits_nous_tool_gateway_section_when_disabled(monkeypatch, 
     assert "active via Nous subscription" not in out
 
 
-def test_show_status_hides_nous_subscription_section_when_feature_flag_is_off(monkeypatch, capsys, tmp_path):
-    monkeypatch.setattr("alice_cli.status.managed_nous_tools_enabled", lambda: False)
-    from alice_cli import status as status_mod
-
-    _patch_common_status_deps(monkeypatch, status_mod, tmp_path)
-    monkeypatch.setattr(
-        status_mod,
-        "load_config",
-        lambda: {"model": {"default": "claude-opus-4-6", "provider": "nous"}},
-        raising=False,
-    )
-    monkeypatch.setattr(status_mod, "resolve_requested_provider", lambda requested=None: "nous", raising=False)
-    monkeypatch.setattr(status_mod, "resolve_provider", lambda requested=None, **kwargs: "nous", raising=False)
-    monkeypatch.setattr(status_mod, "provider_label", lambda provider: "Nous Portal", raising=False)
-
-    status_mod.show_status(SimpleNamespace(all=False, deep=False))
-
-    out = capsys.readouterr().out
-    assert "Nous Tool Gateway" not in out
-
-
 def test_show_status_omits_nous_credits_banner_when_disabled(monkeypatch, capsys, tmp_path):
     # The Nous integration is removed: no credits-exhausted billing banner may
     # appear, even with a (stale) nous auth state on disk.
