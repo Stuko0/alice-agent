@@ -7,6 +7,8 @@ import {
   $desktopOnboarding,
   type DesktopOnboardingState,
   type OnboardingContext,
+  isNoProviderError,
+  openProviderPickerFor,
   refreshOnboarding,
   requestDesktopOnboarding,
   saveOnboardingLocalEndpoint,
@@ -538,5 +540,49 @@ describe('saveOnboardingLocalEndpoint', () => {
     expect(result.ok).toBe(false)
     expect(result.message).toContain('No provider can serve the selected model.')
     expect($desktopOnboarding.get().configured).not.toBe(true)
+  })
+})
+
+
+describe('no-provider recovery', () => {
+  beforeEach(() => {
+    $desktopOnboarding.set({
+      configured: null,
+      firstRunSkipped: true,
+      flow: { status: 'idle' },
+      localEndpoint: false,
+      manual: false,
+      mode: 'oauth',
+      providers: null,
+      reason: null,
+      requested: false
+    })
+  })
+
+  it('recognises the agent message in both wordings', () => {
+    expect(isNoProviderError('No LLM provider configured. Run `alice model` …')).toBe(true)
+    expect(isNoProviderError('No model provider is connected yet. Open Settings → Models …')).toBe(true)
+    expect(isNoProviderError('Provider x is set in config.yaml but no API key was found')).toBe(true)
+    expect(isNoProviderError('Connection error.')).toBe(false)
+    expect(isNoProviderError(null)).toBe(false)
+  })
+
+  it('opens the provider picker once, with the reason', () => {
+    const opened = openProviderPickerFor('No model provider is connected yet. Open Settings → Models.')
+
+    expect(opened).toBe(true)
+
+    const state = $desktopOnboarding.get()
+    expect(state.requested).toBe(true)
+    expect(state.manual).toBe(true)
+    expect(state.reason).toContain('No model provider is connected')
+
+    // Already open → no second open (keeps the overlay from re-rendering).
+    expect(openProviderPickerFor('No model provider is connected yet. Open Settings → Models.')).toBe(false)
+  })
+
+  it('ignores unrelated errors', () => {
+    expect(openProviderPickerFor('API call failed after 3 retries: 429')).toBe(false)
+    expect($desktopOnboarding.get().requested).toBe(false)
   })
 })

@@ -24,6 +24,7 @@ import { dispatchNativeNotification } from '@/store/native-notifications'
 import { broadcastSessionsChanged } from '@/store/session-sync'
 import { upsertSubagent } from '@/store/subagents'
 import { setSessionTodos } from '@/store/todos'
+import { openProviderPickerFor } from '@/store/onboarding'
 
 import type { ClientSessionState } from '../../../types'
 
@@ -354,6 +355,10 @@ export function useMessageStream({
         const streamId = state.streamId
         const finalText = renderMediaTags(text).trim()
         const completionError = completionErrorText(finalText)
+
+        if (completionError) {
+          openProviderPickerFor(completionError)
+        }
         const normalize = (value: string) => value.replace(/\s+/g, ' ').trim()
 
         const replaceTextPart = (parts: ChatMessagePart[]) => {
@@ -469,6 +474,10 @@ export function useMessageStream({
 
   const failAssistantMessage = useCallback(
     (sessionId: string, errorMessage: string) => {
+      // No provider at all: open the picker instead of leaving the user with a
+      // message that only makes sense in a terminal.
+      openProviderPickerFor(errorMessage)
+
       updateSessionState(sessionId, state => {
         const streamId = state.streamId ?? `assistant-error-${Date.now()}`
         const groupId = state.pendingBranchGroup ?? undefined

@@ -59,6 +59,26 @@ from utils import base_url_host_matches, is_truthy_value
 logger = logging.getLogger("run_agent")
 
 
+def no_provider_message() -> str:
+    """Explain the missing provider in the language of the surface running it.
+
+    A desktop install has no terminal to type commands into, so pointing at
+    `alice model` is a dead end (the renderer also opens the provider picker
+    when it sees this text). The CLI keeps the command hint.
+    """
+    if (os.getenv("ALICE_DESKTOP", "") or "").strip().lower() in {"1", "true", "yes"}:
+        return (
+            "No model provider is connected yet. Open Settings → Models to connect "
+            "one (the free option needs no API key), or Settings → Providers to add "
+            "a key. Terminal backend and tools are in Settings too."
+        )
+
+    return (
+        "No LLM provider configured. Run `alice model` to select a provider, or "
+        "run `alice setup` for first-time configuration."
+    )
+
+
 def _ra():
     """Lazy reference to ``run_agent`` so callers can patch
     ``run_agent.OpenAI`` / ``run_agent.cleanup_vm`` / ... and have those
@@ -939,12 +959,7 @@ def init_agent(
                             f"variable, or switch to a different provider with `alice model`."
                         )
                 if not getattr(agent, "_fallback_activated", False):
-                    # No provider configured — reject with a clear message.
-                    raise RuntimeError(
-                        "No LLM provider configured. Run `alice model` to "
-                        "select a provider, or run `alice setup` for first-time "
-                        "configuration."
-                    )
+                    raise RuntimeError(no_provider_message())
         
         agent._client_kwargs = client_kwargs  # stored for rebuilding after interrupt
 

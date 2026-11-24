@@ -357,6 +357,48 @@ async function refreshProviders() {
   await providersRefreshPromise
 }
 
+/**
+ * Does this error mean "Alice has no model provider at all"?
+ *
+ * The agent raises one of these before any request is sent. In the desktop
+ * there is no terminal to run `alice model` in, so the answer is the provider
+ * picker — not a dead-end message telling the user to type a command.
+ */
+export function isNoProviderError(text: null | string | undefined): boolean {
+  const value = (text ?? '').toLowerCase()
+
+  if (!value) {
+    return false
+  }
+
+  return (
+    value.includes('no llm provider configured') ||
+    value.includes('no model provider is connected') ||
+    value.includes('is set in config.yaml but no api key')
+  )
+}
+
+/**
+ * Open the provider picker when a turn failed because no provider is
+ * configured. Safe to call repeatedly: it does nothing while the picker is
+ * already open.
+ */
+export function openProviderPickerFor(text: null | string | undefined): boolean {
+  if (!isNoProviderError(text)) {
+    return false
+  }
+
+  const state = $desktopOnboarding.get()
+
+  if (state.requested) {
+    return false
+  }
+
+  startManualOnboarding((text ?? '').trim() || undefined)
+
+  return true
+}
+
 export function requestDesktopOnboarding(reason = DEFAULT_ONBOARDING_REASON) {
   patch({ reason: reason.trim() || DEFAULT_ONBOARDING_REASON, requested: true })
 }
