@@ -421,6 +421,44 @@ jobs:
 
           Write-Host "✅ backend announced a port; app pid $($proc.Id)"
 
+          # ── Visual evidence ────────────────────────────────────────────
+          # The GUI runs on this runner's desktop session; capture it so the
+          # build proves the window actually renders (and what a fresh install
+          # shows: the onboarding picker / first-run tour).
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -AssemblyName System.Drawing
+          Add-Type @"
+          using System;
+          using System.Runtime.InteropServices;
+          public class AliceWin {
+            [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+            [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+          }
+          "@
+
+          function Save-Desktop([string]$Name) {
+            $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
+            $bmp = New-Object System.Drawing.Bitmap($bounds.Width, $bounds.Height)
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+            $g.Dispose()
+            $out = Join-Path $env:RUNNER_TEMP $Name
+            $bmp.Save($out, [System.Drawing.Imaging.ImageFormat]::Png)
+            $bmp.Dispose()
+            Write-Host "screenshot: $out ($($bounds.Width)x$($bounds.Height))"
+          }
+
+          Start-Sleep -Seconds 12
+          $proc.Refresh()
+          if ($proc.MainWindowHandle -ne [IntPtr]::Zero) {
+            [AliceWin]::ShowWindow($proc.MainWindowHandle, 3) | Out-Null
+            [AliceWin]::SetForegroundWindow($proc.MainWindowHandle) | Out-Null
+            Start-Sleep -Seconds 2
+          }
+          Save-Desktop "alice-windows-1.png"
+          Start-Sleep -Seconds 10
+          Save-Desktop "alice-windows-2.png"
+
           # Kill the app AND the backend it spawned: the bundled python holds
           # resources\python\python.exe open, which would block the uninstall.
           Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
@@ -429,6 +467,14 @@ jobs:
             Stop-Process -Force -ErrorAction SilentlyContinue
           Start-Sleep -Seconds 2
         shell: pwsh
+
+      - name: Upload desktop screenshots
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: alice-windows-desktop
+          path: ${{ runner.temp }}/alice-windows-*.png
+          if-no-files-found: warn
 
       - name: Uninstall silently
         run: |
