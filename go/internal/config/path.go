@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -116,7 +117,7 @@ type pathLevel struct {
 	keyIdx  int
 }
 
-func unsetPath(root *yaml.Node, parts []string) (bool, error) {
+func unsetPath(root *yaml.Node, parts []string, prune bool) (bool, error) {
 	var chain []pathLevel
 
 	current := root
@@ -132,7 +133,9 @@ func unsetPath(root *yaml.Node, parts []string) (bool, error) {
 			}
 			if last {
 				current.Content = append(current.Content[:idx], current.Content[idx+2:]...)
-				pruneEmptyAncestors(chain)
+				if prune {
+					pruneEmptyAncestors(chain)
+				}
 				return true, nil
 			}
 			child, _ := mappingChild(current, part)
@@ -198,5 +201,82 @@ func kindName(kind yaml.Kind) string {
 		return "scalar"
 	default:
 		return "node"
+	}
+}
+
+// UnsetKeepParents removes a key without pruning empty ancestor mappings.
+// Python's save_config keeps an already-empty parent dict (it differs from a
+// non-empty default), which several migrations rely on.
+func (d *Document) UnsetKeepParents(key string) (bool, error) {
+	parts, err := splitPath(key)
+	if err != nil {
+		return false, err
+	}
+	return unsetPath(d.mapping(), parts, false)
+}
+
+// SetAny writes an arbitrary Go value (maps, slices, scalars) at key.
+func (d *Document) SetAny(key string, value any) error {
+	parts, err := splitPath(key)
+	if err != nil {
+		return err
+	}
+	node, err := toNode(value)
+	if err != nil {
+		return err
+	}
+	return setPath(d.mapping(), parts, node)
+}
+
+func toNode(value any) (*yaml.Node, error) {
+	switch typed := value.(type) {
+	case nil:
+		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"}, nil
+	case map[string]any:
+		keys := make([]string, 0, len(typed))
+		for key := range typed {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+		for _, key := range keys {
+			child, err := toNode(typed[key])
+			if err != nil {
+				return nil, err
+			}
+			node.Content = append(node.Content, keyNode(key), child)
+		}
+		return node, nil
+	case []any:
+		node := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		for _, item := range typed {
+			child, err := toNode(item)
+			if err != nil {
+				return nil, err
+			}
+			node.Content = append(node.Content, child)
+		}
+		return node, nil
+	case []string:
+		items := make([]any, len(typed))
+		for i, item := range typed {
+			items[i] = item
+		}
+		return toNode(items)
+	case string:
+		return scalar("!!str", typed), nil
+	case bool:
+		if typed {
+			return scalar("!!bool", "true"), nil
+		}
+		return scalar("!!bool", "false"), nil
+	case int:
+		return scalar("!!int", strconv.Itoa(typed)), nil
+	case int64:
+		return scalar("!!int", strconv.FormatInt(typed, 10)), nil
+	case float64:
+		return scalar("!!float", strconv.FormatFloat(typed, 'g', -1, 64)), nil
+	default:
+		return nil, fmt.Errorf("unsupported config value type %T", value)
 	}
 }

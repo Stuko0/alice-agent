@@ -21,7 +21,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from alice_cli.config import DEFAULT_CONFIG, OPTIONAL_ENV_VARS  # noqa: E402
+from alice_cli.config import (  # noqa: E402
+    _EXTRA_ENV_KEYS,
+    DEFAULT_CONFIG,
+    OPTIONAL_ENV_VARS,
+)
 
 
 def build_payload() -> dict:
@@ -41,6 +45,7 @@ def build_payload() -> dict:
         "config_version": int(DEFAULT_CONFIG.get("_config_version", 1)),
         "defaults": DEFAULT_CONFIG,
         "optional_env": optional,
+        "extra_env_keys": sorted(_EXTRA_ENV_KEYS),
     }
 
 

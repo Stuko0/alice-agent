@@ -29,7 +29,7 @@ agent:
   verify_on_stop: auto
 `)
 
-	result, handled, err := doc.MigrateToLatest()
+	result, handled, err := doc.MigrateToLatest(t.TempDir())
 	if err != nil || !handled {
 		t.Fatalf("handled=%v err=%v", handled, err)
 	}
@@ -66,7 +66,7 @@ agent:
   verify_on_stop: true
 `)
 
-	if _, handled, err := doc.MigrateToLatest(); err != nil || !handled {
+	if _, handled, err := doc.MigrateToLatest(t.TempDir()); err != nil || !handled {
 		t.Fatalf("handled=%v err=%v", handled, err)
 	}
 
@@ -84,7 +84,7 @@ func TestMigrate31PreservesExplicitTrue(t *testing.T) {
 agent:
   verify_on_stop: true
 `)
-	if _, handled, err := doc.MigrateToLatest(); err != nil || !handled {
+	if _, handled, err := doc.MigrateToLatest(t.TempDir()); err != nil || !handled {
 		t.Fatalf("handled=%v err=%v", handled, err)
 	}
 	reloaded, _ := Load(path)
@@ -98,7 +98,7 @@ func TestMigrate31FalseStaysFalse(t *testing.T) {
 agent:
   verify_on_stop: false
 `)
-	if _, handled, err := doc.MigrateToLatest(); err != nil || !handled {
+	if _, handled, err := doc.MigrateToLatest(t.TempDir()); err != nil || !handled {
 		t.Fatalf("handled=%v err=%v", handled, err)
 	}
 	reloaded, _ := Load(path)
@@ -117,7 +117,7 @@ agent:
 `)
 	before, _ := os.ReadFile(path)
 
-	result, handled, err := doc.MigrateToLatest()
+	result, handled, err := doc.MigrateToLatest(t.TempDir())
 	if err != nil || !handled {
 		t.Fatalf("handled=%v err=%v", handled, err)
 	}
@@ -130,13 +130,67 @@ agent:
 	}
 }
 
-func TestMigrateOldSchemaDelegates(t *testing.T) {
-	doc, _ := migrateFixture(t, "_config_version: 27\n")
-	_, handled, err := doc.MigrateToLatest()
-	if err != nil {
-		t.Fatal(err)
+func TestMigrateV1RunsNatively(t *testing.T) {
+	doc, path := migrateFixture(t, "_config_version: 1\n")
+	home := t.TempDir()
+	if _, handled, err := doc.MigrateToLatest(home); err != nil || !handled {
+		t.Fatalf("handled=%v err=%v", handled, err)
 	}
-	if handled {
-		t.Fatal("schema < 28 must delegate to Python")
+	reloaded, _ := Load(path)
+	if reloaded.RawVersion() != 32 {
+		t.Fatalf("version = %d", reloaded.RawVersion())
+	}
+	if value, ok := reloaded.Get("display.tool_progress"); !ok || value != "all" {
+		t.Fatalf("tool_progress = %v (%v)", value, ok)
+	}
+}
+
+func TestMigrate22CreatesCuratorLogs(t *testing.T) {
+	doc, path := migrateFixture(t, "_config_version: 22\n")
+	home := t.TempDir()
+
+	if _, handled, err := doc.MigrateToLatest(home); err != nil || !handled {
+		t.Fatalf("handled=%v err=%v", handled, err)
+	}
+	if info, err := os.Stat(filepath.Join(home, "logs", "curator")); err != nil || !info.IsDir() {
+		t.Fatalf("logs/curator missing: %v", err)
+	}
+
+	// Curator defaults are stripped (Python adds them, then save_config
+	// removes default-valued keys). The file only gains the version.
+	reloaded, _ := Load(path)
+	if _, ok := reloaded.Get("curator"); ok {
+		t.Fatal("curator defaults should not be materialised")
+	}
+	if reloaded.RawVersion() != 32 {
+		t.Fatalf("version = %d", reloaded.RawVersion())
+	}
+}
+
+func TestMigrate24LowersTTL(t *testing.T) {
+	doc, path := migrateFixture(t, `_config_version: 24
+model_catalog:
+  ttl_hours: 24
+`)
+	if _, handled, err := doc.MigrateToLatest(t.TempDir()); err != nil || !handled {
+		t.Fatalf("handled=%v err=%v", handled, err)
+	}
+	reloaded, _ := Load(path)
+	if value, _ := reloaded.Get("model_catalog.ttl_hours"); value != 1 {
+		t.Fatalf("ttl_hours = %v", value)
+	}
+}
+
+func TestMigrate24LeavesCustomTTL(t *testing.T) {
+	doc, path := migrateFixture(t, `_config_version: 24
+model_catalog:
+  ttl_hours: 6
+`)
+	if _, handled, err := doc.MigrateToLatest(t.TempDir()); err != nil || !handled {
+		t.Fatalf("handled=%v err=%v", handled, err)
+	}
+	reloaded, _ := Load(path)
+	if value, _ := reloaded.Get("model_catalog.ttl_hours"); value != 6 {
+		t.Fatalf("ttl_hours = %v", value)
 	}
 }

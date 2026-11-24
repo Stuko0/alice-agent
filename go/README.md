@@ -160,7 +160,7 @@ last status once the restart budget is exhausted.
 | `config unset <key>` | removes the key or list element |
 | `config check` | schema version vs latest + status of every optional env var |
 | `config dump` | merged defaults+user config as YAML, secret leaves masked |
-| `config migrate` | natively applies 28→32 (write_mode → write_approval, verify_on_stop flips) and bumps the schema version; schemas < 28 or configs with `mcp_servers` delegate to Python |
+| `config migrate` | applies every schema transform from v1 to v32 natively, sanitises `.env`, disables suspicious MCP servers and bumps the version; non-interactive |
 
 Properties:
 
@@ -176,11 +176,10 @@ Properties:
   `terminal.*` keys are delegated to Python, which routes them to `.env` or
   the terminal env mirror. Echoed values for credential-shaped leaves are
   masked.
-- `show`, `edit` and `migrate` for schemas below 28 stay delegated — the panel
-  depends on auth + skill discovery, the editor is interactive, and the older
-  versions need env moves, plugin grandfathering and MCP hardening. Native
-  migrations are **non-interactive** (no key prompts); use `alice setup` or
-  `config set` for new credentials.
+- `show` and `edit` stay delegated — the panel depends on auth + skill
+  discovery and the editor is interactive. Native migrations are
+  **non-interactive** (they do not prompt for new optional keys or
+  skill-declared settings); use `alice setup` or `config set` for credentials.
 
 The embedded `internal/config/schema.json` is generated from Python's
 `DEFAULT_CONFIG` + `OPTIONAL_ENV_VARS`:
@@ -198,9 +197,11 @@ ALICE_CONFIG_PARITY=1 go test ./internal/host -run ConfigSetParity -v
 ALICE_CONFIG_MIGRATION_PARITY=1 go test ./internal/config -run MigrationParity -v
 ```
 
-The migration harness covers schema versions 28–31 (the native range); the
-same real-world check was run against a full 13 KB config and produced an
-identical tree in both implementations.
+The migration harness covers every schema version (v1–v31 fixtures plus MCP
+and corrupted-`.env` cases), comparing the parsed YAML, the `.env` bytes and
+the home skeleton. The same real-world check was run against a full 13 KB
+config **and** its 25 KB `.env`: both implementations produced byte-identical
+`.env` files and identical config trees.
 
 ## Protocol
 
@@ -230,7 +231,7 @@ repo's own rules (port = delete, E2E validation, no change-detector tests).
 | Command | Blocker | Rough size |
 |---|---|---|
 | `config show/edit` | curated panel needs auth + skill discovery; editor is interactive | 0.5–1 dev-month |
-| `config migrate` for schemas < 28 | env moves, plugin grandfathering, MCP hardening | 1–1.5 dev-months |
+| `config migrate` prompts | interactive key/skill prompts need skill discovery | 0.5 |
 | `setup` | interactive wizard over config + auth + model catalog | 2–3 |
 | `auth`, `model` | OAuth device flows, credential pool, keychain, 28 provider profiles | 3–4 |
 | `cron` mutations | schedule parser, job schema, cross-process locking, delivery targets | 1–2 |

@@ -128,6 +128,7 @@ func runConfigNative(opts Options, args []string) (handled bool, code int) {
 			fmt.Fprintf(opts.Stderr, "alice config set: %v\n", err)
 			return true, 1
 		}
+		config.EnsureHome(home)
 		if err := doc.Save(); err != nil {
 			fmt.Fprintf(opts.Stderr, "alice config set: %v\n", err)
 			return true, 1
@@ -198,14 +199,7 @@ func runConfigNative(opts Options, args []string) (handled bool, code int) {
 			fmt.Fprintf(opts.Stderr, "alice config migrate: %v\n", err)
 			return true, 1
 		}
-		// MCP hardening (disabling suspicious stdio servers) is Python-only.
-		if mcp, ok := doc.Get("mcp_servers"); ok {
-			if servers, isMap := mcp.(map[string]any); isMap && len(servers) > 0 {
-				return false, 0
-			}
-		}
-
-		result, handled, err := doc.MigrateToLatest()
+		result, handled, err := doc.MigrateToLatest(home)
 		if err != nil {
 			fmt.Fprintf(opts.Stderr, "alice config migrate: %v\n", err)
 			return true, 1
@@ -213,14 +207,18 @@ func runConfigNative(opts Options, args []string) (handled bool, code int) {
 		if !handled {
 			return false, 0
 		}
-		if result.From >= result.To {
-			fmt.Fprintln(opts.Stdout, "✓ Configuration is up to date!")
-			return true, 0
+		if result.From < result.To {
+			fmt.Fprintf(opts.Stdout, "Config version: %d → %d\n", result.From, result.To)
 		}
 		for _, applied := range result.Applied {
 			fmt.Fprintf(opts.Stdout, "  ✓ %s\n", applied)
 		}
-		fmt.Fprintf(opts.Stdout, "Config version: %d → %d\n", result.From, result.To)
+		for _, warning := range result.Warnings {
+			fmt.Fprintf(opts.Stderr, "  ⚠ %s\n", warning)
+		}
+		if result.From >= result.To && len(result.Applied) == 0 && len(result.Warnings) == 0 {
+			fmt.Fprintln(opts.Stdout, "✓ Configuration is up to date!")
+		}
 		return true, 0
 	}
 

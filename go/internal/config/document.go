@@ -21,6 +21,9 @@ import (
 type Document struct {
 	path string
 	root *yaml.Node
+	// explicit is the set of dotted leaf paths present in the file when it was
+	// loaded. save_config preserves those even when they equal a default.
+	explicit map[string]bool
 }
 
 // Load parses path. A missing or empty file yields an empty mapping.
@@ -49,6 +52,7 @@ func Load(path string) (*Document, error) {
 	}
 
 	doc.root = &parsed
+	doc.explicit = explicitPaths(mappingNode(&parsed))
 	return doc, nil
 }
 
@@ -119,7 +123,7 @@ func (d *Document) Unset(key string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return unsetPath(d.mapping(), parts)
+	return unsetPath(d.mapping(), parts, true)
 }
 
 func (d *Document) mapping() *yaml.Node {
@@ -191,4 +195,36 @@ func (d *Document) RawVersion() int {
 	default:
 		return 0
 	}
+}
+
+// IsExplicit reports whether the dotted path was present in the file at load
+// time (mirrors _explicit_config_paths).
+func (d *Document) IsExplicit(key string) bool {
+	return d != nil && d.explicit[key]
+}
+
+func explicitPaths(node *yaml.Node) map[string]bool {
+	out := make(map[string]bool)
+	var walk func(node *yaml.Node, prefix string)
+	walk = func(node *yaml.Node, prefix string) {
+		if node.Kind == yaml.MappingNode {
+			for i := 0; i+1 < len(node.Content); i += 2 {
+				key := node.Content[i].Value
+				child := node.Content[i+1]
+				full := key
+				if prefix != "" {
+					full = prefix + "." + key
+				}
+				walk(child, full)
+			}
+			return
+		}
+		if prefix != "" {
+			out[prefix] = true
+		}
+	}
+	if node != nil {
+		walk(node, "")
+	}
+	return out
 }

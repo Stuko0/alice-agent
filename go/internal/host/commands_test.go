@@ -367,13 +367,16 @@ func TestConfigMigrateFastPath(t *testing.T) {
 		t.Fatalf("output = %q", out.String())
 	}
 
-	// Older schemas delegate to Python's version transforms.
+	// An old schema is migrated natively now.
 	if err := os.WriteFile(filepath.Join(home, "config.yaml"), []byte("_config_version: 1\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	var out2, errb2 bytes.Buffer
-	if handled, _ := runConfigNative(Options{Stdout: &out2, Stderr: &errb2, Resolver: resolver}, []string{"migrate"}); handled {
-		t.Fatal("old schema must be delegated")
+	if handled, code := runConfigNative(Options{Stdout: &out2, Stderr: &errb2, Resolver: resolver}, []string{"migrate"}); !handled || code != 0 {
+		t.Fatalf("old schema: handled=%v code=%d stderr=%s", handled, code, errb2.String())
+	}
+	if !strings.Contains(out2.String(), "Config version: 1 → 32") {
+		t.Fatalf("output = %q", out2.String())
 	}
 }
 

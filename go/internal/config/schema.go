@@ -27,6 +27,7 @@ type schema struct {
 	ConfigVersion int            `yaml:"config_version" json:"config_version"`
 	Defaults      map[string]any `yaml:"defaults" json:"defaults"`
 	OptionalEnv   []EnvVar       `yaml:"optional_env" json:"optional_env"`
+	ExtraEnvKeys  []string       `yaml:"extra_env_keys" json:"extra_env_keys"`
 }
 
 var (
@@ -94,4 +95,27 @@ func Defaults() (map[string]any, error) {
 func OptionalEnv() ([]EnvVar, error) {
 	s, err := loadSchema()
 	return s.OptionalEnv, err
+}
+
+// ExtraEnvKeys are the non-user-facing env names .env sanitisation must also
+// recognize (alice_cli.config._EXTRA_ENV_KEYS).
+func ExtraEnvKeys() ([]string, error) {
+	s, err := loadSchema()
+	return s.ExtraEnvKeys, err
+}
+
+// KnownEnvKeys is OPTIONAL_ENV_VARS ∪ _EXTRA_ENV_KEYS.
+func KnownEnvKeys() (map[string]bool, error) {
+	s, err := loadSchema()
+	if err != nil {
+		return nil, err
+	}
+	keys := make(map[string]bool, len(s.OptionalEnv)+len(s.ExtraEnvKeys))
+	for _, variable := range s.OptionalEnv {
+		keys[variable.Name] = true
+	}
+	for _, key := range s.ExtraEnvKeys {
+		keys[key] = true
+	}
+	return keys, nil
 }
