@@ -1120,6 +1120,60 @@ class TestMessageStorage:
         assert conv[0]["codex_reasoning_items"][0]["encrypted_content"] == "enc_blob_123"
 
 
+class TestGetReasoning:
+    """Lazy reasoning fetch.
+
+    The transcript payload ships only a ``has_reasoning`` flag (reasoning is
+    ~25% of a long session), and the renderer asks for the text of the rows it
+    is about to show when a Thinking disclosure expands.
+    """
+
+    def test_returns_only_requested_ids(self, db):
+        db.create_session(session_id="s1", source="cli")
+        first = db.append_message("s1", role="assistant", content="a", reasoning="first")
+        second = db.append_message("s1", role="assistant", content="b", reasoning="second")
+        third = db.append_message("s1", role="assistant", content="c", reasoning="third")
+
+        assert db.get_reasoning("s1", {first, third}) == {
+            first: "first",
+            third: "third",
+        }
+        assert second not in db.get_reasoning("s1", {first, third})
+        assert db.get_reasoning("s1", set()) == {}
+
+    def test_does_not_leak_across_sessions(self, db):
+        db.create_session(session_id="s1", source="cli")
+        foreign_row = db.append_message(
+            "s1", role="assistant", content="a", reasoning="secret"
+        )
+        db.create_session(session_id="s2", source="cli")
+        db.append_message("s2", role="assistant", content="b", reasoning="mine")
+
+        assert db.get_reasoning("s2", {foreign_row}) == {}
+
+    def test_falls_back_to_reasoning_content(self, db):
+        db.create_session(session_id="s1", source="cli")
+        row = db.append_message(
+            "s1", role="assistant", content="a", reasoning_content="legacy text"
+        )
+
+        assert db.get_reasoning("s1", {row}) == {row: "legacy text"}
+
+    def test_skips_empty_reasoning(self, db):
+        db.create_session(session_id="s1", source="cli")
+        row = db.append_message("s1", role="assistant", content="a", reasoning="")
+
+        assert db.get_reasoning("s1", {row}) == {}
+
+    def test_skips_rewound_rows(self, db):
+        db.create_session(session_id="s1", source="cli")
+        anchor = db.append_message("s1", role="user", content="hi")
+        rewound = db.append_message("s1", role="assistant", content="bye", reasoning="old")
+        db.rewind_to_message("s1", anchor)
+
+        assert db.get_reasoning("s1", {rewound}) == {}
+
+
 # =========================================================================
 # FTS5 search
 # =========================================================================
