@@ -20,12 +20,42 @@ make check        # gofmt + vet + tests
 | Command | Behaviour |
 |---|---|
 | `alice host env` | JSON report: resolved `ALICE_HOME`, Python runtime, build info |
+| `alice host rpc <method> [json]` | Spawn the gateway, wait for `gateway.ready`, call one RPC, print the result |
 | `alice host help` | Host-specific help |
 | everything else | Delegated verbatim to the Python backend |
 
 `alice version` is **deliberately delegated**: the Python implementation also
 performs an update check, and reimplementing it in Go would create a second
 source of truth before the conformance harness exists.
+
+```bash
+./bin/alice host rpc session.list
+./bin/alice host rpc session.create '{"cwd":"/repo"}'
+```
+
+## Protocol
+
+`internal/protocol` implements the wire contract documented in
+[`docs/protocol/json-rpc.md`](../docs/protocol/json-rpc.md): request/response/
+event frames, error codes, and NDJSON framing with a 64 MiB frame cap.
+
+`internal/rpcclient` is the reusable client on top of it: it spawns the
+backend, waits for `gateway.ready`, matches responses to requests by id, and
+delivers events on a channel. This is the foundation the Go CLI will use.
+
+The contract survives drift thanks to two tests:
+
+- `tests/tui_gateway/test_rpc_contract_doc.py` — the documented method catalog
+  must equal the live `tui_gateway.server._methods` registry.
+- `go/internal/protocol/gateway_integration_test.go` — opt-in, spawns the real
+  Python gateway and checks `gateway.ready`, a success response, `-32601`,
+  `-32602` and a clean shutdown:
+
+```bash
+cd go
+make integration
+```
+
 
 ## Runtime resolution
 

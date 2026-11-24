@@ -1,11 +1,16 @@
 package host
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"runtime"
+	"time"
+
+	"github.com/Stuko0/alice-agent/go/internal/rpcclient"
 )
 
 // Runner executes a child process.
@@ -89,6 +94,8 @@ func hostCommand(opts Options, args []string) int {
 	switch args[0] {
 	case "env":
 		return hostEnv(opts)
+	case "rpc":
+		return hostRPC(opts, args[1:])
 	case "help", "--help", "-h":
 		printHostHelp(opts.Stdout)
 		return 0
@@ -149,9 +156,66 @@ func printHostHelp(w io.Writer) {
 	fmt.Fprint(w, `alice host — Go host diagnostics
 
 Usage:
-  alice host env      Print the resolved ALICE_HOME, Python runtime and build info (JSON)
-  alice host help     Show this help
+  alice host env                  Print the resolved ALICE_HOME, Python runtime and build info (JSON)
+  alice host rpc <method> [json]  Call one gateway RPC and print the result
+  alice host help                 Show this help
 
 Every other command is delegated to the Python backend unchanged.
 `)
+}
+
+// hostRPC is the first production consumer of the protocol client: spawn the
+// gateway, wait for gateway.ready, issue one request and print the result.
+// It doubles as a debugging tool for the migration.
+func hostRPC(opts Options, args []string) int {
+	if len(args) == 0 {
+		fmt.Fprintln(opts.Stderr, "usage: alice host rpc <method> [json-params]")
+		return 2
+	}
+	method := args[0]
+
+	var params any
+	if len(args) > 1 {
+		if err := json.Unmarshal([]byte(args[1]), &params); err != nil {
+			fmt.Fprintf(opts.Stderr, "alice host rpc: invalid params JSON: %v\n", err)
+			return 2
+		}
+	}
+
+	rt, err := opts.Resolver.Python()
+	if err != nil {
+		fmt.Fprintf(opts.Stderr, "alice: %v\n", err)
+		return 127
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	client, err := rpcclient.Start(ctx, rpcclient.Options{
+		Python: rt.Python,
+		Dir:    opts.Resolver.CheckoutRoot(rt),
+	})
+	if err != nil {
+		fmt.Fprintf(opts.Stderr, "alice host rpc: %v\n", err)
+		return 1
+	}
+	defer client.Close()
+
+	result, err := client.Call(ctx, method, params)
+	if err != nil {
+		fmt.Fprintf(opts.Stderr, "alice host rpc %s: %v\n", method, err)
+		return 1
+	}
+
+	if len(result) == 0 {
+		return 0
+	}
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, result, "", "  "); err != nil {
+		// Not valid JSON (should not happen); print verbatim.
+		fmt.Fprintln(opts.Stdout, string(result))
+		return 0
+	}
+	fmt.Fprintln(opts.Stdout, pretty.String())
+	return 0
 }

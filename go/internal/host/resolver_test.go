@@ -197,3 +197,17 @@ func (fakeInfo) Mode() os.FileMode  { return 0o755 }
 func (fakeInfo) ModTime() time.Time { return time.Time{} }
 func (fakeInfo) IsDir() bool        { return false }
 func (fakeInfo) Sys() any           { return nil }
+
+func TestCheckoutRoot(t *testing.T) {
+	r := Resolver{GOOS: "linux"}
+
+	checkout := Runtime{Python: "/repo/.venv/bin/python", Source: "checkout"}
+	if got := r.CheckoutRoot(checkout); got != "/repo" {
+		t.Fatalf("checkout root = %q, want /repo", got)
+	}
+
+	fromPath := Runtime{Python: "/usr/bin/python3", Source: "PATH"}
+	if got := r.CheckoutRoot(fromPath); got != "" {
+		t.Fatalf("PATH runtime root = %q, want empty", got)
+	}
+}

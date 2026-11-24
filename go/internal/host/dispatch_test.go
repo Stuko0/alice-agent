@@ -237,3 +237,21 @@ func TestHostHelp(t *testing.T) {
 		t.Fatalf("stdout = %q", out.String())
 	}
 }
+
+func TestHostRPCRequiresMethod(t *testing.T) {
+	var out, errb bytes.Buffer
+
+	code := Main(Options{
+		Args:     []string{"host", "rpc"},
+		Stdout:   &out,
+		Stderr:   &errb,
+		Resolver: testResolver(),
+		Runner:   &fakeRunner{},
+	})
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2", code)
+	}
+	if !strings.Contains(errb.String(), "usage: alice host rpc") {
+		t.Fatalf("stderr = %q", errb.String())
+	}
+}

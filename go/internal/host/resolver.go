@@ -162,3 +162,15 @@ func (r Resolver) isFile(path string) bool {
 	}
 	return !info.IsDir()
 }
+
+// CheckoutRoot returns the repository root when the runtime was resolved from
+// a checkout venv (<root>/{.venv,venv}/{bin,Scripts}/python), else "".
+//
+// The root is the working directory the child needs so `-m tui_gateway.entry`
+// resolves without the package being pip-installed.
+func (r Resolver) CheckoutRoot(rt Runtime) string {
+	if rt.Source != "checkout" || rt.Python == "" {
+		return ""
+	}
+	return filepath.Dir(filepath.Dir(filepath.Dir(rt.Python)))
+}
