@@ -1798,7 +1798,7 @@ def _save_cfg(cfg: dict):
 
     from utils import atomic_yaml_write
 
-    path = _alice_home_webhook / "config.yaml"
+    path = Path(_alice_home_webhook) / "config.yaml"
     atomic_yaml_write(path, cfg)
     with _cfg_lock:
         _cfg_cache = copy.deepcopy(cfg)
