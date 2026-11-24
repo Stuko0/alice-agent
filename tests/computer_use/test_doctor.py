@@ -23,6 +23,24 @@ import json
 from io import StringIO
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _no_native_wayland_backend():
+    """Pin the doctor to the cua-driver path.
+
+    These tests exercise the cua-driver health-report adapter. The doctor
+    consults the native Wayland backend first (it appends an extra check and
+    makes extra `shutil.which` calls when available), so force it off —
+    otherwise results depend on whether the host has grim+hyprctl installed.
+    """
+    with patch(
+        "tools.computer_use.wayland_backend.wayland_backend_available",
+        return_value=False,
+    ):
+        yield
+
 
 # ── helpers ────────────────────────────────────────────────────────────────
 

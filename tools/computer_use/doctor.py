@@ -228,6 +228,30 @@ def _wayland_window_probe(binary: str) -> Optional[Dict[str, Any]]:
     # Only meaningful on Linux; macOS/Windows don't have the Wayland split.
     if sys.platform != "linux":
         return None
+    # The native Wayland backend closes this gap: it enumerates compositor
+    # windows through hyprctl and captures with grim, so the X11-only
+    # enumeration being blind is no longer an operational failure.
+    try:
+        from tools.computer_use.wayland_backend import wayland_backend_available
+
+        if wayland_backend_available():
+            return {
+                "name": "linux-wayland-window-enum",
+                "status": "ok",
+                "message": (
+                    "cua-driver's X11 enumeration is blind on this session, "
+                    "but the native Wayland backend (hyprctl + grim) is "
+                    "active and enumerates compositor windows directly."
+                ),
+                "hint": (
+                    "Capture, window listing, focus and pointer movement work. "
+                    "Clicks and typing need an injector: `sudo dnf install "
+                    "ydotool` (buttons+keys) or `wtype` (keys)."
+                ),
+                "data": {"backend": "wayland-native"},
+            }
+    except Exception:  # pragma: no cover - probe must never break the report
+        pass
     try:
         from tools.computer_use.cua_backend import _is_wayland_placeholder_enum
 
@@ -355,7 +379,10 @@ def run_doctor(
     wayland_block = _wayland_window_probe(binary)
     if wayland_block is not None:
         report.setdefault("checks", []).append(wayland_block)
-        report["overall"] = "failed"
+        # Only a FAILING probe downgrades the report. The native-Wayland
+        # backend emits an ok-status check here to document the switch.
+        if wayland_block.get("status") not in ("ok", "pass", "passed"):
+            report["overall"] = "failed"
         if json_output:
             # JSON consumers (tests, scripts) see the synthesized check like
             # any driver-emitted one; the text path renders it below.
