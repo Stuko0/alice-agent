@@ -258,6 +258,7 @@ import argparse
 import hashlib
 import json
 import shlex
+import re
 import shutil
 import stat
 import subprocess
@@ -5742,6 +5743,82 @@ def _wails_build_needed(wails_dir: Path, desktop_dir: Path, project_root: Path) 
     return _compute_desktop_content_hash(project_root) != saved_hash
 
 
+def _go_env_path(name: str) -> str:
+    """Return a `go env` value, or "" when Go is unavailable."""
+    try:
+        res = subprocess.run(["go", "env", name], capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+    return res.stdout.strip() if res.returncode == 0 else ""
+
+
+def resolve_wails_binary() -> str | None:
+    """Locate the Wails CLI, or None when it cannot be found.
+
+    `go install` drops the binary in $(go env GOBIN || GOPATH)/bin, which is
+    often not on PATH (a fresh shell, a launcher, the desktop's own update
+    path). Assuming a bare `wails` on PATH made `alice desktop` die with
+    FileNotFoundError on machines where the CLI was installed correctly.
+    """
+    override = os.getenv("WAILS_BIN", "").strip()
+    if override and Path(override).expanduser().is_file():
+        return str(Path(override).expanduser())
+
+    found = shutil.which("wails")
+    if found:
+        return found
+
+    candidates: list[Path] = []
+    gobin = os.getenv("GOBIN", "").strip()
+    if gobin:
+        candidates.append(Path(gobin).expanduser() / "wails")
+
+    gopath = os.getenv("GOPATH", "").strip() or _go_env_path("GOPATH")
+    if gopath:
+        for entry in gopath.split(os.pathsep):
+            if entry.strip():
+                candidates.append(Path(entry).expanduser() / "bin" / "wails")
+
+    candidates.append(Path.home() / "go" / "bin" / "wails")
+
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+
+    return None
+
+
+def _wails_module_version() -> str:
+    """Wails version pinned by apps/desktop-wails/go.mod (fallback v2.15.0)."""
+    go_mod = PROJECT_ROOT / "apps" / "desktop-wails" / "go.mod"
+    try:
+        match = re.search(r"github\.com/wailsapp/wails/v2 v(\d+\.\d+\.\d+)", go_mod.read_text(encoding="utf-8"))
+    except OSError:
+        match = None
+
+    return match.group(1) if match else "2.15.0"
+
+
+def ensure_wails_binary() -> str | None:
+    """Resolve the Wails CLI, installing it once when Go is available."""
+    resolved = resolve_wails_binary()
+    if resolved:
+        return resolved
+
+    if not shutil.which("go"):
+        return None
+
+    version = _wails_module_version()
+    target = f"github.com/wailsapp/wails/v2/cmd/wails@v{version}"
+    print(f"→ Wails CLI not found; installing it with `go install {target}`...")
+    res = subprocess.run(["go", "install", target])
+    if res.returncode != 0:
+        return None
+
+    return resolve_wails_binary()
+
+
 def _build_wails_desktop(npm: str, desktop_dir: Path, wails_dir: Path) -> None:
     """Build the shared React frontend, copy it into the Wails tree, then build the Go shell."""
     print("→ Building frontend...")
@@ -5760,7 +5837,16 @@ def _build_wails_desktop(npm: str, desktop_dir: Path, wails_dir: Path) -> None:
     shutil.copytree(dist_src, dist_dst)
 
     print("→ Building Wails binary...")
-    res = subprocess.run(["wails", "build"], cwd=wails_dir)
+    wails = ensure_wails_binary()
+    if not wails:
+        print("✗ Wails CLI not found.")
+        print("  Install it with:")
+        print(f"    go install github.com/wailsapp/wails/v2/cmd/wails@v{_wails_module_version()}")
+        print("  then make sure $(go env GOPATH)/bin is on PATH")
+        print("  (or point WAILS_BIN at the binary).")
+        sys.exit(1)
+
+    res = subprocess.run([wails, "build"], cwd=wails_dir)
     if res.returncode != 0:
         print("✗ Wails build failed")
         sys.exit(res.returncode)
