@@ -44,3 +44,13 @@ func makePalette(user, assistant, dim, errColor, prompt, heading, code, link str
 		},
 	}
 }
+
+// knownSkin reports whether the TUI has a palette for this skin.
+func knownSkin(name string) bool {
+	switch name {
+	case "default", "ares", "mono", "slate":
+		return true
+	default:
+		return false
+	}
+}

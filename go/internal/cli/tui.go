@@ -48,7 +48,10 @@ type pickerRow struct {
 type eventMsg struct{ ev Event }
 type streamClosedMsg struct{}
 type submitDoneMsg struct{ err error }
-type slashDoneMsg struct{ exec SlashExecution }
+type slashDoneMsg struct {
+	exec    SlashExecution
+	command string
+}
 type promptDoneMsg struct{ err error }
 type pickerMsg struct {
 	kind    pickerKind
@@ -178,6 +181,7 @@ func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.exec.Quit {
 			return m, tea.Quit
 		}
+		m.applySkinFromSlash(msg.command)
 		if msg.exec.Clear {
 			m.transcript = ""
 		}
@@ -514,8 +518,23 @@ func (m *tuiModel) slashCmd(line string) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
-		return slashDoneMsg{exec: m.engine.ExecuteSlash(ctx, line)}
+		return slashDoneMsg{exec: m.engine.ExecuteSlash(ctx, line), command: line}
 	}
+}
+
+// applySkinFromSlash re-themes after a successful "/skin <name>". Unknown or
+// custom skins fall back to the default palette.
+func (m *tuiModel) applySkinFromSlash(command string) {
+	fields := strings.Fields(strings.TrimSpace(command))
+	if len(fields) < 2 || strings.TrimPrefix(fields[0], "/") != "skin" {
+		return
+	}
+	name := fields[1]
+	if !knownSkin(name) {
+		return
+	}
+	m.styles = paletteFor(name)
+	m.engine.SetSkin(name)
 }
 
 func (m *tuiModel) interruptCmd() tea.Cmd {

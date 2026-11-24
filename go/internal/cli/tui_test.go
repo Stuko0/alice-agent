@@ -230,3 +230,21 @@ func TestPaletteForSkins(t *testing.T) {
 		t.Fatal("unknown skin must fall back to default")
 	}
 }
+
+func TestTUISkinSlashRethemes(t *testing.T) {
+	model, client := newTestTUI(t)
+	client.on("slash.exec", func(json.RawMessage) (json.RawMessage, error) {
+		return json.RawMessage(`{"output":"skin set to ares"}`), nil
+	})
+
+	msg := model.slashCmd("/skin ares")().(slashDoneMsg)
+	before := model.styles.user.GetForeground()
+	model.Update(msg)
+
+	if model.styles.user.GetForeground() == before {
+		t.Fatal("palette did not change after /skin")
+	}
+	if model.engine.Skin() != "ares" {
+		t.Fatalf("engine skin = %q", model.engine.Skin())
+	}
+}
