@@ -2,6 +2,8 @@ import { useStore } from '@nanostores/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createContext, useContext, useMemo, useState } from 'react'
 
+import type { AliceGateway } from '@/alice'
+import { getGlobalModelOptions, getMoaModels } from '@/alice'
 import { Codicon } from '@/components/ui/codicon'
 import {
   DropdownMenuGroup,
@@ -15,8 +17,6 @@ import {
   DropdownMenuSubTrigger
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { AliceGateway } from '@/alice'
-import { getGlobalModelOptions, getMoaModels } from '@/alice'
 import { useI18n } from '@/i18n'
 import {
   currentPickerSelection,

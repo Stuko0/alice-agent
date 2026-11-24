@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import {
+  getAliceConfigRecord,
   getAuxiliaryModels,
   getGlobalModelInfo,
   getGlobalModelOptions,
-  getAliceConfigRecord,
   getMoaModels,
   getRecommendedDefaultModel,
   saveAliceConfig,
@@ -23,6 +19,10 @@ import type {
   ModelOptionProvider,
   StaleAuxAssignment
 } from '@/alice'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { useI18n } from '@/i18n'
 import { AlertTriangle, Cpu, Loader2 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -105,7 +105,7 @@ function StaleAuxWarning({ applying, onReset, slots, taskLabel }: StaleAuxWarnin
   const names = slots.map(slot => taskLabel(slot.task)).join(', ')
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+    <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-600/45 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/40 dark:text-amber-200">
       <AlertTriangle className="size-3.5 shrink-0" />
       <span className="grow">
         {slots.length} auxiliary task{slots.length === 1 ? '' : 's'} ({names}) still run on{' '}
@@ -783,6 +783,7 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
                   ...moa,
                   default_preset: selectedMoaPreset || moa.default_preset
                 }
+
                 void saveMoa(next)
               }}
               size="sm"
@@ -800,12 +801,14 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
                 const presets = { ...moa.presets }
                 delete presets[selectedMoaPreset]
                 const fallback = Object.keys(presets)[0]
+
                 const next: MoaConfigResponse = {
                   ...moa,
                   presets,
                   default_preset: moa.default_preset === selectedMoaPreset ? fallback : moa.default_preset,
                   active_preset: moa.active_preset === selectedMoaPreset ? '' : moa.active_preset
                 }
+
                 setSelectedMoaPreset(Object.keys(moa.presets).find(name => name !== selectedMoaPreset) || '')
                 void saveMoa(next)
               }}
@@ -824,6 +827,7 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
               disabled={!newMoaPresetName.trim() || !!moa.presets[newMoaPresetName.trim()] || applying}
               onClick={() => {
                 const name = newMoaPresetName.trim()
+
                 const next: MoaConfigResponse = {
                   ...moa,
                   presets: {
@@ -831,6 +835,7 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
                     [name]: { ...currentMoaPreset, reference_models: [...currentMoaPreset.reference_models] }
                   }
                 }
+
                 setSelectedMoaPreset(name)
                 setNewMoaPresetName('')
                 void saveMoa(next)

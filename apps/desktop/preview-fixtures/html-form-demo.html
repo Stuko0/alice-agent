@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Preview fixture — forms, dialogs, downloads</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem; }
+      dialog { border: 1px solid #ccc; border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Interaction fixture</h1>
+    <form id="form">
+      <label>Name <input id="name" name="name" value="Alice" /></label>
+      <button id="submit" type="submit">Submit</button>
+    </form>
+    <p id="form-result"></p>
+
+    <button id="open-dialog" type="button">Open dialog</button>
+    <dialog id="dialog"><p>Sandbox allows modals.</p></dialog>
+
+    <a id="download" href="./styles.css" download="fixture.css">Download</a>
+    <a id="popup" href="./styles.css" target="_blank" rel="noreferrer">Popup</a>
+
+    <script>
+      document.querySelector('#form').addEventListener('submit', event => {
+        event.preventDefault()
+        document.querySelector('#form-result').textContent = `hello ${document.querySelector('#name').value}`
+      })
+      document.querySelector('#open-dialog').addEventListener('click', () => {
+        document.querySelector('#dialog').showModal()
+      })
+    </script>
+  </body>
+</html>

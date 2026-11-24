@@ -89,6 +89,26 @@ export function reasoningPart(text: string): ChatMessagePart {
   return { type: 'reasoning', text }
 }
 
+// Compact transcript payloads omit reasoning text and send `has_reasoning`
+// instead. The part still has to exist so the Thinking disclosure renders — it
+// carries this sentinel plus the message id, and the reasoning component swaps
+// it for the real text (fetched on expand).
+export const LAZY_REASONING_MARK = '\u0000alice:reasoning:'
+
+export function lazyReasoningPart(messageId: number): ChatMessagePart {
+  return reasoningPart(`${LAZY_REASONING_MARK}${messageId}`)
+}
+
+export function lazyReasoningId(text: string): null | number {
+  if (!text.startsWith(LAZY_REASONING_MARK)) {
+    return null
+  }
+
+  const id = Number(text.slice(LAZY_REASONING_MARK.length))
+
+  return Number.isFinite(id) && id > 0 ? id : null
+}
+
 const MEDIA_LINE_RE = /(^|\n)[\t ]*[`"']?MEDIA:\s*(?<line>`[^`\n]+`|"[^"\n]+"|'[^'\n]+'|\S+)[`"']?[\t ]*(\n|$)/g
 
 const MEDIA_TAG_RE = /[`"']?MEDIA:\s*(?<inline>`[^`\n]+`|"[^"\n]+"|'[^'\n]+'|\S+)[`"']?/g
@@ -773,8 +793,13 @@ export function toChatMessages(messages: SessionMessage[]): ChatMessage[] {
       message.reasoning_content ||
       (typeof message.reasoning_details === 'string' ? message.reasoning_details : '')
 
-    if (reasoning && message.role === 'assistant') {
-      parts.push(reasoningPart(reasoning))
+    if (message.role === 'assistant') {
+      if (reasoning) {
+        parts.push(reasoningPart(reasoning))
+      } else if (message.has_reasoning && message.id) {
+        // Compact payload: keep the affordance, fetch the text on expand.
+        parts.push(lazyReasoningPart(message.id))
+      }
     }
 
     if (displayContent) {
@@ -924,4 +949,16 @@ export function preserveLocalAssistantErrors(
 
 export function branchGroupForUser(userMessage: ChatMessage): string {
   return `branch:${userMessage.id}`
+}
+
+/** True when the last visible message is the user's (allocation-free reverse scan;
+ * runs in a hot `$messages` computed). Moved here for D2. */
+export function lastVisibleMessageIsUser(messages: ChatMessage[]): boolean {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (!messages[i].hidden) {
+      return messages[i].role === 'user'
+    }
+  }
+
+  return false
 }

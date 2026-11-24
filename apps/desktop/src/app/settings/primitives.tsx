@@ -10,8 +10,8 @@ import { PAGE_INSET_X } from '../layout-constants'
 
 export function SettingsContent({ children }: { children: ReactNode }) {
   return (
-    <section className="min-h-0 overflow-hidden">
-      <div className={cn('h-full min-h-0 overflow-y-auto pb-20', PAGE_INSET_X)}>
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className={cn('min-h-0 flex-1 overflow-y-auto pb-20', PAGE_INSET_X)}>
         <div className="mx-auto w-full max-w-4xl">{children}</div>
       </div>
     </section>
@@ -80,7 +80,7 @@ export function ListRow({
   return (
     <div
       className={cn(
-        'grid gap-3 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(15rem,22rem)] sm:items-center',
+        'grid gap-3 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center',
         wide && 'sm:grid-cols-1 sm:items-start'
       )}
     >

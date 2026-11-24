@@ -9,13 +9,12 @@
 // strictly-typed AliceDesktop window contract; full type parity is tracked
 // in global.d.ts, not enforced here.
 import * as App from './wailsjs/go/main/App';
-import * as PythonManager from './wailsjs/go/main/PythonManager';
-import * as GitService from './wailsjs/go/main/GitService';
-import * as FSService from './wailsjs/go/main/FSService';
-import * as LogService from './wailsjs/go/main/LogService';
-import * as PTYService from './wailsjs/go/main/PTYService';
-import * as UpdateService from './wailsjs/go/main/UpdateService';
 import * as ConnectionService from './wailsjs/go/main/ConnectionService';
+import * as FSService from './wailsjs/go/main/FSService';
+import * as GitService from './wailsjs/go/main/GitService';
+import * as PTYService from './wailsjs/go/main/PTYService';
+import * as PythonManager from './wailsjs/go/main/PythonManager';
+import * as UpdateService from './wailsjs/go/main/UpdateService';
 
 export function isWailsEnvironment(): boolean {
   return typeof window !== 'undefined' && typeof (window as any).wails?.Call?.ByName === 'function'
@@ -29,6 +28,12 @@ export const wailsCapabilities = {
   vscodeThemes: false,     // no marketplace install (VSIX download+extract)
   selfUpdate: true,        // implemented in Go (git + alice update + relaunch)
   remoteGateway: true,     // implemented via persisted connection.json
+  previewConsole: false,   // <iframe> has no console-message event stream
+  previewDevTools: false,  // no webview, so no openDevTools on the preview
+  previewLocalServer: true, // Go loopback preview origin (preview_server.go)
+  webview: false,          // no <webview> element: web previews are <iframe>
+  iframeSandbox: false,    // WebKit blanks cross-origin sandboxed iframes
+  nativeBrowser: true      // embedded WebKitGTK surface (browser_service.go)
 } as const
 
 /**
@@ -77,6 +82,7 @@ export function initWailsBridge(): void {
       logs.push(`${new Date().toISOString()} ${msg}`);
       localStorage.setItem('wail-logs', JSON.stringify(logs.slice(-50)));
     } catch {}
+
     console.log(msg);
   };
 
@@ -85,11 +91,13 @@ export function initWailsBridge(): void {
     window.addEventListener('error', (event) => {
       const errorMsg = `JS ERROR: ${event.message} at ${event.filename}:${event.lineno}:${event.colno}`;
       console.error(errorMsg);
+
       try { window['go']?.main?.App?.WriteErrorLog?.(errorMsg) } catch {}
     });
     window.addEventListener('unhandledrejection', (event) => {
       const errorMsg = `JS UNHANDLED REJECTION: ${event.reason?.message || String(event.reason)}`;
       console.error(errorMsg);
+
       try { window['go']?.main?.App?.WriteErrorLog?.(errorMsg) } catch {}
     });
   }
@@ -97,19 +105,25 @@ export function initWailsBridge(): void {
   const waitForWailsRuntime = (timeoutMs: number): Promise<void> => {
     return new Promise((resolve, reject) => {
       const start = Date.now();
+
       const check = () => {
         if (typeof window['go'] !== 'undefined' && window['go']?.main?.PythonManager) {
           wailLog('[Wails] Runtime ready');
           resolve();
+
           return;
         }
+
         if (Date.now() - start >= timeoutMs) {
           wailLog(`[Wails] Runtime TIMEOUT! go=${typeof window['go']}, main=${typeof window['go']?.main}, PM=${typeof window['go']?.main?.PythonManager}`);
           reject(new Error('Wails runtime did not initialize within timeout'));
+
           return;
         }
+
         setTimeout(check, 50);
       };
+
       check();
     });
   };
@@ -125,9 +139,11 @@ export function initWailsBridge(): void {
       // Remote (lite client) mode has no local backend to wait on; App's
       // remote-aware accessor returns the configured remote immediately.
       const remote = await ConnectionService.IsRemote();
+
       if (remote) {
         const info = await App.GetConnectionInfo();
         wailLog(`[Wails] remote GetConnectionInfo: ${JSON.stringify(info)}`);
+
         if (info) {
           return {
             baseUrl: info.baseUrl || '',
@@ -148,11 +164,14 @@ export function initWailsBridge(): void {
         // still resolves at ~120s, the loader comes back and hangs at 95%).
         const healthy = await PythonManager.WaitForHealthy(30)
         wailLog(`[Wails] WaitForHealthy=${healthy}`)
+
         if (!healthy) {
           console.error('[Wails] Backend did not become healthy within timeout');
         }
+
         const info = await App.GetConnectionInfo();
         wailLog(`[Wails] GetConnectionInfo: ${JSON.stringify(info)}`);
+
         if (info) {
           return {
             baseUrl: info.baseUrl || 'http://127.0.0.1:18789',
@@ -170,6 +189,7 @@ export function initWailsBridge(): void {
     } catch (err) {
       console.error('[Wails] Failed to get connection info:', err);
     }
+
     return {
       baseUrl: 'http://127.0.0.1:18789',
       isFullscreen: false,
@@ -189,6 +209,7 @@ export function initWailsBridge(): void {
     touchBackend: async () => ({ ok: true }),
     getGatewayWsUrl: async () => {
       const conn = await fetchConnectionInfo();
+
       return conn.wsUrl;
     },
     openSessionWindow: async () => ({ ok: true }),
@@ -207,6 +228,7 @@ export function initWailsBridge(): void {
     getBootProgress: async () => {
       try {
         const snapshot = await PythonManager.GetBootProgress();
+
         return {
           error: snapshot?.error || null,
           fakeMode: !!snapshot?.fakeMode,
@@ -244,11 +266,13 @@ export function initWailsBridge(): void {
         try {
           await App.RestartGateway();
           window.location.reload();
+
           return payload;
         } catch (err: any) {
           throw err;
         }
       }
+
       return payload;
     },
     testConnectionConfig: async () => ({ baseUrl: 'http://127.0.0.1:18789', ok: true, version: '0.17.0' }),
@@ -269,6 +293,7 @@ export function initWailsBridge(): void {
     api: async (req) => {
       // Retry logic for when backend is not ready yet
       let lastErr: any
+
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           // Use the Go proxy to avoid WebKit CORS/origin issues
@@ -277,32 +302,75 @@ export function initWailsBridge(): void {
             method: req.method || 'GET',
             body: req.body ? JSON.stringify(req.body) : '',
           });
+
           if (result.status >= 400) {
             throw new Error(`API ${req.path} failed: ${result.status} ${describeApiFailure(result.body)}`);
           }
+
           return JSON.parse(result.body);
         } catch (err) {
           lastErr = err
+
           // If backend not ready, wait and retry
           if (err?.message?.includes('backend not ready') && attempt < 2) {
             await new Promise(r => setTimeout(r, 1000))
+
             continue
           }
+
           // Log error to file for debugging
           try { window['go']?.main?.App?.WriteErrorLog?.(`API ${req.path} error: ${err?.message || String(err)}`) } catch {}
           throw err
         }
       }
+
       throw lastErr
     },
     notify: async () => true,
     requestMicrophoneAccess: async () => true,
     readFileText: async (path) => {
       try {
-        const text = await App.ReadFileText(path);
-        return { path, text: text || '' };
+        // `App.ReadFileText` returns a ReadTextResult object (path/text/
+        // byteSize/truncated/binary/mimeType/language), not a bare string.
+        // Returning the object as `text` rendered it as a React child and
+        // crashed the pane with React error #31.
+        const result = await App.ReadFileText(path);
+
+        if (typeof result === 'string') {
+          return { path, text: result };
+        }
+
+        return { ...(result ?? {}), path: result?.path || path, text: result?.text ?? '' };
       } catch {
         return { path, text: '' };
+      }
+    },
+    // Token-scoped loopback preview origin (preview_server.go). The browser
+    // drawer loads HTML artifacts / large images through it, so relative
+    // assets, modules and fetch work inside the native engine.
+    previewStartForFile: async (filePath: string) => {
+      try {
+        const started = await (window as any).go?.main?.App?.PreviewStartForFile?.(filePath)
+
+        return started?.id && started?.url ? started : null
+      } catch {
+        return null
+      }
+    },
+    previewStartForImage: async (filePath: string) => {
+      try {
+        const started = await (window as any).go?.main?.App?.PreviewStartForImage?.(filePath)
+
+        return started?.id && started?.url ? started : null
+      } catch {
+        return null
+      }
+    },
+    previewStop: async (id: string) => {
+      try {
+        return Boolean(await (window as any).go?.main?.App?.PreviewStop?.(id))
+      } catch {
+        return false
       }
     },
     readFileDataUrl: async (path) => {
@@ -315,6 +383,7 @@ export function initWailsBridge(): void {
     writeTextFile: async (path, content) => {
       try {
         await App.WriteTextFile(path, content);
+
         return { path };
       } catch {
         return { path };
@@ -323,6 +392,7 @@ export function initWailsBridge(): void {
     trashPath: async (path) => {
       try {
         await App.TrashPath(path);
+
         return true;
       } catch {
         return false;
@@ -331,6 +401,7 @@ export function initWailsBridge(): void {
     renamePath: async (path, newName) => {
       try {
         const newPath = await App.RenamePath(path, newName);
+
         return { path: newPath || '' };
       } catch {
         return { path: '' };
@@ -339,6 +410,7 @@ export function initWailsBridge(): void {
     revealPath: async (path) => {
       try {
         await App.RevealPath(path);
+
         return true;
       } catch {
         return false;
@@ -352,6 +424,7 @@ export function initWailsBridge(): void {
           directories: !!options?.directories,
           multiple: !!options?.multiple,
         });
+
         return (paths || []).filter((p: string) => p && p.trim());
       } catch {
         return [];
@@ -359,6 +432,7 @@ export function initWailsBridge(): void {
     },
     writeClipboard: async (text) => {
       await navigator.clipboard.writeText(text);
+
       return true;
     },
     saveImageFromUrl: async () => true,
@@ -395,20 +469,26 @@ export function initWailsBridge(): void {
       // readable root instead of erroring forever.
       try {
         const sanitized = (cwd || '').trim();
+
         if (!sanitized) {
           return { cwd: cwd || '', sanitized: false };
         }
+
         // Ask the Go shell whether the path is a readable local directory.
         const readable = await FSService.ReadDir(sanitized)
           .then(() => true)
           .catch(() => false);
+
         if (readable) {
           return { cwd: sanitized, sanitized: false };
         }
+
         const homeDir = await App.GetAliceHome().catch(() => '');
+
         if (homeDir) {
           return { cwd: homeDir, sanitized: true };
         }
+
         return { cwd: sanitized, sanitized: false };
       } catch {
         return { cwd: cwd || '', sanitized: false };
@@ -422,6 +502,7 @@ export function initWailsBridge(): void {
     revealLogs: async () => {
       try {
         await App.RevealLogs();
+
         return { ok: true, path: '' };
       } catch (err: any) {
         return { ok: false, path: '', error: err?.message || String(err) };
@@ -430,6 +511,7 @@ export function initWailsBridge(): void {
     getRecentLogs: async () => {
       try {
         const lines = await App.GetRecentLogs(200);
+
         return { path: '', lines: lines || [] };
       } catch {
         return { path: '', lines: [] };
@@ -438,6 +520,7 @@ export function initWailsBridge(): void {
     readDir: async (path) => {
       try {
         const entries = await FSService.ReadDir(path);
+
         return {
           entries: (entries || []).map((e: any) => ({
             name: e.name,
@@ -460,6 +543,7 @@ export function initWailsBridge(): void {
       worktreeList: async (repoPath) => {
         try {
           const list = await GitService.ListWorktrees(repoPath);
+
           return (list || []).map((p: string, idx: number) => ({
             path: p,
             branch: null,
@@ -476,6 +560,7 @@ export function initWailsBridge(): void {
           const branchSlug = (opts?.branch || 'main').replace(/[^a-zA-Z0-9_-]/g, '_');
           const worktreePath = repoPath + '/../alice-worktree-' + branchSlug;
           await GitService.AddWorktree(repoPath, worktreePath, opts?.branch || 'main');
+
           return { path: worktreePath, branch: opts?.branch || 'main', repoRoot: repoPath };
         } catch {
           return { path: repoPath, branch: opts?.branch || 'main', repoRoot: repoPath };
@@ -484,6 +569,7 @@ export function initWailsBridge(): void {
       worktreeRemove: async (repoPath, worktreePath) => {
         try {
           await GitService.RemoveWorktree(repoPath, worktreePath, false);
+
           return { removed: worktreePath };
         } catch {
           return { removed: worktreePath };
@@ -492,6 +578,7 @@ export function initWailsBridge(): void {
       branchSwitch: async (repoPath, branch) => {
         try {
           await GitService.SwitchBranch(repoPath, branch);
+
           return { branch };
         } catch {
           return { branch };
@@ -500,6 +587,7 @@ export function initWailsBridge(): void {
       branchList: async (repoPath) => {
         try {
           const branches = await GitService.ListBranches(repoPath);
+
           return branches || [];
         } catch {
           return [];
@@ -508,6 +596,7 @@ export function initWailsBridge(): void {
       remoteInfo: async (repoPath) => {
         try {
           const remote = await GitService.GetRemoteURL(repoPath);
+
           return { branch: 'main', prUrl: null, provider: 'none', remote: remote || null };
         } catch {
           return { branch: 'main', prUrl: null, provider: 'none', remote: null };
@@ -516,6 +605,7 @@ export function initWailsBridge(): void {
       repoStatus: async (repoPath) => {
         try {
           const status = await GitService.GetStatus(repoPath);
+
           return status ? { raw: status } : null;
         } catch {
           return null;
@@ -524,6 +614,7 @@ export function initWailsBridge(): void {
       fileDiff: async (repoPath, filePath) => {
         try {
           const diff = await GitService.GetFileDiff(repoPath, filePath);
+
           return diff || '';
         } catch {
           return '';
@@ -535,15 +626,20 @@ export function initWailsBridge(): void {
         list: async (repoPath, scope, baseRef) => {
           try {
             const query = new URLSearchParams();
-            if (scope) query.set('scope', scope);
-            if (baseRef) query.set('base', baseRef);
+
+            if (scope) {query.set('scope', scope);}
+
+            if (baseRef) {query.set('base', baseRef);}
             query.set('path', repoPath);
+
             const result = await App.ProxyApi({
               path: `/api/git/review/list?${query.toString()}`,
               method: 'GET',
               body: '',
             });
-            if (result.status >= 400) return { files: [], base: null };
+
+            if (result.status >= 400) {return { files: [], base: null };}
+
             return JSON.parse(result.body);
           } catch {
             return { files: [], base: null };
@@ -552,6 +648,7 @@ export function initWailsBridge(): void {
         diff: async (repoPath, filePath) => {
           try {
             const diff = await GitService.GetFileDiff(repoPath, filePath);
+
             return diff || '';
           } catch {
             return '';
@@ -560,6 +657,7 @@ export function initWailsBridge(): void {
         stage: async (repoPath, filePath) => {
           try {
             await GitService.StageFile(repoPath, filePath || '');
+
             return { ok: true };
           } catch {
             return { ok: true };
@@ -568,6 +666,7 @@ export function initWailsBridge(): void {
         unstage: async (repoPath, filePath) => {
           try {
             await GitService.UnstageFile(repoPath, filePath || '');
+
             return { ok: true };
           } catch {
             return { ok: true };
@@ -576,6 +675,7 @@ export function initWailsBridge(): void {
         revert: async (repoPath, filePath) => {
           try {
             await GitService.RevertFile(repoPath, filePath || '');
+
             return { ok: true };
           } catch {
             return { ok: true };
@@ -596,6 +696,7 @@ export function initWailsBridge(): void {
             } else {
               await GitService.Commit(repoPath, message);
             }
+
             return { ok: true };
           } catch {
             return { ok: true };
@@ -607,6 +708,7 @@ export function initWailsBridge(): void {
               GitService.GetFileDiff(repoPath, ''),
               GitService.GetRecentCommits(repoPath, 5),
             ]);
+
             return { diff: diff || '', recent: (recent || []).join('\n') };
           } catch {
             return { diff: '', recent: '' };
@@ -615,6 +717,7 @@ export function initWailsBridge(): void {
         push: async (repoPath) => {
           try {
             await GitService.Push(repoPath);
+
             return { ok: true };
           } catch {
             return { ok: true };
@@ -627,7 +730,9 @@ export function initWailsBridge(): void {
               method: 'GET',
               body: '',
             });
-            if (result.status >= 400) return { ghReady: false, pr: null };
+
+            if (result.status >= 400) {return { ghReady: false, pr: null };}
+
             return JSON.parse(result.body);
           } catch {
             return { ghReady: false, pr: null };
@@ -640,13 +745,89 @@ export function initWailsBridge(): void {
               method: 'POST',
               body: JSON.stringify({ path: repoPath }),
             });
-            if (result.status >= 400) return { url: '' };
+
+            if (result.status >= 400) {return { url: '' };}
+
             return JSON.parse(result.body);
           } catch {
             return { url: '' };
           }
         },
       },
+    },
+    browser: {
+      mount: async (rect) => {
+        const service = (window as any).go?.main?.BrowserService
+
+        if (!service) {return { available: false, loading: false, ready: false, title: '', url: '' }}
+
+        try {
+          return await service.Mount(rect.x, rect.y, rect.width, rect.height)
+        } catch {
+          return { available: false, loading: false, ready: false, title: '', url: '' }
+        }
+      },
+      setBounds: (rect) => {
+        void (window as any).go?.main?.BrowserService?.SetBounds(rect.x, rect.y, rect.width, rect.height)
+      },
+      setVisible: (visible: boolean) => {
+        void (window as any).go?.main?.BrowserService?.SetVisible(visible)
+      },
+      navigate: async (url: string) => {
+        try {
+          await (window as any).go?.main?.BrowserService?.Navigate(url)
+
+          return true
+        } catch {
+          return false
+        }
+      },
+      back: () => void (window as any).go?.main?.BrowserService?.Back(),
+      forward: () => void (window as any).go?.main?.BrowserService?.Forward(),
+      reload: () => void (window as any).go?.main?.BrowserService?.Reload(),
+      close: () => void (window as any).go?.main?.BrowserService?.Close(),
+      stop: () => void (window as any).go?.main?.BrowserService?.Stop(),
+      focus: () => void (window as any).go?.main?.BrowserService?.Focus(),
+      blur: () => void (window as any).go?.main?.BrowserService?.Blur(),
+      inspect: () => void (window as any).go?.main?.BrowserService?.Inspect(),
+      status: async () => {
+        const service = (window as any).go?.main?.BrowserService
+
+        if (!service) {return null}
+
+        try {
+          return await service.Status()
+        } catch {
+          return null
+        }
+      },
+      onShortcut: (callback: (shortcut: string) => void) => {
+        const runtimeObj = typeof window !== 'undefined' ? (window as any).runtime : undefined
+
+        if (!runtimeObj?.EventsOn) {return () => {}}
+
+        runtimeObj.EventsOn('browser:shortcut', (payload: any) => callback(String(payload ?? '')))
+
+        return () => runtimeObj.EventsOff?.('browser:shortcut')
+      },
+      onConsoleError: (callback: (error: any) => void) => {
+        const runtimeObj = typeof window !== 'undefined' ? (window as any).runtime : undefined
+
+        if (!runtimeObj?.EventsOn) {return () => {}}
+
+        runtimeObj.EventsOn('browser:console-error', (payload: any) => callback(payload))
+
+        return () => runtimeObj.EventsOff?.('browser:console-error')
+      },
+      onState: (callback: (state: any) => void) => {
+        const runtimeObj = typeof window !== 'undefined' ? (window as any).runtime : undefined
+
+        if (!runtimeObj?.EventsOn) {return () => {}}
+
+        runtimeObj.EventsOn('browser:state', (payload: any) => callback(payload))
+
+        return () => runtimeObj.EventsOff?.('browser:state')
+      }
     },
     terminal: {
       start: async (options) => {
@@ -656,6 +837,7 @@ export function initWailsBridge(): void {
             options?.cols || 80,
             options?.rows || 24
           );
+
           return {
             id: session.ID || 'term-1',
             cwd: session.Cwd || '',
@@ -675,6 +857,7 @@ export function initWailsBridge(): void {
       write: async (id, data) => {
         try {
           await PTYService.WriteTerminal(id, data);
+
           return true;
         } catch {
           return false;
@@ -683,6 +866,7 @@ export function initWailsBridge(): void {
       resize: async (id, size) => {
         try {
           await PTYService.ResizeTerminal(id, size.cols, size.rows);
+
           return true;
         } catch {
           return false;
@@ -691,6 +875,7 @@ export function initWailsBridge(): void {
       dispose: async (id) => {
         try {
           await PTYService.DisposeTerminal(id);
+
           return true;
         } catch {
           return false;
@@ -701,19 +886,26 @@ export function initWailsBridge(): void {
         // PTYService.ReadTerminal drains and returns whatever has accumulated
         // since the last call; empty string means no new output (not an error).
         let stopped = false;
+
         const poll = async () => {
-          if (stopped) return;
+          if (stopped) {return;}
+
           try {
             const data = await PTYService.ReadTerminal(id);
-            if (data) callback(data);
+
+            if (data) {callback(data);}
           } catch {
             // Session disposed — stop polling silently; onExit will fire.
             stopped = true;
+
             return;
           }
-          if (!stopped) setTimeout(poll, 16);
+
+          if (!stopped) {setTimeout(poll, 16);}
         };
+
         void poll();
+
         return () => { stopped = true; };
       },
       onExit: (id, callback) => {
@@ -721,8 +913,10 @@ export function initWailsBridge(): void {
         // after the shell exits). 200ms is fast enough for UX, cheap enough
         // that dozens of terminals don't overwhelm the Go side.
         let stopped = false;
+
         const poll = async () => {
-          if (stopped) return;
+          if (stopped) {return;}
+
           try {
             await PTYService.ReadTerminal(id);
             setTimeout(poll, 200);
@@ -733,7 +927,9 @@ export function initWailsBridge(): void {
             }
           }
         };
+
         setTimeout(poll, 200);
+
         return () => { stopped = true; };
       },
     },
@@ -746,6 +942,7 @@ export function initWailsBridge(): void {
     // forever with no error and no retry.
     onBackendExit: (listener) => {
       const runtimeObj = typeof window !== 'undefined' ? (window as any).runtime : undefined;
+
       if (runtimeObj?.EventsOn) {
         runtimeObj.EventsOn('alice:backend:exit', (payload: unknown) => {
           try {
@@ -753,14 +950,17 @@ export function initWailsBridge(): void {
             listener(reason);
           } catch {}
         });
+
         return () => {
           try { runtimeObj.EventsOff('alice:backend:exit'); } catch {}
         };
       }
+
       return () => {};
     },
     onBootProgress: (listener) => {
       const runtimeObj = typeof window !== 'undefined' ? (window as any).runtime : undefined;
+
       if (runtimeObj?.EventsOn) {
         runtimeObj.EventsOn('alice:boot-progress', (payload: unknown) => {
           try {
@@ -769,10 +969,12 @@ export function initWailsBridge(): void {
             }
           } catch {}
         });
+
         return () => {
           try { runtimeObj.EventsOff('alice:boot-progress'); } catch {}
         };
       }
+
       return () => {};
     },
     // ── Window / shell event subscriptions ──────────────────────────────
@@ -789,12 +991,15 @@ export function initWailsBridge(): void {
       // Relay alice:// deep links delivered by the Go shell (single-instance
       // socket) to the renderer. Subscribe via the Wails runtime events API.
       const runtimeObj = typeof window !== 'undefined' ? (window as any).runtime : undefined;
+
       if (runtimeObj?.EventsOn) {
         runtimeObj.EventsOn('alice:deep-link', (payload: unknown) => {
           try { listener(payload as string) } catch {}
         });
+
         return () => { try { runtimeObj.EventsOff('alice:deep-link') } catch {} };
       }
+
       return () => {};
     },
     signalDeepLinkReady: async () => ({ ok: true }),
@@ -827,18 +1032,21 @@ export function initWailsBridge(): void {
         // Falls back to a no-op when the runtime isn't ready yet (renderer
         // boot), matching the preload's subscribe-and-return-unsubscribe shape.
         const runtimeObj = typeof window !== 'undefined' ? (window as any).runtime : undefined;
+
         if (runtimeObj?.EventsOn) {
           runtimeObj.EventsOn('alice:updates:progress', (payload: unknown) => {
             try {
               listener(payload as any);
             } catch {}
           });
+
           return () => {
             try {
               runtimeObj.EventsOff('alice:updates:progress');
             } catch {}
           };
         }
+
         return () => {};
       },
     },

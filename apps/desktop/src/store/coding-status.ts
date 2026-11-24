@@ -36,7 +36,10 @@ export const $repoChangeByPath = computed([$repoStatus, $currentCwd], (status, c
     return map
   }
 
-  for (const file of status.files) {
+  // The bridge can hand back a status with a nil `files` slice (no repo / no
+  // changes), which serialises as null. Iterating it would throw inside a
+  // computed that React reads during render, so treat it as "no changes".
+  for (const file of status.files ?? []) {
     const kind: RepoChangeKind = file.conflicted ? 'conflicted' : file.untracked ? 'added' : 'modified'
     map.set(`${root}/${file.path}`, kind)
   }
@@ -128,39 +131,68 @@ function scheduleRepoStatusRefresh(cwd?: null | string): void {
 
   repoStatusRefreshTimer = setTimeout(() => {
     repoStatusRefreshTimer = null
+
+    // The busy→idle edge re-schedules, so dropping this one is safe.
+    if ($busy.get()) {
+      return
+    }
+
     void refreshRepoStatus(cwd)
   }, REPO_STATUS_REFRESH_DEBOUNCE_MS)
 }
 
 // ── Triggers ─────────────────────────────────────────────────────────────────
-// Wired once at module load (mirrors projects.ts's module-scope subscriptions).
-// Each is a structural edge where the working tree may have changed under us.
+// Wired explicitly by `wireStores()` (called from main.tsx before the first
+// render) instead of at module load: importing a store must not schedule git
+// IPC. Each subscription is a structural edge where the working tree may have
+// changed under us.
 
-// The active session's cwd changed (session switch / new chat) → re-probe.
-$currentCwd.subscribe(cwd => scheduleRepoStatusRefresh(cwd))
+let wired = false
 
-// A worktree add/remove (desktop op, or the agent's out-of-band git in a settled
-// turn / a window refocus — both already bump this token) → re-probe.
-$worktreeRefreshToken.subscribe(() => scheduleRepoStatusRefresh())
-
-// A file-mutating tool finished (event-driven, not polled) → re-probe so the
-// rail's branch/+/- move exactly when the agent touches the tree.
-$workspaceChangeTick.subscribe(() => scheduleRepoStatusRefresh())
-
-// A turn settling is the backstop for changes no tool diff announced (e.g. a
-// raw `git` in the terminal): one final refresh when the agent goes idle.
-let prevBusy = $busy.get()
-
-$busy.subscribe(busy => {
-  if (prevBusy && !busy) {
-    scheduleRepoStatusRefresh()
+/** Idempotent: safe to call from every entry point and from tests. */
+export function wireCodingStatus(): void {
+  if (wired) {
+    return
   }
 
-  prevBusy = busy
-})
+  wired = true
 
-// External changes while the window was away (an outside terminal) — refresh on
-// refocus, the git-GUI standard.
-if (typeof window !== 'undefined') {
-  window.addEventListener('focus', () => scheduleRepoStatusRefresh())
+  // The active session's cwd changed (session switch / new chat) → re-probe.
+  // Skip while busy: a session switch flips cwd mid-resume, and probing git then
+  // competes with the transcript paint. The busy→idle edge below re-probes.
+  $currentCwd.subscribe(cwd => {
+    if ($busy.get()) {
+      return
+    }
+
+    scheduleRepoStatusRefresh(cwd)
+  })
+
+  // A worktree add/remove (desktop op, or the agent's out-of-band git in a
+  // settled turn / a window refocus — both already bump this token) → re-probe.
+  $worktreeRefreshToken.listen(() => scheduleRepoStatusRefresh())
+
+  // A file-mutating tool finished (event-driven, not polled) → re-probe so the
+  // rail's branch/+/- move exactly when the agent touches the tree.
+  $workspaceChangeTick.listen(() => scheduleRepoStatusRefresh())
+
+  // A turn settling is the backstop for changes no tool diff announced (e.g. a
+  // raw `git` in the terminal): one final refresh when the agent goes idle.
+  let prevBusy = $busy.get()
+
+  // `listen`: the initial value is already captured above, and an immediate
+  // callback would schedule a boot probe for no reason.
+  $busy.listen(busy => {
+    if (prevBusy && !busy) {
+      scheduleRepoStatusRefresh()
+    }
+
+    prevBusy = busy
+  })
+
+  // External changes while the window was away (an outside terminal) — refresh
+  // on refocus, the git-GUI standard.
+  if (typeof window !== 'undefined') {
+    window.addEventListener('focus', () => scheduleRepoStatusRefresh())
+  }
 }

@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
+import { KeyholeMark } from '@/components/motifs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useI18n } from '@/i18n'
 import { cn } from '@/lib/utils'
@@ -27,12 +28,24 @@ export function SidebarBlankState({ onNewProject }: { onNewProject: () => void }
   return (
     <div className="grid min-h-0 flex-1 place-items-center px-4 text-center">
       <div className="flex flex-col items-center gap-2">
-        <Codicon className="text-(--ui-text-quaternary)" name="root-folder" size="1.25rem" />
+        <KeyholeMark className="text-(--ui-text-quaternary)" size="1.35rem" />
         <p className="text-xs text-(--ui-text-tertiary)">{s.noSessions}</p>
         <Button className="mt-0.5 text-(--ui-text-secondary)" onClick={onNewProject} size="sm" variant="ghost">
           <Codicon name="add" size="0.75rem" />
           {s.projects.newButton}
         </Button>
+      </div>
+    </div>
+  )
+}
+
+/** Inline empty hint for a section body (recents / project scope / search). */
+export function SidebarEmptyState({ text }: { text: string }) {
+  return (
+    <div className="grid min-h-16 place-items-center rounded-lg px-2 text-center text-xs text-(--ui-text-tertiary)">
+      <div className="flex flex-col items-center gap-1.5">
+        <KeyholeMark className="text-(--ui-text-quaternary) opacity-70" size="0.95rem" />
+        <span>{text}</span>
       </div>
     </div>
   )

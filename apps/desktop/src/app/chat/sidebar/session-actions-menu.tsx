@@ -1,6 +1,7 @@
 import type * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 
+import { renameSession } from '@/alice'
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
@@ -15,7 +16,6 @@ import {
 } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { renameSession } from '@/alice'
 import { useI18n } from '@/i18n'
 import { desktopSupports } from '@/lib/desktop-capabilities'
 import { triggerHaptic } from '@/lib/haptics'

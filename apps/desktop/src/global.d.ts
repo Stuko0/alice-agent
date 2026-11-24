@@ -1,3 +1,4 @@
+import type { BrowserConsoleError, BrowserShortcut, BrowserState } from './store/browser'
 import type {
   PetOverlayBounds,
   PetOverlayControl,
@@ -67,6 +68,15 @@ declare global {
       requestMicrophoneAccess: () => Promise<boolean>
       readFileDataUrl: (filePath: string) => Promise<string>
       readFileText: (filePath: string) => Promise<AliceReadFileTextResult>
+      // Metadata-only read (size/mtime/binary) so previews can decide before
+      // paying for content. Optional: older Electron preloads lack it.
+      statFile?: (filePath: string) => Promise<AliceFileStat>
+      // Loopback preview origins (Wails): local HTML and large images are
+      // served from 127.0.0.1 with a per-session token instead of file:// or
+      // a multi-megabyte data URL.
+      previewStartForFile?: (filePath: string) => Promise<AlicePreviewServer>
+      previewStartForImage?: (filePath: string) => Promise<AlicePreviewServer>
+      previewStop?: (id: string) => Promise<boolean>
       selectPaths: (options?: AliceSelectPathsOptions) => Promise<string[]>
       writeClipboard: (text: string) => Promise<boolean>
       saveImageFromUrl: (url: string) => Promise<boolean>
@@ -155,6 +165,27 @@ declare global {
         // remote modes route through it. Empty `answer` cleanly cancels
         // the operation (git prints its own auth failure).
         askpassRespond: (requestId: string, answer: string) => Promise<{ status: string }>
+      }
+      // Embedded WebKitGTK surface (Go shell). React paints only the chrome;
+      // the native view floats above the pane at the rect reported here.
+      browser?: {
+        mount: (rect: { height: number; width: number; x: number; y: number }) => Promise<BrowserState>
+        setBounds: (rect: { height: number; width: number; x: number; y: number }) => void
+        setVisible: (visible: boolean) => void
+        navigate: (url: string) => Promise<boolean>
+        back: () => void
+        forward: () => void
+        reload: () => void
+        stop: () => void
+        close: () => void
+        onConsoleError: (callback: (error: BrowserConsoleError) => void) => () => void
+        // Shortcuts forwarded from the native surface while the page has focus.
+        onShortcut: (callback: (shortcut: BrowserShortcut) => void) => () => void
+        focus: () => void
+        blur: () => void
+        inspect: () => void
+        status: () => Promise<BrowserState | null>
+        onState: (callback: (state: BrowserState) => void) => () => void
       }
       terminal: {
         dispose: (id: string) => Promise<boolean>
@@ -286,6 +317,12 @@ export interface DesktopUpdateCommit {
 export interface DesktopUpdateStatus {
   supported: boolean
   updateAvailable?: boolean
+  /** How this install updates: a git checkout (`alice update`) or the Windows
+   *  NSIS installer downloaded from the release. */
+  mode?: 'git' | 'installer'
+  currentVersion?: string
+  latestVersion?: string
+  installerUrl?: string
   branch?: string
   currentBranch?: string
   reason?: string
@@ -570,6 +607,24 @@ export interface AliceReadFileTextResult {
   truncated?: boolean
 }
 
+export interface AliceFileStat {
+  path: string
+  byteSize: number
+  mtimeMs: number
+  isDir: boolean
+  binary: boolean
+  mimeType: string
+  language?: string
+}
+
+// A token-scoped loopback origin serving one preview target (local HTML or an
+// image). Stop it with `previewStop(id)` when the preview closes.
+export interface AlicePreviewServer {
+  id: string
+  url: string
+  path?: string
+}
+
 export interface AlicePreviewWatch {
   id: string
   path: string
@@ -637,14 +692,7 @@ export interface AliceGitRemoteInfo {
   // default branch. Null when no remote, no branch (detached), or provider is
   // unrecognized. Used to deep-link the statusbar's "create PR" action.
   prUrl: null | string
-  provider:
-    | 'azure-devops'
-    | 'bitbucket'
-    | 'gitea'
-    | 'github'
-    | 'gitlab'
-    | 'none'
-    | 'other'
+  provider: 'azure-devops' | 'bitbucket' | 'gitea' | 'github' | 'gitlab' | 'none' | 'other'
   remote: null | string
 }
 

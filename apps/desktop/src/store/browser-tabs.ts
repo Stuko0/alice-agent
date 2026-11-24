@@ -1,16 +1,26 @@
 import { atom } from 'nanostores'
 
+import { $browserOpen } from './browser'
+
 /**
- * A tab representing a web page that Alice is browsing or rendering.
- * Updated by the gateway event handler when browser_navigate or
- * browser_* tools are called.
+ * Tabs of the native browser pane.
+ *
+ * One WebKitGTK view is shared by every `web` tab: switching tabs navigates
+ * that view (per-tab back/forward history is not preserved — a deliberate
+ * Fase 2 trade-off). `file` tabs render in React with the existing local-file
+ * previewer instead of touching the native surface.
  */
+export type BrowserTabKind = 'file' | 'web'
+
 export interface BrowserTab {
-  /** Unique id (incremental or uuid) */
+  /** Unique id (incremental). */
   id: string
-  /** Page URL */
+  /** `web` = URL in the native engine; `file` = path in the React viewer. */
+  kind: BrowserTabKind
+  /** Page URL for web tabs, absolute path for file tabs. */
   url: string
-  /** Page title (set from browser_snapshot or meta) */
+  /** Inline bytes for an image tab whose on-disk copy may be transient. */
+  dataUrl?: string
   title: string
   /** ISO timestamp of when this tab was created */
   createdAt: string
@@ -21,61 +31,186 @@ export interface BrowserTab {
 export type BrowserTabsState = BrowserTab[]
 
 export const $browserTabs = atom<BrowserTabsState>([])
+export const $activeBrowserTabId = atom<null | string>(null)
+
+/** New URLs that arrived while the pane was closed. Cleared when it opens. */
+export const $browserUnread = atom(0)
 
 let _nextId = 0
 
 function nextId(): string {
   _nextId++
+
   return `browser-${_nextId}`
 }
 
-/** Add or update a browser tab. If a tab with the same URL exists,
- *  it's updated instead of duplicated. */
-export function upsertBrowserTab(url: string, title?: string): string {
-  const tabs = $browserTabs.get()
-  const now = new Date().toISOString()
-  const existing = tabs.find(t => t.url === url)
+function now(): string {
+  return new Date().toISOString()
+}
+
+function setTabs(tabs: BrowserTabsState): void {
+  $browserTabs.set(tabs)
+}
+
+function badge(): void {
+  if (!$browserOpen.get()) {
+    $browserUnread.set($browserUnread.get() + 1)
+  }
+}
+
+/** Open (or focus) a web tab. */
+export function openWebTab(url: string, options: { activate?: boolean; title?: string } = {}): string {
+  const { activate = true, title } = options
+  const existing = $browserTabs.get().find(tab => tab.kind === 'web' && tab.url === url)
 
   if (existing) {
-    const updated = tabs.map(t =>
-      t.id === existing.id ? { ...t, title: title || t.title, lastActiveAt: now } : t
+    setTabs(
+      $browserTabs.get().map(tab => (tab.id === existing.id ? { ...tab, lastActiveAt: now() } : tab))
     )
-    $browserTabs.set(updated)
+
+    if (activate) {
+      $activeBrowserTabId.set(existing.id)
+    }
+
     return existing.id
   }
 
   const tab: BrowserTab = {
+    createdAt: now(),
     id: nextId(),
-    url,
-    title: title || url,
-    createdAt: now,
-    lastActiveAt: now,
+    kind: 'web',
+    lastActiveAt: now(),
+    title: title || url || 'New tab',
+    url
   }
 
-  $browserTabs.set([tab, ...tabs])
+  setTabs([...$browserTabs.get(), tab])
+
+  if (activate) {
+    $activeBrowserTabId.set(tab.id)
+  }
+
   return tab.id
 }
 
-/** Remove a browser tab by id. */
-export function closeBrowserTab(id: string): void {
-  $browserTabs.set($browserTabs.get().filter(t => t.id !== id))
+/** Open (or focus) a file tab rendered by the React previewer. */
+export function openFileTab(
+  path: string,
+  options: { activate?: boolean; dataUrl?: string; title?: string } = {}
+): string {
+  const { activate = true, dataUrl, title } = options
+  const existing = $browserTabs.get().find(tab => tab.kind === 'file' && tab.url === path)
+
+  if (existing) {
+    if (dataUrl && dataUrl !== existing.dataUrl) {
+      setTabs($browserTabs.get().map(tab => (tab.id === existing.id ? { ...tab, dataUrl } : tab)))
+    }
+
+    if (activate) {
+      $activeBrowserTabId.set(existing.id)
+    }
+
+    return existing.id
+  }
+
+  const tab: BrowserTab = {
+    createdAt: now(),
+    dataUrl,
+    id: nextId(),
+    kind: 'file',
+    lastActiveAt: now(),
+    title: title || path.split('/').pop() || path,
+    url: path
+  }
+
+  setTabs([...$browserTabs.get(), tab])
+
+  if (activate) {
+    $activeBrowserTabId.set(tab.id)
+  }
+
+  return tab.id
 }
 
-/** Remove all browser tabs. */
+/**
+ * Background arrival (agent navigation, preview target): never steals focus and
+ * never opens the pane — it only badges. Opening is the user's call.
+ */
+export function upsertBrowserTab(url: string, title?: string): string {
+  const existing = $browserTabs.get().find(tab => tab.kind === 'web' && tab.url === url)
+
+  if (existing) {
+    setTabs(
+      $browserTabs.get().map(tab =>
+        tab.id === existing.id ? { ...tab, lastActiveAt: now(), title: title || tab.title } : tab
+      )
+    )
+    badge()
+
+    return existing.id
+  }
+
+  const tab: BrowserTab = {
+    createdAt: now(),
+    id: nextId(),
+    kind: 'web',
+    lastActiveAt: now(),
+    title: title || url,
+    url
+  }
+
+  setTabs([...$browserTabs.get(), tab])
+  badge()
+
+  return tab.id
+}
+
+export function activateBrowserTab(id: string): void {
+  if ($browserTabs.get().some(tab => tab.id === id)) {
+    $activeBrowserTabId.set(id)
+  }
+}
+
+export function closeBrowserTab(id: string): void {
+  const tabs = $browserTabs.get()
+  const index = tabs.findIndex(tab => tab.id === id)
+
+  if (index === -1) {
+    return
+  }
+
+  const next = tabs.filter(tab => tab.id !== id)
+  setTabs(next)
+
+  if ($activeBrowserTabId.get() === id) {
+    const neighbour = next[Math.min(index, next.length - 1)]
+    $activeBrowserTabId.set(neighbour?.id ?? null)
+  }
+}
+
 export function clearBrowserTabs(): void {
   $browserTabs.set([])
+  $activeBrowserTabId.set(null)
 }
 
-/** Update a tab's title from a snapshot or page event. */
 export function updateBrowserTabTitle(id: string, title: string): void {
-  $browserTabs.set(
-    $browserTabs.get().map(t => (t.id === id ? { ...t, title, lastActiveAt: new Date().toISOString() } : t))
+  setTabs(
+    $browserTabs.get().map(tab =>
+      tab.id === id ? { ...tab, lastActiveAt: now(), title: title || tab.title } : tab
+    )
   )
 }
 
-/** Update last active timestamp (browser_navigate, browser_click, etc.) */
-export function touchBrowserTab(id: string): void {
-  $browserTabs.set(
-    $browserTabs.get().map(t => (t.id === id ? { ...t, lastActiveAt: new Date().toISOString() } : t))
-  )
+export function updateBrowserTabUrl(id: string, url: string): void {
+  setTabs($browserTabs.get().map(tab => (tab.id === id ? { ...tab, lastActiveAt: now(), url } : tab)))
 }
+
+export function touchBrowserTab(id: string): void {
+  setTabs($browserTabs.get().map(tab => (tab.id === id ? { ...tab, lastActiveAt: now() } : tab)))
+}
+
+$browserOpen.listen(open => {
+  if (open) {
+    $browserUnread.set(0)
+  }
+})

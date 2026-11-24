@@ -274,6 +274,7 @@ export interface Translations {
       archivedChats: string
       about: string
       notifications: string
+      advanced: string
     }
     notifications: {
       title: string
@@ -295,6 +296,32 @@ export interface Translations {
       completionSoundPreview: string
     }
     sections: Record<string, string>
+    advancedSetup: {
+      intro: string
+      loading: string
+      allDone: string
+      pendingCount: (count: number) => string
+      refresh: string
+      open: string
+      statusDone: string
+      statusPending: string
+      providerHint: string
+      providerLabel: string
+      providerDesc: string
+      toolKeysLabel: string
+      toolKeysDesc: string
+      memoryLabel: string
+      memoryDesc: string
+      voiceLabel: string
+      voiceDesc: string
+      mcpLabel: string
+      mcpDesc: string
+      gatewayLabel: string
+      gatewayDesc: string
+      terminalLabel: string
+      terminalDesc: string
+    }
+
     searchPlaceholder: Record<'about' | 'config' | 'gateway' | 'keys' | 'mcp' | 'sessions', string>
     modeOptions: Record<'light' | 'dark' | 'system', ModeOptionCopy>
     appearance: {
@@ -306,6 +333,10 @@ export interface Translations {
       toolViewDesc: string
       translucencyTitle: string
       translucencyDesc: string
+      displayScaleTitle: string
+      displayScaleDesc: string
+      reduceMotionTitle: string
+      reduceMotionDesc: string
       embedsTitle: string
       embedsDesc: string
       embedsAsk: string
@@ -368,8 +399,22 @@ export interface Translations {
     }
     fieldLabels: Record<string, string>
     fieldDescriptions: Record<string, string>
+    interactionStats: {
+      clear: string
+      copy: string
+      description: string
+      empty: string
+      name: string
+      p50: string
+      p95: string
+      samples: string
+      title: string
+    }
     about: {
       heading: string
+      tourTitle: string
+      tourDesc: string
+      tourReplay: string
       version: (value: string) => string
       versionUnavailable: string
       updates: string
@@ -652,7 +697,6 @@ export interface Translations {
       noProviderOptions: string
       noProviders: string
       ready: string
-      nousIncluded: string
       noApiKeyRequired: string
       postSetupHint: (step: string) => string
       postSetupRun: string
@@ -1423,6 +1467,41 @@ export interface Translations {
     reloadRetry: string
   }
 
+  firstRun: {
+    title: string
+    subtitle: string
+    stepOf: (step: number, total: number) => string
+    stepName: (step: 'provider' | 'model' | 'terminal' | 'tools' | 'gateway') => string
+    skip: string
+    back: string
+    next: string
+    finish: string
+    refresh: string
+    change: string
+    connect: string
+    providerTitle: string
+    providerDesc: string
+    providerConnected: (provider: string) => string
+    providerMissing: string
+    modelTitle: string
+    modelDesc: string
+    modelPick: string
+    modelNone: string
+    terminalTitle: string
+    terminalDesc: string
+    terminalPick: string
+    terminalHint: string
+    toolsTitle: string
+    toolsDesc: string
+    toolsEnabled: (count: number) => string
+    toolsEmpty: string
+    loading: string
+    gatewayTitle: string
+    gatewayDesc: string
+    gatewayOpen: string
+    gatewayHint: string
+    repeat: string
+  }
   onboarding: {
     headerTitle: string
     headerDesc: string
@@ -1435,6 +1514,16 @@ export interface Translations {
     chooseLater: string
     recommended: string
     connected: string
+    freeProviderTitle: string
+    freeProviderBadge: string
+    freeProviderPitch: string
+    freeProviderStarting: string
+    freeProviderFailed: string
+    freeProviderBadgeBusy: string
+    freeProviderRetry: string
+    freeProviderForce: string
+    freeProviderVerifying: string
+
     featuredPitch: string
     freeProviderTitle: string
     freeProviderBadge: string
@@ -1477,8 +1566,6 @@ export interface Translations {
     reopenVerification: string
     copy: string
     defaultModel: string
-    freeTier: string
-    pro: string
     free: string
     price: (input: string, output: string) => string
     change: string
@@ -1495,10 +1582,7 @@ export interface Translations {
     addProvider: string
     loadFailed: string
     noAuthenticatedProviders: string
-    pro: string
-    proNeedsSubscription: string
     free: string
-    freeTier: string
     priceTitle: string
   }
 
@@ -1680,6 +1764,13 @@ export interface Translations {
     largeBody: (label: string, size: string) => string
     previewAnyway: string
     truncated: string
+    largeImageTitle: string
+    largeImageBody: (label: string, size: string) => string
+    plainBecauseLarge: string
+    highlightAnyway: string
+    diffEmptyTitle: string
+    diffEmptyBody: string
+    diffLoading: string
     noInlineTitle: string
     noInlineBody: (mimeType: string) => string
     edit: string
@@ -1741,6 +1832,10 @@ export interface Translations {
       moduleMimeDescription: string
       loadFailedConsole: (code: number | undefined, message: string) => string
       unreachableDescription: string
+      viewSource: string
+      loadTimeout: string
+      localServer: (url: string) => string
+      localServerStopped: string
       openTarget: (url: string) => string
       fallbackTitle: string
     }

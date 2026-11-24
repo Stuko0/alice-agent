@@ -5,7 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { $chatView, setChatView, toggleChatView, type ChatView } from './graphify'
+import { $chatView, chatViewAfterSessionChange, setChatView, toggleChatView, type ChatView } from './graphify'
 
 describe('$chatView', () => {
   beforeEach(() => {
@@ -46,5 +46,26 @@ describe('$chatView', () => {
     toggleChatView()
     unsub()
     expect(seen).toEqual(['chat', 'graph', 'chat'])
+  })
+})
+
+describe('chatViewAfterSessionChange', () => {
+  it('keeps graph while a resume resolves null -> runtime id', () => {
+    // Regression: opening graph during a resume used to bounce back to chat the
+    // moment the runtime id landed, because null->id looked like a switch.
+    expect(chatViewAfterSessionChange('graph', null, 'rt-1')).toBe('graph')
+  })
+
+  it('keeps graph when the session id did not change', () => {
+    expect(chatViewAfterSessionChange('graph', 'rt-1', 'rt-1')).toBe('graph')
+  })
+
+  it('flips to chat on a genuine switch between loaded sessions', () => {
+    expect(chatViewAfterSessionChange('graph', 'rt-1', 'rt-2')).toBe('chat')
+  })
+
+  it('leaves chat mode alone in every case', () => {
+    expect(chatViewAfterSessionChange('chat', 'rt-1', 'rt-2')).toBe('chat')
+    expect(chatViewAfterSessionChange('chat', null, 'rt-1')).toBe('chat')
   })
 })

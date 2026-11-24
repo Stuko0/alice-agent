@@ -58,6 +58,7 @@ export function OverlayView({
         'p-[calc(var(--titlebar-height)+0.625rem)]',
         'sm:p-[calc(var(--titlebar-height)+0.875rem)]'
       )}
+      data-overlay-root=""
       onClick={event => {
         if (event.target === event.currentTarget) {
           closeOverlay()
@@ -67,7 +68,7 @@ export function OverlayView({
     >
       <div
         className={cn(
-          'relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-chat-surface-background) shadow-md',
+          'relative flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-(--ui-stroke-secondary) bg-(--ui-chat-surface-background) shadow-md',
           rootClassName
         )}
       >

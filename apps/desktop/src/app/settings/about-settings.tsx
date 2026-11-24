@@ -7,6 +7,7 @@ import { Codicon } from '@/components/ui/codicon'
 import { type Translations, useI18n } from '@/i18n'
 import { CheckCircle2, ExternalLink, Loader2, RefreshCw } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { replayFirstRunTour } from '@/store/first-run-tour'
 import {
   $desktopVersion,
   $updateApply,
@@ -18,6 +19,7 @@ import {
   startActiveUpdate
 } from '@/store/updates'
 
+import { InteractionStatsPanel } from './interaction-stats-panel'
 import { ListRow, SectionHeading, SettingsContent } from './primitives'
 import { UninstallSection } from './uninstall-section'
 
@@ -115,6 +117,16 @@ export function AboutSettings() {
       </div>
 
       <div className="mx-auto mt-4 w-full max-w-2xl">
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-(--stroke-hairline) px-4 py-3 text-sm">
+          <div>
+            <p className="font-medium">{a.tourTitle}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{a.tourDesc}</p>
+          </div>
+          <Button onClick={() => replayFirstRunTour()} size="sm" variant="secondary">
+            {a.tourReplay}
+          </Button>
+        </div>
+
         <SectionHeading icon={RefreshCw} title={a.updates} />
 
         <div
@@ -186,6 +198,9 @@ export function AboutSettings() {
         />
 
         <UninstallSection />
+
+        {/* Dev-only: renders nothing in a production build. */}
+        <InteractionStatsPanel />
       </div>
     </SettingsContent>
   )

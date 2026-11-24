@@ -1,4 +1,5 @@
 import { useStore } from '@nanostores/react'
+import { atom, computed, type ReadableAtom } from 'nanostores'
 import {
   Children,
   type CSSProperties,
@@ -14,8 +15,9 @@ import {
   useState
 } from 'react'
 
+import { PANE_TOGGLE_REVEAL_EVENT } from '@/lib/pane-events'
 import { cn } from '@/lib/utils'
-import { $paneStates, ensurePaneRegistered, setPaneHeightOverride, setPaneWidthOverride } from '@/store/panes'
+import { $paneStates, ensurePaneRegistered, setPaneHeightOverride, setPaneOpen, setPaneWidthOverride } from '@/store/panes'
 
 import { PaneShellContext, type PaneShellContextValue, type PaneSlot } from './context'
 
@@ -29,6 +31,18 @@ interface PaneRoleMarker {
 export interface PaneProps {
   children?: ReactNode
   className?: string
+  /**
+   * Declarative visibility gate. When set, this atom is the pane's open state
+   * (instead of `$paneStates[id].open`), and `<PaneShell>` subscribes to it
+   * directly. That keeps the composition root from subscribing to feature state:
+   * toggling a pane re-renders the shell grid + that pane, not the whole app.
+   */
+  openAtom?: ReadableAtom<boolean>
+  /**
+   * Declarative "this pane is the bottom row" gate (e.g. the terminal moves to a
+   * row when another rail column opens). Follows the same rule as `openAtom`.
+   */
+  bottomRowAtom?: ReadableAtom<boolean>
   defaultOpen?: boolean
   /** Paints a persistent hairline on the resize edge (not just the hover sash) so the pane boundary is always visible. */
   divider?: boolean
@@ -51,6 +65,23 @@ export interface PaneProps {
   minHeight?: WidthValue
   /** Width of the collapsed-overlay panel. Defaults to the docked width (or its resize override); set this to render a narrower overlay than the docked pane (e.g. min width on mobile). */
   overlayWidth?: WidthValue
+  /**
+   * Study drawer: render this pane as a floating overlay panel (right edge for
+   * `side="right"`, after the spine for `side="left"`) instead of a docked
+   * column. The content stays mounted, so previews/terminals survive toggles.
+   */
+  drawer?: boolean
+  /** Drawer width. Defaults to 390px. */
+  drawerWidth?: WidthValue
+  /** Actions rendered in the drawer header, before the close button. */
+  drawerActions?: ReactNode
+  /** Mount the drawer (hidden) once the app goes idle, so its first open is a
+   *  paint instead of a mount. Off by default: boot stays cheap. */
+  warmOnIdle?: boolean
+  /** Dock this drawer beside the chat (grid column) instead of floating it. */
+  pinned?: boolean
+  /** Pin/unpin control in the drawer header. Omit to hide the control. */
+  onTogglePin?: () => void
   /** Called with true while the pane is a collapsed hover-reveal overlay, so the consumer can keep contents mounted (ready to slide). */
   onOverlayActiveChange?: (overlayActive: boolean) => void
   id: string
@@ -74,6 +105,12 @@ export interface PaneShellProps {
 
 interface CollectedPane {
   bottomRow: boolean
+  drawer: boolean
+  drawerWidth: string
+  pinned: boolean
+  /** Index into the combined gate subscription, when `openAtom`/`bottomRowAtom` are used. */
+  bottomRowAtomIndex?: number
+  openAtomIndex?: number
   defaultOpen: boolean
   disabled: boolean
   forceCollapsed: boolean
@@ -121,9 +158,9 @@ const HOVER_REVEAL_SHADOW = '0px -18px 18px -5px #00000012'
 const HOVER_REVEAL_TRIGGER_WIDTH = 14
 const HOVER_REVEAL_EDGE_GUTTER = 'calc(0.5rem + 2px)'
 
-// Fired (window CustomEvent<{ id }>) to toggle a force-collapsed pane's reveal
-// from the keyboard, since its store-open toggle is a no-op while collapsed.
-export const PANE_TOGGLE_REVEAL_EVENT = 'alice:pane-toggle-reveal'
+// Re-exported for existing call sites; the definition lives in `lib/` so the
+// data layer can dispatch it without importing this component module.
+export { PANE_TOGGLE_REVEAL_EVENT }
 
 const widthToCss = (value: WidthValue | undefined, fallback: string) =>
   value === undefined ? fallback : typeof value === 'number' ? `${value}px` : value
@@ -175,6 +212,7 @@ function isRole(child: unknown, role: 'pane' | 'main'): child is ReactElement {
 function collectPanes(children: ReactNode) {
   const left: CollectedPane[] = []
   const right: CollectedPane[] = []
+  const gateAtoms: ReadableAtom<boolean>[] = []
   let mainCount = 0
 
   Children.forEach(children, child => {
@@ -190,8 +228,18 @@ function collectPanes(children: ReactNode) {
 
     const props = child.props as PaneProps
 
+    const openAtomIndex = props.openAtom ? gateAtoms.push(props.openAtom) - 1 : undefined
+    const bottomRowAtomIndex = props.bottomRowAtom ? gateAtoms.push(props.bottomRowAtom) - 1 : undefined
+
     const entry: CollectedPane = {
       bottomRow: props.bottomRow ?? false,
+      drawer: props.drawer ?? false,
+      // Docked drawers keep the floating width budget: never more than
+      // ~half the window, even when pinned.
+      drawerWidth: `min(${widthToCss(props.drawerWidth, '390px')}, 48vw)`,
+      pinned: props.pinned ?? false,
+      bottomRowAtomIndex,
+      openAtomIndex,
       defaultOpen: props.defaultOpen ?? true,
       disabled: props.disabled ?? false,
       forceCollapsed: props.forceCollapsed ?? false,
@@ -205,19 +253,37 @@ function collectPanes(children: ReactNode) {
     ;(props.side === 'left' ? left : right).push(entry)
   })
 
-  return { left, mainCount, right }
+  return { gateAtoms, left, mainCount, right }
 }
 
 type PaneStoreState = Record<string, { open: boolean; widthOverride?: number; heightOverride?: number }>
 
-function paneIsOpen(pane: CollectedPane, states: PaneStoreState) {
-  const stateOpen = states[pane.id]?.open ?? pane.defaultOpen
+function paneIsOpen(pane: CollectedPane, states: PaneStoreState, gates: readonly boolean[]) {
+  // An explicit gate atom replaces the pane-store open flag (the store still
+  // carries width/height overrides and the default for non-gated panes).
+  const stateOpen =
+    pane.openAtomIndex === undefined
+      ? (states[pane.id]?.open ?? pane.defaultOpen)
+      : gates[pane.openAtomIndex] === true
 
   return !pane.disabled && !pane.forceCollapsed && stateOpen
 }
 
-function trackForPane(pane: CollectedPane, states: PaneStoreState) {
-  const open = paneIsOpen(pane, states)
+function paneIsBottomRow(pane: CollectedPane, gates: readonly boolean[]) {
+  if (pane.bottomRow) {
+    return true
+  }
+
+  return pane.bottomRowAtomIndex !== undefined && gates[pane.bottomRowAtomIndex] === true
+}
+
+function trackForPane(pane: CollectedPane, states: PaneStoreState, gates: readonly boolean[]) {
+  // A floating drawer owns no grid track; a pinned one is a real column.
+  if (pane.drawer && !pane.pinned) {
+    return { open: false, track: '0px' }
+  }
+
+  const open = paneIsOpen(pane, states, gates)
 
   if (!open) {
     return { open: false, track: '0px' }
@@ -225,7 +291,7 @@ function trackForPane(pane: CollectedPane, states: PaneStoreState) {
 
   const override = pane.resizable ? states[pane.id]?.widthOverride : undefined
 
-  return { open: true, track: override !== undefined ? `${override}px` : pane.width }
+  return { open: true, track: override !== undefined ? `${override}px` : (pane.drawer ? pane.drawerWidth : pane.width) }
 }
 
 function heightTrackForPane(pane: CollectedPane, states: PaneStoreState) {
@@ -234,9 +300,89 @@ function heightTrackForPane(pane: CollectedPane, states: PaneStoreState) {
   return override !== undefined ? `${override}px` : pane.height
 }
 
+const DRAWER_SUITS: Record<string, string> = {
+  browser: '✦',
+  'chat-sidebar': '♠',
+  review: '♥',
+  preview: '♦',
+  'terminal-sidebar': '♣',
+  'file-browser': '♠'
+}
+
+const DRAWER_LABELS: Record<string, string> = {
+  browser: 'Browser',
+  'chat-sidebar': 'Index',
+  review: 'Review',
+  preview: 'Preview',
+  'terminal-sidebar': 'Terminal',
+  'file-browser': 'Files'
+}
+
+function DrawerHeader({
+  actions,
+  id,
+  onClose,
+  onTogglePin,
+  pinned = false
+}: {
+  actions?: ReactNode
+  id: string
+  onClose: () => void
+  onTogglePin?: () => void
+  pinned?: boolean
+}) {
+  return (
+    <div className="flex h-10 shrink-0 items-center gap-2 border-b border-(--ui-stroke-tertiary) px-3">
+      <span aria-hidden="true" className="font-serif text-[0.95rem] text-(--accent-text)">
+        {DRAWER_SUITS[id] ?? '♥'}
+      </span>
+      <span className="font-display text-[0.72rem] uppercase tracking-[0.16em] text-foreground">
+        {DRAWER_LABELS[id] ?? id}
+      </span>
+      <span className="flex-1" />
+      {actions}
+      {onTogglePin ? (
+        <button
+          aria-label={pinned ? 'Unpin drawer' : 'Pin drawer'}
+          aria-pressed={pinned}
+          className={cn(
+            'grid size-6 place-items-center rounded-sm text-[0.9rem] hover:bg-(--ui-control-hover-background) hover:text-foreground',
+            pinned ? 'text-(--accent-text)' : 'text-muted-foreground'
+          )}
+          onClick={onTogglePin}
+          title={pinned ? 'Unpin (dock beside chat off)' : 'Pin (dock beside chat)'}
+          type="button"
+        >
+          ⌖
+        </button>
+      ) : null}
+      <button
+        aria-label="Close drawer"
+        className="grid size-6 place-items-center rounded-sm text-muted-foreground hover:bg-(--ui-control-hover-background) hover:text-foreground"
+        onClick={onClose}
+        type="button"
+      >
+        ×
+      </button>
+    </div>
+  )
+}
+
+const $NO_GATES = atom<readonly boolean[]>([])
+const $NO_DRAWER_GATE = atom(false)
+
 export function PaneShell({ children, className, style }: PaneShellProps) {
   const paneStates = useStore($paneStates)
-  const { left, mainCount, right } = useMemo(() => collectPanes(children), [children])
+  const { gateAtoms, left, mainCount, right } = useMemo(() => collectPanes(children), [children])
+
+  // One subscription for every pane gate. Recomputed only when the atom list
+  // changes (i.e. the pane elements are rebuilt), not on every render.
+  const $gates = useMemo(
+    () => (gateAtoms.length ? computed(gateAtoms, (...values: boolean[]) => values) : $NO_GATES),
+    [gateAtoms]
+  )
+
+  const gates = useStore($gates)
 
   if (import.meta.env.DEV && mainCount > 1) {
     console.warn('[PaneShell] expected at most one <PaneMain>, got', mainCount)
@@ -251,16 +397,22 @@ export function PaneShell({ children, className, style }: PaneShellProps) {
     // A bottom-row pane drops out of its rail's column flow and instead spans
     // every column on its side as a new row below them. The first open one wins
     // and decides which rail gets split into two rows.
-    const leftCols = left.filter(pane => !pane.bottomRow)
-    const rightCols = right.filter(pane => !pane.bottomRow)
-    const bottomRowPanes = [...left, ...right].filter(pane => pane.bottomRow)
-    const activeBottomRow = bottomRowPanes.find(pane => paneIsOpen(pane, paneStates)) ?? null
+    //
+    // The row decision is DYNAMIC (`bottomRowAtom`) for panes like the terminal:
+    // when the atom is false the pane is a normal column, so it must not also be
+    // registered as a bottom-row candidate (that produced a phantom track and
+    // two panes in one grid cell).
+    const isBottomRow = (pane: CollectedPane) => paneIsBottomRow(pane, gates)
+    const leftCols = left.filter(pane => !isBottomRow(pane))
+    const rightCols = right.filter(pane => !isBottomRow(pane))
+    const bottomRowPanes = [...left, ...right].filter(isBottomRow)
+    const activeBottomRow = bottomRowPanes.find(pane => paneIsOpen(pane, paneStates, gates)) ?? null
     const bottomRailSide = activeBottomRow?.side ?? null
 
     // Open column panes on the bottom row's side shrink to the top row; everything
     // else (main, the other rail, closed / hover-reveal panes) stays full height.
     const addColumn = (pane: CollectedPane, paneSide: PaneSide) => {
-      const { open, track } = trackForPane(pane, paneStates)
+      const { open, track } = trackForPane(pane, paneStates, gates)
       tracks.push(track)
       cssVars[`--pane-${pane.id}-width`] = track
       const gridRow = open && paneSide === bottomRailSide ? '1 / 2' : '1 / -1'
@@ -315,7 +467,7 @@ export function PaneShell({ children, className, style }: PaneShellProps) {
       gridTemplate: string
       gridTemplateRows: string
     }
-  }, [left, paneStates, right])
+  }, [gates, left, paneStates, right])
 
   const composedStyle = useMemo<CSSProperties>(
     () => ({
@@ -342,14 +494,22 @@ export function Pane({
   defaultOpen = true,
   divider = false,
   disabled = false,
+  drawer = false,
+  drawerActions,
+  drawerWidth = 390,
+  warmOnIdle = false,
+  forceCollapsed = false,
   hoverReveal = false,
   maxHeight,
   minHeight,
   overlayWidth: overlayWidthProp,
   id,
+  onTogglePin,
+  pinned = false,
   maxWidth,
   minWidth,
   onOverlayActiveChange,
+  openAtom,
   resizable = false,
   width
 }: PaneProps) {
@@ -365,8 +525,184 @@ export function Pane({
   const side = slot?.side ?? 'left'
   // Collapsed + hoverReveal: float the pane contents over the main column on
   // hover/focus instead of hiding them. Honors any persisted resize width.
-  const overlayActive = !open && hoverReveal && !disabled
+  //
+  // Atom-gated panes only float while FORCE-COLLAPSED (narrow window). Without
+  // this, a closed pane (gate=false) in a wide window rendered its 237px overlay
+  // over the neighbouring rail pane — the "closed git pane covers the worktree"
+  // bug. Non-gated panes (chat sidebar, file browser) keep the old behavior.
+  const overlayActive = !open && hoverReveal && !disabled && (forceCollapsed || !openAtom)
+  const atomOpen = useStore(openAtom ?? $NO_DRAWER_GATE)
+  const drawerOpen = drawer && Boolean(openAtom ? atomOpen : (paneStates[id]?.open ?? defaultOpen)) && !disabled
+  // Keep-alive: mount a drawer the first time it opens, then keep it mounted
+  // (hidden) so reopening is instant and preserves scroll/filter state. Boot
+  // stays cheap because nothing mounts until the user asks for it.
+  const [drawerActivated, setDrawerActivated] = useState(drawerOpen)
+  const drawerRef = useRef<HTMLElement | null>(null)
+
+  const closeDrawer = useCallback(() => {
+    const writable = openAtom as unknown as { set?: (value: boolean) => void } | undefined
+
+    if (writable?.set) {
+      writable.set(false)
+    } else {
+      setPaneOpen(id, false)
+    }
+  }, [id, openAtom])
+
+  useEffect(() => {
+    if (drawerOpen) {
+      setDrawerActivated(true)
+    }
+  }, [drawerOpen])
+
+  useEffect(() => {
+    // `drawerActivated` is in the deps because the aside only exists after the
+    // activation render; without it the first open would never move focus.
+    if (!drawerOpen || !drawerActivated || pinned) {
+      return
+    }
+
+    const node = drawerRef.current
+
+    if (!node) {
+      return
+    }
+
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+
+    const selector =
+      'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+
+    const focusables = () => Array.from(node.querySelectorAll<HTMLElement>(selector))
+
+    // Initial focus goes to the first control in the BODY (search field, tree,
+    // diff list), not the header's Close button: landing on "Close" makes Enter
+    // dismiss the drawer instead of acting on its content.
+    const content = node.querySelector<HTMLElement>('[data-drawer-content]')
+
+    const frame = window.requestAnimationFrame(() => {
+      const first = content?.querySelector<HTMLElement>(selector) ?? focusables()[0]
+
+      if (first) {
+        first.focus()
+      } else {
+        node.focus()
+      }
+    })
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      // A root overlay (Settings, command palette, …) sits above the drawer and
+      // owns Escape while it is open.
+      if (event.key === 'Escape' && !document.querySelector('[data-overlay-root]')) {
+        event.preventDefault()
+        event.stopPropagation()
+        closeDrawer()
+
+        return
+      }
+
+      if (event.key !== 'Tab') {
+        return
+      }
+
+      const items = focusables()
+
+      if (!items.length) {
+        event.preventDefault()
+
+        return
+      }
+
+      const first = items[0]
+      const last = items[items.length - 1]
+      const active = document.activeElement
+      const outside = !node.contains(active)
+
+      if (event.shiftKey && (active === first || outside)) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && (active === last || outside)) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown, true)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      document.removeEventListener('keydown', onKeyDown, true)
+
+      // Hand focus back to the control that opened the drawer (the spine suit).
+      if (previous?.isConnected) {
+        previous.focus()
+      }
+    }
+  }, [closeDrawer, drawerActivated, drawerOpen, pinned])
+
+  // Warm-up: after the first paint settles, mount the drawer hidden so the
+  // first real open costs a paint rather than a mount (the catalog's list is
+  // the expensive one). Idle-scheduled, so it never competes with boot.
+  useEffect(() => {
+    if (!warmOnIdle || drawerActivated || typeof window === 'undefined') {
+      return
+    }
+
+    const activate = () => setDrawerActivated(true)
+
+    // Optional API: not every WebKit build ships requestIdleCallback.
+    const scheduler = window as Window & {
+      cancelIdleCallback?: (handle: number) => void
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+    }
+
+    const usedIdle = typeof scheduler.requestIdleCallback === 'function'
+
+    const idleHandle = usedIdle
+      ? scheduler.requestIdleCallback!(activate, { timeout: 2_500 })
+      : window.setTimeout(activate, 1_200)
+
+    return () => {
+      if (usedIdle) {
+        scheduler.cancelIdleCallback?.(idleHandle)
+      } else {
+        window.clearTimeout(idleHandle)
+      }
+    }
+  }, [drawerActivated, warmOnIdle])
+
+  // Perf probe: click → first painted frame for this drawer. Only writes when
+  // the app is launched with `alice.perf=1` (QA harness), so it costs a flag
+  // check at runtime and nothing in normal use.
+  useEffect(() => {
+    if (!drawerOpen || typeof window === 'undefined') {
+      return
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const start = (window as unknown as { __aliceDrawerClickAt?: number }).__aliceDrawerClickAt
+
+      if (!start) {
+        return
+      }
+
+      const ms = Math.round((performance.now() - start) * 10) / 10
+
+      try {
+        if (window.localStorage.getItem('alice.perf') === '1') {
+          window.localStorage.setItem('drawer.perf', JSON.stringify({ id, ms }))
+        }
+      } catch {
+        // Perf probe is best-effort; storage may be unavailable.
+      }
+
+      performance.mark(`drawer:${id}:painted`)
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [drawerOpen, id])
   const override = resizable ? paneStates[id]?.widthOverride : undefined
+
 
   // Overlay width: an explicit `overlayWidth` (e.g. min width on mobile) wins,
   // else the persisted resize override, else the docked width.
@@ -481,6 +817,53 @@ export function Pane({
     return null
   }
 
+  if (drawer && !pinned) {
+    // Never opened yet → render nothing at all (no zero-width grid cell, no
+    // mounted children behind the chat).
+    if (!drawerActivated) {
+      return null
+    }
+
+    const drawerCssWidth = widthToCss(drawerWidth, '390px')
+
+    return (
+      <>
+        {drawerOpen && (
+          <div
+            aria-hidden="true"
+            className="fixed bottom-0 left-(--spine-width,72px) right-0 top-(--titlebar-height) z-30 bg-black/35"
+            onClick={closeDrawer}
+          />
+        )}
+        <aside
+          aria-label={DRAWER_LABELS[id] ?? id}
+          aria-modal={drawerOpen || undefined}
+          className={cn(
+            'pane-drawer fixed bottom-0 top-(--titlebar-height) z-35 flex flex-col bg-(--ui-sidebar-surface-background) shadow-[-24px_0_48px_-24px_rgba(0,0,0,0.45)]',
+            side === 'left'
+              ? 'left-(--spine-width,72px) border-r border-(--ui-stroke-secondary)'
+              : 'right-0 border-l border-(--ui-stroke-secondary)'
+          )}
+          hidden={!drawerOpen}
+          ref={drawerRef}
+          role="dialog"
+          style={{ width: `min(${drawerCssWidth}, 48vw)`, '--sidebar-width': '100%' } as CSSProperties}
+          tabIndex={-1}
+        >
+          <DrawerHeader
+            actions={drawerActions}
+            id={id}
+            onClose={closeDrawer}
+            onTogglePin={onTogglePin}
+          />
+          <div className="flex min-h-0 flex-1 flex-col" data-drawer-content="">
+            {children}
+          </div>
+        </aside>
+      </>
+    )
+  }
+
   // Collapsed hover-reveal track: a 0px, pointer-transparent grid cell holding a
   // thin edge trigger + the floating panel (both absolute, escaping the zero
   // box). group-hover (or data-forced from the keyboard) drives the slide; the
@@ -566,7 +949,16 @@ export function Pane({
           />
         </div>
       )}
-      {children}
+      {pinned ? (
+        <div className="flex h-full min-h-0 flex-col">
+          <DrawerHeader id={id} onClose={closeDrawer} onTogglePin={onTogglePin} pinned />
+          <div className="flex min-h-0 flex-1 flex-col" data-drawer-content="">
+            {children}
+          </div>
+        </div>
+      ) : (
+        children
+      )}
     </div>
   )
 }

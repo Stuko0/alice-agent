@@ -2,7 +2,7 @@ import { useStore } from '@nanostores/react'
 import { useCallback, useMemo } from 'react'
 
 import type { CommandCenterSection } from '@/app/command-center'
-import { $terminalTakeover, $browserTabsOpen, setBrowserTabsOpen, setTerminalTakeover } from '@/app/right-sidebar/store'
+import { $browserTabsOpen, $terminalTakeover, setBrowserTabsOpen, setTerminalTakeover } from '@/app/right-sidebar/store'
 import { ContextUsagePanel } from '@/app/shell/context-usage-panel'
 import { GatewayMenuPanel } from '@/app/shell/gateway-menu-panel'
 import { Codicon } from '@/components/ui/codicon'
@@ -13,9 +13,8 @@ import type { RuntimeReadinessResult } from '@/lib/runtime-readiness'
 import { contextBarLabel, LiveDuration, usageContextLabel } from '@/lib/statusbar'
 import { cn } from '@/lib/utils'
 import { setGlobalYolo, setSessionYolo } from '@/lib/yolo-session'
-import { $activeProjectId, $projects } from '@/store/projects'
 import { $chatView, toggleChatView } from '@/store/graphify'
-import { openReview } from '@/store/review'
+import { $reviewAvailable, toggleReview } from '@/store/review'
 import {
   $activeSessionId,
   $busy,
@@ -41,7 +40,7 @@ import type { StatusResponse } from '@/types/alice'
 import { CRON_ROUTE } from '../../routes'
 import type { StatusbarItem, StatusbarSelectModifiers } from '../statusbar-controls'
 
-interface StatusbarItemsOptions {
+export interface StatusbarItemsOptions {
   agentsOpen: boolean
   chatOpen: boolean
   commandCenterOpen: boolean
@@ -84,23 +83,8 @@ export function useStatusbarItems({
   const sessionStartedAt = useStore($sessionStartedAt)
   const turnStartedAt = useStore($turnStartedAt)
   const subagentsBySession = useStore($subagentsBySession)
-  const activeProjectId = useStore($activeProjectId)
-  const projects = useStore($projects)
-  // Resolve a filesystem path for git operations: prefer the active project's
-  // first repo folder, fall back to the primary path. Null when the user is in
-  // "no project" mode (the Git button hides itself then).
-  const repoPath = useMemo(() => {
-    if (!activeProjectId) {
-      return null
-    }
-    const project = projects.find(p => p.id === activeProjectId)
-    if (!project) {
-      return null
-    }
-    const folder = project.folders.find(f => f.path)?.path
-    return folder ?? project.primary_path ?? null
-  }, [activeProjectId, projects])
   const chatView = useStore($chatView)
+  const reviewAvailable = useStore($reviewAvailable)
   const updateStatus = useStore($updateStatus)
   const updateApply = useStore($updateApply)
   const backendUpdateStatus = useStore($backendUpdateStatus)
@@ -421,10 +405,10 @@ export function useStatusbarItems({
         // surface (file tree with diffs, stage/commit/push, worktrees,
         // ship-to-PR). The icon reflects the provider from `remoteInfo`
         // (GitHub / GitLab / Gitea / Bitbucket / Azure DevOps / fallback).
-        hidden: !repoPath,
+        hidden: !reviewAvailable || !chatOpen,
         icon: <GitBranch className="size-3.5 shrink-0 opacity-80" />,
         id: 'git-provider',
-        onSelect: () => openReview(),
+        onSelect: () => toggleReview(),
         title: 'Open git review pane',
         variant: 'action'
       },
@@ -465,6 +449,7 @@ export function useStatusbarItems({
     [
       activeSessionId,
       backendVersionItem,
+      browserTabsOpen,
       busy,
       chatOpen,
       chatView,
@@ -473,7 +458,7 @@ export function useStatusbarItems({
       contextUsage,
       copy,
       currentUsage,
-      repoPath,
+      reviewAvailable,
       requestGateway,
       sessionStartedAt,
       showYoloToggle,

@@ -1,8 +1,8 @@
 import { isGatewayReauthRequired, resolveGatewayWsUrl } from '@alice/shared'
 import { useEffect, useRef } from 'react'
 
-import type { AliceConnection } from '@/global'
 import { AliceGateway } from '@/alice'
+import type { AliceConnection } from '@/global'
 import { translateNow } from '@/i18n'
 import { desktopDefaultCwd } from '@/lib/desktop-fs'
 import {
@@ -231,8 +231,10 @@ export function useGatewayBoot({
         // of an idle "Starting Alice" bar.
         if (snapshot?.error) {
           failDesktopBoot(snapshot.error)
+
           return
         }
+
         applyDesktopBootProgress(snapshot)
       })
       .catch(() => undefined)
@@ -257,15 +259,25 @@ export function useGatewayBoot({
     // instead of the eternal loader. (Declared after `gateway` because
     // gatewayOpen() closes over it.)
     const BOOT_WATCHDOG_MS = 90_000
+
     const bootWatchdog = setTimeout(() => {
       if (cancelled || bootCompleted || gatewayOpen()) {
         return
       }
+
       const detail =
         'The desktop backend did not finish starting. It may be missing a usable ' +
         'Python runtime or died before opening its gateway. Check the boot log ' +
         '(%TEMP%\\wails-debug.log on Windows) and ~/.alice/logs/agent.log.'
-      try { (window as any)?.go?.main?.App?.WriteFrontendLog?.('[Boot] WATCHDOG: gateway never connected') } catch {}
+
+      try {
+        ;(window as { go?: { main?: { App?: { WriteFrontendLog?: (m: string) => void } } } }).go?.main?.App?.WriteFrontendLog?.(
+          '[Boot] WATCHDOG: gateway never connected'
+        )
+      } catch {
+        // Native log bridge unavailable (non-Wails shell).
+      }
+
       failDesktopBoot(detail)
     }, BOOT_WATCHDOG_MS)
 
@@ -362,17 +374,31 @@ export function useGatewayBoot({
     })
 
     async function boot() {
-      try {
-        const log = (msg: string) => {
-          console.log(msg)
-          try { window['go']?.main?.App?.WriteFrontendLog?.(msg) } catch {}
+      // Declared OUTSIDE the try: the catch below logs the failure, and a
+      // block-scoped `const log` inside `try` is not visible there — that threw
+      // "ReferenceError: log is not defined" and skipped failDesktopBoot +
+      // notifyError entirely, so a failed boot produced an unhandled rejection
+      // instead of the recovery UI.
+      const log = (msg: string) => {
+        console.log(msg)
+
+        try {
+          ;(window as { go?: { main?: { App?: { WriteFrontendLog?: (m: string) => void } } } }).go?.main?.App?.WriteFrontendLog?.(
+            msg
+          )
+        } catch {
+          // Native log bridge unavailable (non-Wails shell).
         }
+      }
+
+      try {
         log('[Boot] Step 1: getting connection...')
         const conn = await desktop.getConnection()
         log('[Boot] Step 1 OK: got connection:' + JSON.stringify(conn))
 
         if (cancelled) {
           log('[Boot] cancelled after step 1')
+
           return
         }
 
@@ -390,6 +416,7 @@ export function useGatewayBoot({
         log('[Boot] Step 2: resolving WS URL...')
         const wsUrl = await resolveGatewayWsUrl(desktop, conn)
         log('[Boot] Step 2 OK: wsUrl=' + wsUrl)
+
         // A "port 0" WS URL means the backend never announced its port —
         // the Go shell hands out ws://127.0.0.1:0 before/instead of a real
         // announcement (canonical case: the spawned python died instantly,
@@ -402,12 +429,14 @@ export function useGatewayBoot({
             '%TEMP%\\wails-debug.log and ~/.alice/logs/agent.log.'
           )
         }
+
         log('[Boot] Step 3: connecting WS...')
         await gateway.connect(wsUrl)
         log('[Boot] Step 3 OK: WS connected!')
 
         if (cancelled) {
           log('[Boot] cancelled after step 3')
+
           return
         }
 
@@ -415,6 +444,7 @@ export function useGatewayBoot({
         // same-profile resumes are no-op swaps and any reconnect targets the
         // right backend. Best-effort: a missing preference means "default".
         log('[Boot] Step 3.5: get profile...')
+
         try {
           const pref = await desktop.profile?.get?.()
           const profileKey = (pref?.profile ?? '').trim() || 'default'
@@ -436,10 +466,13 @@ export function useGatewayBoot({
         await ensureDefaultWorkspaceCwd()
         log('[Boot] Step 4 OK')
         log('[Boot] Step 4.1: desktopDefaultCwd...')
+
         const remoteDefault = await desktopDefaultCwd().catch((e) => {
           log('[Boot] Step 4.1 error: ' + (e?.message || String(e)))
+
           return null
         })
+
         log('[Boot] Step 4.1 OK: ' + JSON.stringify(remoteDefault))
 
         if (remoteDefault?.cwd && !$activeSessionId.get() && !$currentCwd.get()) {
@@ -455,6 +488,7 @@ export function useGatewayBoot({
 
         if (cancelled) {
           log('[Boot] cancelled after step 5')
+
           return
         }
 

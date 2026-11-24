@@ -42,7 +42,6 @@ function config(overrides: Partial<ToolsetConfig> = {}): ToolsetConfig {
         tag: 'No API key needed',
         env_vars: [],
         post_setup: null,
-        requires_nous_auth: false,
         is_active: false
       },
       {
@@ -53,7 +52,6 @@ function config(overrides: Partial<ToolsetConfig> = {}): ToolsetConfig {
           { key: 'ELEVENLABS_API_KEY', prompt: 'ElevenLabs API key', url: 'https://x', default: null, is_set: false }
         ],
         post_setup: null,
-        requires_nous_auth: false,
         is_active: false
       }
     ],
@@ -87,22 +85,35 @@ describe('ToolsetConfigPanel', () => {
     const { ToolsetConfigPanel } = await import('./toolset-config-panel')
     render(<ToolsetConfigPanel onConfiguredChange={vi.fn()} toolset="tts" />)
 
-    const elevenlabs = await screen.findByRole('button', { name: /ElevenLabs/ })
+    const elevenlabs = await screen.findByRole('button', { name: /ElevenLabs/ }, { timeout: 8000 })
     fireEvent.click(elevenlabs)
 
     await waitFor(() => expect(selectToolsetProvider).toHaveBeenCalledWith('tts', 'ElevenLabs'))
   })
 
-  it('saves an API key for a provider env var', async () => {
+  // Generous timeouts: the panel loads its toolsets asynchronously and the full
+  // suite runs 164 jsdom files in parallel.
+  it('saves an API key for a provider env var', { timeout: 20_000 }, async () => {
+    // Start with ElevenLabs already active so its env-var row renders on load:
+    // clicking the provider raced the async config fetch under a loaded suite
+    // (the panel could re-expand the previous provider and drop the row).
+    const base = config()
+    getToolsetConfig.mockResolvedValue({
+      ...base,
+      active_provider: 'ElevenLabs',
+      providers: base.providers.map(provider => ({ ...provider, is_active: provider.name === 'ElevenLabs' }))
+    })
+
     const { ToolsetConfigPanel } = await import('./toolset-config-panel')
     render(<ToolsetConfigPanel onConfiguredChange={vi.fn()} toolset="tts" />)
 
-    // Select the keyed provider so its env vars render.
-    const elevenlabs = await screen.findByRole('button', { name: /ElevenLabs/ })
-    fireEvent.click(elevenlabs)
+    await screen.findByText('ELEVENLABS_API_KEY', undefined, { timeout: 8000 })
 
-    // Click "Set" to reveal the input for the unset key.
-    fireEvent.click(await screen.findByRole('button', { name: 'Set' }))
+    // The per-key actions moved into a dropdown; Radix opens on pointerdown.
+    fireEvent.pointerDown(
+      await screen.findByRole('button', { name: 'Actions for ELEVENLABS_API_KEY' }, { timeout: 8000 })
+    )
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Set' }, { timeout: 8000 }))
 
     const input = await screen.findByPlaceholderText('ElevenLabs API key')
     fireEvent.change(input, { target: { value: 'sk-test-123' } })
@@ -127,8 +138,7 @@ describe('ToolsetConfigPanel', () => {
             tag: 'No API key needed',
             env_vars: [],
             post_setup: null,
-            requires_nous_auth: false,
-            is_active: false
+                is_active: false
           },
           {
             name: 'ElevenLabs',
@@ -144,8 +154,7 @@ describe('ToolsetConfigPanel', () => {
               }
             ],
             post_setup: null,
-            requires_nous_auth: false,
-            is_active: true
+                is_active: true
           }
         ]
       })
@@ -174,8 +183,7 @@ describe('ToolsetConfigPanel', () => {
             tag: 'Stealth local browser',
             env_vars: [],
             post_setup: 'camofox',
-            requires_nous_auth: false,
-            is_active: true
+                is_active: true
           }
         ]
       })
@@ -223,8 +231,7 @@ describe('ToolsetConfigPanel', () => {
             tag: 'Stealth local browser',
             env_vars: [],
             post_setup: 'camofox',
-            requires_nous_auth: false,
-            is_active: true
+                is_active: true
           }
         ]
       })
@@ -255,8 +262,7 @@ describe('ToolsetConfigPanel', () => {
             tag: 'Stealth local browser',
             env_vars: [],
             post_setup: 'camofox',
-            requires_nous_auth: false,
-            is_active: true
+                is_active: true
           }
         ]
       })

@@ -2,6 +2,18 @@ import { useStore } from '@nanostores/react'
 import type * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import {
+  createCronJob,
+  type CronJob,
+  deleteCronJob,
+  getCronJobRuns,
+  getCronJobs,
+  pauseCronJob,
+  resumeCronJob,
+  type SessionInfo,
+  triggerCronJob,
+  updateCronJob
+} from '@/alice'
 import { PageLoader } from '@/components/page-loader'
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
@@ -16,18 +28,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  createCronJob,
-  type CronJob,
-  deleteCronJob,
-  getCronJobRuns,
-  getCronJobs,
-  pauseCronJob,
-  resumeCronJob,
-  type SessionInfo,
-  triggerCronJob,
-  updateCronJob
-} from '@/alice'
 import { type Translations, useI18n } from '@/i18n'
 import { AlertTriangle } from '@/lib/icons'
 import { $cronFocusJobId, $cronJobs, setCronFocusJobId, setCronJobs, updateCronJobs } from '@/store/cron'
@@ -413,6 +413,9 @@ export function CronView({ onClose, onOpenSession, setStatusbarItemGroup: _setSt
 
   return (
     <Panel closeLabel={c.close} onClose={onClose}>
+      {/* The title rides above every state — the empty and loading screens used
+          to open as an unlabeled card. */}
+      <PanelHeader subtitle={totalCount > 0 ? c.count(totalCount) : undefined} title={c.title} />
       {loading && jobs.length === 0 ? (
         <PageLoader label={c.loading} />
       ) : totalCount === 0 ? (
@@ -428,7 +431,6 @@ export function CronView({ onClose, onOpenSession, setStatusbarItemGroup: _setSt
         />
       ) : (
         <>
-          <PanelHeader subtitle={c.count(totalCount)} title={c.title} />
           <PanelBody>
             <PanelList
               onSearchChange={setQuery}

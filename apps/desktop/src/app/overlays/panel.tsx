@@ -72,7 +72,7 @@ export function PanelHeader({ actions, subtitle, title }: PanelHeaderProps) {
   return (
     <header className="mb-3 flex shrink-0 items-start justify-between gap-3">
       <div className="min-w-0">
-        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        <h2 className="font-[family-name:var(--font-display)] text-[1.05rem] leading-tight tracking-[0.05em] text-foreground">{title}</h2>
         {subtitle ? <p className="truncate text-xs text-muted-foreground/80">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}

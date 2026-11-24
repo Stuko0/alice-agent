@@ -17,7 +17,7 @@ vi.mock('@/alice', () => ({
 vi.mock('@/lib/query-client', () => ({ queryClient: { invalidateQueries: vi.fn() } }))
 vi.mock('@/store/starmap', () => ({ resetStarmapGraph }))
 
-const { $activeGatewayProfile, ensureGatewayProfile } = await import('./profile')
+const { $activeGatewayProfile, ensureGatewayProfile, wireProfileRouting } = await import('./profile')
 const { $connection } = await import('./session')
 const { queryClient } = await import('@/lib/query-client')
 
@@ -95,6 +95,9 @@ describe('ensureGatewayProfile → $connection sync (#46651)', () => {
 
 describe('profile-scoped cache invalidation', () => {
   it('drops the memory graph cache when the active gateway profile changes', () => {
+    // Explicit wiring (D1): profile routing no longer starts at import time.
+    wireProfileRouting()
+
     $activeGatewayProfile.set('coder')
 
     expect(queryClient.invalidateQueries).toHaveBeenCalled()

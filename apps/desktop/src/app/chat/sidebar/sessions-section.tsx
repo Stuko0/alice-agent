@@ -2,11 +2,12 @@ import type { useSensors } from '@dnd-kit/core'
 import type * as React from 'react'
 import { useMemo } from 'react'
 
+import type { SessionInfo } from '@/alice'
 import { SidebarPanelLabel } from '@/app/shell/sidebar-label'
+import type { Suit } from '@/components/motifs'
 import { DisclosureCaret } from '@/components/ui/disclosure-caret'
 import { SidebarGroup, SidebarGroupContent } from '@/components/ui/sidebar'
 import type { AliceGitWorktree } from '@/global'
-import type { SessionInfo } from '@/alice'
 import { flattenSessionsWithBranches } from '@/lib/session-branch-tree'
 import { cn } from '@/lib/utils'
 import { sessionPinId } from '@/store/session'
@@ -34,6 +35,7 @@ interface SidebarSectionHeaderProps {
   action?: React.ReactNode
   meta?: React.ReactNode
   icon?: React.ReactNode
+  motif?: Suit
   // When false the section can't be collapsed: the label renders static (no
   // toggle, no caret) and the section is always open. Used for the single-
   // project view, where collapsing one project makes no sense.
@@ -47,12 +49,13 @@ function SidebarSectionHeader({
   action,
   meta,
   icon,
+  motif,
   collapsible = true
 }: SidebarSectionHeaderProps) {
   const labelBody = (
     <>
       {icon}
-      <SidebarPanelLabel>{label}</SidebarPanelLabel>
+      <SidebarPanelLabel motif={motif}>{label}</SidebarPanelLabel>
       {meta && <SidebarCount>{meta}</SidebarCount>}
     </>
   )
@@ -98,6 +101,7 @@ interface SidebarSessionsSectionProps {
   emptyState: React.ReactNode
   forceEmptyState?: boolean
   headerAction?: React.ReactNode
+  motif?: Suit
   footer?: React.ReactNode
   groups?: SidebarSessionGroup[]
   tree?: SidebarWorkspaceTree[]
@@ -157,6 +161,7 @@ export function SidebarSessionsSection({
   forceEmptyState = false,
   headerAction,
   footer,
+  motif,
   groups,
   projectOverview,
   projectOverviewPreviews,
@@ -342,6 +347,7 @@ export function SidebarSessionsSection({
     <SidebarGroup className={rootClassName}>
       <SidebarSectionHeader
         action={headerAction}
+        motif={motif}
         collapsible={collapsible}
         icon={labelIcon}
         label={label}

@@ -5,6 +5,7 @@ import {
   appendAssistantTextPart,
   appendReasoningPart,
   chatMessageText,
+  lazyReasoningId,
   preserveLocalAssistantErrors,
   renderMediaTags,
   toChatMessages,
@@ -154,6 +155,36 @@ describe('toChatMessages', () => {
     ])
 
     expect(chatMessageText(message)).toBe('@file:foo.ts\n\nlook')
+  })
+})
+
+describe('lazy reasoning', () => {
+  it('keeps the Thinking affordance when the payload only flags reasoning', () => {
+    const messages = toChatMessages([
+      { content: 'Answer.', has_reasoning: true, id: 42, role: 'assistant', timestamp: 10 } as never
+    ])
+
+    const reasoning = messages[0].parts.find(part => part.type === 'reasoning')
+
+    expect(reasoning).toBeTruthy()
+    expect(lazyReasoningId(String((reasoning as { text?: string }).text))).toBe(42)
+  })
+
+  it('uses the real text when the payload includes reasoning', () => {
+    const messages = toChatMessages([
+      { content: 'Answer.', has_reasoning: true, id: 42, reasoning: 'because', role: 'assistant', timestamp: 11 } as never
+    ])
+
+    const reasoning = messages[0].parts.find(part => part.type === 'reasoning') as { text?: string }
+
+    expect(reasoning?.text).toBe('because')
+    expect(lazyReasoningId(String(reasoning?.text))).toBeNull()
+  })
+
+  it('adds no affordance without the flag', () => {
+    const messages = toChatMessages([{ content: 'Answer.', id: 42, role: 'assistant', timestamp: 12 } as never])
+
+    expect(messages[0].parts.some(part => part.type === 'reasoning')).toBe(false)
   })
 })
 

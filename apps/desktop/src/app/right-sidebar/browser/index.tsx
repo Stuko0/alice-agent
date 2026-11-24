@@ -1,27 +1,29 @@
 import { useStore } from '@nanostores/react'
+import { memo } from 'react'
 import { type FormEvent, useCallback, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
 import { Input } from '@/components/ui/input'
 import { useI18n } from '@/i18n'
+import { desktopSupports } from '@/lib/desktop-capabilities'
 import { openExternalLink } from '@/lib/external-link'
-import { isWailsShell } from '@/lib/desktop-capabilities'
 import { cn } from '@/lib/utils'
-import { $panesFlipped } from '@/store/layout'
-
 import {
   $browserTabs,
+  type BrowserTab,
   closeBrowserTab,
   upsertBrowserTab,
-  type BrowserTab,
 } from '@/store/browser-tabs'
-import { RightSidebarSectionHeader } from '../index'
+import { $panesFlipped } from '@/store/layout'
+
 import { SidebarPanelLabel } from '../../shell/sidebar-label'
+import { RightSidebarSectionHeader } from '../index'
 
 function formatTime(iso: string): string {
   try {
     const d = new Date(iso)
+
     return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
   } catch {
     return ''
@@ -31,6 +33,7 @@ function formatTime(iso: string): string {
 function displayUrl(url: string): string {
   try {
     const u = new URL(url)
+
     return u.hostname + u.pathname.replace(/\/$/, '')
   } catch {
     return url
@@ -60,7 +63,7 @@ function TabRow({
     <div className="group flex items-start gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-(--ui-control-hover-background)">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <Codicon name="globe" size="0.75rem" className="shrink-0 text-(--ui-text-tertiary)" />
+          <Codicon className="shrink-0 text-(--ui-text-tertiary)" name="globe" size="0.75rem" />
           <button
             className="truncate text-[0.77rem] font-medium leading-5 text-foreground hover:underline text-left"
             onClick={() => onNavigate(tab.url)}
@@ -101,7 +104,7 @@ function TabRow({
   )
 }
 
-export function BrowserPane() {
+function BrowserPaneInner() {
   const tabs = useStore($browserTabs)
   const panesFlipped = useStore($panesFlipped)
   const { t } = useI18n()
@@ -120,10 +123,13 @@ export function BrowserPane() {
   const handleSubmit = useCallback((e: FormEvent) => {
     e.preventDefault()
     let url = inputUrl.trim()
-    if (!url) return
+
+    if (!url) {return}
+
     if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url)) {
       url = 'https://' + url
     }
+
     setInputUrl('')
     openUrl(url)
   }, [inputUrl, openUrl])
@@ -193,10 +199,10 @@ export function BrowserPane() {
           {tabs.map(tab => (
             <TabRow
               key={tab.id}
-              tab={tab}
+              onClose={closeBrowserTab}
               onNavigate={openUrl}
               onOpenExternal={openExternalLink}
-              onClose={closeBrowserTab}
+              tab={tab}
             />
           ))}
         </div>
@@ -213,7 +219,11 @@ export function BrowserPane() {
                 disabled={!activeUrl}
                 onClick={() => {
                   if (iframeRef.current?.contentWindow) {
-                    try { iframeRef.current.contentWindow.history.back() } catch {}
+                    try {
+                      iframeRef.current.contentWindow.history.back()
+                    } catch {
+                      // Cross-origin iframe: history access is blocked, nothing to do.
+                    }
                   }
                 }}
                 size="icon-xs"
@@ -227,7 +237,11 @@ export function BrowserPane() {
                 disabled={!activeUrl}
                 onClick={() => {
                   if (iframeRef.current?.contentWindow) {
-                    try { iframeRef.current.contentWindow.history.forward() } catch {}
+                    try {
+                      iframeRef.current.contentWindow.history.forward()
+                    } catch {
+                      // Cross-origin iframe: history access is blocked, nothing to do.
+                    }
                   }
                 }}
                 size="icon-xs"
@@ -255,7 +269,9 @@ export function BrowserPane() {
               className="min-h-0 flex-1 border-0 bg-white"
               onLoad={handleIframeLoad}
               ref={iframeRef}
-              {...(!isWailsShell() && { sandbox: 'allow-scripts allow-same-origin allow-forms allow-popups' })}
+              {...(desktopSupports('iframeSandbox') && {
+                sandbox: 'allow-scripts allow-same-origin allow-forms allow-popups'
+              })}
               src={iframeSrc}
               title={activeUrl}
             />
@@ -271,3 +287,5 @@ export function BrowserPane() {
     </aside>
   )
 }
+
+export const BrowserPane = memo(BrowserPaneInner)

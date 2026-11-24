@@ -78,6 +78,17 @@ describe('maybeNotifyUpdateAvailable', () => {
     expect(notifySpy).toHaveBeenCalledTimes(1)
   })
 
+  it('names the release version for installer-backed updates', () => {
+    maybeNotifyUpdateAvailable(
+      status({ behind: 1, mode: 'installer', currentVersion: '0.23.4', latestVersion: 'v0.24.0' })
+    )
+
+    expect(notifySpy).toHaveBeenCalledTimes(1)
+
+    const toast = notifySpy.mock.calls.at(-1)?.[0] as { message: string }
+    expect(toast.message).toContain('v0.24.0')
+  })
+
   it('stays quiet for new commits once the toast was closed', () => {
     maybeNotifyUpdateAvailable(status())
     lastToast().onDismiss() // user closes it → cooldown starts

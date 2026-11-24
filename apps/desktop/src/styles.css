@@ -9,12 +9,15 @@
    (this variant) flatten everything into one shared scroll. See ChatSidebar. */
 @custom-variant compact (@media (max-height: 768px));
 
+/* Cinzel — canonical wordmark / display face. Bundled locally (variable
+   weight 400-900) so the identity survives an offline launch; the theme's
+   Google Fonts URL is a progressive enhancement, not a requirement. */
 @font-face {
-  font-family: 'Collapse';
+  font-family: 'Cinzel';
   font-style: normal;
-  font-weight: 700;
+  font-weight: 400 900;
   font-display: swap;
-  src: url('../../../node_modules/@nous-research/ui/dist/fonts/Collapse-Bold.woff2') format('woff2');
+  src: url('/fonts/Cinzel-Variable.woff2') format('woff2');
 }
 
 /* Grenze Gotisch — gothic display for the "ALICE AGENT" wordmark in the
@@ -78,6 +81,36 @@
 
   --font-sans: var(--dt-font-sans);
   --font-mono: var(--dt-font-mono);
+  /* Wordmark / large display headings. Cinzel ships bundled (variable) and
+     is also offered by the theme's fontUrl; Grenze Gotisch is the decorative
+     fallback, so an offline launch still gets a display face. */
+  --font-display: 'Cinzel', 'Grenze Gotisch', serif;
+
+  /* Study type scale — one source for every surface. */
+  --text-2xs: 0.65625rem; /* 10.5 */
+  --text-xs: 0.75rem;     /* 12 */
+  --text-sm: 0.78125rem;  /* 12.5 */
+  --text-base: 0.90625rem;/* 14.5 */
+  --text-lg: 1rem;        /* 16 */
+  --text-xl: 1.25rem;     /* 20 */
+  --text-2xl: 1.75rem;    /* 28 */
+
+  /* Study spacing scale — 4px base. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  /* ~622px at the 14.5px reading size — matches the approved mock. A px
+     measure, not `ch`: the webview resolved `ch` against a fallback face and
+     the column came out at the composer width. */
+  --measure-read: 39rem;
+  --measure-composer: 56rem;
 
   --spacing-mul: var(--dt-spacing-mul, 1);
 
@@ -112,14 +145,14 @@
      spread that grows with the blur so each layer is pulled horizontally inward
      — the shadow pools below the panel instead of bleeding out every side.
      Layered (contact → ambient) for a smooth, natural falloff. */
-  --shadow-nous:
+  --shadow-ink:
     0 0.125rem 0.25rem -0.125rem color-mix(in srgb, #000 7%, transparent),
     0 0.5rem 0.75rem -0.375rem color-mix(in srgb, #000 6%, transparent),
     0 1.25rem 1.75rem -0.875rem color-mix(in srgb, #000 6%, transparent),
     0 2.25rem 3rem -1.75rem color-mix(in srgb, #000 0%, transparent);
-  /* Hairline border paired with --shadow-nous on borderless overlays.
+  /* Hairline border paired with --shadow-ink on borderless overlays.
      currentColor resolves per-element, so it adapts to text color/theme. */
-  --stroke-nous: color-mix(in srgb, currentColor 3%, transparent);
+  --stroke-hairline: color-mix(in srgb, currentColor 3%, transparent);
   --shadow-lg:
     inset 0 0.0625rem 0 color-mix(in srgb, #fff 28%, transparent),
     0 0 0 0.0625rem color-mix(in srgb, var(--dt-foreground) 8%, transparent),
@@ -131,17 +164,17 @@
   :root {
     color-scheme: light;
 
-    --theme-foreground: #17171a;
-    --theme-primary: #0053fd;
-    --theme-secondary: color-mix(in srgb, #0053fd 7%, #ffffff);
-    --theme-accent-soft: color-mix(in srgb, #0053fd 10%, #ffffff);
-    --theme-midground: #0053fd;
-    --theme-warm: #cf806d;
-    --theme-background-seed: #f8faff;
-    --theme-sidebar-seed: #f3f7ff;
-    --theme-card-seed: #ffffff;
-    --theme-elevated-seed: #ffffff;
-    --theme-bubble-seed: color-mix(in srgb, #0053fd 6%, #ffffff);
+    --theme-foreground: #211c26;
+    --theme-primary: #7f1d2b;
+    --theme-secondary: #e2d7c2;
+    --theme-accent-soft: #e8dfcd;
+    --theme-midground: #2c6459;
+    --theme-warm: #8a6a35;
+    --theme-background-seed: #efe7d8;
+    --theme-sidebar-seed: #e9e0cf;
+    --theme-card-seed: #f7f1e4;
+    --theme-elevated-seed: #fbf6ea;
+    --theme-bubble-seed: #e8dfcd;
     --theme-neutral-chrome: #f3f3f3;
     --theme-neutral-sidebar: #f3f3f3;
     --theme-neutral-card: #fcfcfc;
@@ -173,7 +206,7 @@
     --ui-yellow: #c08532;
     --ui-green: #1f8a65;
     --ui-cyan: #4c7f8c;
-    --ui-blue: #0053fd;
+    --ui-blue: #3f6f7a;
     --ui-purple: #9e94d5;
     --context-usage-system: color-mix(in srgb, var(--ui-base) 55%, transparent);
     --context-usage-tools: var(--ui-purple);
@@ -247,9 +280,16 @@
       color-mix(in srgb, var(--ui-base) 5%, transparent)
     );
     --ui-text-primary: color-mix(in srgb, var(--ui-base) 94%, transparent);
-    --ui-text-secondary: color-mix(in srgb, var(--ui-base) 74%, transparent);
-    --ui-text-tertiary: color-mix(in srgb, var(--ui-base) 54%, transparent);
-    --ui-text-quaternary: color-mix(in srgb, var(--ui-base) 36%, transparent);
+    /* AA ramp. Measured against both the page and card surfaces: quaternary is
+       the floor (>= 4.5:1 in each mode), tertiary/secondary step up from it.
+       Dark mode is recomputed separately below because the same alpha yields a
+       different contrast over an ink background. */
+    --ui-text-secondary: color-mix(in srgb, var(--ui-base) 82%, transparent);
+    --ui-text-tertiary: color-mix(in srgb, var(--ui-base) 74%, transparent);
+    --ui-text-quaternary: color-mix(in srgb, var(--ui-base) 66%, transparent);
+    /* Accent for *text* (section numbers, eyebrows, suits). The oxblood
+       --theme-primary is a 2.3:1 ink-on-ink pair and stays for bars/fills. */
+    --accent-text: #7a5b2a;
     --ui-stroke-primary: color-mix(
       in srgb,
       var(--ui-accent) var(--theme-stroke-primary-accent-mix),
@@ -338,8 +378,8 @@
     --dt-letter-spacing: 0;
     --dt-spacing-mul: 1;
 
-    --radius: 0.75rem;
-    --radius-scalar: 0.6;
+    --radius: 0.5rem;
+    --radius-scalar: 0.5;
 
     /* Space under last message vs overlay composer — driven by the measured composer height (see composer/index.tsx)
        plus the out-of-flow status stack's measured height (see status-stack/index.tsx) when one is showing. */
@@ -348,12 +388,12 @@
 
     --composer-shell-pad-block-end: 0.625rem;
     --message-text-indent: 0.75rem;
-    --conversation-text-font-size: 0.8125rem;
-    --conversation-tool-font-size: 0.6875rem;
-    --conversation-caption-font-size: 0.75rem;
-    --conversation-line-height: 1.125rem;
-    --conversation-caption-line-height: 1rem;
-    --conversation-turn-gap: 0.375rem;
+    --conversation-text-font-size: 0.90625rem;
+    --conversation-tool-font-size: 0.75rem;
+    --conversation-caption-font-size: 0.78125rem;
+    --conversation-line-height: 1.5rem;
+    --conversation-caption-line-height: 1.125rem;
+    --conversation-turn-gap: 0.5rem;
     /* Gap between top-level turn blocks (prose ↔ tools ↔ thinking) — enough air
        that scaffolding reads as separate from the reply, not crammed into it. */
     --turn-block-gap: 0.75rem;
@@ -363,11 +403,11 @@
     /* Paragraph spacing — vertical gap between prose paragraphs, both inside a
        markdown block and between consecutive prose parts. Single knob; tweak
        freely. */
-    --paragraph-gap: 0.7rem;
+    --paragraph-gap: 0.85rem;
     --sticky-human-top: 0.23rem;
     --file-tree-row-height: 1.375rem;
 
-    --composer-width: 48.75rem;
+    --composer-width: 56rem;
     --composer-control-size: 1.5rem;
     --composer-control-primary-size: 1.625rem;
     --composer-control-gap: 0.25rem;
@@ -417,6 +457,11 @@
   }
 
   :root.dark {
+    --ui-text-secondary: color-mix(in srgb, var(--ui-base) 82%, transparent);
+    --ui-text-tertiary: color-mix(in srgb, var(--ui-base) 62%, transparent);
+    --ui-text-quaternary: color-mix(in srgb, var(--ui-base) 56%, transparent);
+    --accent-text: #c9a25e;
+
     /* Per-mode mix knobs — overridden inline by `applyTheme()` per skin. */
     --theme-mix-chrome: 74%;
     --theme-mix-card: 38%;
@@ -459,6 +504,15 @@
     overflow: hidden;
   }
 
+  /* Display scale (Settings → Appearance) applies CSS zoom to the document.
+     Viewport units resolve BEFORE zoom, so a 100vh shell renders 25% taller
+     than the window at 125% and the composer falls off-screen. Size the app
+     box in zoom units instead; fixed overlays already track the viewport. */
+  :root[data-display-scale] #root {
+    width: calc(100vw / var(--display-scale, 1));
+    height: calc(100vh / var(--display-scale, 1));
+  }
+
   html {
     font-size: var(--dt-base-size, 0.875rem);
   }
@@ -498,6 +552,36 @@
     background: var(--ui-selection-background);
     color: inherit;
   }
+}
+
+/* Keyboard focus inside drawers. The app deliberately paints no focus rings
+   anywhere else (see the `*:focus` rule below), but a modal drawer that moves
+   focus needs a visible indicator or the keyboard user is lost. Scoped to the
+   drawer so the design language stays intact. */
+.pane-drawer :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-text) 75%, transparent);
+}
+
+/* Long transcripts: let the engine skip layout/paint for off-screen turns.
+   `auto` remembers each group's last rendered size after the first pass, so
+   scroll height and the stick-to-bottom lock stay honest; browsers without
+   `content-visibility` simply ignore it. */
+.thread-group-cv {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 12rem;
+}
+
+/* Reduced motion, user-controlled. Mirrors the `prefers-reduced-motion`
+   media blocks below; one attribute covers every surface (the OS query keeps
+   working on its own for users who never touch the switch). */
+:root[data-reduce-motion='true'] *,
+:root[data-reduce-motion='true'] *::before,
+:root[data-reduce-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 .dither {
@@ -557,45 +641,22 @@
 }
 
 @layer utilities {
+  /* Ink hatching — the only texture in the identity. Drawn with a gradient so
+     it costs nothing and can never blur with the theme's background. */
+  .texture-veil {
+    background-image: repeating-linear-gradient(
+      -38deg,
+      color-mix(in srgb, var(--dt-foreground) 7%, transparent) 0,
+      color-mix(in srgb, var(--dt-foreground) 7%, transparent) 1px,
+      transparent 1px,
+      transparent 6px
+    );
+  }
+
   [class*='rounded-full'],
   [class*=':rounded-full'] {
     border-radius: calc(var(--radius-scalar) * 9999rem);
   }
-}
-
-@keyframes arc-border {
-  0% {
-    background-position: 15% 15%;
-  }
-  100% {
-    background-position: 75% 75%;
-  }
-}
-
-.arc-border {
-  --arc-c0: color-mix(in srgb, var(--dt-foreground) 0%, transparent);
-  --arc-c1: var(--dt-midground);
-  --arc-c2: var(--dt-background);
-  --arc-angle: 160deg;
-  --arc-width: 0.078125rem;
-  --arc-inset: -0.125rem;
-  --arc-duration: 2.23s;
-
-  pointer-events: none;
-  position: absolute;
-  overflow: hidden;
-  border-radius: inherit;
-  inset: var(--arc-inset);
-  padding: var(--arc-width);
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-}
-
-:root.dark .arc-border {
-  --arc-c1: var(--dt-foreground);
 }
 
 /* Quest-style "needs you" pulse for a clarify-blocked session's dot —
@@ -645,50 +706,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .setting-field-highlight {
-    animation: none;
-  }
-}
-
-.arc-border::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    var(--arc-angle),
-    transparent 0%,
-    var(--arc-c0) 15%,
-    var(--arc-c1) 20%,
-    var(--arc-c2) 25%,
-    transparent 35%,
-    transparent 40%,
-    var(--arc-c0) 55%,
-    var(--arc-c1) 60%,
-    var(--arc-c2) 65%,
-    transparent 75%,
-    transparent 80%,
-    var(--arc-c0) 95%,
-    var(--arc-c1) 100%
-  );
-  background-size: 300% 300%;
-  animation: arc-border var(--arc-duration) linear infinite;
-}
-
-/* Flip the arc's travel direction (e.g. the Nous Portal hero row). */
-.arc-border.arc-reverse::before {
-  animation-direction: reverse;
-}
-
-/* Nous Portal hero: slower, blue → orange arc. */
-.arc-border.arc-nous,
-:root.dark .arc-border.arc-nous {
-  --arc-c1: #4f8cff;
-  --arc-c2: #ff8c42;
-  --arc-duration: 3.27s;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .arc-border::before {
     animation: none;
   }
 }
@@ -1017,9 +1034,11 @@ text-* variant utilities. */ .btn-arc {
   overflow-anchor: auto;
 }
 
+/* The reading measure is its own variable: the composer is a desk (wider), the
+   transcript is a page. Keeping them separate is what makes the column read. */
 [data-slot='aui_thread-content'] {
-  max-width: var(--composer-width);
-  padding-inline: 1.5rem;
+  max-width: var(--measure-read);
+  padding-inline: 2rem;
 }
 
 [data-slot='aui_intro'] {

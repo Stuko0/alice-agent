@@ -62,7 +62,7 @@ async function renderMessaging() {
 }
 
 describe('MessagingView setup-guide link', () => {
-  it('hides the setup-guide button for a plugin platform with no docs URL', async () => {
+  it('hides the setup-guide button for a plugin platform with no docs URL', { timeout: 20_000 }, async () => {
     // Teams (and other plugin platforms) ship an empty docs_url. Rendering an
     // anchor with href="" let Electron resolve it to the app's own packaged
     // index.html and fail with an OS "file not found" dialog. The button must
@@ -71,7 +71,9 @@ describe('MessagingView setup-guide link', () => {
 
     await renderMessaging()
 
-    expect((await screen.findAllByText('Microsoft Teams')).length).toBeGreaterThan(0)
+    // Generous timeout: the suite runs 160 jsdom files in parallel and this
+    // component loads its platforms asynchronously.
+    expect((await screen.findAllByText('Microsoft Teams', undefined, { timeout: 5000 })).length).toBeGreaterThan(0)
     expect(screen.queryByText('Open setup guide')).toBeNull()
   })
 

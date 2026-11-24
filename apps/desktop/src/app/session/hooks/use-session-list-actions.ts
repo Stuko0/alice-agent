@@ -171,7 +171,13 @@ export function useSessionListActions({ profileScope }: UseSessionListActionsArg
     const run = async () => {
       const log = (msg: string) => {
         console.log(msg)
-        try { window['go']?.main?.App?.WriteFrontendLog?.(msg) } catch {}
+        try {
+          ;(window as { go?: { main?: { App?: { WriteFrontendLog?: (m: string) => void } } } }).go?.main?.App?.WriteFrontendLog?.(
+            msg
+          )
+        } catch {
+          // Native log bridge unavailable (non-Wails shell).
+        }
       }
       log('[RefreshSessions] START')
       const requestId = refreshSessionsRequestRef.current + 1

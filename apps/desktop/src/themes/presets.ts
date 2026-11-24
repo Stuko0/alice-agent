@@ -20,80 +20,77 @@ const SYSTEM_MONO =
 
 export const DEFAULT_TYPOGRAPHY: DesktopThemeTypography = { fontSans: SYSTEM_SANS, fontMono: SYSTEM_MONO }
 
-const NOUS_BLUE = '#0053FD'
-const PSYCHE_BLUE = '#1540B1'
-const PSYCHE_WARM = '#FFE6CB'
-
-const nousTint = (pct: number) => `color-mix(in srgb, ${NOUS_BLUE} ${pct}%, #FFFFFF)`
-const nousTintTransparent = (pct: number) => `color-mix(in srgb, ${NOUS_BLUE} ${pct}%, transparent)`
-
 /**
- * Nous — canonical Alice desktop identity. The palette keeps the current
- * glass geometry neutral, then lets the old bb/gui blue and psyche cream
- * return as accent seeds.
+ * Alice's Madness — the desktop's canonical identity.
+ *
+ * Victorian decay, not neon: ink/violet canvas, bone text, oxblood action,
+ * brass hairlines and a verdigris state accent. Dark is the default (`Vale of
+ * Tears`); the light variant is the `Drawing Room` paper surface. No glow, no
+ * texture behind text — the restraint is what keeps it readable for hours.
  */
-export const nousTheme: DesktopTheme = {
-  name: 'nous',
-  label: 'Nous',
-  description: 'Rosé Pine Theme',
+export const madnessTheme: DesktopTheme = {
+  name: 'madness',
+  label: "Alice's Madness",
+  description: 'Victorian gothic — ink, bone, oxblood and brass',
   colors: {
-    background: '#faf4ed',
-    foreground: '#575279',
-    card: '#fffaf3',
-    cardForeground: '#575279',
-    muted: '#f2e9e1',
-    mutedForeground: '#797593',
-    popover: '#fffaf3',
-    popoverForeground: '#575279',
-    primary: '#286983',
-    primaryForeground: '#fffaf3',
-    secondary: '#f2e9e1',
-    secondaryForeground: '#575279',
-    accent: '#dfdad9',
-    accentForeground: '#575279',
-    border: '#dfdad9',
-    input: '#dfdad9',
-    ring: '#d7827e',
-    midground: '#286983',
-    composerRing: '#286983',
-    destructive: '#b4637a',
-    destructiveForeground: '#fffaf3',
-    sidebarBackground: '#faf4ed',
-    sidebarBorder: '#f2e9e1',
-    userBubble: '#f2e9e1',
-    userBubbleBorder: '#dfdad9'
+    background: '#efe7d8',
+    foreground: '#211c26',
+    card: '#f7f1e4',
+    cardForeground: '#211c26',
+    muted: '#e6ddcb',
+    mutedForeground: '#6b6474',
+    popover: '#fbf6ea',
+    popoverForeground: '#211c26',
+    primary: '#7f1d2b',
+    primaryForeground: '#f7f1e4',
+    secondary: '#e2d7c2',
+    secondaryForeground: '#3b3341',
+    accent: '#e8dfcd',
+    accentForeground: '#211c26',
+    border: '#d3c7b0',
+    input: '#e2d7c2',
+    ring: '#8a6a35',
+    midground: '#2c6459',
+    composerRing: '#8a6a35',
+    destructive: '#8f1f30',
+    destructiveForeground: '#f7f1e4',
+    sidebarBackground: '#e9e0cf',
+    sidebarBorder: '#d3c7b0',
+    userBubble: '#e8dfcd',
+    userBubbleBorder: '#d3c7b0'
   },
   darkColors: {
-    background: '#232136',
-    foreground: '#e0def4',
-    card: '#2a273f',
-    cardForeground: '#e0def4',
-    muted: '#393552',
-    mutedForeground: '#908caa',
-    popover: '#2a273f',
-    popoverForeground: '#e0def4',
-    primary: '#3e8fb0',
-    primaryForeground: '#2a273f',
-    secondary: '#393552',
-    secondaryForeground: '#e0def4',
-    accent: '#44415a',
-    accentForeground: '#e0def4',
-    border: '#44415a',
-    input: '#44415a',
-    ring: '#ea9a97',
-    midground: '#3e8fb0',
-    composerRing: '#3e8fb0',
-    destructive: '#eb6f92',
-    destructiveForeground: '#232136',
-    sidebarBackground: '#232136',
-    sidebarBorder: '#393552',
-    userBubble: '#393552',
-    userBubbleBorder: '#44415a'
+    background: '#0b0a0f',
+    foreground: '#e7e0d2',
+    card: '#15121b',
+    cardForeground: '#e7e0d2',
+    muted: '#1d1924',
+    mutedForeground: '#9b93a6',
+    popover: '#1a1622',
+    popoverForeground: '#e7e0d2',
+    primary: '#8e2233',
+    primaryForeground: '#f3ece0',
+    secondary: '#241f2e',
+    secondaryForeground: '#cfc6b6',
+    accent: '#2a2436',
+    accentForeground: '#e7e0d2',
+    border: '#332c40',
+    input: '#241f2e',
+    ring: '#c9a25e',
+    midground: '#2f6f63',
+    composerRing: '#c9a25e',
+    destructive: '#a8213a',
+    destructiveForeground: '#f3ece0',
+    sidebarBackground: '#0b0a0f',
+    sidebarBorder: '#241f2e',
+    userBubble: '#15121b',
+    userBubbleBorder: '#332c40'
   },
   typography: {
-    fontSans: SYSTEM_SANS,
-    fontMono: `"Courier Prime", ${SYSTEM_MONO}`,
-    fontUrl: 'https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap'
+    fontSans: `"Inter", ${SYSTEM_SANS}`,
+    fontMono: SYSTEM_MONO,
+    fontUrl:
+      'https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap'
   }
 }
 
@@ -357,7 +354,7 @@ export const aliceTheme: DesktopTheme = {
 }
 
 export const BUILTIN_THEMES: Record<string, DesktopTheme> = {
-  nous: nousTheme,
+  madness: madnessTheme,
   midnight: midnightTheme,
   ember: emberTheme,
   mono: monoTheme,
@@ -369,4 +366,4 @@ export const BUILTIN_THEMES: Record<string, DesktopTheme> = {
 export const BUILTIN_THEME_LIST = Object.values(BUILTIN_THEMES)
 
 /** Skin used when nothing is persisted or the persisted name is retired. */
-export const DEFAULT_SKIN_NAME = 'nous'
+export const DEFAULT_SKIN_NAME = 'madness'

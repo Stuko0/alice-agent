@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 
-export const matchesQuery = (query: string) =>
-  typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(query).matches
+export { matchesQuery } from '@/lib/media-query'
+
+import { matchesQuery as matchesNow } from '@/lib/media-query'
 
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(() => matchesQuery(query))
+  const [matches, setMatches] = useState(() => matchesNow(query))
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) {

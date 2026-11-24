@@ -8,8 +8,8 @@ import { ExportedMessageRepository } from '@assistant-ui/core/internal'
 // bubbles) is not reproducible in jsdom — see USER_BUBBLE_BASE_CLASS's no-drag
 // carve-out in thread.tsx.
 import { AssistantRuntimeProvider, type ThreadMessage, useExternalStoreRuntime } from '@assistant-ui/react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { useIncrementalExternalStoreRuntime } from '@/lib/incremental-external-store-runtime'
 
@@ -113,6 +113,14 @@ function StockHarness({ onEdit }: { onEdit: () => Promise<void> }) {
     </AssistantRuntimeProvider>
   )
 }
+
+afterEach(async () => {
+  cleanup()
+  // Let React's scheduler drain while `window` still exists. A pending work loop
+  // scheduled at teardown used to fire after jsdom was destroyed and surface as
+  // an unhandled `ReferenceError: window is not defined`.
+  await new Promise(resolve => setTimeout(resolve, 0))
+})
 
 describe('click-to-edit user message', () => {
   it('opens the edit composer with the incremental runtime', async () => {

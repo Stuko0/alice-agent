@@ -1,6 +1,7 @@
 import { useStore } from '@nanostores/react'
-import { lazy, Suspense, type CSSProperties, type ReactNode } from 'react'
+import { type CSSProperties, lazy, type ReactNode, Suspense } from 'react'
 import { useSyncExternalStore } from 'react'
+import { useLocation } from 'react-router-dom'
 
 import { NotificationStack } from '@/components/notifications'
 import { PaneShell } from '@/components/pane-shell'
@@ -11,7 +12,6 @@ import {
   $fileBrowserOpen,
   $panesFlipped,
   $sidebarOpen,
-  FILE_BROWSER_DEFAULT_WIDTH,
   FILE_BROWSER_PANE_ID,
   setSidebarOpen
 } from '@/store/layout'
@@ -20,12 +20,12 @@ import { $connection } from '@/store/session'
 import { isSecondaryWindow } from '@/store/windows'
 
 import { SIDEBAR_COLLAPSE_MEDIA_QUERY } from '../layout-constants'
+import { $terminalTakeover } from '../right-sidebar/store'
+import { appViewForPath } from '../routes'
 
 import { useWindowControlsOverlayWidth } from './hooks/use-window-controls-overlay-width'
 import { KeybindPanel } from './keybind-panel'
-import { StatusbarControls, type StatusbarItem } from './statusbar-controls'
 import { TITLEBAR_HEIGHT, titlebarControlsPosition } from './titlebar'
-import { TitlebarControls, type TitlebarTool } from './titlebar-controls'
 
 // FloatingPet is only mounted in shells with overlay support (Electron). Load
 // it lazily so the Wails bundle never even downloads the pet chunk — a static
@@ -37,8 +37,6 @@ const FloatingPet = desktopSupports('petOverlay')
 
 interface AppShellProps {
   children: ReactNode
-  leftStatusbarItems?: readonly StatusbarItem[]
-  leftTitlebarTools?: readonly TitlebarTool[]
   // Fixed-position overlays that must share <main>'s stacking context so pane
   // resize handles (z-20) paint above them. The persistent terminal lives here:
   // hoisting it to the root `overlays` layer (sibling of <main>, z above z-3)
@@ -46,13 +44,10 @@ interface AppShellProps {
   mainOverlays?: ReactNode
   onOpenSettings: () => void
   overlays?: ReactNode
-  // Rails that sit at the window's left edge in the flipped layout but never
-  // force-collapse to hover-reveal overlays — so they cover the top-left traffic
-  // lights (and zero the titlebar inset) even below the collapse breakpoint.
-  previewPaneOpen?: boolean
-  statusbarItems?: readonly StatusbarItem[]
-  terminalPaneOpen?: boolean
-  titlebarTools?: readonly TitlebarTool[]
+  /** Pre-rendered running head (wordmark, title, model chip). */
+  runningHead?: ReactNode
+  /** Pre-rendered navigation spine. */
+  spine?: ReactNode
 }
 
 // Renderer-side fallback so layout snaps even when the main-process fullscreen event
@@ -72,19 +67,22 @@ const viewportIsFullscreen = () =>
 
 export function AppShell({
   children,
-  leftStatusbarItems,
-  leftTitlebarTools,
   mainOverlays,
   onOpenSettings,
   overlays,
-  previewPaneOpen = false,
-  statusbarItems,
-  terminalPaneOpen = false,
-  titlebarTools
+  runningHead,
+  spine
 }: AppShellProps) {
   const sidebarOpen = useStore($sidebarOpen)
   const fileBrowserOpen = useStore($fileBrowserOpen)
   const panesFlipped = useStore($panesFlipped)
+  // Rail-open state lives here (not in the composition root) so toggling a
+  // pane re-renders the shell chrome only. `children` keeps its element
+  // identity, so React bails out before touching the chat subtree.
+  const currentView = appViewForPath(useLocation().pathname)
+  const chatOpen = currentView === 'chat'
+  const terminalTakeover = useStore($terminalTakeover)
+  const terminalPaneOpen = chatOpen && terminalTakeover
   const narrowViewport = useMediaQuery(SIDEBAR_COLLAPSE_MEDIA_QUERY)
   const fileBrowserWidthOverride = useStore($paneWidthOverride(FILE_BROWSER_PANE_ID))
   const connection = useStore($connection)
@@ -122,53 +120,21 @@ export function AppShell({
   // is uncovered there regardless of their stored open state. A standalone
   // session window renders no sidebar at all, so its edge is always uncovered.
   const collapsibleLeftPaneOpen = panesFlipped ? fileBrowserOpen : sidebarOpen
-  // The terminal + preview rails never force-collapse, so when they're the
-  // leftmost open pane (flipped layout) they cover the edge even when narrow.
-  const persistentLeftPaneOpen = panesFlipped && (terminalPaneOpen || previewPaneOpen)
+  // The terminal never force-collapses, so when it's the leftmost open pane
+  // (flipped layout) it covers the edge even when narrow. (The preview rail
+  // that used to sit here is now the browser drawer, which lives on the left.)
+  const persistentLeftPaneOpen = panesFlipped && terminalPaneOpen
 
   const leftEdgePaneOpen =
     !isSecondaryWindow() && ((!narrowViewport && collapsibleLeftPaneOpen) || persistentLeftPaneOpen)
 
-  const titlebarContentInset = leftEdgePaneOpen
-    ? 0
-    : titlebarControls.left + TITLEBAR_HEIGHT + Math.round(TITLEBAR_HEIGHT / 2)
-
-  // The static system cluster (haptics, profiles, settings, right-sidebar) is
-  // hardcoded in TitlebarControls. Pane-supplied tools (preview's group) render
-  // in a separate cluster anchored further left.
-  //
-  // Width math has to include the `gap-x-1` (0.25rem) between buttons:
-  // N buttons + (N - 1) inner gaps, plus one extra 0.25rem of breathing room
-  // between the pane-tool cluster and the system cluster so they don't sit
-  // flush against each other. Modeled as N gaps (N - 1 inner + 1 trailing)
-  // to keep the formula generic for any pane-tool count.
-  const SYSTEM_TOOL_COUNT = 4
-  const paneToolCount = titlebarTools?.filter(tool => !tool.hidden).length ?? 0
-  const systemToolsWidth = `calc(${SYSTEM_TOOL_COUNT} * (var(--titlebar-control-size) + 0.25rem))`
-
-  const fileBrowserWidth =
-    fileBrowserWidthOverride !== undefined ? `${fileBrowserWidthOverride}px` : FILE_BROWSER_DEFAULT_WIDTH
-
-  // Where the pane-tool cluster's right edge sits, measured from the inner
-  // titlebar padding (--titlebar-tools-right). Two anchors:
-  //   - file-browser closed → flush against static cluster's left edge
-  //   - file-browser open   → flush against the file-browser pane's left edge
-  //                           (= preview pane's right edge)
-  const previewToolbarGap = fileBrowserOpen ? fileBrowserWidth : systemToolsWidth
-
-  // Used by the drag region to know where the rightmost interactive element
-  // ends. When pane tools are present, that's `gap + paneCount * controlSize
-  // + paneCount * 0.25rem` (the leftmost button is at `tools-right + gap +
-  // paneCount * (size + gap-x-1)`). Otherwise the static cluster's footprint
-  // is enough.
-  const titlebarToolsWidth =
-    paneToolCount > 0
-      ? `calc(${previewToolbarGap} + ${paneToolCount} * (var(--titlebar-control-size) + 0.25rem))`
-      : systemToolsWidth
+  // The running head lives above the spine, so its left content always has to
+  // clear the native window controls (macOS traffic lights / Windows overlay).
+  const titlebarContentInset = titlebarControls.left
 
   return (
     <SidebarProvider
-      className="h-screen min-h-0 flex-col bg-background"
+      className="h-full min-h-0 flex-col bg-background"
       onOpenChange={setSidebarOpen}
       open={sidebarOpen}
       style={
@@ -176,57 +142,32 @@ export function AppShell({
           // Alias for shadcn <Sidebar> descendants. Resolves to the chat-sidebar
           // pane track via PaneShell's emitted --pane-chat-sidebar-width.
           '--sidebar-width': 'var(--pane-chat-sidebar-width)',
+          '--spine-width': '72px',
           '--titlebar-height': `${TITLEBAR_HEIGHT}px`,
           '--titlebar-content-inset': `${titlebarContentInset}px`,
           '--titlebar-controls-left': `${titlebarControls.left}px`,
           '--titlebar-controls-top': `${titlebarControls.top}px`,
           '--titlebar-tools-right': titlebarToolsRight,
-          '--titlebar-tools-width': titlebarToolsWidth,
           // Drops the right rail below the titlebar band when the OS/host paints
           // window controls over it (Windows/WSLg); 0px elsewhere.
-          '--right-rail-top-inset': rightRailTopInset,
-          // Anchor for the pane-tool cluster's right edge in TitlebarControls.
-          // Sourced from the layout store rather than the PaneShell-emitted
-          // --pane-*-width vars because the titlebar is a sibling of PaneShell
-          // and CSS variables resolve at the consumer's scope.
-          '--shell-preview-toolbar-gap': previewToolbarGap
+          '--right-rail-top-inset': '0px' 
         } as CSSProperties
       }
     >
-      {!hideTitlebarControls && (
-        <TitlebarControls leftTools={leftTitlebarTools} onOpenSettings={onOpenSettings} tools={titlebarTools} />
-      )}
+      {runningHead}
 
-      {nativeOverlayWidth > 0 && (
-        <div
-          aria-hidden
-          className="pointer-events-none fixed right-0 top-0 z-[4] h-(--titlebar-height) w-(--titlebar-tools-right) border-b border-(--ui-stroke-tertiary) bg-(--ui-chat-surface-background)"
-        />
-      )}
+      <div className="flex min-h-0 w-full flex-1 overflow-hidden">
+        {spine}
 
-      <main className="relative z-3 flex min-h-0 w-full flex-1 flex-col overflow-hidden transition-none">
-        <PaneShell className="min-h-0 flex-1">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute left-0 top-0 z-1 h-(--titlebar-height) w-(--titlebar-controls-left) [-webkit-app-region:drag]"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute top-0 z-1 h-(--titlebar-height) left-[calc(var(--titlebar-controls-left)+(var(--titlebar-control-size)*2)+0.75rem)] right-[calc(var(--titlebar-tools-right)+var(--titlebar-tools-width)+0.75rem)] [-webkit-app-region:drag]"
-          />
-
-          {children}
-        </PaneShell>
+        <main className="relative z-3 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-none">
+          <PaneShell className="min-h-0 flex-1">{children}</PaneShell>
 
         {/* Fixed overlays scoped to main's stacking context (terminal). Rendered
             after PaneShell so it paints over pane content, but its z stays under
             the panes' z-20 resize handles, keeping every pane resizable. */}
-        {mainOverlays}
-
-        {/* The compact pop-out drops the statusbar — it's a scratch window, not
-            the full shell. */}
-        {!isSecondaryWindow() && <StatusbarControls items={statusbarItems} leftItems={leftStatusbarItems} />}
-      </main>
+          {mainOverlays}
+        </main>
+      </div>
 
       {overlays}
 

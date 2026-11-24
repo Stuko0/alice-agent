@@ -272,10 +272,6 @@ export interface ModelOptionProvider {
   /** Per-model pricing keyed by model id (present when the picker requested
    *  pricing and the provider supports live pricing). */
   pricing?: Record<string, ModelPricing>
-  /** Nous only: whether the current account is on the free tier. */
-  free_tier?: boolean
-  /** Nous only: paid models a free-tier user cannot select (shown disabled). */
-  unavailable_models?: string[]
   /** Per-model option support, keyed by model id (present when the picker
    *  requested capabilities). Lets the UI gate fast/reasoning controls. */
   capabilities?: Record<string, ModelCapabilities>
@@ -373,6 +369,10 @@ export interface SessionMessage {
   codex_reasoning_items?: unknown
   content: unknown
   context?: unknown
+  /** Present on compact payloads that omitted reasoning text. */
+  has_reasoning?: boolean
+  /** SQLite row id — the cursor for `since_id` delta fetches. */
+  id?: number
   name?: string
   reasoning?: null | string
   reasoning_content?: null | string
@@ -386,6 +386,8 @@ export interface SessionMessage {
 }
 
 export interface SessionMessagesResponse {
+  /** Highest message id in this batch, or null when the batch is empty. */
+  last_id?: null | number
   messages: SessionMessage[]
   session_id: string
 }
@@ -671,7 +673,6 @@ export interface ToolProvider {
   tag: string
   env_vars: ToolEnvVar[]
   post_setup: string | null
-  requires_nous_auth: boolean
   /** True when this is the provider currently written to config (mirrors the
    *  CLI `alice native` active-provider detection). */
   is_active: boolean
@@ -876,9 +877,8 @@ export interface StaleAuxAssignment {
 export interface ModelAssignmentResponse {
   /** Persisted endpoint URL for custom/local providers (echoed back). */
   base_url?: string
-  /** Toolset keys auto-routed through the Nous Tool Gateway as a result of
-   *  switching the main provider to Nous. Empty unless provider === 'nous'
-   *  and the user is a paid subscriber with unconfigured tools. */
+  /** Toolset keys auto-routed through a managed tool gateway. Kept in the
+   *  response shape for older clients; always empty today. */
   gateway_tools?: string[]
   model?: string
   ok: boolean

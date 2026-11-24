@@ -1,4 +1,5 @@
 import { useStore } from '@nanostores/react'
+import { memo } from 'react'
 import type { ComponentProps } from 'react'
 
 import { TreeSkeleton } from '@/components/chat/skeletons'
@@ -24,7 +25,7 @@ interface RightSidebarPaneProps {
   onActivateFolder: (path: string) => void
 }
 
-export function RightSidebarPane({ onActivateFile, onActivateFolder }: RightSidebarPaneProps) {
+function RightSidebarPaneInner({ onActivateFile, onActivateFolder }: RightSidebarPaneProps) {
   const { t } = useI18n()
   const r = t.rightSidebar
   const panesFlipped = useStore($panesFlipped)
@@ -330,3 +331,5 @@ export function EmptyState({ body, title }: { body: string; title?: string }) {
     </div>
   )
 }
+
+export const RightSidebarPane = memo(RightSidebarPaneInner)

@@ -6,6 +6,7 @@ import type { EnvVarInfo } from '@/types/alice'
 
 export type SettingsView =
   | 'about'
+  | 'advanced'
   | 'gateway'
   | 'keys'
   | 'mcp'

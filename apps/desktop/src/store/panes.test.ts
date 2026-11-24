@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { flushCoalescedPersistence, onPersistenceEvent } from '@/lib/storage'
+
 import {
   $paneOpen,
   $paneStates,
   $paneWidthOverride,
   clearPaneWidthOverride,
   ensurePaneRegistered,
+  forgetPane,
   getPaneStateSnapshot,
   setPaneOpen,
   setPaneWidthOverride,
@@ -45,6 +48,29 @@ describe('panes store', () => {
       ensurePaneRegistered('files', { open: false })
 
       expect(getPaneStateSnapshot('files')?.widthOverride).toBe(360)
+    })
+  })
+
+  describe('forgetPane', () => {
+    it('drops a retired pane from the persisted state', () => {
+      ensurePaneRegistered('preview', { open: true, widthOverride: 480 })
+      ensurePaneRegistered('files', { open: true })
+
+      forgetPane('preview')
+
+      expect($paneStates.get()).toEqual({ files: { open: true } })
+
+      flushCoalescedPersistence()
+
+      expect(window.localStorage.getItem(STORAGE_KEY)).not.toContain('preview')
+    })
+
+    it('is a no-op for an unknown pane', () => {
+      ensurePaneRegistered('files', { open: true })
+
+      forgetPane('nope')
+
+      expect($paneStates.get()).toEqual({ files: { open: true } })
     })
   })
 
@@ -97,19 +123,47 @@ describe('panes store', () => {
       expect(getPaneStateSnapshot('files')?.widthOverride).toBeUndefined()
     })
 
-    it('width override is in-memory only — not persisted across reloads', () => {
+    it('persists the width override alongside the open flag', () => {
+      // The store deliberately persists the resize width too (a relaunch keeps
+      // the sash where the user left it). Writes are coalesced, so flush first.
       ensurePaneRegistered('files', { open: true })
       setPaneWidthOverride('files', 300)
+      flushCoalescedPersistence()
 
       const persisted = window.localStorage.getItem(STORAGE_KEY)
 
       expect(persisted).not.toBeNull()
-      expect(JSON.parse(persisted ?? '{}')).toEqual({ files: { open: true } })
+      expect(JSON.parse(persisted ?? '{}')).toEqual({ files: { open: true, widthOverride: 300 } })
+    })
+
+    it('coalesces a drag burst into a single persisted write', () => {
+      ensurePaneRegistered('files', { open: true })
+      flushCoalescedPersistence()
+
+      const writes: string[] = []
+
+      const stop = onPersistenceEvent(event => {
+        if (event.op === 'write' && event.key === STORAGE_KEY) {
+          writes.push(event.value ?? '')
+        }
+      })
+
+      // 20 pointermove-equivalent updates, as a sash drag produces.
+      for (let width = 200; width < 400; width += 10) {
+        setPaneWidthOverride('files', width)
+      }
+
+      flushCoalescedPersistence()
+      stop()
+
+      expect(writes).toHaveLength(1)
+      expect(JSON.parse(writes[0]).files.widthOverride).toBe(390)
     })
 
     it('open flag is persisted across changes', () => {
       ensurePaneRegistered('files', { open: false })
       setPaneOpen('files', true)
+      flushCoalescedPersistence()
 
       const persisted = window.localStorage.getItem(STORAGE_KEY)
 

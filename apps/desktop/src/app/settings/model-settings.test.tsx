@@ -15,6 +15,7 @@ const getGlobalModelOptions = vi.fn()
 const getAuxiliaryModels = vi.fn()
 const setModelAssignment = vi.fn()
 const getRecommendedDefaultModel = vi.fn()
+const getMoaModels = vi.fn()
 const setEnvVar = vi.fn()
 const getAliceConfigRecord = vi.fn()
 const saveAliceConfig = vi.fn()
@@ -26,6 +27,7 @@ vi.mock('@/alice', () => ({
   getAuxiliaryModels: () => getAuxiliaryModels(),
   setModelAssignment: (body: unknown) => setModelAssignment(body),
   getRecommendedDefaultModel: (slug: string) => getRecommendedDefaultModel(slug),
+  getMoaModels: () => getMoaModels(),
   setEnvVar: (key: string, value: string) => setEnvVar(key, value),
   getAliceConfigRecord: () => getAliceConfigRecord(),
   saveAliceConfig: (config: unknown) => saveAliceConfig(config)
@@ -61,8 +63,9 @@ beforeEach(() => {
     main: { provider: 'nous', model: 'alice-4' },
     tasks: [{ task: 'vision', provider: 'auto', model: '', base_url: '' }]
   })
-  setModelAssignment.mockResolvedValue({ provider: 'nous', model: 'alice-4', gateway_tools: [] })
+  setModelAssignment.mockResolvedValue({ provider: 'openrouter', model: 'anthropic/claude-opus-4.8', gateway_tools: [] })
   getRecommendedDefaultModel.mockResolvedValue({ provider: 'deepseek', model: 'deepseek-chat', free_tier: null })
+  getMoaModels.mockResolvedValue(null)
   setEnvVar.mockResolvedValue({ ok: true })
   getAliceConfigRecord.mockResolvedValue({ agent: { reasoning_effort: 'medium', service_tier: 'normal' } })
   saveAliceConfig.mockResolvedValue({ ok: true })
@@ -92,10 +95,10 @@ describe('ModelSettings', () => {
     fireEvent.click(triggers[0])
 
     // "Nous" shows in both the trigger and the open list; the unconfigured
-    // provider + its setup hint are the unique signal of the full universe.
+    // provider is the unique signal of the full universe. (The "Set up …" CTA
+    // is conditional on the *selected* provider, so it is not asserted here.)
     expect((await screen.findAllByText('Nous')).length).toBeGreaterThan(0)
     expect(await screen.findByText(/DeepSeek/)).toBeTruthy()
-    expect(await screen.findByText(/set up/)).toBeTruthy()
   })
 
   it('activates an unconfigured api_key provider inline by saving its key', async () => {

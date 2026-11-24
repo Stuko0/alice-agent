@@ -199,36 +199,6 @@ function notifyReady(provider: string) {
   notify({ kind: 'success', title: 'Alice is ready', message: `${provider} connected.` })
 }
 
-// Human-friendly labels for tools auto-routed through the Nous Tool Gateway,
-// mirroring alice_cli/nous_subscription._GATEWAY_TOOL_LABELS so the GUI and
-// CLI describe the same thing.
-const GATEWAY_TOOL_LABELS: Record<string, string> = {
-  browser: 'browser automation',
-  image_gen: 'image generation',
-  tts: 'text-to-speech',
-  video_gen: 'video generation',
-  web: 'web search & extract'
-}
-
-// When switching to Nous auto-routes unconfigured tools through the Tool
-// Gateway, tell the user which ones — same information the CLI prints. Silent
-// when nothing changed (subscriber already configured, has own keys, etc.).
-function notifyGatewayTools(tools: string[] | undefined) {
-  if (!tools || tools.length === 0) {
-    return
-  }
-
-  const labels = tools.map(t => GATEWAY_TOOL_LABELS[t] ?? t)
-  const list = labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
-
-  notify({
-    durationMs: 8000,
-    kind: 'info',
-    message: `${list} now run through your Nous subscription — no separate API keys needed.`,
-    title: 'Tool Gateway enabled'
-  })
-}
-
 // After credentials are persisted, ask the backend which provider+models
 // are now authenticated. Pick the first curated model for the matching
 // provider as a sensible default, persist it via /api/model/set, and
@@ -269,10 +239,9 @@ async function fetchProviderDefaultModel(
     return null
   }
 
-  // Prefer the backend's recommended default — it mirrors the curation
-  // `alice model` does (for Nous it honors the user's free/paid tier, so a
-  // free user gets a free model rather than a paid default like opus). Fall
-  // back to the first curated model if the endpoint can't resolve one.
+  // Prefer the backend's recommended default, which mirrors the curation
+  // `alice model` does. Fall back to the first curated model if the endpoint
+  // can't resolve one.
   let defaultModel = String(models[0])
 
   try {
@@ -281,8 +250,8 @@ async function fetchProviderDefaultModel(
     if (recommended.model && models.map(String).includes(recommended.model)) {
       defaultModel = recommended.model
     } else if (recommended.model) {
-      // Recommended model isn't in the curated options list (e.g. a Portal
-      // free-recommendation the picker list didn't include); trust it anyway.
+      // Recommended model isn't in the curated options list (e.g. a
+      // recommendation the picker list didn't include); trust it anyway.
       defaultModel = recommended.model
     }
   } catch {
@@ -322,13 +291,11 @@ async function completeWithModelConfirm(
     // config provider (e.g. anthropic from a prior failed setup) cannot make
     // setup.runtime_check validate the wrong backend after a fresh OAuth login.
     try {
-      const res = await setModelAssignment({
+      await setModelAssignment({
         scope: 'main',
         provider: defaults.providerSlug,
         model: defaults.defaultModel
       })
-
-      notifyGatewayTools(res.gateway_tools)
     } catch {
       // Persistence failed — still run the scoped runtime check below and
       // show the confirm card so the user can pick something explicitly.
@@ -388,6 +355,48 @@ async function refreshProviders() {
   })()
 
   await providersRefreshPromise
+}
+
+/**
+ * Does this error mean "Alice has no model provider at all"?
+ *
+ * The agent raises one of these before any request is sent. In the desktop
+ * there is no terminal to run `alice model` in, so the answer is the provider
+ * picker — not a dead-end message telling the user to type a command.
+ */
+export function isNoProviderError(text: null | string | undefined): boolean {
+  const value = (text ?? '').toLowerCase()
+
+  if (!value) {
+    return false
+  }
+
+  return (
+    value.includes('no llm provider configured') ||
+    value.includes('no model provider is connected') ||
+    value.includes('is set in config.yaml but no api key')
+  )
+}
+
+/**
+ * Open the provider picker when a turn failed because no provider is
+ * configured. Safe to call repeatedly: it does nothing while the picker is
+ * already open.
+ */
+export function openProviderPickerFor(text: null | string | undefined): boolean {
+  if (!isNoProviderError(text)) {
+    return false
+  }
+
+  const state = $desktopOnboarding.get()
+
+  if (state.requested) {
+    return false
+  }
+
+  startManualOnboarding((text ?? '').trim() || undefined)
+
+  return true
 }
 
 export function requestDesktopOnboarding(reason = DEFAULT_ONBOARDING_REASON) {
