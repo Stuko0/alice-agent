@@ -5,7 +5,32 @@ from __future__ import annotations
 import os
 
 class BillingError(Exception):
+    """Typed billing failure.
+
+    The RPC layer maps ``error``/``status``/``portal_url``/``retry_after`` into
+    the result envelope clients branch on, so those attributes are part of the
+    wire contract even while the backend itself is stubbed out.
+    """
+
     portal_url: str | None = None
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        status: int | None = None,
+        error: str | None = None,
+        portal_url: str | None = None,
+        retry_after: float | None = None,
+        payload: dict | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status = status
+        self.error = error
+        if portal_url is not None:
+            self.portal_url = portal_url
+        self.retry_after = retry_after
+        self.payload = payload or {}
 
 class BillingRateLimited(BillingError):
     pass
