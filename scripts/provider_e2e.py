@@ -79,6 +79,28 @@ def serve_mock() -> None:
 
             model = body.get("model") or "mock"
 
+            if "stall" in str(model).lower() and body.get("stream"):
+                # Keep-alive frames only: a valid SSE stream that never carries
+                # model output. This is what a stalled gateway/proxy looks like,
+                # and what used to hang the UI for minutes with no error.
+                self.send_response(200)
+                self.send_header("content-type", "text/event-stream")
+                self.send_header("cache-control", "no-cache")
+                self.send_header("connection", "close")
+                self.end_headers()
+                try:
+                    for _ in range(120):
+                        self.wfile.write(
+                            sse({"id": "x", "object": "chat.completion.chunk", "created": 0,
+                                 "model": model, "choices": []})
+                        )
+                        self.wfile.flush()
+                        time.sleep(0.25)
+                except OSError:
+                    pass
+                self.close_connection = True
+                return
+
             if body.get("stream"):
                 self.send_response(200)
                 self.send_header("content-type", "text/event-stream")
@@ -284,6 +306,47 @@ def scenario_d(home: Path) -> bool:
     return True
 
 
+def scenario_e(home: Path) -> bool:
+    """A provider that keeps the socket warm but never sends output.
+
+    Before the fix, keep-alive frames reset the stale timer and the UI waited
+    indefinitely (reported as an 8-minute silent hang on Windows). The call
+    must now fail within the configured window with a readable error.
+    """
+    print("\n=== E. stalled stream (keep-alives, no output) ===")
+
+    write_config(
+        home,
+        "model:\n"
+        "  provider: custom\n"
+        "  default: mock/stall\n"
+        f"  base_url: http://127.0.0.1:{MOCK_PORT}/v1\n"
+        "  api_key: sk-provider-e2e\n",
+    )
+
+    os.environ["ALICE_STREAM_STALE_TIMEOUT"] = "3"
+    started = time.time()
+    try:
+        reply = run_agent_once("mock/stall", "ping")
+    finally:
+        os.environ.pop("ALICE_STREAM_STALE_TIMEOUT", None)
+
+    elapsed = time.time() - started
+    text = (reply or "").strip()
+    print(f"elapsed={elapsed:.1f}s reply={text[:100]!r}")
+
+    # Must return (not hang) and say it failed.
+    if elapsed > 120:
+        print("FAIL: the stalled stream was not detected in time")
+        return False
+    if "failed" not in text.lower() and "error" not in text.lower():
+        print("FAIL: the stall did not surface as an error")
+        return False
+
+    print("PASS")
+    return True
+
+
 # ── entry point ────────────────────────────────────────────────────────────
 
 
@@ -307,13 +370,15 @@ def main() -> int:
         scenario_b(home, mock_log)
         scenario_c(home)
         real_model = scenario_d(home)
+        stall_detected = scenario_e(home)
     finally:
         server.terminate()
 
     print("\n=== summary ===")
     print(f"custom+key: {'PASS' if passed else 'FAIL'}")
     print(f"opencode-go real model: {'PASS' if real_model else 'FAIL'}")
-    return 0 if passed and real_model else 1
+    print(f"stall detection: {'PASS' if stall_detected else 'FAIL'}")
+    return 0 if passed and real_model and stall_detected else 1
 
 
 if __name__ == "__main__":
