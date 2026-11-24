@@ -28,7 +28,10 @@ make install      # -> ~/.local/bin/alice (PREFIX to override)
 | `alice host rpc <method> [json]` | Spawn the gateway, wait for `gateway.ready`, call one RPC, print the result |
 | `alice host supervise [--max-restarts N] [--backoff-max 30s] -- <cmd...>` | Run a child and restart it with exponential backoff |
 | `alice cli [--resume ID] [--model NAME] [--cwd DIR] [--plain]` | The Go classic CLI (M2) |
-| `alice config path` / `alice config env-path` | Print the resolved config / .env path |
+| `alice config path` / `env-path` | Print the resolved config / .env path |
+| `alice config get <key>` | Read a dotted config key |
+| `alice config set <key> <value>` | Edit config.yaml in place (comment-preserving) |
+| `alice config unset <key>` | Remove a config key |
 | `alice host help` | Help generated from the command table |
 
 ### Classic CLI
@@ -145,6 +148,41 @@ kills the direct child (job objects are future work).
 `alice host supervise` forwards `SIGINT`/`SIGTERM` and exits with the child's
 last status once the restart budget is exhausted.
 
+## Configuration
+
+`config.yaml` editing is native for the keys that only need the user file:
+
+| Subcommand | Behaviour |
+|---|---|
+| `config path`, `config env-path` | resolved paths |
+| `config get <key>` | dotted path, numeric list indices (`providers.0.name`) |
+| `config set <key> <value>` | edits in place; type coercion matches Python (`true/yes/on`, `false/no/off`, ints, floats); `api_base` is normalised to `model.base_url` |
+| `config unset <key>` | removes the key or list element |
+
+Properties:
+
+- **Comments and key order survive** the write (yaml.Node editing). Python's
+  current `config set` uses `safe_load` and *drops* comments — the Go path is
+  strictly less destructive.
+- **Atomic write**: temp file + fsync + rename, preserving the existing mode
+  (0600 for new files).
+- **Managed scope respected**: keys pinned by `$ALICE_MANAGED_DIR/config.yaml`
+  (or `/etc/alice/config.yaml`) are refused with the administrator message.
+- **Secrets never written to YAML**: API-key-shaped names
+  (`*_API_KEY`, `*_TOKEN`, `TERMINAL_SSH*`, plus Python's explicit list) and
+  `terminal.*` keys are delegated to Python, which routes them to `.env` or
+  the terminal env mirror. Echoed values for credential-shaped leaves are
+  masked.
+- `show`, `edit`, `check` and `migrate` stay delegated — they need the merged
+  defaults, the 32 config migrations and the interactive editor.
+
+Parity is pinned by an opt-in test that runs the same edits through Python and
+Go on identical fixtures and compares the parsed YAML:
+
+```bash
+ALICE_CONFIG_PARITY=1 go test ./internal/host -run ConfigSetParity -v
+```
+
 ## Protocol
 
 `internal/protocol` implements the wire contract documented in
@@ -172,11 +210,12 @@ repo's own rules (port = delete, E2E validation, no change-detector tests).
 
 | Command | Blocker | Rough size |
 |---|---|---|
-| `config set/edit/check/migrate` | comment-preserving YAML round-trip, defaults merge, 32 config migrations, managed scope | 2–3 dev-months |
+| `config show/edit/check/migrate` | defaults merge, 32 config migrations, interactive editor | 1–2 dev-months (the editing core is ported) |
 | `setup` | interactive wizard over config + auth + model catalog | 2–3 |
 | `auth`, `model` | OAuth device flows, credential pool, keychain, 28 provider profiles | 3–4 |
 | `cron` mutations | schedule parser, job schema, cross-process locking, delivery targets | 1–2 |
 | `kanban` | SQLite board + dispatcher + worker protocol | 2–3 |
 
 Read-only slices that need no config core are already native:
-`alice config path`, `alice config env-path`.
+`alice config path`, `config env-path`, `config get`, and the `set`/`unset`
+editing path for non-secret, non-terminal keys.

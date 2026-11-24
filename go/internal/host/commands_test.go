@@ -178,3 +178,100 @@ func TestMainRoutesConfigPath(t *testing.T) {
 		t.Fatalf("out = %q", out.String())
 	}
 }
+
+func TestConfigSetGetUnsetNative(t *testing.T) {
+	home := t.TempDir()
+	if err := os.WriteFile(filepath.Join(home, "config.yaml"), []byte("# keep me\nmodel:\n  provider: openrouter\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ALICE_MANAGED_DIR", filepath.Join(t.TempDir(), "absent"))
+
+	resolver := Resolver{GOOS: "linux", HomeDir: home, AliceHomeEnv: home, Stat: os.Stat}
+
+	set := func(args ...string) int {
+		var out, errb bytes.Buffer
+		opts := Options{Stdout: &out, Stderr: &errb, Resolver: resolver}
+		handled, code := runConfigNative(opts, args)
+		if !handled {
+			t.Fatalf("%v was delegated", args)
+		}
+		if code != 0 {
+			t.Fatalf("%v: code=%d stderr=%s", args, code, errb.String())
+		}
+		return code
+	}
+
+	set("set", "model.default", "test/model")
+	set("set", "agent.max_turns", "42")
+	set("set", "display.mouse", "true")
+
+	var out, errb bytes.Buffer
+	if handled, code := runConfigNative(Options{Stdout: &out, Stderr: &errb, Resolver: resolver}, []string{"get", "agent.max_turns"}); !handled || code != 0 {
+		t.Fatalf("get handled=%v code=%d", handled, code)
+	}
+	if strings.TrimSpace(out.String()) != "42" {
+		t.Fatalf("get = %q", out.String())
+	}
+
+	set("unset", "display.mouse")
+
+	raw, _ := os.ReadFile(filepath.Join(home, "config.yaml"))
+	text := string(raw)
+	if !strings.Contains(text, "# keep me") {
+		t.Fatalf("comment lost:\n%s", text)
+	}
+	if strings.Contains(text, "mouse") {
+		t.Fatalf("display.mouse not removed:\n%s", text)
+	}
+	if !strings.Contains(text, "test/model") || !strings.Contains(text, "max_turns: 42") {
+		t.Fatalf("values missing:\n%s", text)
+	}
+}
+
+func TestConfigSetDelegatesCredentialsAndTerminal(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("ALICE_MANAGED_DIR", filepath.Join(t.TempDir(), "absent"))
+	resolver := Resolver{GOOS: "linux", HomeDir: home, AliceHomeEnv: home, Stat: os.Stat}
+
+	for _, key := range []string{"OPENROUTER_API_KEY", "SOME_TOKEN", "terminal.cwd"} {
+		var out, errb bytes.Buffer
+		handled, _ := runConfigNative(Options{Stdout: &out, Stderr: &errb, Resolver: resolver}, []string{"set", key, "x"})
+		if handled {
+			t.Fatalf("%s must be delegated to Python", key)
+		}
+	}
+}
+
+func TestConfigSetRefusesManagedKey(t *testing.T) {
+	home := t.TempDir()
+	managed := t.TempDir()
+	if err := os.WriteFile(filepath.Join(managed, "config.yaml"), []byte("model:\n  default: locked/model\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ALICE_MANAGED_DIR", managed)
+
+	resolver := Resolver{GOOS: "linux", HomeDir: home, AliceHomeEnv: home, Stat: os.Stat}
+	var out, errb bytes.Buffer
+	handled, code := runConfigNative(Options{Stdout: &out, Stderr: &errb, Resolver: resolver}, []string{"set", "model.default", "mine/model"})
+	if !handled || code != 1 {
+		t.Fatalf("handled=%v code=%d", handled, code)
+	}
+	if !strings.Contains(errb.String(), "managed by your administrator") {
+		t.Fatalf("stderr = %q", errb.String())
+	}
+}
+
+func TestConfigSetNormalizesAPIAlias(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("ALICE_MANAGED_DIR", filepath.Join(t.TempDir(), "absent"))
+	resolver := Resolver{GOOS: "linux", HomeDir: home, AliceHomeEnv: home, Stat: os.Stat}
+
+	var out, errb bytes.Buffer
+	if handled, code := runConfigNative(Options{Stdout: &out, Stderr: &errb, Resolver: resolver}, []string{"set", "model.api_base", "https://x"}); !handled || code != 0 {
+		t.Fatalf("handled=%v code=%d", handled, code)
+	}
+	raw, _ := os.ReadFile(filepath.Join(home, "config.yaml"))
+	if !strings.Contains(string(raw), "base_url: https://x") {
+		t.Fatalf("config = %s", raw)
+	}
+}
