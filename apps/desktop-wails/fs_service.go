@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,52 +51,195 @@ func (fs *FSService) ReadDir(dirPath string) ([]map[string]interface{}, error) {
 	return results, nil
 }
 
-func (fs *FSService) ReadFileText(filePath string) (string, error) {
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read file: %w", err)
-	}
-	return string(data), nil
+func (fs *FSService) ReadFileText(filePath string) (ReadTextResult, error) {
+	return fs.readFileTextLimited(filePath, defaultPreviewTextLimit)
 }
 
+// ReadFileTextLimited reads at most maxBytes (0 → defaultPreviewTextLimit).
+// The full size is always reported so the renderer can show the truncation
+// banner without a second stat; reading a 50MB log must not allocate 50MB.
+func (fs *FSService) ReadFileTextLimited(filePath string, maxBytes int64) (ReadTextResult, error) {
+	return fs.readFileTextLimited(filePath, maxBytes)
+}
+
+func (fs *FSService) readFileTextLimited(filePath string, maxBytes int64) (ReadTextResult, error) {
+	if maxBytes <= 0 {
+		maxBytes = defaultPreviewTextLimit
+	}
+
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return ReadTextResult{}, fmt.Errorf("failed to read file: %w", err)
+	}
+	if info.IsDir() {
+		return ReadTextResult{}, fmt.Errorf("failed to read file: is a directory")
+	}
+
+	f, err := os.Open(filePath)
+	if err != nil {
+		return ReadTextResult{}, fmt.Errorf("failed to read file: %w", err)
+	}
+	defer f.Close()
+
+	limited := io.LimitReader(f, maxBytes)
+	data, err := io.ReadAll(limited)
+	if err != nil {
+		return ReadTextResult{}, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	sniff := data
+	if len(sniff) > binarySniffBytes {
+		sniff = sniff[:binarySniffBytes]
+	}
+
+	return ReadTextResult{
+		Path:      filePath,
+		Text:      string(data),
+		ByteSize:  info.Size(),
+		Truncated: info.Size() > int64(len(data)),
+		Binary:    looksBinary(sniff),
+		MimeType:  previewContentType(filePath),
+		Language:  languageForPath(filePath),
+	}, nil
+}
+
+// StatFile reports size/mtime/kind without reading the file body. The renderer
+// uses it to decide whether a preview is safe before paying for a read.
+func (fs *FSService) StatFile(filePath string) (FileStat, error) {
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return FileStat{}, fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	stat := FileStat{
+		Path:     filePath,
+		ByteSize: info.Size(),
+		MtimeMs:  info.ModTime().UnixMilli(),
+		IsDir:    info.IsDir(),
+		MimeType: previewContentType(filePath),
+		Language: languageForPath(filePath),
+	}
+
+	if info.IsDir() {
+		return stat, nil
+	}
+
+	// Sniff a bounded prefix only. A null byte or a high share of control
+	// characters is the same heuristic the renderer used to run in JS.
+	f, err := os.Open(filePath)
+	if err != nil {
+		return stat, nil
+	}
+	defer f.Close()
+
+	buf := make([]byte, binarySniffBytes)
+	n, _ := io.ReadFull(f, buf)
+	stat.Binary = looksBinary(buf[:n])
+	return stat, nil
+}
+
+// ReadFileDataUrl returns a base64 data URL. Oversized files are rejected
+// instead of being streamed through the JS bridge: a 12MB image becomes ~16MB
+// of base64 plus a second copy in the renderer heap. Preview images go through
+// PreviewStartForImage instead.
 func (fs *FSService) ReadFileDataUrl(filePath string) (string, error) {
-	data, err := os.ReadFile(filePath)
+	info, err := os.Stat(filePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read file: %w", err)
 	}
+	if info.IsDir() {
+		return "", fmt.Errorf("failed to read file: is a directory")
+	}
+	if info.Size() > defaultPreviewImageLimit {
+		return "", fmt.Errorf("file too large for inline preview (%d bytes > %d)", info.Size(), defaultPreviewImageLimit)
+	}
 
-	ext := strings.TrimPrefix(filepath.Ext(filePath), ".")
-	mime := "application/octet-stream"
-	switch ext {
-	case "png":
-		mime = "image/png"
-	case "jpg", "jpeg":
-		mime = "image/jpeg"
-	case "gif":
-		mime = "image/gif"
-	case "svg":
-		mime = "image/svg+xml"
-	case "webp":
-		mime = "image/webp"
-	case "pdf":
-		mime = "application/pdf"
-	case "txt", "md", "log":
-		mime = "text/plain"
-	case "json":
-		mime = "application/json"
-	case "html", "htm":
-		mime = "text/html"
-	case "css":
-		mime = "text/css"
-	case "js":
-		mime = "application/javascript"
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file: %w", err)
 	}
 
 	b64 := base64.StdEncoding.EncodeToString(data)
-	return fmt.Sprintf("data:%s;base64,%s", mime, b64), nil
+	return fmt.Sprintf("data:%s;base64,%s", previewContentType(filePath), b64), nil
 }
 
+const (
+	defaultPreviewTextLimit = 512 * 1024
+	// Hard safety valve for inline data URLs. The preview pane applies a much
+	// tighter policy (8MB) and serves larger images over the loopback origin;
+	// this cap only exists so a pathological file can never be base64-encoded
+	// into a multi-hundred-megabyte bridge payload. Chat attachments still
+	// inline up to this size.
+	defaultPreviewImageLimit = 32 * 1024 * 1024
+	maxWriteBytes            = 10 * 1024 * 1024
+	binarySniffBytes         = 8 * 1024
+)
+
+// FileStat is the metadata half of a preview read.
+type FileStat struct {
+	Path     string `json:"path"`
+	ByteSize int64  `json:"byteSize"`
+	MtimeMs  int64  `json:"mtimeMs"`
+	IsDir    bool   `json:"isDir"`
+	Binary   bool   `json:"binary"`
+	MimeType string `json:"mimeType"`
+	Language string `json:"language,omitempty"`
+}
+
+// ReadTextResult mirrors AliceReadFileTextResult in the renderer contract.
+type ReadTextResult struct {
+	Path      string `json:"path"`
+	Text      string `json:"text"`
+	ByteSize  int64  `json:"byteSize"`
+	Truncated bool   `json:"truncated"`
+	Binary    bool   `json:"binary"`
+	MimeType  string `json:"mimeType"`
+	Language  string `json:"language,omitempty"`
+}
+
+// looksBinary ports the renderer's heuristic: a NUL byte is decisive, and a
+// >12% control-character ratio (excluding tab/newline/CR) marks binary data.
+func looksBinary(bytes []byte) bool {
+	if len(bytes) == 0 {
+		return false
+	}
+
+	suspicious := 0
+	for _, b := range bytes {
+		if b == 0 {
+			return true
+		}
+		if b < 32 && b != 9 && b != 10 && b != 13 {
+			suspicious++
+		}
+	}
+
+	return float64(suspicious)/float64(len(bytes)) > 0.12
+}
+
+var languageByExtension = map[string]string{
+	".c": "c", ".conf": "ini", ".cpp": "cpp", ".css": "css", ".csv": "csv",
+	".go": "go", ".graphql": "graphql", ".h": "c", ".hpp": "cpp",
+	".html": "html", ".htm": "html", ".java": "java", ".js": "javascript",
+	".json": "json", ".jsx": "jsx", ".log": "text", ".lua": "lua",
+	".md": "markdown", ".mjs": "javascript", ".py": "python", ".rb": "ruby",
+	".rs": "rust", ".sh": "shell", ".sql": "sql", ".svg": "xml",
+	".toml": "toml", ".ts": "typescript", ".tsx": "tsx", ".txt": "text",
+	".xml": "xml", ".yaml": "yaml", ".yml": "yaml", ".zsh": "shell",
+}
+
+func languageForPath(filePath string) string {
+	if language, ok := languageByExtension[strings.ToLower(filepath.Ext(filePath))]; ok {
+		return language
+	}
+	return "text"
+}
+
+
 func (fs *FSService) WriteTextFile(filePath string, content string) error {
+	if len(content) > maxWriteBytes {
+		return fmt.Errorf("file too large to save (%d bytes > %d)", len(content), maxWriteBytes)
+	}
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create parent dir: %w", err)

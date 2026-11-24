@@ -24,6 +24,46 @@ export namespace main {
 	        this.timestamp = source["timestamp"];
 	    }
 	}
+	export class BrowserConsoleError {
+	    level: string;
+	    line: number;
+	    message: string;
+	    source: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BrowserConsoleError(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.level = source["level"];
+	        this.line = source["line"];
+	        this.message = source["message"];
+	        this.source = source["source"];
+	    }
+	}
+	export class BrowserStatus {
+	    available: boolean;
+	    devTools: boolean;
+	    loading: boolean;
+	    ready: boolean;
+	    title: string;
+	    url: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BrowserStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.devTools = source["devTools"];
+	        this.loading = source["loading"];
+	        this.ready = source["ready"];
+	        this.title = source["title"];
+	        this.url = source["url"];
+	    }
+	}
 	export class ConnectionConfig {
 	    mode: string;
 	    remoteUrl: string;
@@ -74,6 +114,8 @@ export namespace main {
 	    nodeVersion: string;
 	    platform: string;
 	    aliceRoot: string;
+	    buildCommit: string;
+	    builtAt: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new DesktopVersionInfo(source);
@@ -86,6 +128,64 @@ export namespace main {
 	        this.nodeVersion = source["nodeVersion"];
 	        this.platform = source["platform"];
 	        this.aliceRoot = source["aliceRoot"];
+	        this.buildCommit = source["buildCommit"];
+	        this.builtAt = source["builtAt"];
+	    }
+	}
+	export class FileStat {
+	    path: string;
+	    byteSize: number;
+	    mtimeMs: number;
+	    isDir: boolean;
+	    binary: boolean;
+	    mimeType: string;
+	    language?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FileStat(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.byteSize = source["byteSize"];
+	        this.mtimeMs = source["mtimeMs"];
+	        this.isDir = source["isDir"];
+	        this.binary = source["binary"];
+	        this.mimeType = source["mimeType"];
+	        this.language = source["language"];
+	    }
+	}
+	export class PreviewTarget {
+	    binary?: boolean;
+	    byteSize?: number;
+	    kind: string;
+	    label: string;
+	    large?: boolean;
+	    language?: string;
+	    mimeType?: string;
+	    path?: string;
+	    previewKind?: string;
+	    source: string;
+	    url: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PreviewTarget(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.binary = source["binary"];
+	        this.byteSize = source["byteSize"];
+	        this.kind = source["kind"];
+	        this.label = source["label"];
+	        this.large = source["large"];
+	        this.language = source["language"];
+	        this.mimeType = source["mimeType"];
+	        this.path = source["path"];
+	        this.previewKind = source["previewKind"];
+	        this.source = source["source"];
+	        this.url = source["url"];
 	    }
 	}
 	export class ProbeResult {
@@ -134,6 +234,30 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.status = source["status"];
 	        this.body = source["body"];
+	    }
+	}
+	export class ReadTextResult {
+	    path: string;
+	    text: string;
+	    byteSize: number;
+	    truncated: boolean;
+	    binary: boolean;
+	    mimeType: string;
+	    language?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ReadTextResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.text = source["text"];
+	        this.byteSize = source["byteSize"];
+	        this.truncated = source["truncated"];
+	        this.binary = source["binary"];
+	        this.mimeType = source["mimeType"];
+	        this.language = source["language"];
 	    }
 	}
 	export class SelectPathsRequest {
@@ -227,6 +351,10 @@ export namespace main {
 	    message?: string;
 	    aliceRoot?: string;
 	    fetchedAt: number;
+	    mode?: string;
+	    currentVersion?: string;
+	    latestVersion?: string;
+	    installerUrl?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateStatus(source);
@@ -248,6 +376,10 @@ export namespace main {
 	        this.message = source["message"];
 	        this.aliceRoot = source["aliceRoot"];
 	        this.fetchedAt = source["fetchedAt"];
+	        this.mode = source["mode"];
+	        this.currentVersion = source["currentVersion"];
+	        this.latestVersion = source["latestVersion"];
+	        this.installerUrl = source["installerUrl"];
 	    }
 	}
 

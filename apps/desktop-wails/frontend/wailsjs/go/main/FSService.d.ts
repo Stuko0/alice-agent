@@ -3,6 +3,8 @@
 import {main} from '../models';
 import {context} from '../models';
 
+export function NormalizePreviewTarget(arg1:string,arg2:string):Promise<main.PreviewTarget>;
+
 export function OpenExternal(arg1:string):Promise<void>;
 
 export function PathExists(arg1:string):Promise<boolean>;
@@ -11,7 +13,9 @@ export function ReadDir(arg1:string):Promise<Array<Record<string, any>>>;
 
 export function ReadFileDataUrl(arg1:string):Promise<string>;
 
-export function ReadFileText(arg1:string):Promise<string>;
+export function ReadFileText(arg1:string):Promise<main.ReadTextResult>;
+
+export function ReadFileTextLimited(arg1:string,arg2:number):Promise<main.ReadTextResult>;
 
 export function RenamePath(arg1:string,arg2:string):Promise<string>;
 
@@ -24,6 +28,8 @@ export function SaveImageBuffer(arg1:Array<number>,arg2:string):Promise<string>;
 export function SelectPaths(arg1:main.SelectPathsRequest):Promise<Array<string>>;
 
 export function SetContext(arg1:context.Context):Promise<void>;
+
+export function StatFile(arg1:string):Promise<main.FileStat>;
 
 export function TrashPath(arg1:string):Promise<void>;
 
