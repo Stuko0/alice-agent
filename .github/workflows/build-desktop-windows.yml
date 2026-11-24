@@ -369,6 +369,28 @@ jobs:
           "ALICE_APP=$app" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
         shell: pwsh
 
+      - name: Preconfigure a model provider (visual run)
+        shell: pwsh
+        env:
+          OPENCODE_GO_API_KEY: ${{ secrets.ALICE_E2E_OPENCODE_API_KEY }}
+        # A configured install skips the onboarding picker and lands on the
+        # first-run tour — the thing these screenshots are meant to prove.
+        run: |
+          $home = Join-Path $env:USERPROFILE '.alice'
+          New-Item -ItemType Directory -Force -Path $home | Out-Null
+          if ($env:OPENCODE_GO_API_KEY) {
+            "OPENCODE_GO_API_KEY=$env:OPENCODE_GO_API_KEY" | Out-File -FilePath (Join-Path $home '.env') -Encoding utf8
+            $config = @(
+              'model:'
+              '  provider: opencode-go'
+              '  default: hy4-flash-free'
+            ) -join "`n"
+            $config | Out-File -FilePath (Join-Path $home 'config.yaml') -Encoding utf8
+            Write-Host "preconfigured opencode-go / hy4-flash-free"
+          } else {
+            Write-Host "no OPENCODE_GO_API_KEY secret — leaving the first-run picker"
+          }
+
       - name: Launch and wait for the backend to announce a port
         # A double-clicked installer build has no ALICE_HOME, so the shell uses
         # %USERPROFILE%\.alice (python_manager.NewPythonManager). Also accept
@@ -448,7 +470,7 @@ jobs:
             Write-Host "screenshot: $out ($($bounds.Width)x$($bounds.Height))"
           }
 
-          Start-Sleep -Seconds 12
+          Start-Sleep -Seconds 20
           $proc.Refresh()
           if ($proc.MainWindowHandle -ne [IntPtr]::Zero) {
             [AliceWin]::ShowWindow($proc.MainWindowHandle, 3) | Out-Null
@@ -456,8 +478,10 @@ jobs:
             Start-Sleep -Seconds 2
           }
           Save-Desktop "alice-windows-1.png"
-          Start-Sleep -Seconds 10
+          Start-Sleep -Seconds 20
           Save-Desktop "alice-windows-2.png"
+          Start-Sleep -Seconds 20
+          Save-Desktop "alice-windows-3.png"
 
           # Kill the app AND the backend it spawned: the bundled python holds
           # resources\python\python.exe open, which would block the uninstall.
