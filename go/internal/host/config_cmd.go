@@ -1,12 +1,15 @@
 package host
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/Stuko0/alice-agent/go/internal/config"
+	"gopkg.in/yaml.v3"
 )
 
 // Keys Python routes to .env instead of config.yaml. Kept verbatim so the Go
@@ -39,12 +42,6 @@ var apiKeyNames = map[string]bool{
 	"SLACK_APP_TOKEN":         true,
 	"GITHUB_TOKEN":            true,
 	"HONCHO_API_KEY":          true,
-}
-
-var secretLeafKeys = map[string]bool{
-	"api_key": true, "apikey": true, "key": true, "token": true,
-	"access_token": true, "refresh_token": true, "id_token": true,
-	"secret": true, "client_secret": true, "password": true,
 }
 
 func looksLikeAPIKey(key string) bool {
@@ -135,7 +132,7 @@ func runConfigNative(opts Options, args []string) (handled bool, code int) {
 			fmt.Fprintf(opts.Stderr, "alice config set: %v\n", err)
 			return true, 1
 		}
-		fmt.Fprintf(opts.Stdout, "✓ Set %s = %s in %s\n", key, maskConfigValue(key, raw), path)
+		fmt.Fprintf(opts.Stdout, "✓ Set %s = %s in %s\n", key, config.MaskValue(key, raw), path)
 		return true, 0
 
 	case "unset":
@@ -173,9 +170,142 @@ func runConfigNative(opts Options, args []string) (handled bool, code int) {
 		}
 		fmt.Fprintf(opts.Stdout, "✓ Unset %s in %s\n", key, path)
 		return true, 0
+
+	case "check":
+		if len(args) != 1 {
+			return false, 0
+		}
+		return true, runConfigCheck(opts, home, path)
+
+	case "dump":
+		if len(args) != 1 {
+			return false, 0
+		}
+		return true, runConfigDump(opts, path)
+
+	case "migrate":
+		if len(args) != 1 {
+			// Flags / interactive flows stay with Python.
+			return false, 0
+		}
+		latest, err := config.LatestVersion()
+		if err != nil {
+			return false, 0
+		}
+		current := latest
+		if _, statErr := os.Stat(path); statErr == nil {
+			doc, loadErr := config.Load(path)
+			if loadErr == nil {
+				current = doc.RawVersion()
+			}
+		}
+		if current >= latest {
+			fmt.Fprintln(opts.Stdout, "✓ Configuration is up to date!")
+			return true, 0
+		}
+		// Older schemas need the 18 version transforms (env moves, plugin
+		// grandfathering, MCP hardening); Python owns those.
+		return false, 0
 	}
 
 	return false, 0
+}
+
+// runConfigCheck mirrors `alice config check`: schema version plus the status
+// of every optional env var. Missing default keys are not reported because
+// load_config deep-merges them away, exactly like Python.
+func runConfigCheck(opts Options, home, path string) int {
+	latest, err := config.LatestVersion()
+	if err != nil {
+		fmt.Fprintf(opts.Stderr, "alice config check: %v\n", err)
+		return 1
+	}
+
+	current := latest
+	if _, statErr := os.Stat(path); statErr == nil {
+		doc, loadErr := config.Load(path)
+		if loadErr != nil {
+			fmt.Fprintf(opts.Stderr, "alice config check: %v\n", loadErr)
+			return 1
+		}
+		current = doc.RawVersion()
+		if current == 0 {
+			current = 1
+		}
+	}
+
+	optional, err := config.OptionalEnv()
+	if err != nil {
+		fmt.Fprintf(opts.Stderr, "alice config check: %v\n", err)
+		return 1
+	}
+
+	fmt.Fprintln(opts.Stdout)
+	fmt.Fprintln(opts.Stdout, "📋 Configuration Status")
+	fmt.Fprintln(opts.Stdout)
+	if current >= latest {
+		fmt.Fprintf(opts.Stdout, "  Config version: %d ✓\n", current)
+	} else {
+		fmt.Fprintf(opts.Stdout, "  Config version: %d → %d (update available)\n", current, latest)
+	}
+
+	fmt.Fprintln(opts.Stdout)
+	fmt.Fprintln(opts.Stdout, "  Required:")
+
+	fmt.Fprintln(opts.Stdout)
+	fmt.Fprintln(opts.Stdout, "  Optional:")
+
+	envFile := config.ParseEnvFile(filepath.Join(home, ".env"))
+	for _, variable := range optional {
+		if _, ok := config.EnvValue(variable.Name, envFile); ok {
+			fmt.Fprintf(opts.Stdout, "    ✓ %s\n", variable.Name)
+			continue
+		}
+		tools := ""
+		if len(variable.Tools) > 0 {
+			limit := len(variable.Tools)
+			if limit > 2 {
+				limit = 2
+			}
+			tools = " → " + strings.Join(variable.Tools[:limit], ", ")
+		}
+		fmt.Fprintf(opts.Stdout, "    ○ %s%s\n", variable.Name, tools)
+	}
+	fmt.Fprintln(opts.Stdout)
+	return 0
+}
+
+// runConfigDump prints the merged defaults+user config as YAML with secret
+// leaves masked. Python has no equivalent raw view (its `show` is a curated
+// panel that depends on auth and skill discovery).
+func runConfigDump(opts Options, path string) int {
+	defaults, err := config.Defaults()
+	if err != nil {
+		fmt.Fprintf(opts.Stderr, "alice config dump: %v\n", err)
+		return 1
+	}
+	doc, err := config.Load(path)
+	if err != nil {
+		fmt.Fprintf(opts.Stderr, "alice config dump: %v\n", err)
+		return 1
+	}
+
+	merged := config.Merge(defaults, doc.Map())
+	masked := config.MaskTree(merged)
+
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(masked); err != nil {
+		fmt.Fprintf(opts.Stderr, "alice config dump: %v\n", err)
+		return 1
+	}
+	if err := enc.Close(); err != nil {
+		fmt.Fprintf(opts.Stderr, "alice config dump: %v\n", err)
+		return 1
+	}
+	fmt.Fprint(opts.Stdout, buf.String())
+	return 0
 }
 
 func managedKeySet(key string) bool {
@@ -198,18 +328,4 @@ func formatConfigValue(value any) string {
 		}
 		return fmt.Sprint(v)
 	}
-}
-
-func maskConfigValue(key, value string) string {
-	leaf := key
-	if idx := strings.LastIndex(key, "."); idx >= 0 {
-		leaf = key[idx+1:]
-	}
-	if !secretLeafKeys[strings.ToLower(leaf)] || value == "" {
-		return value
-	}
-	if len(value) <= 8 {
-		return "***"
-	}
-	return value[:4] + "..." + value[len(value)-4:]
 }

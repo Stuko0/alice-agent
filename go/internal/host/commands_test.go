@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/Stuko0/alice-agent/go/internal/config"
 )
 
 func TestHostHelpListsEveryCommand(t *testing.T) {
@@ -275,3 +278,103 @@ func TestConfigSetNormalizesAPIAlias(t *testing.T) {
 		t.Fatalf("config = %s", raw)
 	}
 }
+
+func TestConfigCheckNative(t *testing.T) {
+	home := t.TempDir()
+	latest, err := config.LatestVersion()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, "config.yaml"), []byte("_config_version: "+itoa(latest)+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".env"), []byte("OPENROUTER_API_KEY=sk-test\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	optional, _ := config.OptionalEnv()
+	missingName := ""
+	for _, variable := range optional {
+		// OPENROUTER_API_KEY is set in the fixture .env.
+		if variable.Name == "OPENROUTER_API_KEY" {
+			continue
+		}
+		if _, ok := os.LookupEnv(variable.Name); !ok {
+			missingName = variable.Name
+			break
+		}
+	}
+
+	resolver := Resolver{GOOS: "linux", HomeDir: home, AliceHomeEnv: home, Stat: os.Stat}
+	var out, errb bytes.Buffer
+	handled, code := runConfigNative(Options{Stdout: &out, Stderr: &errb, Resolver: resolver}, []string{"check"})
+	if !handled || code != 0 {
+		t.Fatalf("handled=%v code=%d stderr=%s", handled, code, errb.String())
+	}
+
+	text := out.String()
+	if !strings.Contains(text, "Configuration Status") || !strings.Contains(text, "Config version: "+itoa(latest)+" ✓") {
+		t.Fatalf("output = %s", text)
+	}
+	if !strings.Contains(text, "✓ OPENROUTER_API_KEY") {
+		t.Fatalf("configured key not reported:\n%s", text)
+	}
+	if missingName != "" && !strings.Contains(text, "○ "+missingName) {
+		t.Fatalf("missing key %q not reported:\n%s", missingName, text)
+	}
+}
+
+func TestConfigDumpMergesAndMasks(t *testing.T) {
+	home := t.TempDir()
+	fixture := "model:\n  api_key: sk-1234567890\n  default: mine\n"
+	if err := os.WriteFile(filepath.Join(home, "config.yaml"), []byte(fixture), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	resolver := Resolver{GOOS: "linux", HomeDir: home, AliceHomeEnv: home, Stat: os.Stat}
+
+	var out, errb bytes.Buffer
+	if handled, code := runConfigNative(Options{Stdout: &out, Stderr: &errb, Resolver: resolver}, []string{"dump"}); !handled || code != 0 {
+		t.Fatalf("handled=%v code=%d stderr=%s", handled, code, errb.String())
+	}
+
+	text := out.String()
+	if !strings.Contains(text, "max_turns: 90") {
+		t.Fatalf("defaults not merged:\n%s", text)
+	}
+	if strings.Contains(text, "sk-1234567890") {
+		t.Fatalf("secret leaked:\n%s", text)
+	}
+	if !strings.Contains(text, "api_key: sk-1...7890") {
+		t.Fatalf("secret not masked as expected:\n%s", text)
+	}
+}
+
+func TestConfigMigrateFastPath(t *testing.T) {
+	home := t.TempDir()
+	latest, _ := config.LatestVersion()
+	if err := os.WriteFile(filepath.Join(home, "config.yaml"), []byte("_config_version: "+itoa(latest)+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ALICE_MANAGED_DIR", filepath.Join(t.TempDir(), "absent"))
+	resolver := Resolver{GOOS: "linux", HomeDir: home, AliceHomeEnv: home, Stat: os.Stat}
+
+	var out, errb bytes.Buffer
+	handled, code := runConfigNative(Options{Stdout: &out, Stderr: &errb, Resolver: resolver}, []string{"migrate"})
+	if !handled || code != 0 {
+		t.Fatalf("handled=%v code=%d", handled, code)
+	}
+	if !strings.Contains(out.String(), "up to date") {
+		t.Fatalf("output = %q", out.String())
+	}
+
+	// Older schemas delegate to Python's version transforms.
+	if err := os.WriteFile(filepath.Join(home, "config.yaml"), []byte("_config_version: 1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out2, errb2 bytes.Buffer
+	if handled, _ := runConfigNative(Options{Stdout: &out2, Stderr: &errb2, Resolver: resolver}, []string{"migrate"}); handled {
+		t.Fatal("old schema must be delegated")
+	}
+}
+
+func itoa(n int) string { return strconv.Itoa(n) }

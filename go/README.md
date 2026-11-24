@@ -158,6 +158,9 @@ last status once the restart budget is exhausted.
 | `config get <key>` | dotted path, numeric list indices (`providers.0.name`) |
 | `config set <key> <value>` | edits in place; type coercion matches Python (`true/yes/on`, `false/no/off`, ints, floats); `api_base` is normalised to `model.base_url` |
 | `config unset <key>` | removes the key or list element |
+| `config check` | schema version vs latest + status of every optional env var |
+| `config dump` | merged defaults+user config as YAML, secret leaves masked |
+| `config migrate` | prints "up to date" when the schema is current; older schemas delegate to Python's version transforms |
 
 Properties:
 
@@ -173,8 +176,18 @@ Properties:
   `terminal.*` keys are delegated to Python, which routes them to `.env` or
   the terminal env mirror. Echoed values for credential-shaped leaves are
   masked.
-- `show`, `edit`, `check` and `migrate` stay delegated — they need the merged
-  defaults, the 32 config migrations and the interactive editor.
+- `show`, `edit` and older-schema `migrate` stay delegated — the panel depends
+  on auth + skill discovery, the editor is interactive, and versions below the
+  current schema need the 18 version transforms (env moves, plugin
+  grandfathering, MCP hardening).
+
+The embedded `internal/config/schema.json` is generated from Python's
+`DEFAULT_CONFIG` + `OPTIONAL_ENV_VARS`:
+
+```bash
+python scripts/gen_go_config_schema.py
+ALICE_CONFIG_SCHEMA_FRESHNESS=1 go test ./internal/config -run SchemaFreshness -v
+```
 
 Parity is pinned by an opt-in test that runs the same edits through Python and
 Go on identical fixtures and compares the parsed YAML:
@@ -210,12 +223,12 @@ repo's own rules (port = delete, E2E validation, no change-detector tests).
 
 | Command | Blocker | Rough size |
 |---|---|---|
-| `config show/edit/check/migrate` | defaults merge, 32 config migrations, interactive editor | 1–2 dev-months (the editing core is ported) |
+| `config show/edit` | curated panel needs auth + skill discovery; editor is interactive | 0.5–1 dev-month |
+| `config migrate` for old schemas | 18 version transforms (env moves, plugin grandfathering, MCP hardening) | 1–1.5 dev-months |
 | `setup` | interactive wizard over config + auth + model catalog | 2–3 |
 | `auth`, `model` | OAuth device flows, credential pool, keychain, 28 provider profiles | 3–4 |
 | `cron` mutations | schedule parser, job schema, cross-process locking, delivery targets | 1–2 |
 | `kanban` | SQLite board + dispatcher + worker protocol | 2–3 |
 
-Read-only slices that need no config core are already native:
-`alice config path`, `config env-path`, `config get`, and the `set`/`unset`
-editing path for non-secret, non-terminal keys.
+Native today: `config path`, `env-path`, `get`, `set`, `unset`, `check`, `dump`,
+and the `migrate` no-op fast path.
