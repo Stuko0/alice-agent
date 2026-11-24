@@ -117,33 +117,48 @@ jobs:
 
       - name: Install NSIS
         # wails build -nsis shells out to makensis; the stock image doesn't
-        # ship it. Chocolatey installs it under Program Files (x86). GITHUB_PATH
-        # only affects LATER steps, so validate with the absolute path here.
+        # ship it. Chocolatey's community feed is the fast path but it goes
+        # down (observed: "Failed to fetch results from V2 feed" on every
+        # retry), so fall back to the official portable zip from SourceForge.
+        # GITHUB_PATH only affects LATER steps, so validate with the absolute
+        # path here as well.
         run: |
-          # Same flaky-feed guard as mingw: retry, and accept a copy the image
-          # happens to ship instead of assuming choco succeeded.
           function Find-Nsis {
             $dirs = @("C:\Program Files (x86)\NSIS", "C:\Program Files\NSIS") + @(
-              Get-ChildItem "C:\Program Files*\NSIS" -Directory -ErrorAction SilentlyContinue |
+              Get-ChildItem "C:\Program Files*\NSIS", "$env:RUNNER_TEMP\nsis-portable" -Recurse -Directory -ErrorAction SilentlyContinue |
                 ForEach-Object { $_.FullName }
             )
             $dirs | Where-Object { Test-Path (Join-Path $_ "makensis.exe") } | Select-Object -First 1
           }
 
           $nsis = Find-Nsis
-          for ($i = 1; -not $nsis -and $i -le 3; $i++) {
-            Write-Host "choco install nsis (attempt $i)"
-            choco install nsis -y --no-progress
-            Start-Sleep -Seconds 5
+
+          if (-not $nsis) {
+            for ($i = 1; $i -le 2 -and -not $nsis; $i++) {
+              Write-Host "choco install nsis (attempt $i)"
+              choco install nsis -y --no-progress
+              Start-Sleep -Seconds 3
+              $nsis = Find-Nsis
+            }
+          }
+
+          if (-not $nsis) {
+            Write-Host "chocolatey unavailable — downloading the portable NSIS build"
+            $zip = Join-Path $env:RUNNER_TEMP "nsis-portable.zip"
+            Invoke-WebRequest -Uri "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.10/nsis-3.10.zip" `
+              -OutFile $zip -UseBasicParsing
+            Expand-Archive -Path $zip -DestinationPath (Join-Path $env:RUNNER_TEMP "nsis-portable") -Force
             $nsis = Find-Nsis
           }
 
           if (-not $nsis -or -not (Test-Path (Join-Path $nsis "makensis.exe"))) {
-            throw "NSIS not found after choco install"
+            throw "NSIS not found (chocolatey feed down and portable download failed)"
           }
+          Write-Host "nsis: $nsis"
           $nsis | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
           & (Join-Path $nsis "makensis.exe") -VERSION
         shell: pwsh
+
       - name: Install npm dependencies (desktop)
         run: |
           cd apps/desktop
