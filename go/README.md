@@ -45,7 +45,8 @@ alice cli --cwd <dir>     # session working directory (default: $PWD)
 Local commands: `/help`, `/new`, `/resume`, `/sessions`, `/model`,
 `/interrupt`, `/clear`, `/status`, `/quit`. Everything else is forwarded to
 `slash.exec`, so skills, plugins and backend commands work without being
-reimplemented.
+reimplemented. In the TUI, `/sessions` and `/model` open interactive pickers
+(↑/↓ · enter · esc).
 
 Keys: `enter` submits, `ctrl+j` inserts a newline, `ctrl+c` interrupts the turn
 (or quits when idle), `ctrl+d` quits, `esc` clears the input. Blocking prompts
@@ -55,6 +56,24 @@ sudo/secret mask the input.
 `internal/cli` holds the engine (session lifecycle, typed event stream, slash
 dispatch) plus two frontends — a bubbletea TUI and a line REPL — so both share
 one implementation of the behaviour.
+
+Parity with `cli.py`:
+
+| Area | Status |
+|---|---|
+| Streaming reply + reasoning | implemented |
+| Tool call/progress rendering | implemented |
+| Approvals, clarify, sudo, secret | implemented |
+| Session create/resume/list, interactive picker | implemented |
+| Model picker + per-session switch | implemented |
+| Slash commands (skills, plugins, backend) | delegated to `slash.exec` |
+| Interrupt / stop | implemented |
+| Markdown rendering | plain text (TUI styles roles/tools only) |
+| Skin palettes | neutral ANSI palette (no `/skin` styling) |
+| Voice, pets, journey overlays, inline images | not implemented (TUI-only Python features) |
+
+Flipping the default `alice` behaviour to this CLI is a one-line routing change
+once that parity is accepted; today it is opt-in via `alice cli`.
 
 E2E against the real backend (one real model call):
 

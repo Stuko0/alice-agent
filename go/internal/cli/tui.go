@@ -38,13 +38,39 @@ const (
 	modeClarify
 	modeSudo
 	modeSecret
+	modePicker
 )
+
+type pickerKind int
+
+const (
+	pickerSessions pickerKind = iota
+	pickerModels
+)
+
+type pickerRow struct {
+	ID     string
+	Label  string
+	Detail string
+}
 
 type eventMsg struct{ ev Event }
 type streamClosedMsg struct{}
 type submitDoneMsg struct{ err error }
 type slashDoneMsg struct{ exec SlashExecution }
 type promptDoneMsg struct{ err error }
+type pickerMsg struct {
+	kind    pickerKind
+	rows    []pickerRow
+	current string
+	err     error
+}
+type pickerDoneMsg struct {
+	kind    pickerKind
+	session *Session
+	model   string
+	err     error
+}
 
 type tuiModel struct {
 	engine *Engine
@@ -55,6 +81,11 @@ type tuiModel struct {
 
 	mode   tuiMode
 	prompt *PromptEvent
+
+	picker        []pickerRow
+	pickerIndex   int
+	pickerKind    pickerKind
+	pickerCurrent string
 
 	transcript strings.Builder
 	streaming  bool
@@ -164,6 +195,42 @@ func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case pickerMsg:
+		if msg.err != nil {
+			m.appendError(msg.err.Error())
+			return m, nil
+		}
+		if len(msg.rows) == 0 {
+			m.appendSystem("nothing to pick")
+			return m, nil
+		}
+		m.mode = modePicker
+		m.pickerKind = msg.kind
+		m.picker = msg.rows
+		m.pickerIndex = 0
+		m.pickerCurrent = msg.current
+		return m, nil
+
+	case pickerDoneMsg:
+		m.mode = modeChat
+		if msg.err != nil {
+			m.appendError(msg.err.Error())
+			return m, nil
+		}
+		switch msg.kind {
+		case pickerSessions:
+			if msg.session != nil {
+				m.transcript.Reset()
+				if len(msg.session.Messages) > 0 {
+					m.transcript.WriteString(styleDim.Render(RenderHistory(msg.session.Messages, 20)))
+				}
+				m.appendSystem("resumed " + msg.session.ID)
+			}
+		case pickerModels:
+			m.appendSystem("model: " + msg.model)
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	}
@@ -211,6 +278,23 @@ func (m *tuiModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.secret, cmd = m.secret.Update(msg)
 		return m, cmd
+
+	case modePicker:
+		switch key {
+		case "up", "k":
+			if m.pickerIndex > 0 {
+				m.pickerIndex--
+			}
+		case "down", "j":
+			if m.pickerIndex < len(m.picker)-1 {
+				m.pickerIndex++
+			}
+		case "enter":
+			return m.selectPicker()
+		case "esc", "ctrl+c":
+			m.mode = modeChat
+		}
+		return m, nil
 	}
 
 	// Chat mode.
@@ -240,6 +324,12 @@ func (m *tuiModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.input.Reset()
+		if text == "/sessions" {
+			return m, m.pickerCmd(pickerSessions)
+		}
+		if text == "/model" {
+			return m, m.pickerCmd(pickerModels)
+		}
 		if strings.HasPrefix(text, "/") {
 			return m, m.slashCmd(text)
 		}
@@ -425,6 +515,110 @@ func (m *tuiModel) interruptCmd() tea.Cmd {
 	}
 }
 
+func (m *tuiModel) pickerCmd(kind pickerKind) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+
+		switch kind {
+		case pickerSessions:
+			rows, err := m.engine.Sessions(ctx, 30)
+			if err != nil {
+				return pickerMsg{kind: kind, err: err}
+			}
+			out := make([]pickerRow, 0, len(rows))
+			for _, row := range rows {
+				title := strings.TrimSpace(row.Title)
+				if title == "" {
+					title = strings.TrimSpace(row.Preview)
+				}
+				out = append(out, pickerRow{
+					ID:     row.ID,
+					Label:  row.ID,
+					Detail: fmt.Sprintf("%s · %d msg · %s", row.Source, row.MessageCount, clip(title, 60)),
+				})
+			}
+			return pickerMsg{kind: kind, rows: out}
+
+		case pickerModels:
+			options, current, err := m.engine.ModelOptions(ctx)
+			if err != nil {
+				return pickerMsg{kind: kind, err: err}
+			}
+			out := make([]pickerRow, 0, len(options))
+			for _, opt := range options {
+				label := opt.Label
+				if label == "" {
+					label = opt.Model
+				}
+				out = append(out, pickerRow{
+					ID:     opt.Model,
+					Label:  label,
+					Detail: opt.Provider,
+				})
+			}
+			return pickerMsg{kind: kind, rows: out, current: current}
+		}
+		return pickerMsg{kind: kind, err: fmt.Errorf("unknown picker")}
+	}
+}
+
+func (m *tuiModel) selectPicker() (tea.Model, tea.Cmd) {
+	if len(m.picker) == 0 {
+		m.mode = modeChat
+		return m, nil
+	}
+	row := m.picker[m.pickerIndex]
+	kind := m.pickerKind
+	m.mode = modeChat
+
+	return m, func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+
+		switch kind {
+		case pickerSessions:
+			session, err := m.engine.Resume(ctx, row.ID, 100)
+			return pickerDoneMsg{kind: kind, session: session, err: err}
+		case pickerModels:
+			err := m.engine.setModel(ctx, row.ID)
+			return pickerDoneMsg{kind: kind, model: row.ID, err: err}
+		}
+		return pickerDoneMsg{kind: kind}
+	}
+}
+
+func (m *tuiModel) pickerView() string {
+	title := "sessions"
+	if m.pickerKind == pickerModels {
+		title = "models"
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s  %s\n", stylePrompt.Render(title), styleDim.Render("↑/↓ · enter · esc"))
+
+	const window = 10
+	start := 0
+	if m.pickerIndex >= window {
+		start = m.pickerIndex - window + 1
+	}
+	for i := start; i < len(m.picker) && i < start+window; i++ {
+		row := m.picker[i]
+		marker := "  "
+		if row.ID == m.pickerCurrent {
+			marker = "* "
+		}
+		line := fmt.Sprintf("%s%-24s %s", marker, row.Label, styleDim.Render(row.Detail))
+		if i == m.pickerIndex {
+			line = styleUser.Render("› ") + line
+		} else {
+			line = "  " + line
+		}
+		b.WriteString(line + "\n")
+	}
+	return strings.TrimRight(b.String(), "\n")
+}
+
 func (m *tuiModel) layout() {
 	inputHeight := 4
 	m.vp.Width = m.width
@@ -481,6 +675,8 @@ func (m *tuiModel) View() string {
 		b.WriteString(m.input.View())
 	case modeSudo, modeSecret:
 		b.WriteString(m.secret.View())
+	case modePicker:
+		b.WriteString(m.pickerView())
 	default:
 		b.WriteString(m.input.View())
 	}
