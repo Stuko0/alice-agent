@@ -160,7 +160,7 @@ last status once the restart budget is exhausted.
 | `config unset <key>` | removes the key or list element |
 | `config check` | schema version vs latest + status of every optional env var |
 | `config dump` | merged defaults+user config as YAML, secret leaves masked |
-| `config migrate` | prints "up to date" when the schema is current; older schemas delegate to Python's version transforms |
+| `config migrate` | natively applies 28→32 (write_mode → write_approval, verify_on_stop flips) and bumps the schema version; schemas < 28 or configs with `mcp_servers` delegate to Python |
 
 Properties:
 
@@ -176,10 +176,11 @@ Properties:
   `terminal.*` keys are delegated to Python, which routes them to `.env` or
   the terminal env mirror. Echoed values for credential-shaped leaves are
   masked.
-- `show`, `edit` and older-schema `migrate` stay delegated — the panel depends
-  on auth + skill discovery, the editor is interactive, and versions below the
-  current schema need the 18 version transforms (env moves, plugin
-  grandfathering, MCP hardening).
+- `show`, `edit` and `migrate` for schemas below 28 stay delegated — the panel
+  depends on auth + skill discovery, the editor is interactive, and the older
+  versions need env moves, plugin grandfathering and MCP hardening. Native
+  migrations are **non-interactive** (no key prompts); use `alice setup` or
+  `config set` for new credentials.
 
 The embedded `internal/config/schema.json` is generated from Python's
 `DEFAULT_CONFIG` + `OPTIONAL_ENV_VARS`:
@@ -189,12 +190,17 @@ python scripts/gen_go_config_schema.py
 ALICE_CONFIG_SCHEMA_FRESHNESS=1 go test ./internal/config -run SchemaFreshness -v
 ```
 
-Parity is pinned by an opt-in test that runs the same edits through Python and
-Go on identical fixtures and compares the parsed YAML:
+Parity is pinned by opt-in tests that run the same operation through Python and
+Go on identical homes and compare the parsed YAML:
 
 ```bash
 ALICE_CONFIG_PARITY=1 go test ./internal/host -run ConfigSetParity -v
+ALICE_CONFIG_MIGRATION_PARITY=1 go test ./internal/config -run MigrationParity -v
 ```
+
+The migration harness covers schema versions 28–31 (the native range); the
+same real-world check was run against a full 13 KB config and produced an
+identical tree in both implementations.
 
 ## Protocol
 
@@ -224,7 +230,7 @@ repo's own rules (port = delete, E2E validation, no change-detector tests).
 | Command | Blocker | Rough size |
 |---|---|---|
 | `config show/edit` | curated panel needs auth + skill discovery; editor is interactive | 0.5–1 dev-month |
-| `config migrate` for old schemas | 18 version transforms (env moves, plugin grandfathering, MCP hardening) | 1–1.5 dev-months |
+| `config migrate` for schemas < 28 | env moves, plugin grandfathering, MCP hardening | 1–1.5 dev-months |
 | `setup` | interactive wizard over config + auth + model catalog | 2–3 |
 | `auth`, `model` | OAuth device flows, credential pool, keychain, 28 provider profiles | 3–4 |
 | `cron` mutations | schedule parser, job schema, cross-process locking, delivery targets | 1–2 |

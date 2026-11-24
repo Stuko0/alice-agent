@@ -188,24 +188,40 @@ func runConfigNative(opts Options, args []string) (handled bool, code int) {
 			// Flags / interactive flows stay with Python.
 			return false, 0
 		}
-		latest, err := config.LatestVersion()
-		if err != nil {
-			return false, 0
-		}
-		current := latest
-		if _, statErr := os.Stat(path); statErr == nil {
-			doc, loadErr := config.Load(path)
-			if loadErr == nil {
-				current = doc.RawVersion()
-			}
-		}
-		if current >= latest {
+		if _, statErr := os.Stat(path); statErr != nil {
+			// Python reports a missing config as already current.
 			fmt.Fprintln(opts.Stdout, "✓ Configuration is up to date!")
 			return true, 0
 		}
-		// Older schemas need the 18 version transforms (env moves, plugin
-		// grandfathering, MCP hardening); Python owns those.
-		return false, 0
+		doc, err := config.Load(path)
+		if err != nil {
+			fmt.Fprintf(opts.Stderr, "alice config migrate: %v\n", err)
+			return true, 1
+		}
+		// MCP hardening (disabling suspicious stdio servers) is Python-only.
+		if mcp, ok := doc.Get("mcp_servers"); ok {
+			if servers, isMap := mcp.(map[string]any); isMap && len(servers) > 0 {
+				return false, 0
+			}
+		}
+
+		result, handled, err := doc.MigrateToLatest()
+		if err != nil {
+			fmt.Fprintf(opts.Stderr, "alice config migrate: %v\n", err)
+			return true, 1
+		}
+		if !handled {
+			return false, 0
+		}
+		if result.From >= result.To {
+			fmt.Fprintln(opts.Stdout, "✓ Configuration is up to date!")
+			return true, 0
+		}
+		for _, applied := range result.Applied {
+			fmt.Fprintf(opts.Stdout, "  ✓ %s\n", applied)
+		}
+		fmt.Fprintf(opts.Stdout, "Config version: %d → %d\n", result.From, result.To)
+		return true, 0
 	}
 
 	return false, 0
