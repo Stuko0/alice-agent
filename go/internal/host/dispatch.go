@@ -72,6 +72,11 @@ func Main(opts Options) int {
 		}
 		return runCLI(opts, global.Rest[1:])
 	}
+	if global.OK && len(global.Rest) > 1 && global.Rest[0] == "config" {
+		if handled, code := runConfigNative(opts, global.Rest[1:]); handled {
+			return code
+		}
+	}
 	if global.OK && len(global.Rest) > 0 && global.Rest[0] == "host" {
 		if global.Profile != "" {
 			home, err := opts.Resolver.ResolveProfile(global.Profile)

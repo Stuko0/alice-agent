@@ -129,3 +129,52 @@ func TestMainDelegatesUnknownLeadingFlag(t *testing.T) {
 		t.Fatalf("argv = %v, want %v", fr.argv, want)
 	}
 }
+
+func TestConfigNativePaths(t *testing.T) {
+	home := t.TempDir()
+	resolver := Resolver{GOOS: "linux", HomeDir: home, AliceHomeEnv: home}
+
+	for _, tc := range []struct {
+		arg  string
+		want string
+	}{
+		{"path", filepath.Join(home, "config.yaml")},
+		{"env-path", filepath.Join(home, ".env")},
+	} {
+		var out, errb bytes.Buffer
+		opts := Options{Stdout: &out, Stderr: &errb, Resolver: resolver}
+		handled, code := runConfigNative(opts, []string{tc.arg})
+		if !handled || code != 0 {
+			t.Fatalf("%s: handled=%v code=%d", tc.arg, handled, code)
+		}
+		if strings.TrimSpace(out.String()) != tc.want {
+			t.Fatalf("%s: got %q, want %q", tc.arg, out.String(), tc.want)
+		}
+	}
+
+	var out, errb bytes.Buffer
+	handled, _ := runConfigNative(Options{Stdout: &out, Stderr: &errb, Resolver: resolver}, []string{"show"})
+	if handled {
+		t.Fatal("config show must stay delegated")
+	}
+}
+
+func TestMainRoutesConfigPath(t *testing.T) {
+	home := t.TempDir()
+	resolver := Resolver{GOOS: "linux", HomeDir: home, AliceHomeEnv: home}
+
+	var out, errb bytes.Buffer
+	code := Main(Options{
+		Args:     []string{"config", "path"},
+		Stdout:   &out,
+		Stderr:   &errb,
+		Resolver: resolver,
+		Runner:   &fakeRunner{},
+	})
+	if code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	if strings.TrimSpace(out.String()) != filepath.Join(home, "config.yaml") {
+		t.Fatalf("out = %q", out.String())
+	}
+}
