@@ -117,15 +117,16 @@ jobs:
 
       - name: Install NSIS
         # wails build -nsis shells out to makensis; the stock image doesn't
-        # ship it. Chocolatey's community feed is the fast path but it goes
-        # down (observed: "Failed to fetch results from V2 feed" on every
-        # retry), so fall back to the official portable zip from SourceForge.
-        # GITHUB_PATH only affects LATER steps, so validate with the absolute
-        # path here as well.
+        # ship it. Three sources, because each one has been down at some point:
+        #   1. Chocolatey (fast; its community feed currently 404s every fetch)
+        #   2. winget (own CDN)
+        #   3. the official 3.10 portable zip (curl, follows SourceForge
+        #      redirects better than Invoke-WebRequest)
+        # GITHUB_PATH only affects LATER steps, so makensis is validated here.
         run: |
           function Find-Nsis {
             $dirs = @("C:\Program Files (x86)\NSIS", "C:\Program Files\NSIS") + @(
-              Get-ChildItem "C:\Program Files*\NSIS", "$env:RUNNER_TEMP\nsis-portable" -Recurse -Directory -ErrorAction SilentlyContinue |
+              Get-ChildItem "$env:RUNNER_TEMP\nsis-portable" -Recurse -Directory -ErrorAction SilentlyContinue |
                 ForEach-Object { $_.FullName }
             )
             $dirs | Where-Object { Test-Path (Join-Path $_ "makensis.exe") } | Select-Object -First 1
@@ -143,16 +144,25 @@ jobs:
           }
 
           if (-not $nsis) {
-            Write-Host "chocolatey unavailable — downloading the portable NSIS build"
-            $zip = Join-Path $env:RUNNER_TEMP "nsis-portable.zip"
-            Invoke-WebRequest -Uri "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.10/nsis-3.10.zip" `
-              -OutFile $zip -UseBasicParsing
-            Expand-Archive -Path $zip -DestinationPath (Join-Path $env:RUNNER_TEMP "nsis-portable") -Force
+            Write-Host "chocolatey unavailable — trying winget"
+            winget install --id NSIS.NSIS -e --silent --disable-interactivity `
+              --accept-package-agreements --accept-source-agreements 2>&1 | Out-Host
             $nsis = Find-Nsis
           }
 
+          if (-not $nsis) {
+            Write-Host "winget unavailable — downloading the portable NSIS 3.10 build"
+            $zip = Join-Path $env:RUNNER_TEMP "nsis-portable.zip"
+            curl.exe -fsSL --retry 3 --retry-delay 3 `
+              -o $zip "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.10/nsis-3.10.zip"
+            if (Test-Path $zip) {
+              Expand-Archive -Path $zip -DestinationPath (Join-Path $env:RUNNER_TEMP "nsis-portable") -Force
+              $nsis = Find-Nsis
+            }
+          }
+
           if (-not $nsis -or -not (Test-Path (Join-Path $nsis "makensis.exe"))) {
-            throw "NSIS not found (chocolatey feed down and portable download failed)"
+            throw "NSIS not found (choco, winget and the portable zip all failed)"
           }
           Write-Host "nsis: $nsis"
           $nsis | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
