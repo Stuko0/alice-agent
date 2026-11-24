@@ -268,3 +268,29 @@ func TestWriteRejectsBareEvent(t *testing.T) {
 		t.Fatal("Write must reject a bare Event; use WriteEvent")
 	}
 }
+
+func TestEventPayload(t *testing.T) {
+	line := []byte(`{"jsonrpc":"2.0","method":"event","params":{"type":"message.delta","session_id":"s-1","payload":{"text":"Hel","usage":{"input":1}}}}`)
+	frame, err := DecodeFrame(line)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := frame.Event.Payload()
+	if payload == nil {
+		t.Fatal("payload is nil")
+	}
+	var text string
+	if err := json.Unmarshal(payload["text"], &text); err != nil || text != "Hel" {
+		t.Fatalf("text = %q err=%v", text, err)
+	}
+
+	// Events without a body have no payload.
+	ready := []byte(`{"jsonrpc":"2.0","method":"event","params":{"type":"message.start","session_id":"s-1"}}`)
+	frame, err = DecodeFrame(ready)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if frame.Event.Payload() != nil {
+		t.Fatal("expected nil payload")
+	}
+}

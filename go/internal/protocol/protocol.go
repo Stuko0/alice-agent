@@ -121,6 +121,22 @@ func (e Event) Decode(key string, v any) error {
 	return json.Unmarshal(raw, v)
 }
 
+// Payload decodes params.payload.
+//
+// The gateway nests every event body under `payload`; `type` and `session_id`
+// are the only siblings. Returns nil for events with no body.
+func (e Event) Payload() map[string]json.RawMessage {
+	raw, ok := e.Fields["payload"]
+	if !ok || len(raw) == 0 || string(raw) == "null" {
+		return nil
+	}
+	var out map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil
+	}
+	return out
+}
+
 // UnmarshalJSON decodes the params object, keeping unknown keys.
 func (e *Event) UnmarshalJSON(data []byte) error {
 	var fields map[string]json.RawMessage

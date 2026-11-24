@@ -51,12 +51,14 @@ config snapshot.
 ### Event (server → client, unsolicited)
 
 ```json
-{"jsonrpc": "2.0", "method": "event", "params": {"type": "message.delta", "session_id": "s-abc", "text": "Hel"}}
+{"jsonrpc": "2.0", "method": "event", "params": {"type": "message.delta", "session_id": "s-abc", "payload": {"text": "Hel"}}}
 ```
 
 Events carry **no `id`**. `params.type` is the event name; `params.session_id`
 identifies the conversation (omitted for connection-scoped events such as
-`gateway.ready`). Any additional keys are event-specific.
+`gateway.ready`). The event body — if any — is nested under **`params.payload`**;
+`type` and `session_id` are its only siblings. Events without a body (for
+example `message.start`) omit `payload` entirely.
 
 Requests are dispatched either inline (fast handlers) or on a worker pool
 (long handlers). A pooled request still produces exactly one response frame,
@@ -100,12 +102,12 @@ arrives or the session is interrupted.
 
 ## Core events
 
-Payload keys are the ones clients consume; emitters may add fields, and clients
-must ignore unknown keys.
+Payload keys below live under **`params.payload`**. Emitters may add fields, and
+clients must ignore unknown keys.
 
 | Event | When | Payload |
 |---|---|---|
-| `gateway.ready` | Once per connection | `payload: {skin}` |
+| `gateway.ready` | Once per connection | `{skin}` |
 | `message.start` | Assistant turn begins | — |
 | `message.delta` | Streamed reply token(s) | `text` |
 | `message.complete` | Final reply | `text` |
