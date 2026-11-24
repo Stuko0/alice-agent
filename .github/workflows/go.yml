@@ -1,0 +1,74 @@
+# go.yml
+#
+# Tests the Go host (go/). Path-filtered so it only runs when the Go tree or
+# the protocol contract changes.
+#
+# CI pinning policy (see AGENTS.md → Dependency Pinning Policy):
+#   - GitHub Actions → commit SHA + comment with version
+#
+# The integration test (spawns the Python gateway) is opt-in and needs a
+# Python venv, so it is not part of this workflow:
+#   cd go && make integration
+
+name: Go host
+
+on:
+  push:
+    paths:
+      - "go/**"
+      - "docs/protocol/**"
+      - ".github/workflows/go.yml"
+  pull_request:
+    paths:
+      - "go/**"
+      - "docs/protocol/**"
+      - ".github/workflows/go.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: go
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Go
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
+        with:
+          go-version-file: go/go.mod
+          cache: false
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        # The race detector needs a C toolchain, which the Windows runner does
+        # not reliably provide; everything else runs it.
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            go test ./...
+          else
+            go test -race ./...
+          fi
