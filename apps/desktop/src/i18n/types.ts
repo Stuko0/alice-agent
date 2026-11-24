@@ -385,6 +385,9 @@ export interface Translations {
     }
     about: {
       heading: string
+      tourTitle: string
+      tourDesc: string
+      tourReplay: string
       version: (value: string) => string
       versionUnavailable: string
       updates: string
@@ -1436,6 +1439,41 @@ export interface Translations {
     reloadRetry: string
   }
 
+  firstRun: {
+    title: string
+    subtitle: string
+    stepOf: (step: number, total: number) => string
+    stepName: (step: 'provider' | 'model' | 'terminal' | 'tools' | 'gateway') => string
+    skip: string
+    back: string
+    next: string
+    finish: string
+    refresh: string
+    change: string
+    connect: string
+    providerTitle: string
+    providerDesc: string
+    providerConnected: (provider: string) => string
+    providerMissing: string
+    modelTitle: string
+    modelDesc: string
+    modelPick: string
+    modelNone: string
+    terminalTitle: string
+    terminalDesc: string
+    terminalPick: string
+    terminalHint: string
+    toolsTitle: string
+    toolsDesc: string
+    toolsEnabled: (count: number) => string
+    toolsEmpty: string
+    loading: string
+    gatewayTitle: string
+    gatewayDesc: string
+    gatewayOpen: string
+    gatewayHint: string
+    repeat: string
+  }
   onboarding: {
     headerTitle: string
     headerDesc: string

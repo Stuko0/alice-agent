@@ -7,6 +7,7 @@ import { DesktopInstallOverlay } from '@/components/desktop-install-overlay'
 import { GatewayConnectingOverlay } from '@/components/gateway-connecting-overlay'
 import { HelpFab, HelpOverlay } from '@/components/help-overlay'
 import { MigrationWizard } from '@/components/migration-wizard'
+import { FirstRunTour } from '@/components/first-run-tour'
 import { DesktopOnboardingOverlay } from '@/components/onboarding'
 import { RemoteDisplayBanner } from '@/components/remote-display-banner'
 import { setCurrentModel, setCurrentProvider } from '@/store/session'
@@ -100,6 +101,10 @@ export function OverlaysHost(props: OverlaysHostProps) {
 <>
   <RemoteDisplayBanner />
   {!isSecondaryWindow() && <DesktopInstallOverlay />}
+  {/* First-run tour: provider → model → terminal → tools → gateway. It sits
+      below the onboarding picker (z-1300), so "Connect a provider" opens that
+      flow on top, and it self-opens only until finished or skipped once. */}
+  {!isSecondaryWindow() && <FirstRunTour navigate={navigate} />}
   {!isSecondaryWindow() && (
     <DesktopOnboardingOverlay
       enabled={gatewayState === 'open'}

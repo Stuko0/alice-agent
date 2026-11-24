@@ -663,6 +663,9 @@ export const zh: Translations = {
     },
     about: {
       heading: 'Alice Desktop',
+      tourTitle: 'Setup tour',
+      tourDesc: 'Provider, model, terminal, tools and gateway — replay the first-run walkthrough.',
+      tourReplay: 'Replay',
       version: value => `版本 ${value}`,
       versionUnavailable: '版本不可用',
       updates: '更新',
@@ -1898,6 +1901,44 @@ export const zh: Translations = {
     copiedOutput: '已复制！',
     copyOutput: '复制输出',
     reloadRetry: '重新加载并重试'
+  },
+
+  firstRun: {
+    title: 'Welcome — a two-minute setup',
+    subtitle: 'The same stops `alice setup` walks through, without a terminal. Skip anything you can decide later.',
+    stepOf: (step, total) => `Step ${step} of ${total}`,
+    stepName: step =>
+      ({ provider: 'Provider', model: 'Model', terminal: 'Terminal', tools: 'Tools', gateway: 'Gateway' })[step],
+    skip: 'Skip the tour',
+    back: 'Back',
+    next: 'Next',
+    finish: 'Start using Alice',
+    refresh: 'Refresh',
+    change: 'Change',
+    connect: 'Connect a provider',
+    providerTitle: 'Connect a model provider',
+    providerDesc:
+      'Alice needs at least one provider. The free option needs no account or API key; a pasted key works too.',
+    providerConnected: provider => `Connected: ${provider}`,
+    providerMissing: 'No provider connected yet.',
+    modelTitle: 'Pick the model Alice starts with',
+    modelDesc: 'Only providers with credentials are listed. You can change this any time from the model picker.',
+    modelPick: 'Model',
+    modelNone: 'No models available yet — connect a provider first.',
+    terminalTitle: 'Terminal backend',
+    terminalDesc: 'Where Alice runs its tools. Local is the default; WSL2 is the safe pick on Windows.',
+    terminalPick: 'Backend',
+    terminalHint: 'You can change this later in Settings → Workspace.',
+    toolsTitle: 'Tools',
+    toolsDesc: 'What Alice may use. Keep it lean at first; every toolset adds context to each call.',
+    toolsEnabled: count => `${count} toolset(s) enabled.`,
+    toolsEmpty: 'No toolsets reported by the backend.',
+    loading: 'Loading…',
+    gatewayTitle: 'Chat from your phone (optional)',
+    gatewayDesc: 'Connect Telegram, Discord, Slack and ~20 more so Alice answers where you already are.',
+    gatewayOpen: 'Open gateway settings',
+    gatewayHint: 'Optional: you can do this whenever you want.',
+    repeat: 'Replay the setup tour'
   },
 
   onboarding: {
