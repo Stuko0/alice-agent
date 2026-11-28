@@ -1364,7 +1364,12 @@ DEFAULT_CONFIG = {
 
     "compression": {
         "enabled": True,
-        "threshold": 0.50,            # compress when context usage exceeds this ratio
+        # Compacting rebuilds the prompt prefix, i.e. it throws away the
+        # provider's cached prefix and the detail a slow model needs. 0.50
+        # compacted halfway through every long session; 0.75 keeps more of the
+        # original conversation (and cache) while still leaving headroom for a
+        # large tool result or a reasoning model's output.
+        "threshold": 0.75,            # compress when context usage exceeds this ratio
         "target_ratio": 0.20,         # fraction of threshold to preserve as recent tail
         "protect_last_n": 20,         # minimum recent messages to keep uncompressed
         "hygiene_hard_message_limit": 5000,  # gateway session-hygiene force-compress threshold by message count
@@ -2672,6 +2677,11 @@ DEFAULT_CONFIG = {
             # Percentage of context length at which "auto" mode kicks in.
             # 10 matches the Claude Code default. Range 0..100.
             "threshold_pct": 10,
+            # Absolute floor, in tokens: defer once the deferrable schemas are
+            # this big even when ``threshold_pct`` of a large window is bigger.
+            # Without it a 1M-token model keeps ~10K tokens of optional tool
+            # schemas in every prompt. 0 disables the floor.
+            "min_deferrable_tokens": 2000,
             # When the model calls tool_search without a ``limit`` argument,
             # how many hits to return. Range 1..max_search_limit.
             "search_default_limit": 5,

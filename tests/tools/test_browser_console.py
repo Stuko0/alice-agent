@@ -124,9 +124,12 @@ class TestBrowserConsoleToolsetWiring:
         from toolsets import TOOLSETS
         assert "browser_console" in TOOLSETS["browser"]["tools"]
 
-    def test_in_alice_core_tools(self):
-        from toolsets import _ALICE_CORE_TOOLS
-        assert "browser_console" in _ALICE_CORE_TOOLS
+    def test_in_shipped_tool_bundle(self):
+        from toolsets import _ALICE_ALL_TOOLS, _ALICE_CORE_TOOLS
+        # Browser tools are deferrable (tool_search keeps their schema out of
+        # every call), but they must still ship on every platform bundle.
+        assert "browser_console" in _ALICE_ALL_TOOLS
+        assert "browser_console" not in _ALICE_CORE_TOOLS
 
     def test_in_legacy_toolset_map(self):
         from model_tools import _LEGACY_TOOLSET_MAP

@@ -66,6 +66,10 @@ class ToolSearchConfig:
 
     enabled: str  # "auto" | "on" | "off"
     threshold_pct: float  # 0..100 — only used when enabled == "auto"
+    # Absolute floor: defer once the deferrable schemas are this big, even when
+    # the percentage threshold is larger (a 1M-token window would otherwise keep
+    # ~10k tokens of optional tools in every prompt). 0 disables the floor.
+    min_deferrable_tokens: int
     search_default_limit: int
     max_search_limit: int
 
@@ -80,13 +84,13 @@ class ToolSearchConfig:
         break the agent.
         """
         if raw is True:
-            return cls(enabled="auto", threshold_pct=10.0,
+            return cls(enabled="auto", threshold_pct=10.0, min_deferrable_tokens=2000,
                        search_default_limit=5, max_search_limit=20)
         if raw is False:
-            return cls(enabled="off", threshold_pct=10.0,
+            return cls(enabled="off", threshold_pct=10.0, min_deferrable_tokens=2000,
                        search_default_limit=5, max_search_limit=20)
         if not isinstance(raw, dict):
-            return cls(enabled="auto", threshold_pct=10.0,
+            return cls(enabled="auto", threshold_pct=10.0, min_deferrable_tokens=2000,
                        search_default_limit=5, max_search_limit=20)
 
         enabled_raw = str(raw.get("enabled", "auto")).strip().lower()
@@ -106,9 +110,14 @@ class ToolSearchConfig:
         search_default_limit = max(1, min(max_search_limit,
                                           _safe_int(raw.get("search_default_limit"), 5)))
 
+        min_deferrable_tokens = max(
+            0, min(200_000, _safe_int(raw.get("min_deferrable_tokens"), 2000))
+        )
+
         return cls(
             enabled=enabled,
             threshold_pct=threshold_pct,
+            min_deferrable_tokens=min_deferrable_tokens,
             search_default_limit=search_default_limit,
             max_search_limit=max_search_limit,
         )
@@ -249,12 +258,17 @@ def should_activate(
         return False
     if config.enabled == "on":
         return True
+    floor = config.min_deferrable_tokens
     # auto
     if not context_length or context_length <= 0:
         # Without a known context size, fall back to a fixed 20K-token cutoff
         # — the cliff above which Anthropic and OpenAI both saw quality drops.
-        return deferrable_tokens >= 20_000
+        return deferrable_tokens >= (min(20_000, floor) if floor > 0 else 20_000)
+
     threshold_tokens = int(context_length * (config.threshold_pct / 100.0))
+    if floor > 0:
+        threshold_tokens = min(threshold_tokens, floor)
+
     return deferrable_tokens >= threshold_tokens
 
 

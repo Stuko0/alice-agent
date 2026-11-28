@@ -30,11 +30,17 @@ from tools.budget_config import (
 class TestModuleConstants:
     """Verify documented default values haven't drifted."""
 
-    def test_default_result_size(self):
-        assert DEFAULT_RESULT_SIZE_CHARS == 100_000
+    def test_default_result_size_is_bounded(self):
+        # One tool result may not fill a 128K-token window on its own
+        # (64K chars ~= 16K tokens), but must stay large enough that ordinary
+        # results are not persisted.
+        assert 8_000 <= DEFAULT_RESULT_SIZE_CHARS <= 80_000
 
-    def test_default_turn_budget(self):
-        assert DEFAULT_TURN_BUDGET_CHARS == 200_000
+    def test_default_turn_budget_allows_several_results(self):
+        # A turn must fit more than one max-size result, while staying well
+        # short of a 128K-token window (~32K tokens = 128K chars).
+        assert DEFAULT_TURN_BUDGET_CHARS >= 2 * DEFAULT_RESULT_SIZE_CHARS
+        assert DEFAULT_TURN_BUDGET_CHARS <= 160_000
 
     def test_default_preview_size(self):
         assert DEFAULT_PREVIEW_SIZE_CHARS == 1_500
@@ -153,13 +159,14 @@ class TestResolveThreshold:
     @patch("tools.registry.registry")
     def test_falls_back_to_registry(self, mock_registry):
         """When not pinned and not in overrides, delegate to registry."""
-        mock_registry.get_max_result_size.return_value = 77_777
+        # Below the default budget, so the cap is not what we observe here.
+        mock_registry.get_max_result_size.return_value = 7_777
         cfg = BudgetConfig()
         result = cfg.resolve_threshold("some_tool")
         mock_registry.get_max_result_size.assert_called_once_with(
             "some_tool", default=DEFAULT_RESULT_SIZE_CHARS
         )
-        assert result == 77_777
+        assert result == 7_777
 
     @patch("tools.registry.registry")
     def test_registry_receives_custom_default(self, mock_registry):
@@ -195,11 +202,11 @@ class TestResolveThreshold:
         assert cfg.resolve_threshold("some_tool") == float("inf")
 
     @patch("tools.registry.registry")
-    def test_default_budget_unchanged_for_100k_tool(self, mock_registry):
-        """Default budget keeps 100K registry tools at 100K (no behavior change)."""
-        mock_registry.get_max_result_size.return_value = 100_000
-        cfg = BudgetConfig()  # default_result_size == 100_000
-        assert cfg.resolve_threshold("web_search") == 100_000
+    def test_default_budget_caps_oversized_registry_tool(self, mock_registry):
+        """A larger per-tool registry value never exceeds the default budget."""
+        mock_registry.get_max_result_size.return_value = 200_000
+        cfg = BudgetConfig()
+        assert cfg.resolve_threshold("web_search") == DEFAULT_RESULT_SIZE_CHARS
 
 
 # ---------------------------------------------------------------------------

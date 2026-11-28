@@ -151,22 +151,39 @@ class TestThresholdGate:
 
     def test_auto_below_threshold_does_not_activate(self):
         from tools.tool_search import ToolSearchConfig, should_activate
-        cfg = ToolSearchConfig.from_raw({"enabled": "auto", "threshold_pct": 10})
+        # Floor disabled: this exercises the percentage gate alone.
+        cfg = ToolSearchConfig.from_raw(
+            {"enabled": "auto", "threshold_pct": 10, "min_deferrable_tokens": 0}
+        )
         # 5% of 200K = below 10% threshold
         assert not should_activate(cfg, deferrable_tokens=10_000, context_length=200_000)
 
     def test_auto_at_or_above_threshold_activates(self):
         from tools.tool_search import ToolSearchConfig, should_activate
-        cfg = ToolSearchConfig.from_raw({"enabled": "auto", "threshold_pct": 10})
+        cfg = ToolSearchConfig.from_raw(
+            {"enabled": "auto", "threshold_pct": 10, "min_deferrable_tokens": 0}
+        )
         assert should_activate(cfg, deferrable_tokens=20_000, context_length=200_000)
         assert should_activate(cfg, deferrable_tokens=50_000, context_length=200_000)
 
-    def test_auto_without_context_length_uses_20k_cutoff(self):
-        """Fallback cutoff used when the active model is unknown."""
+    def test_auto_floor_beats_percentage_on_huge_windows(self):
+        """An absolute saving is worth deferring regardless of window size."""
+        from tools.tool_search import ToolSearchConfig, should_activate
+        cfg = ToolSearchConfig.from_raw({"enabled": "auto", "threshold_pct": 10})
+        # 10K is only 1% of a 1M window, but far above the 2K floor.
+        assert should_activate(cfg, deferrable_tokens=10_000, context_length=1_000_000)
+
+    def test_auto_without_context_length_uses_floor(self):
+        """Fallback cutoff when the active model is unknown: the floor."""
         from tools.tool_search import ToolSearchConfig, should_activate
         cfg = ToolSearchConfig.from_raw({"enabled": "auto"})
-        assert not should_activate(cfg, deferrable_tokens=10_000, context_length=0)
-        assert should_activate(cfg, deferrable_tokens=25_000, context_length=0)
+        assert should_activate(cfg, deferrable_tokens=10_000, context_length=0)
+        # And without a floor, the historical 20K cutoff still applies.
+        cfg_no_floor = ToolSearchConfig.from_raw(
+            {"enabled": "auto", "min_deferrable_tokens": 0}
+        )
+        assert not should_activate(cfg_no_floor, deferrable_tokens=10_000, context_length=0)
+        assert should_activate(cfg_no_floor, deferrable_tokens=25_000, context_length=0)
 
     def test_token_estimate_proportional_to_schema_size(self):
         from tools.tool_search import estimate_tokens_from_schemas

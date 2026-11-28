@@ -1114,7 +1114,14 @@ class TestModelToolsIntegration:
         mock_req.return_value = {"flags": 0}
 
         from model_tools import get_tool_definitions
-        tools = get_tool_definitions(enabled_toolsets=["alice-discord"], quiet_mode=True)
+        # The dynamic schema replacement happens before tool-search assembly;
+        # ask for the raw catalogue so the assertion is about the schema, not
+        # about whether the tool happens to be deferred this turn.
+        tools = get_tool_definitions(
+            enabled_toolsets=["alice-discord"],
+            quiet_mode=True,
+            skip_tool_search_assembly=True,
+        )
         discord_admin_tool = next(
             (t for t in tools if t.get("function", {}).get("name") == "discord_admin"),
             None,

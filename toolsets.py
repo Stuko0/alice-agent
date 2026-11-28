@@ -29,55 +29,63 @@ from typing import List, Dict, Any, Set, Optional
 # Shared tool list for CLI and all messaging platform toolsets.
 # Edit this once to update all platforms simultaneously.
 _ALICE_CORE_TOOLS = [
+    # The narrow waist: what nearly every task needs, on every platform. Every
+    # schema here ships on every API call, so the bar for membership is high.
+    # Everything else lives in _ALICE_STANDARD_TOOLS below and is still enabled
+    # by default — but its schema is *deferrable*: tool_search replaces it with
+    # three bridge tools and the model loads what it needs on demand (see
+    # tools/tool_search.py). That keeps capability while cutting the prompt.
+    #
     # Web
     "web_search", "web_extract",
     # Terminal + process management
     "terminal", "process",
-    # Read the desktop GUI's embedded terminal pane, and close an agent's
-    # read-only terminal tab (both gated on ALICE_DESKTOP via check_fn —
-    # hidden outside the GUI).
-    "read_terminal", "close_terminal",
     # File manipulation
     "read_file", "write_file", "patch", "search_files",
-    # Vision + image generation
-    "vision_analyze", "image_generate",
     # Skills
     "skills_list", "skill_view", "skill_manage",
+    # Planning, memory, questions
+    "todo", "memory", "clarify",
+    # Code execution + delegation
+    "execute_code", "delegate_task",
+]
+
+# Enabled by default, deferrable from the model's schema. Split out so the
+# always-on set stays reviewable: adding to CORE costs tokens on every call,
+# adding here costs nothing until the model looks it up.
+_ALICE_STANDARD_TOOLS = [
+    # Exactly the tools that used to be in the always-on core and are not in
+    # the narrow waist above: no capability is added or removed on any
+    # platform, only its schema becomes deferrable.
+    #
+    # Desktop GUI terminal pane (gated on ALICE_DESKTOP via check_fn)
+    "read_terminal", "close_terminal",
+    # Vision + image generation + speech
+    "vision_analyze", "image_generate", "text_to_speech",
     # Browser automation
     "browser_navigate", "browser_snapshot", "browser_click",
     "browser_type", "browser_scroll", "browser_back",
     "browser_press", "browser_get_images",
     "browser_vision", "browser_console", "browser_cdp", "browser_dialog",
-    # Text-to-speech
-    "text_to_speech",
-    # Planning & memory
-    "todo", "memory",
-    # NOTE: the desktop Project tools (project_list/create/switch) are
-    # deliberately NOT here. They only make sense where a GUI can follow the
-    # move, so they live in the `project` toolset and are enabled solely by the
-    # GUI gateway (tui_gateway/server.py::_load_enabled_toolsets) — keeping them
-    # off every CLI/messaging/cron schema (narrow waist).
     # Session history search
     "session_search",
-    # Clarifying questions
-    "clarify",
-    # Code execution + delegation
-    "execute_code", "delegate_task",
-    # Cronjob management
+    # Cronjob management (gated)
     "cronjob",
-    # Home Assistant smart home control (gated on HASS_TOKEN via check_fn)
+    # Home Assistant (gated on HASS_TOKEN)
     "ha_list_entities", "ha_get_state", "ha_list_services", "ha_call_service",
-    # Kanban multi-agent coordination — only in schema when the agent is
-    # spawned as a kanban worker (ALICE_KANBAN_TASK env set) or the current
-    # profile explicitly enables the kanban toolset. Gated via check_fn in
-    # tools/kanban_tools.py.
+    # Kanban worker tools (gated on ALICE_KANBAN_TASK / explicit toolset)
     "kanban_show", "kanban_list",
     "kanban_complete", "kanban_block", "kanban_heartbeat",
     "kanban_comment", "kanban_create", "kanban_link",
     "kanban_unblock",
-    # Computer use (macOS, gated on cua-driver being installed via check_fn)
+    # Computer use (macOS, gated on the cua driver)
     "computer_use",
 ]
+
+# Everything a stock install is allowed to use (core + deferrable). Platform
+# toolsets below spread this so trimming the core never removes a capability.
+_ALICE_ALL_TOOLS = _ALICE_CORE_TOOLS + _ALICE_STANDARD_TOOLS
+
 
 # Webhook events may originate from untrusted third-party content (for example,
 # public PR titles/comments). Keep the default webhook toolset intentionally
@@ -345,6 +353,10 @@ TOOLSETS = {
     # spotify, home-assistant, cron, computer-use).
     "coding": {
         "description": "Coding-focused toolset: files, terminal, search, web docs, skills, todo, delegate, vision, browser",
+        # Everything here that is not in _ALICE_CORE_TOOLS (browser, vision,
+        # session_search) is *deferrable*: tool_search keeps it out of the
+        # model-facing schema until the model looks it up, so capability is
+        # preserved without paying its tokens on every call.
         "tools": [
             "web_search", "web_extract",
             "terminal", "process", "read_terminal", "close_terminal",
@@ -429,7 +441,7 @@ TOOLSETS = {
     
     "alice-cli": {
         "description": "Full interactive CLI toolset - all default tools plus cronjob management",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
 
@@ -440,19 +452,19 @@ TOOLSETS = {
         # homeassistant) are excluded by _get_platform_tools() unless
         # the user explicitly enables them.
         "description": "Default cron toolset - same core tools as alice-cli; gated by `alice native`",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
 
     "alice-telegram": {
         "description": "Telegram bot toolset - full access for personal use (terminal has safety checks)",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
     
     "alice-discord": {
         "description": "Discord bot toolset - full access (terminal has safety checks via dangerous command approval)",
-        "tools": _ALICE_CORE_TOOLS + [
+        "tools": _ALICE_ALL_TOOLS + [
             "discord",
             "discord_admin",
         ],
@@ -461,61 +473,61 @@ TOOLSETS = {
     
     "alice-whatsapp": {
         "description": "WhatsApp bot toolset - similar to Telegram (personal messaging, more trusted)",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
     
     "alice-slack": {
         "description": "Slack bot toolset - full access for workspace use (terminal has safety checks)",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
     
     "alice-signal": {
         "description": "Signal bot toolset - encrypted messaging platform (full access)",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
 
     "alice-bluebubbles": {
         "description": "BlueBubbles iMessage bot toolset - Apple iMessage via local BlueBubbles server",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
 
     "alice-homeassistant": {
         "description": "Home Assistant bot toolset - smart home event monitoring and control",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
 
     "alice-email": {
         "description": "Email bot toolset - interact with Alice via email (IMAP/SMTP)",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
 
     "alice-mattermost": {
         "description": "Mattermost bot toolset - self-hosted team messaging (full access)",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
 
     "alice-matrix": {
         "description": "Matrix bot toolset - decentralized encrypted messaging (full access)",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
 
     "alice-dingtalk": {
         "description": "DingTalk bot toolset - enterprise messaging platform (full access)",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
 
     "alice-feishu": {
         "description": "Feishu/Lark bot toolset - enterprise messaging via Feishu/Lark (full access)",
-        "tools": _ALICE_CORE_TOOLS + [
+        "tools": _ALICE_ALL_TOOLS + [
             "feishu_doc_read",
             "feishu_drive_list_comments",
             "feishu_drive_list_comment_replies",
@@ -527,31 +539,31 @@ TOOLSETS = {
 
     "alice-weixin": {
         "description": "Weixin bot toolset - personal WeChat messaging via iLink (full access)",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
 
     "alice-qqbot": {
         "description": "QQBot toolset - QQ messaging via Official Bot API v2 (full access)",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
 
     "alice-wecom": {
         "description": "WeCom bot toolset - enterprise WeChat messaging (full access)",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
 
     "alice-wecom-callback": {
         "description": "WeCom callback toolset - enterprise self-built app messaging (full access)",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
 
     "alice-yuanbao": {
         "description": "Yuanbao Bot 元宝消息平台工具集 - 群信息、成员查询、私聊、贴纸表情",
-        "tools": _ALICE_CORE_TOOLS + [
+        "tools": _ALICE_ALL_TOOLS + [
             "yb_query_group_info",
             "yb_query_group_members",
             "yb_send_dm",
@@ -564,7 +576,7 @@ TOOLSETS = {
 
     "alice-sms": {
         "description": "SMS bot toolset - interact with Alice via SMS (Twilio)",
-        "tools": _ALICE_CORE_TOOLS,
+        "tools": _ALICE_ALL_TOOLS,
         "includes": []
     },
 
@@ -635,30 +647,35 @@ def get_toolset(name: str) -> Optional[Dict[str, Any]]:
 
 
 def bundle_non_core_tools(toolset_name: str) -> Set[str]:
-    """Return a ``alice-*`` bundle's platform-specific tools, excluding core.
+    """Return a ``alice-*`` bundle's platform-specific tools, excluding universal.
 
-    Platform bundles are defined as ``_ALICE_CORE_TOOLS + [platform extras]``.
+    Platform bundles are defined as ``_ALICE_ALL_TOOLS + [platform extras]``.
     When a bundle name appears in ``disabled_toolsets``, subtracting the whole
-    bundle would strip core tools (terminal, read_file, …) shared by every
-    other enabled toolset, emptying the model's tool list (#33924). This
-    returns only the bundle's non-core delta (its own extras plus those of any
+    bundle would strip tools (terminal, browser, …) shared by every other
+    enabled toolset, emptying the model's tool list (#33924). This returns only
+    the bundle's platform-specific delta (its own extras plus those of any
     one-level ``includes``), so disabling a bundle removes its platform tools
-    while leaving core intact.
+    while leaving the universal set intact.
+
+    The baseline is ``_ALICE_ALL_TOOLS`` (core + deferrable), NOT just
+    ``_ALICE_CORE_TOOLS``: the deferrable tools are shared by every platform
+    too — deferring their schema must never turn them into "this bundle's
+    extras" and get them stripped from sibling bundles.
 
     Bundle nesting is one level deep in practice (only ``alice-gateway``
     includes other bundles, and those leaves don't nest further), so a single
     ``includes`` pass is sufficient. Unknown/garbage names fall back to the
-    full resolution minus core — never re-introducing the core wipe.
+    full resolution minus the universal set — never re-introducing the wipe.
     """
-    core = set(_ALICE_CORE_TOOLS)
+    universal = set(_ALICE_ALL_TOOLS)
     ts_def = get_toolset(toolset_name)
     if not (ts_def and "tools" in ts_def):
-        return set(resolve_toolset(toolset_name)) - core
-    to_remove = set(ts_def["tools"]) - core
+        return set(resolve_toolset(toolset_name)) - universal
+    to_remove = set(ts_def["tools"]) - universal
     for inc in ts_def.get("includes", []):
         inc_def = get_toolset(inc)
         if inc_def and "tools" in inc_def:
-            to_remove.update(set(inc_def["tools"]) - core)
+            to_remove.update(set(inc_def["tools"]) - universal)
     return to_remove
 
 
@@ -708,7 +725,7 @@ def resolve_toolset(name: str, visited: Set[str] = None) -> List[str]:
             try:
                 from gateway.platform_registry import platform_registry
                 if platform_registry.is_registered(platform_name):
-                    plugin_tools = set(_ALICE_CORE_TOOLS)
+                    plugin_tools = set(_ALICE_ALL_TOOLS)
                     try:
                         from tools.registry import registry
                         plugin_tools.update(

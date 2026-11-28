@@ -366,7 +366,11 @@ PARALLEL_TOOL_CALL_GUIDANCE = (
     "the whole conversation on every extra round-trip.\n"
     "Only serialize calls when a later call genuinely depends on an earlier "
     "call's result (e.g. you must read a file before you can patch it). When "
-    "in doubt and the calls are independent, batch them."
+    "in doubt and the calls are independent, batch them.\n"
+    "If you need three or more independent calls — several reads, a search "
+    "plus fetches, a batch of edits — prefer ONE `execute_code` script that "
+    "runs them and prints the result: one round-trip instead of N, with no "
+    "intermediate output in the conversation."
 )
 
 # OpenAI GPT/Codex-specific execution guidance.  Addresses known failure modes

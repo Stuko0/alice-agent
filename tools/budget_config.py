@@ -12,10 +12,17 @@ PINNED_THRESHOLDS: Dict[str, float] = {
     "read_file": float("inf"),
 }
 
-# Defaults matching the current hardcoded values in tool_result_storage.py.
-# Kept here as the single source of truth; tool_result_storage.py imports these.
-DEFAULT_RESULT_SIZE_CHARS: int = 100_000
-DEFAULT_TURN_BUDGET_CHARS: int = 200_000
+# Defaults act as the upper bound for large-context models (see
+# budget_for_context_window: smaller windows scale down from here).
+#
+# Sized for a 128K-token window: one tool result may occupy ~12% of it
+# (64K chars ~= 16K tokens) and a whole turn's tool output ~25%
+# (128K chars ~= 32K tokens). The old 100K/200K pair let a single turn push
+# ~50K tokens of tool output into the window, which forced an early
+# compaction and threw away the provider's cached prefix. Oversized results
+# are persisted with a preview + path, not lost.
+DEFAULT_RESULT_SIZE_CHARS: int = 64_000
+DEFAULT_TURN_BUDGET_CHARS: int = 128_000
 DEFAULT_PREVIEW_SIZE_CHARS: int = 1_500
 
 
@@ -84,11 +91,11 @@ _MIN_TURN_BUDGET_CHARS: int = 16_000
 def budget_for_context_window(context_length: int | None) -> BudgetConfig:
     """Return a BudgetConfig scaled to the active model's context window.
 
-    The fixed defaults (100K result / 200K turn chars) are correct for large
-    (200K+ token) models but blind to small ones: on a 65K-token model a single
-    tool result persisted at the 100K-char threshold, or a 200K-char turn
-    budget (~50K tokens), can by itself approach or exceed the whole window and
-    force an oversized request (#23767).
+    The fixed defaults (64K result / 128K turn chars) are sized for a 128K-token
+    window but blind to smaller ones: on a 32K-token model a single tool result
+    persisted at the 64K-char threshold, or a 128K-char turn budget (~32K
+    tokens), can by itself approach or exceed the whole window and force an
+    oversized request (#23767).
 
     Scaling keeps large models byte-identical to today (the proportional value
     is clamped to the existing defaults as a CAP) while shrinking the budget for
