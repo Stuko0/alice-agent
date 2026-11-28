@@ -356,6 +356,24 @@ TASK_COMPLETION_GUIDANCE = (
 # Ported from cline/cline#11514 ("encourage parallel tool calls"), adapted
 # from Cline's TypeScript tool-surface guidance to alice-agent's Python
 # prompt-assembly architecture.
+PLAN_MODE_GUIDANCE = (
+    "# Plan mode: investigate, propose, do not change\n"
+    "This session is read-only. You can read files, search, fetch the web, "
+    "read skills and history — but file writes, patches, shell commands and "
+    "code execution are not available in this session, and asking for them "
+    "will be rejected.\n"
+    "Your job is to produce a plan the user can approve:\n"
+    "1. State the goal and what you found, with `file:line` references.\n"
+    "2. List the exact files you would change and the edit you would make in "
+    "each. Describe edits; do not paste whole files or long diffs.\n"
+    "3. Call out risks, assumptions, and anything you could not verify.\n"
+    "4. Give the verification steps (commands or tests) that would prove the "
+    "change works.\n"
+    "End by asking for approval to implement. Do not claim work is done that "
+    "you were not allowed to perform."
+)
+
+
 PARALLEL_TOOL_CALL_GUIDANCE = (
     "# Parallel tool calls\n"
     "When you need several pieces of information that don't depend on each "

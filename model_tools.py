@@ -323,6 +323,7 @@ def get_tool_definitions(
             cfg_fp,
             bool(os.environ.get("ALICE_KANBAN_TASK")),
             bool(skip_tool_search_assembly),
+            _plan_mode_active(),
         )
         cached = _tool_defs_cache.get(cache_key)
         if cached is not None:
@@ -437,6 +438,16 @@ def _compute_tool_definitions(
     # all check the tool registry for plugin-provided toolsets.  No bypass
     # needed; plugins respect enabled_toolsets / disabled_toolsets like any
     # other toolset.
+
+    # Plan mode is a hard, session-wide filter: whatever toolset the surface
+    # asked for (cli, tui, desktop, gateway, a subagent), the model only sees
+    # the read-only `plan` set. Filtering here — not in each caller — means a
+    # hallucinated write_file/patch/terminal call fails name validation in
+    # the loop instead of executing (#plan-mode).
+    if _plan_mode_active():
+        from toolsets import resolve_toolset as _resolve_plan_toolset
+
+        tools_to_include &= set(_resolve_plan_toolset("plan"))
 
     # Ask the registry for schemas (only returns tools whose check_fn passes)
     filtered_tools = registry.get_definitions(tools_to_include, quiet=quiet_mode)
@@ -562,6 +573,16 @@ def _compute_tool_definitions(
         logger.warning("Tool search assembly skipped: %s", e)
 
     return filtered_tools
+
+
+def _plan_mode_active() -> bool:
+    """True when this process runs in read-only plan mode (ALICE_PLAN_MODE)."""
+    try:
+        from toolsets import plan_mode_active
+
+        return plan_mode_active()
+    except Exception:  # pragma: no cover — never break tool loading
+        return False
 
 
 def _resolve_active_context_length() -> int:

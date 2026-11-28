@@ -2214,6 +2214,17 @@ def _resolve_use_tui(args) -> bool:
         return False
 
 
+def _apply_plan_mode_env(args) -> None:
+    """Bridge ``--plan`` to ALICE_PLAN_MODE for the whole process tree.
+
+    Kept as a function (not inlined in ``main``) so the bridge is testable and
+    so any other entry point that needs it can call it. Toolsets are filtered
+    in ``model_tools.get_tool_definitions`` via ``toolsets.plan_mode_active``.
+    """
+    if getattr(args, "plan", False):
+        os.environ["ALICE_PLAN_MODE"] = "1"
+
+
 def cmd_chat(args):
     """Run interactive chat CLI."""
     use_tui = _resolve_use_tui(args)
@@ -2327,6 +2338,11 @@ def cmd_chat(args):
     # --yolo: bypass all dangerous command approvals
     if getattr(args, "yolo", False):
         os.environ["ALICE_YOLO_MODE"] = "1"
+
+    # --plan: read-only session. Bridged through the environment so every
+    # surface that builds a tool schema (classic CLI, TUI gateway, subagents)
+    # filters through the same gate in model_tools.get_tool_definitions.
+    _apply_plan_mode_env(args)
 
     # --safe-mode: troubleshooting mode that disables ALL customizations.
     # Inspired by Claude Code v2.1.169's --safe-mode (June 2026): run with a

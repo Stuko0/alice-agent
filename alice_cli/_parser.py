@@ -194,6 +194,18 @@ def build_top_level_parser():
     )
     _inherited_flag(
         parser,
+        "--plan",
+        action="store_true",
+        default=False,
+        help=(
+            "Plan mode: read-only session. The model can read, search and "
+            "fetch, but gets no write/patch/terminal/execute_code tools and is "
+            "asked to propose a plan for approval. Sets ALICE_PLAN_MODE=1 for "
+            "this process (also honored by --tui and the desktop backend)."
+        ),
+    )
+    _inherited_flag(
+        parser,
         "--pass-session-id",
         action="store_true",
         default=False,

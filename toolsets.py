@@ -23,7 +23,23 @@ Usage:
     all_tools = resolve_toolset("full_stack")
 """
 
+import os
 from typing import List, Dict, Any, Set, Optional
+
+
+# Environment bridge for plan mode (read-only session). Set by `alice --plan`
+# (and inherited by the TUI gateway / subprocesses); read at tool-assembly time
+# so every surface filters the same way without threading a new parameter
+# through AIAgent, the gateway and the desktop.
+PLAN_MODE_ENV = "ALICE_PLAN_MODE"
+
+_PLAN_MODE_TRUTHY = {"1", "true", "yes", "on"}
+
+
+def plan_mode_active() -> bool:
+    """True when this process is a read-only plan-mode session."""
+    return os.environ.get(PLAN_MODE_ENV, "").strip().lower() in _PLAN_MODE_TRUTHY
+
 
 
 # Shared tool list for CLI and all messaging platform toolsets.
@@ -345,6 +361,26 @@ TOOLSETS = {
         "description": "Safe toolkit without terminal access",
         "tools": [],
         "includes": ["web", "vision", "image_gen"]
+    },
+
+    # Plan mode: investigate and propose, never change. Selected by
+    # `alice --plan` (ALICE_PLAN_MODE=1) and used by the read-only subagent
+    # presets. Deliberately has no terminal, no execute_code, no write/patch:
+    # every entry here can only read local files, the web, history or skills.
+    "plan": {
+        "description": "Read-only investigation and planning: read, search, web, skills, todo, memory, clarify",
+        "tools": [
+            "read_file", "search_files",
+            "web_search", "web_extract",
+            "session_search",
+            "skills_list", "skill_view",
+            "vision_analyze",
+            "todo", "memory", "clarify",
+            # Read-only subagents: their own toolset is filtered by the same
+            # plan-mode gate, so this cannot be used to reach a write tool.
+            "delegate_task",
+        ],
+        "includes": [],
     },
 
     # Coding posture (base Alice — CLI/TUI/desktop/ACP). Auto-selected in a

@@ -675,6 +675,58 @@ def check_delegate_requirements() -> bool:
     return True
 
 
+# ── Read-only subagent presets ───────────────────────────────────────────
+# A preset pins the child's toolset and its working contract, so "look at this
+# and tell me" does not depend on the parent remembering to pass a toolset.
+# Both presets are read-only: writes stay with the parent (or an `implement`
+# task), which keeps reconnaissance/review cheap and safe to run in parallel.
+SUBAGENT_PRESETS: Dict[str, Dict[str, Any]] = {
+    "explore": {
+        "toolsets": ["plan"],
+        "prompt": (
+            "## Preset: explore (read-only)\n"
+            "Map the relevant code/data and report. Do not modify anything.\n"
+            "- Follow the real code paths (imports, call sites, config) instead "
+            "of guessing; cite file:line for every claim.\n"
+            "- Report: the files that matter, how they connect, where the "
+            "behavior you were asked about is implemented, and the traps "
+            "(dead code, duplicated paths, platform gates).\n"
+            "- Say explicitly what you could not determine. Do not propose a "
+            "fix unless asked."
+        ),
+    },
+    "review": {
+        "toolsets": ["plan"],
+        "prompt": (
+            "## Preset: review (read-only)\n"
+            "Review like a senior engineer. Do not modify anything.\n"
+            "- Read the change in context (callers, tests, adjacent code), not "
+            "just the diff.\n"
+            "- Report only defects you can point at: file:line, why it is "
+            "wrong, and the failure mode (crash, wrong result, regression, "
+            "security/data risk).\n"
+            "- Verify claims before reporting them; if you cannot confirm a "
+            "suspicion, label it as unverified.\n"
+            "- Order findings by severity. No style nitpicks unless they hide "
+            "a real bug. Finish with a clear verdict."
+        ),
+    },
+}
+
+
+def _normalize_preset(preset: Any) -> Optional[str]:
+    """Canonical preset name, or None. Unknown values warn and degrade."""
+    if not isinstance(preset, str) or not preset.strip():
+        return None
+    name = preset.strip().lower()
+    if name in SUBAGENT_PRESETS:
+        return name
+    if name in {"general", "default"}:
+        return None
+    logger.warning("Unknown delegate_task preset=%r, ignoring", preset)
+    return None
+
+
 def _build_child_system_prompt(
     goal: str,
     context: Optional[str] = None,
@@ -683,6 +735,7 @@ def _build_child_system_prompt(
     role: str = "leaf",
     max_spawn_depth: int = 2,
     child_depth: int = 1,
+    preset: Optional[str] = None,
 ) -> str:
     """Build a focused system prompt for a child agent.
 
@@ -719,6 +772,9 @@ def _build_child_system_prompt(
         "response is returned to the parent agent as a summary, and overlong "
         "summaries crowd out the parent's context window."
     )
+    preset_block = SUBAGENT_PRESETS.get(preset or "", {}).get("prompt")
+    if preset_block:
+        parts.append("\n" + preset_block)
     if role == "orchestrator":
         child_note = (
             "Your own children MUST be leaves (cannot delegate further) "
@@ -1079,6 +1135,9 @@ def _build_child_agent(
     # 'leaf' (default) cannot; 'orchestrator' retains the delegation
     # toolset subject to depth/kill-switch bounds applied below.
     role: str = "leaf",
+    # Read-only preset ("explore" | "review") — pins the child's toolset and
+    # appends its working contract to the system prompt.
+    preset: Optional[str] = None,
 ):
     """
     Build a child AIAgent on the main thread (thread-safe construction).
@@ -1133,7 +1192,14 @@ def _build_child_agent(
     else:
         parent_toolsets = set(DEFAULT_TOOLSETS)
 
-    if toolsets:
+    preset_toolsets = SUBAGENT_PRESETS.get(preset or "", {}).get("toolsets")
+    if preset_toolsets:
+        # A read-only preset pins the `plan` toolset. It is intentionally NOT
+        # intersected with the parent's toolsets: `plan` grants no write
+        # capability, and intersecting would leave the child with zero tools
+        # for most parents (their composite toolset never names "plan").
+        child_toolsets = _strip_blocked_tools(list(preset_toolsets))
+    elif toolsets:
         # Intersect with parent — subagent must not gain tools the parent lacks.
         # Expand composite toolsets (e.g. alice-cli) so that individual
         # toolset names (e.g. web, terminal) are recognised during intersection.
@@ -1166,6 +1232,7 @@ def _build_child_agent(
         role=effective_role,
         max_spawn_depth=max_spawn,
         child_depth=child_depth,
+        preset=preset,
     )
     # Extract parent's API key so subagents inherit auth (e.g. Nous Portal).
     parent_api_key = getattr(parent_agent, "api_key", None)
@@ -2354,6 +2421,7 @@ def delegate_task(
     acp_args: Optional[List[str]] = None,
     role: Optional[str] = None,
     background: Optional[bool] = None,
+    preset: Optional[str] = None,
     parent_agent=None,
 ) -> str:
     """
@@ -2384,6 +2452,7 @@ def delegate_task(
 
     # Normalise the top-level role once; per-task overrides re-normalise.
     top_role = _normalize_role(role)
+    top_preset = _normalize_preset(preset)
 
     # Background (async) delegation now applies to BOTH single tasks and
     # batches. A batch simply becomes N independent async dispatches: each
@@ -2455,7 +2524,13 @@ def delegate_task(
         task_list = tasks
     elif goal and isinstance(goal, str) and goal.strip():
         task_list = [
-            {"goal": goal, "context": context, "toolsets": toolsets, "role": top_role}
+            {
+                "goal": goal,
+                "context": context,
+                "toolsets": toolsets,
+                "role": top_role,
+                "preset": top_preset,
+            }
         ]
     else:
         return tool_error("Provide either 'goal' (single task) or 'tasks' (batch).")
@@ -2518,6 +2593,7 @@ def delegate_task(
                     else (acp_args if acp_args is not None else creds.get("args"))
                 ),
                 role=effective_role,
+                preset=_normalize_preset(t.get("preset") or top_preset),
             )
             # Override with correct parent tool names (before child construction mutated global)
             child._delegate_saved_tool_names = _parent_tool_names
@@ -3415,6 +3491,11 @@ DELEGATE_TASK_SCHEMA = {
                             "enum": ["leaf", "orchestrator"],
                             "description": "Per-task role override. See top-level 'role' for semantics.",
                         },
+                        "preset": {
+                            "type": "string",
+                            "enum": ["explore", "review"],
+                            "description": "Per-task read-only preset. See top-level 'preset'.",
+                        },
                     },
                     "required": ["goal"],
                 },
@@ -3427,6 +3508,18 @@ DELEGATE_TASK_SCHEMA = {
                 "type": "string",
                 "enum": ["leaf", "orchestrator"],
                 "description": "(rebuilt at get_definitions() time)",
+            },
+            "preset": {
+                "type": "string",
+                "enum": ["explore", "review"],
+                "description": (
+                    "Read-only subagent preset. 'explore' pins a read-only "
+                    "toolset and asks for a map of the code/data with file:line "
+                    "citations; 'review' pins the same read-only toolset and asks "
+                    "for a defect-focused review. Use these instead of passing "
+                    "'toolsets' when the child only needs to look. Omit for a "
+                    "general-purpose child."
+                ),
             },
             "background": {
                 "type": "boolean",
@@ -3501,6 +3594,7 @@ registry.register(
         acp_command=args.get("acp_command"),
         acp_args=args.get("acp_args"),
         role=args.get("role"),
+        preset=args.get("preset"),
         background=_model_background_value(args, kw.get("parent_agent")),
         parent_agent=kw.get("parent_agent"),
     ),

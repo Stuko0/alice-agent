@@ -34,6 +34,7 @@ from agent.prompt_builder import (
     MEMORY_GUIDANCE,
     OPENAI_MODEL_EXECUTION_GUIDANCE,
     PARALLEL_TOOL_CALL_GUIDANCE,
+    PLAN_MODE_GUIDANCE,
     PLATFORM_HINTS,
     SESSION_SEARCH_GUIDANCE,
     SKILLS_GUIDANCE,
@@ -172,6 +173,15 @@ def build_system_prompt_parts(agent: Any, system_message: Optional[str] = None) 
     # users who want a leaner prompt can turn it off.
     if getattr(agent, "_task_completion_guidance", True) and agent.valid_tool_names:
         stable_parts.append(TASK_COMPLETION_GUIDANCE)
+
+    # Plan mode (read-only session). Injected here, once per session, so the
+    # prompt stays byte-stable for the life of the conversation — plan mode is
+    # chosen at session start (alice --plan / ALICE_PLAN_MODE=1) and never
+    # toggled mid-session, which would invalidate the cached prefix.
+    from toolsets import plan_mode_active
+
+    if plan_mode_active():
+        stable_parts.append(PLAN_MODE_GUIDANCE)
 
     # Universal parallel-tool-call guidance.  Tells the model to batch
     # independent tool calls into one assistant turn rather than emitting one
