@@ -1593,6 +1593,7 @@ registry.register(
     schema=KANBAN_SHOW_SCHEMA,
     handler=_handle_show,
     check_fn=_check_kanban_mode,
+    always_visible=True,
     emoji="📋",
 )
 
@@ -1602,6 +1603,7 @@ registry.register(
     schema=KANBAN_LIST_SCHEMA,
     handler=_handle_list,
     check_fn=_check_kanban_orchestrator_mode,
+    always_visible=True,
     emoji="📋",
 )
 
@@ -1611,6 +1613,7 @@ registry.register(
     schema=KANBAN_COMPLETE_SCHEMA,
     handler=_handle_complete,
     check_fn=_check_kanban_mode,
+    always_visible=True,
     emoji="✔",
 )
 
@@ -1620,6 +1623,7 @@ registry.register(
     schema=KANBAN_BLOCK_SCHEMA,
     handler=_handle_block,
     check_fn=_check_kanban_mode,
+    always_visible=True,
     emoji="⏸",
 )
 
@@ -1629,6 +1633,7 @@ registry.register(
     schema=KANBAN_HEARTBEAT_SCHEMA,
     handler=_handle_heartbeat,
     check_fn=_check_kanban_mode,
+    always_visible=True,
     emoji="💓",
 )
 
@@ -1638,6 +1643,7 @@ registry.register(
     schema=KANBAN_COMMENT_SCHEMA,
     handler=_handle_comment,
     check_fn=_check_kanban_mode,
+    always_visible=True,
     emoji="💬",
 )
 
@@ -1647,6 +1653,7 @@ registry.register(
     schema=KANBAN_CREATE_SCHEMA,
     handler=_handle_create,
     check_fn=_check_kanban_mode,
+    always_visible=True,
     emoji="➕",
 )
 
@@ -1656,6 +1663,7 @@ registry.register(
     schema=KANBAN_UNBLOCK_SCHEMA,
     handler=_handle_unblock,
     check_fn=_check_kanban_orchestrator_mode,
+    always_visible=True,
     emoji="▶",
 )
 
@@ -1665,5 +1673,6 @@ registry.register(
     schema=KANBAN_LINK_SCHEMA,
     handler=_handle_link,
     check_fn=_check_kanban_mode,
+    always_visible=True,
     emoji="🔗",
 )

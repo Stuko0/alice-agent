@@ -6721,6 +6721,36 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
             f"Tokens: {total_tokens:,}",
             f"Agent Running: {'Yes' if is_running else 'No'}",
         ])
+
+        # Per-turn harness telemetry (see agent/turn_telemetry.py): how many
+        # round-trips the last turn took, how much of the prompt was cached,
+        # and where the tool time went. This is the number that shows whether
+        # the harness changes actually help.
+        last_turn = getattr(agent, "last_turn_telemetry", None)
+        if last_turn:
+            lines.append("")
+            lines.append("Last turn:")
+            lines.append(
+                f"  API calls: {last_turn.get('api_calls', 0)} "
+                f"(in {last_turn.get('prompt_tokens', 0):,} / "
+                f"out {last_turn.get('completion_tokens', 0):,} tokens)"
+            )
+            if last_turn.get("prompt_tokens"):
+                lines.append(f"  Cache read: {last_turn.get('cache_hit_pct', 0):.0f}%")
+            tools = last_turn.get("tools") or {}
+            if tools:
+                lines.append(
+                    f"  Tools: {last_turn.get('tool_calls', 0)} calls in "
+                    f"{last_turn.get('tool_seconds', 0):.1f}s "
+                    f"({last_turn.get('tool_errors', 0)} errors)"
+                )
+                for name, stat in sorted(
+                    tools.items(), key=lambda kv: kv[1].get("seconds", 0), reverse=True
+                )[:3]:
+                    lines.append(
+                        f"    {name}: {stat.get('count', 0)}x "
+                        f"{stat.get('seconds', 0):.1f}s"
+                    )
         self._console_print("\n".join(lines), highlight=False, markup=False)
 
     def _fast_command_available(self) -> bool:
@@ -11220,6 +11250,29 @@ class AliceCLI(CLIAgentSetupMixin, CLICommandsMixin):
 
         emoji = get_tool_emoji(tool_name, default="⚡")
         _cprint(f"  ┊ {emoji} preparing {tool_name}…")
+
+    def _on_tool_args_delta(self, tool_name: str, partial: str) -> None:
+        """Live progress while a tool's JSON arguments are still streaming.
+
+        Rewrites the same terminal line (``\r`` + space padding — never
+        ``\033[K``, which leaks literal escape text under prompt_toolkit) so
+        a large patch/write_file payload shows its size growing instead of a
+        frozen screen. Throttled upstream to one call per ~512 chars.
+        """
+        if not getattr(self, "streaming_enabled", False):
+            return
+        size = len(partial or "")
+        if not size:
+            return
+        label = f"{size / 1024:.1f} KB" if size >= 1024 else f"{size} B"
+        line = f"  ┊ ⚡ preparing {tool_name}… {label}"
+        pad = " " * max(0, getattr(self, "_tool_args_line_len", 0) - len(line))
+        try:
+            sys.stdout.write("\r" + line + pad)
+            sys.stdout.flush()
+            self._tool_args_line_len = len(line)
+        except Exception:
+            pass
 
     # ====================================================================
     # Tool progress callback (audio cues for voice mode)
@@ -16572,6 +16625,36 @@ def _run_kanban_goal_loop_q(cli: "AliceCLI", first_response: str) -> None:
     )
 
 
+def _apply_skill_toolsets(parsed_skills, toolsets_list):
+    """Union the toolsets declared by preloaded skills into the session's.
+
+    Called before the agent is built, so the tool schema is chosen once for the
+    whole session (activating toolsets mid-conversation would invalidate the
+    provider's cached prefix). Unknown skills and skills with no declaration
+    leave the selection untouched.
+    """
+    if not parsed_skills or toolsets_list is None:
+        return toolsets_list
+    try:
+        from agent.skill_utils import skill_toolsets_for
+        from toolsets import validate_toolset
+
+        declared = [
+            ts for ts in skill_toolsets_for(parsed_skills) if validate_toolset(ts)
+        ]
+        missing = [ts for ts in declared if ts not in toolsets_list]
+        if missing:
+            logger.info(
+                "Skills %s requested toolsets: %s",
+                ", ".join(parsed_skills),
+                ", ".join(missing),
+            )
+            return list(toolsets_list) + missing
+    except Exception as exc:
+        logger.debug("Skill toolset activation skipped: %s", exc)
+    return toolsets_list
+
+
 def main(
     query: str = None,
     q: str = None,
@@ -16721,6 +16804,12 @@ def main(
             toolsets_list = sorted(_get_platform_tools(CLI_CONFIG, "cli"))
 
     parsed_skills = _parse_skills_argument(skills)
+
+    # Skills may declare the toolsets they need (``toolsets:`` in SKILL.md).
+    # Fold them into the session selection HERE, before the agent is built, so
+    # the tool schema is chosen once at session start — activating toolsets
+    # mid-conversation would invalidate the provider's cached prefix.
+    toolsets_list = _apply_skill_toolsets(parsed_skills, toolsets_list)
 
     # Create CLI instance
     cli = AliceCLI(

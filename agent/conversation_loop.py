@@ -495,6 +495,25 @@ def _sync_failover_system_message(agent, api_messages, active_system_prompt):
     return sp
 
 
+def _plan_mode_hides_tool(name: str) -> bool:
+    """True when ``name`` is a real tool that plan mode deliberately hid.
+
+    Fuzzy name repair exists for typos of *available* tools. In a read-only
+    session a registered write tool is not a typo — repairing it (e.g.
+    ``write_file`` -> ``read_file``) would silently swallow the model's intent.
+    """
+    try:
+        from toolsets import plan_mode_active
+
+        if not plan_mode_active():
+            return False
+        from tools.registry import registry
+
+        return registry.get_entry(name) is not None
+    except Exception:
+        return False
+
+
 def run_conversation(
     agent,
     user_message: str,
@@ -527,6 +546,15 @@ def run_conversation(
     Returns:
         Dict: Complete conversation result with final response and message history
     """
+    # Fresh per-turn telemetry for THIS turn (every turn, whether or not the
+    # system prompt is rebuilt — see agent/turn_telemetry.py).
+    try:
+        from agent.turn_telemetry import begin_turn
+
+        begin_turn(agent)
+    except Exception:  # pragma: no cover — telemetry must never block a turn
+        pass
+
     if moa_config is None:
         try:
             from alice_cli.moa_config import decode_moa_turn
@@ -1961,6 +1989,21 @@ def run_conversation(
                     agent.session_cache_read_tokens += canonical_usage.cache_read_tokens
                     agent.session_cache_write_tokens += canonical_usage.cache_write_tokens
                     agent.session_reasoning_tokens += canonical_usage.reasoning_tokens
+
+                    # Per-turn harness telemetry (see agent/turn_telemetry.py).
+                    try:
+                        _turn_tel = getattr(agent, "_turn_telemetry", None)
+                        if _turn_tel is not None:
+                            _turn_tel.record_api(
+                                prompt_tokens=prompt_tokens,
+                                completion_tokens=completion_tokens,
+                                cache_read_tokens=canonical_usage.cache_read_tokens,
+                                cache_write_tokens=canonical_usage.cache_write_tokens,
+                                reasoning_tokens=canonical_usage.reasoning_tokens,
+                                seconds=api_duration,
+                            )
+                    except Exception:
+                        pass
 
                     # Log API call details for debugging/observability
                     _cache_pct = ""
@@ -4192,6 +4235,8 @@ def run_conversation(
                 # Repair mismatched tool names before validating
                 for tc in assistant_message.tool_calls:
                     if tc.function.name not in agent.valid_tool_names:
+                        if _plan_mode_hides_tool(tc.function.name):
+                            continue  # keep the call; it is rejected below
                         repaired = agent._repair_tool_call(tc.function.name)
                         if repaired:
                             print(f"{agent.log_prefix}🔧 Auto-repaired tool name: '{tc.function.name}' -> '{repaired}'")
@@ -4248,6 +4293,14 @@ def run_conversation(
                                     "not re-emit it as a tool call. To call a "
                                     "tool, use a valid name from your tool list; "
                                     "otherwise reply in plain text."
+                                )
+                            elif _plan_mode_hides_tool(_tc_name):
+                                content = (
+                                    f"Tool '{_tc_name}' is not available in this "
+                                    "read-only session (plan mode). Describe the "
+                                    "change you would make and let the user approve "
+                                    "it instead of trying to apply it. "
+                                    f"Available tools: {available}"
                                 )
                             else:
                                 content = f"Tool '{_tc_name}' does not exist. Available tools: {available}"

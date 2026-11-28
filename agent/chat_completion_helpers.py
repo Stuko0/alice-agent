@@ -2136,6 +2136,14 @@ def interruptible_streaming_api_call(agent, api_kwargs: dict, *, on_first_delta=
                             entry["function"]["name"] = tc_delta.function.name
                         if tc_delta.function.arguments:
                             entry["function"]["arguments"] += tc_delta.function.arguments
+                            # Live progress for big payloads (patch/write_file
+                            # JSON streams for seconds). Throttled inside the
+                            # callback; a no-op when no display is attached.
+                            if entry["function"]["name"]:
+                                agent._fire_tool_args_delta(
+                                    entry["function"]["name"],
+                                    entry["function"]["arguments"],
+                                )
                     extra = getattr(tc_delta, "extra_content", None)
                     if extra is None and hasattr(tc_delta, "model_extra"):
                         extra = (tc_delta.model_extra if isinstance(tc_delta.model_extra, dict) else {}).get("extra_content")

@@ -51,6 +51,16 @@ from tools.budget_config import BudgetConfig, DEFAULT_BUDGET, budget_for_context
 logger = logging.getLogger(__name__)
 
 
+def _record_tool_telemetry(agent, name: str, seconds: float, is_error: bool) -> None:
+    """Best-effort per-turn tool timing (agent/turn_telemetry.py)."""
+    try:
+        telemetry = getattr(agent, "_turn_telemetry", None)
+        if telemetry is not None:
+            telemetry.record_tool(name, seconds, is_error)
+    except Exception:  # pragma: no cover — never break a tool result
+        pass
+
+
 def _budget_for_agent(agent) -> BudgetConfig:
     """Resolve a tool-result BudgetConfig scaled to the agent's context window.
 
@@ -582,6 +592,7 @@ def execute_tool_calls_concurrent(agent, assistant_message, messages: list, effe
                 logger.info("tool %s failed (%.2fs): %s", function_name, duration, result[:200])
             else:
                 logger.info("tool %s completed (%.2fs, %d chars)", function_name, duration, len(result))
+            _record_tool_telemetry(agent, function_name, duration, is_error)
             results[index] = (function_name, function_args, result, duration, is_error, False, middleware_trace)
         finally:
             # Tear down worker-tid tracking.  Clear any interrupt bit we may
@@ -1420,6 +1431,8 @@ def execute_tool_calls_sequential(agent, assistant_message, messages: list, effe
             logger.warning("Tool %s returned error (%.2fs): %s", function_name, tool_duration, result_preview)
         else:
             logger.info("tool %s completed (%.2fs, %d chars)", function_name, tool_duration, _result_len)
+
+        _record_tool_telemetry(agent, function_name, tool_duration, _is_error_result)
 
         # Track file-mutation outcome for the turn-end verifier.  See
         # the concurrent path for the rationale; both paths must feed

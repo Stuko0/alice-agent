@@ -187,6 +187,10 @@ def is_deferrable_tool_name(name: str) -> bool:
         entry = registry.get_entry(name)
         if entry is None:
             return False
+        if getattr(entry, "always_visible", False):
+            # Protocol/lifecycle tools (e.g. kanban worker handoff) must be
+            # callable without a tool_search round-trip.
+            return False
         if entry.toolset.startswith("mcp-"):
             return True
         # Non-MCP, non-core → plugin tool, eligible.

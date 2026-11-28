@@ -1407,8 +1407,16 @@ class TestPluginToolVisibility:
 
         from model_tools import get_tool_definitions
 
-        # Plugin tools are included when their toolset is explicitly enabled
-        tools = get_tool_definitions(enabled_toolsets=["terminal", "plugin_vis_plugin"], quiet_mode=True)
+        # Plugin tools are included when their toolset is explicitly enabled.
+        # skip_tool_search_assembly=True asks for the catalogue BEFORE the
+        # progressive-disclosure pass: plugin tools are deferrable by design
+        # (that is the point of tool_search), so what this test pins is the
+        # registry -> schema wiring, not whether a given turn defers them.
+        tools = get_tool_definitions(
+            enabled_toolsets=["terminal", "plugin_vis_plugin"],
+            quiet_mode=True,
+            skip_tool_search_assembly=True,
+        )
         tool_names = [t["function"]["name"] for t in tools]
         assert "vis_tool" in tool_names
 
@@ -1418,7 +1426,7 @@ class TestPluginToolVisibility:
         assert "vis_tool" not in tool_names2
 
         # Plugin tools are included when no toolset filter is active (all enabled)
-        tools3 = get_tool_definitions(quiet_mode=True)
+        tools3 = get_tool_definitions(quiet_mode=True, skip_tool_search_assembly=True)
         tool_names3 = [t["function"]["name"] for t in tools3]
         assert "vis_tool" in tool_names3
 

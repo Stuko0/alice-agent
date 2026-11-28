@@ -420,6 +420,7 @@ class AIAgent:
         stream_delta_callback: callable = None,
         interim_assistant_callback: callable = None,
         tool_gen_callback: callable = None,
+        tool_args_callback: callable = None,
         status_callback: callable = None,
         notice_callback: callable = None,
         notice_clear_callback: callable = None,
@@ -495,6 +496,7 @@ class AIAgent:
             stream_delta_callback=stream_delta_callback,
             interim_assistant_callback=interim_assistant_callback,
             tool_gen_callback=tool_gen_callback,
+            tool_args_callback=tool_args_callback,
             status_callback=status_callback,
             notice_callback=notice_callback,
             notice_clear_callback=notice_clear_callback,
@@ -4419,6 +4421,32 @@ class AIAgent:
             except Exception:
                 pass
 
+    def _fire_tool_args_delta(self, tool_name: str, partial: str) -> None:
+        """Notify the display layer that tool-call ARGUMENTS are still streaming.
+
+        ``_fire_tool_gen_started`` fires once per tool; this one fires as the
+        JSON payload grows, so a 45 KB write_file/patch shows progress instead
+        of a frozen screen. Throttled by characters (per tool name) because it
+        runs on the SSE hot path: one callback per ~512 new chars is enough to
+        animate a status line and costs two dict lookups otherwise.
+        """
+        cb = getattr(self, "tool_args_callback", None)
+        if cb is None:
+            return
+        try:
+            state = getattr(self, "_tool_args_emit_state", None)
+            if state is None:
+                state = {}
+                self._tool_args_emit_state = state
+            last = state.get(tool_name, 0)
+            size = len(partial or "")
+            if size - last < 512:
+                return
+            state[tool_name] = size
+            cb(tool_name, partial)
+        except Exception:
+            pass
+
     def _fire_tool_gen_started(self, tool_name: str) -> None:
         """Notify display layer that the model is generating tool call arguments.
 
@@ -5451,17 +5479,29 @@ class AIAgent:
     ) -> Dict[str, Any]:
         """Forwarder — see ``agent.conversation_loop.run_conversation``."""
         from agent.conversation_loop import run_conversation
-        return run_conversation(
-            self,
-            user_message,
-            system_message,
-            conversation_history,
-            task_id,
-            stream_callback,
-            persist_user_message,
-            persist_user_timestamp=persist_user_timestamp,
-            moa_config=moa_config,
-        )
+
+        try:
+            return run_conversation(
+                self,
+                user_message,
+                system_message,
+                conversation_history,
+                task_id,
+                stream_callback,
+                persist_user_message,
+                persist_user_timestamp=persist_user_timestamp,
+                moa_config=moa_config,
+            )
+        finally:
+            # Per-turn harness telemetry: one log line + a snapshot that
+            # /status reads. Single exit point, so partial/error turns are
+            # measured too (they are exactly the ones worth looking at).
+            try:
+                from agent.turn_telemetry import finish_turn
+
+                finish_turn(self)
+            except Exception:
+                pass
 
     def chat(self, message: str, stream_callback: Optional[callable] = None) -> str:
         """

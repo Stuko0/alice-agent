@@ -94,6 +94,21 @@ describe('createGatewayEventHandler', () => {
     expect(getTurnState().todos).toEqual([])
   })
 
+  it('updates the transient drafting line with streamed tool-argument size', () => {
+    const appended: Msg[] = []
+    const onEvent = createGatewayEventHandler(buildCtx(appended))
+
+    onEvent({ payload: {}, type: 'message.start' } as any)
+    onEvent({ payload: { name: 'patch' }, type: 'tool.generating' } as any)
+    expect(getTurnState().turnTrail).toEqual(['drafting patch…'])
+
+    onEvent({ payload: { chars: 600, name: 'patch' }, type: 'tool.args' } as any)
+    onEvent({ payload: { chars: 2048, name: 'patch' }, type: 'tool.args' } as any)
+
+    // One transient line, updated in place (not appended N times).
+    expect(getTurnState().turnTrail).toEqual(['drafting patch… 2.0 KB'])
+  })
+
   it('archives completed todos into transcript flow at end of turn', () => {
     const appended: Msg[] = []
     const todos = [{ content: 'Serve tiny latte', id: 'serve', status: 'completed' }]

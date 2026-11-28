@@ -874,7 +874,10 @@ Standard fields: `name`, `description`, `version`, `author`, `license`,
 `metadata.alice.tags`, `metadata.alice.category`,
 `metadata.alice.related_skills`, `metadata.alice.config` (config.yaml
 settings the skill needs — stored under `skills.config.<key>`, prompted
-during setup, injected at load time).
+during setup, injected at load time), `toolsets` (top-level or
+`metadata.alice.toolsets`: toolsets the skill needs; preloading the skill
+with `alice --skills <name>` enables them before the agent builds its tool
+schema, so the schema stays stable for the whole session).
 
 Top-level `tags:` and `category:` are also accepted and mirrored from
 `metadata.alice.*` by the loader.

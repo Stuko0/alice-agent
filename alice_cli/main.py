@@ -12706,6 +12706,7 @@ def _try_termux_fast_cli_launch() -> bool:
     parser, _subparsers, chat_parser = build_top_level_parser()
     chat_parser.set_defaults(func=cmd_chat)
     args = parser.parse_args(_coalesce_session_name_args(argv))
+    _apply_plan_mode_env(args)
 
     if getattr(args, "version", False):
         _print_version_info(check_updates=False)
@@ -14134,6 +14135,11 @@ def main():
     else:
         subparsers.required = False
         args = parser.parse_args(_processed_argv)
+
+    # --plan must be bridged here, before dispatch: `-z` (run_oneshot) and the
+    # resume shortcut both bypass cmd_chat, and they are exactly the paths a
+    # scripted/read-only run uses.
+    _apply_plan_mode_env(args)
 
     # Handle --version flag
     if args.version:

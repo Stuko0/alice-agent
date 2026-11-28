@@ -3593,6 +3593,19 @@ def _agent_cbs(sid: str) -> dict:
         ),
         "tool_gen_callback": lambda name: _tool_progress_enabled(sid)
         and _emit("tool.generating", sid, {"name": name}),
+        # Arguments are still streaming: lets the TUI update its transient
+        # "drafting X…" line with the payload size. Throttled by the agent
+        # (one event per ~512 chars), so this is not a hot-path flood.
+        "tool_args_callback": lambda name, partial: _tool_progress_enabled(sid)
+        and _emit(
+            "tool.args",
+            sid,
+            {
+                "name": name,
+                "chars": len(partial or ""),
+                "preview": (partial or "")[-160:],
+            },
+        ),
         "thinking_callback": lambda text: _emit("thinking.delta", sid, {"text": text}),
         "reasoning_callback": lambda text: _emit(
             "reasoning.delta",

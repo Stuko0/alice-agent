@@ -538,6 +538,85 @@ def is_external_skill_path(path) -> bool:
 # ── Condition extraction ──────────────────────────────────────────────────
 
 
+def extract_skill_toolsets(frontmatter: Dict[str, Any]) -> List[str]:
+    """Toolsets a skill needs in order to run.
+
+    Declared either as a top-level ``toolsets:`` key or under
+    ``metadata.alice.toolsets`` (both accept a YAML list or a comma-separated
+    string). This is an *activation* hint, distinct from
+    ``requires_toolsets`` (which only gates whether the skill is offered):
+    preloading the skill turns these toolsets on for the session, before the
+    agent builds its tool schema — so the schema stays stable (and cacheable)
+    for the whole conversation.
+
+    Example::
+
+        toolsets: [browser, web]
+    """
+    raw = frontmatter.get("toolsets")
+    if raw is None:
+        metadata = frontmatter.get("metadata")
+        alice = metadata.get("alice") if isinstance(metadata, dict) else None
+        raw = alice.get("toolsets") if isinstance(alice, dict) else None
+    if not raw:
+        return []
+    if isinstance(raw, str):
+        items = [part.strip() for part in raw.split(",")]
+    elif isinstance(raw, (list, tuple, set)):
+        items = [str(part).strip() for part in raw]
+    else:
+        return []
+    seen: set = set()
+    out: List[str] = []
+    for item in items:
+        if item and item not in seen:
+            seen.add(item)
+            out.append(item)
+    return out
+
+
+def skill_toolsets_for(names: List[str]) -> List[str]:
+    """Union of ``toolsets`` declared by the named skills, in declared order.
+
+    Scans the same directories the skill index does and matches a skill by its
+    frontmatter ``name`` (case-insensitive) or its directory name. Unknown
+    skills are ignored — toolset activation must never fail a session start.
+    """
+    ordered = [str(n).strip() for n in (names or []) if str(n).strip()]
+    if not ordered:
+        return []
+
+    # One pass over the index: name -> declared toolsets.
+    found: Dict[str, List[str]] = {}
+    try:
+        for skills_dir in get_all_skills_dirs():
+            if not skills_dir.is_dir():
+                continue
+            for skill_file in iter_skill_index_files(skills_dir, "SKILL.md"):
+                try:
+                    raw = skill_file.read_text(encoding="utf-8")
+                    frontmatter, _ = parse_frontmatter(raw)
+                except Exception:
+                    continue
+                declared = extract_skill_toolsets(frontmatter)
+                if not declared:
+                    continue
+                name = str(frontmatter.get("name") or skill_file.parent.name).strip()
+                found.setdefault(name.lower(), declared)
+                found.setdefault(skill_file.parent.name.strip().lower(), declared)
+    except Exception:
+        pass
+
+    toolsets: List[str] = []
+    seen: set = set()
+    for name in ordered:
+        for ts in found.get(name.lower(), []):
+            if ts not in seen:
+                seen.add(ts)
+                toolsets.append(ts)
+    return toolsets
+
+
 def extract_skill_conditions(frontmatter: Dict[str, Any]) -> Dict[str, List]:
     """Extract conditional activation fields from parsed frontmatter."""
     metadata = frontmatter.get("metadata")

@@ -135,6 +135,20 @@ class TestDeferral:
         assert is_deferrable_tool_name("read_file") is False
         assert is_deferrable_tool_name("terminal") is False
 
+    def test_always_visible_tools_are_never_deferred(self):
+        """Protocol tools a worker must call immediately opt out of deferral."""
+        import model_tools  # noqa: F401  (triggers tool discovery)
+
+        from tools.tool_search import is_deferrable_tool_name
+
+        # kanban_show/complete/block are gated on ALICE_KANBAN_TASK, so they
+        # cost nothing outside a worker — but a worker must not need a
+        # tool_search round-trip to report completion.
+        assert is_deferrable_tool_name("kanban_show") is False
+        assert is_deferrable_tool_name("kanban_complete") is False
+        # A normal opt-in tool is still deferrable.
+        assert is_deferrable_tool_name("browser_navigate") is True
+
     def test_absolute_floor_activates_on_large_windows(self):
         from tools.tool_search import ToolSearchConfig, should_activate
 

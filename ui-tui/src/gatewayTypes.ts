@@ -667,6 +667,11 @@ export type GatewayEvent =
   | { payload: { name?: string; preview?: string }; session_id?: string; type: 'tool.progress' }
   | { payload: { name?: string }; session_id?: string; type: 'tool.generating' }
   | {
+      payload: { chars?: number; name?: string; preview?: string }
+      session_id?: string
+      type: 'tool.args'
+    }
+  | {
       payload: { args_text?: string; context?: string; name?: string; tool_id: string; todos?: unknown[] }
       session_id?: string
       type: 'tool.start'

@@ -224,6 +224,7 @@ def init_agent(
     stream_delta_callback: callable = None,
     interim_assistant_callback: callable = None,
     tool_gen_callback: callable = None,
+    tool_args_callback: callable = None,
     status_callback: callable = None,
     notice_callback: callable = None,
     notice_clear_callback: callable = None,
@@ -462,6 +463,8 @@ def init_agent(
     agent.notice_clear_callback = notice_clear_callback
     agent.event_callback = event_callback
     agent.tool_gen_callback = tool_gen_callback
+    agent.tool_args_callback = tool_args_callback
+    agent._tool_args_emit_state = {}
 
     
     # Tool execution state — allows _vprint during tool execution
@@ -1055,6 +1058,16 @@ def init_agent(
         quiet_mode=agent.quiet_mode,
     )
     
+    # Per-turn harness telemetry (api calls, cache hit, tool timings).
+    # Reset at the start of every turn; reported by /status and the log.
+    try:
+        from agent.turn_telemetry import TurnTelemetry
+
+        agent._turn_telemetry = TurnTelemetry()
+        agent.last_turn_telemetry = None
+    except Exception:  # pragma: no cover — telemetry must never block init
+        pass
+
     # Show tool configuration and store valid tool names for validation
     agent.valid_tool_names = set()
     if agent.tools:

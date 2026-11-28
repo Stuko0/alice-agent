@@ -717,6 +717,18 @@ export function createGatewayEventHandler(ctx: GatewayEventHandlerContext): (ev:
 
         return
 
+      case 'tool.args':
+        // Arguments still streaming. pushTrail replaces transient "drafting …"
+        // lines in place (see isTransientTrailLine), so this animates the same
+        // line with the payload size instead of growing the trail.
+        if (ev.payload?.name) {
+          const chars = Number(ev.payload.chars ?? 0)
+          const size = chars >= 1024 ? `${(chars / 1024).toFixed(1)} KB` : `${chars} B`
+          turnController.pushTrail(`drafting ${ev.payload.name}… ${size}`)
+        }
+
+        return
+
       case 'tool.start':
         turnController.recordTodos(ev.payload.todos)
         turnController.recordToolStart(
