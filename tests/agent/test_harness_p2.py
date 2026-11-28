@@ -178,6 +178,47 @@ class TestTelemetryInTheLoop:
         assert "web_search" in tel["tools"]
 
 
+class TestStatusRendering:
+    def test_status_shows_the_last_turn(self, capsys):
+        """The /status block must render the telemetry without raising."""
+        from datetime import datetime
+
+        from cli import AliceCLI
+
+        cli = AliceCLI.__new__(AliceCLI)
+        cli.session_id = "s1"
+        cli._session_db = None
+        cli.session_start = datetime(2026, 1, 1, 12, 0)
+        cli.provider = "custom"
+        cli.model = "fake/model"
+        cli._agent_running = False
+        cli.agent = SimpleNamespace(
+            session_total_tokens=1_234,
+            last_turn_telemetry={
+                "api_calls": 2,
+                "prompt_tokens": 1_000,
+                "completion_tokens": 50,
+                "cache_hit_pct": 80.0,
+                "tool_calls": 3,
+                "tool_seconds": 1.5,
+                "tool_errors": 0,
+                "tools": {
+                    "read_file": {"count": 2, "seconds": 1.0, "errors": 0},
+                    "patch": {"count": 1, "seconds": 0.5, "errors": 0},
+                },
+            },
+        )
+        cli._console_print = lambda text, **kwargs: print(text)
+
+        cli._show_session_status()
+
+        out = capsys.readouterr().out
+        assert "Last turn:" in out
+        assert "API calls: 2" in out
+        assert "Cache read: 80%" in out
+        assert "read_file: 2x" in out
+
+
 # ── Skills declare toolsets ─────────────────────────────────────────────
 
 class TestSkillToolsets:
